@@ -1,0 +1,436 @@
+import { t } from "@lingui/core/macro"
+import { Trans } from "@lingui/react/macro"
+import { getPagePath } from "@nanostores/router"
+import { KeyIcon, LoaderCircle, LockIcon, LogInIcon, MailIcon } from "lucide-react"
+import type { AuthMethodsList, AuthProviderInfo, OAuth2AuthConfig } from "pocketbase"
+import { useCallback, useEffect, useState } from "react"
+import * as v from "valibot"
+import { buttonVariants } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { pb } from "@/lib/api"
+import { $authenticated } from "@/lib/stores"
+import { cn } from "@/lib/utils"
+import { $router, Link, basePath, prependBasePath } from "../router"
+import { toast } from "../ui/use-toast"
+import { OtpInputForm } from "./otp-forms"
+
+const honeypot = v.literal("")
+const emailSchema = v.pipe(v.string(), v.email(t`Invalid email address.`))
+const passwordSchema = v.pipe(
+	v.string(),
+	v.minLength(8, t`Password must be at least 8 characters.`),
+	v.maxBytes(72, t`Password must be less than 72 bytes.`)
+)
+
+const LoginSchema = v.looseObject({
+	website: honeypot,
+	email: emailSchema,
+	password: passwordSchema,
+})
+
+const RegisterSchema = v.looseObject({
+	website: honeypot,
+	email: emailSchema,
+	password: passwordSchema,
+	passwordConfirm: passwordSchema,
+})
+
+type AuthFormValues = Record<string, FormDataEntryValue>
+type PocketBaseAuthError = Error & {
+	response?: {
+		mfaId?: string
+	}
+}
+
+export const showLoginFaliedToast = (description = t`Please check your credentials and try again`) => {
+	toast({
+		title: t`Login attempt failed`,
+		description,
+		variant: "destructive",
+	})
+}
+
+const getAuthProviderIcon = (provider: AuthProviderInfo) => {
+	let { name } = provider
+	if (name.startsWith("oidc")) {
+		name = "oidc"
+	}
+	return prependBasePath(`/_/images/oauth2/${name}.svg`)
+}
+
+export function UserAuthForm({
+	className,
+	isFirstRun,
+	authMethods,
+	onFieldActivate,
+	onSubmitStart,
+	onSubmitSuccess,
+	onSubmitError,
+	...props
+}: {
+	className?: string
+	isFirstRun: boolean
+	authMethods: AuthMethodsList
+	onFieldActivate?: () => void
+	onSubmitStart?: () => void
+	onSubmitSuccess?: () => void
+	onSubmitError?: () => void
+}) {
+	const [isLoading, setIsLoading] = useState<boolean>(false)
+	const [isOauthLoading, setIsOauthLoading] = useState<boolean>(false)
+	const [errors, setErrors] = useState<Record<string, string | undefined>>({})
+	const [mfaId, setMfaId] = useState<string | undefined>()
+	const [otpId, setOtpId] = useState<string | undefined>()
+
+	const handleSubmit = useCallback(
+		async (e: React.FormEvent<HTMLFormElement>) => {
+			e.preventDefault()
+			setIsLoading(true)
+			onSubmitStart?.()
+			// store email for later use if mfa is enabled
+			let email = ""
+			try {
+				const formData = new FormData(e.target as HTMLFormElement)
+				const data = Object.fromEntries(formData) as AuthFormValues
+				const Schema = isFirstRun ? RegisterSchema : LoginSchema
+				const result = v.safeParse(Schema, data)
+				if (!result.success) {
+					console.log(result)
+					const errors = {}
+					for (const issue of result.issues) {
+						// @ts-expect-error
+						errors[issue.path[0].key] = issue.message
+					}
+					setErrors(errors)
+					return
+				}
+				const { password, passwordConfirm } = result.output
+				email = result.output.email
+				if (isFirstRun) {
+					// check that passwords match
+					if (password !== passwordConfirm) {
+						const msg = "Passwords do not match"
+						setErrors({ passwordConfirm: msg })
+						return
+					}
+					await pb.send("/api/app/create-user", {
+						method: "POST",
+						body: JSON.stringify({ email, password }),
+					})
+					await pb.collection("users").authWithPassword(email, password)
+				} else {
+					await pb.collection("users").authWithPassword(email, password)
+				}
+				onSubmitSuccess?.()
+				$authenticated.set(true)
+			} catch (err) {
+				const authError = err as PocketBaseAuthError
+				const mfaId = authError.response?.mfaId
+				if (!mfaId) {
+					onSubmitError?.()
+					showLoginFaliedToast()
+					throw err
+				}
+				setMfaId(mfaId)
+				onSubmitSuccess?.()
+				try {
+					const { otpId } = await pb.collection("users").requestOTP(email)
+					setOtpId(otpId)
+				} catch (err) {
+					console.log({ err })
+					onSubmitError?.()
+					showLoginFaliedToast()
+				}
+			} finally {
+				setIsLoading(false)
+			}
+		},
+		[isFirstRun, onSubmitError, onSubmitStart, onSubmitSuccess]
+	)
+
+	const authProviders = authMethods.oauth2.providers ?? []
+	const oauthEnabled = authMethods.oauth2.enabled && authProviders.length > 0
+	const passwordEnabled = authMethods.password.enabled
+	const otpEnabled = authMethods.otp.enabled
+	const mfaEnabled = authMethods.mfa.enabled
+
+	function loginWithOauth(provider: AuthProviderInfo, forcePopup = false) {
+		setIsOauthLoading(true)
+
+		if (globalThis.APP.OAUTH_DISABLE_POPUP) {
+			redirectToOauthProvider(provider)
+			return
+		}
+
+		const oAuthOpts: OAuth2AuthConfig = {
+			provider: provider.name,
+		}
+		// https://github.com/pocketbase/pocketbase/discussions/2429#discussioncomment-5943061
+		if (forcePopup || navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+			const authWindow = window.open()
+			if (!authWindow) {
+				setIsOauthLoading(false)
+				showLoginFaliedToast(t`Please enable pop-ups for this site`)
+				return
+			}
+			oAuthOpts.urlCallback = (url) => {
+				authWindow.location.href = url
+			}
+		}
+		pb.collection("users")
+			.authWithOAuth2(oAuthOpts)
+			.then(() => {
+				$authenticated.set(pb.authStore.isValid)
+			})
+			.catch(showLoginFaliedToast)
+			.finally(() => {
+				setIsOauthLoading(false)
+			})
+	}
+
+	/**
+	 * Redirects the user to the OAuth provider's authentication page in the same window.
+	 * Requires the app's base URL to be registered as a redirect URI with the OAuth provider.
+	 */
+	function redirectToOauthProvider(provider: AuthProviderInfo) {
+		const url = new URL(provider.authURL)
+		// url.searchParams.set("redirect_uri", `${window.location.origin}${basePath}`)
+		sessionStorage.setItem("provider", JSON.stringify(provider))
+		window.location.href = url.toString()
+	}
+
+	useEffect(() => {
+		// handle redirect-based OAuth callback if we have a code
+		const params = new URLSearchParams(window.location.search)
+		const code = params.get("code")
+		if (code) {
+			const state = params.get("state")
+			const provider: AuthProviderInfo = JSON.parse(sessionStorage.getItem("provider") ?? "{}")
+			if (!state || provider.state !== state) {
+				showLoginFaliedToast()
+			} else {
+				setIsOauthLoading(true)
+				window.history.replaceState({}, "", window.location.pathname)
+				pb.collection("users")
+					.authWithOAuth2Code(provider.name, code, provider.codeVerifier, `${window.location.origin}${basePath}`)
+					.then(() => $authenticated.set(pb.authStore.isValid))
+					.catch((e: unknown) => showLoginFaliedToast((e as Error).message))
+					.finally(() => setIsOauthLoading(false))
+			}
+		}
+
+		// auto login if password disabled and only one auth provider
+		if (!code && !passwordEnabled && authProviders.length === 1 && !sessionStorage.getItem("lo")) {
+			// Add a small timeout to ensure browser is ready to handle popups
+			setTimeout(() => loginWithOauth(authProviders[0], false), 300)
+			return
+		}
+
+		// refresh auth if not in above states (required for trusted auth header)
+		pb.collection("users")
+			.authRefresh()
+			.then((res) => {
+				pb.authStore.save(res.token, res.record)
+				$authenticated.set(!!pb.authStore.isValid)
+			})
+	}, [])
+
+	if (!authMethods) {
+		return null
+	}
+
+	if (otpId && mfaId) {
+		return <OtpInputForm otpId={otpId} mfaId={mfaId} />
+	}
+
+	return (
+		<div className={cn("grid gap-6 auth-form-shell", className)} {...props}>
+			{passwordEnabled && (
+				<>
+					<form onSubmit={handleSubmit} onChange={() => setErrors({})}>
+						<div className="grid gap-3">
+							<div className="grid gap-1 relative">
+								<MailIcon className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+								<Label className="sr-only" htmlFor="email">
+									<Trans>Email</Trans>
+								</Label>
+								<Input
+									id="email"
+									name="email"
+									required
+									placeholder="name@example.com"
+									type="text"
+									autoCapitalize="none"
+									autoComplete="email"
+									autoCorrect="off"
+									onPointerDown={onFieldActivate}
+									disabled={isLoading || isOauthLoading}
+									className={cn("auth-input ps-11", errors?.email && "border-red-500 focus-visible:ring-red-500/30")}
+								/>
+								{errors?.email && <p className="px-1 text-xs text-red-300">{errors.email}</p>}
+							</div>
+							<div className="grid gap-1 relative">
+								<LockIcon className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+								<Label className="sr-only" htmlFor="pass">
+									<Trans>Password</Trans>
+								</Label>
+								<Input
+									id="pass"
+									name="password"
+									placeholder={t`Password`}
+									required
+									type="password"
+									autoComplete="current-password"
+									onPointerDown={onFieldActivate}
+									disabled={isLoading || isOauthLoading}
+									className={cn("auth-input ps-11", errors?.password && "border-red-500 focus-visible:ring-red-500/30")}
+								/>
+								{errors?.password && <p className="px-1 text-xs text-red-300">{errors.password}</p>}
+							</div>
+							{isFirstRun && (
+								<div className="grid gap-1 relative">
+									<LockIcon className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+									<Label className="sr-only" htmlFor="pass2">
+										<Trans>Confirm password</Trans>
+									</Label>
+									<Input
+										id="pass2"
+										name="passwordConfirm"
+										placeholder={t`Confirm password`}
+										required
+										type="password"
+										autoComplete="current-password"
+										onPointerDown={onFieldActivate}
+										disabled={isLoading || isOauthLoading}
+										className={cn(
+											"auth-input ps-11",
+											errors?.password && "border-red-500 focus-visible:ring-red-500/30"
+										)}
+									/>
+									{errors?.passwordConfirm && <p className="px-1 text-xs text-red-300">{errors.passwordConfirm}</p>}
+								</div>
+							)}
+							<div className="sr-only">
+								{/* honeypot */}
+								<label htmlFor="website">Website</label>
+								<input
+									id="website"
+									type="text"
+									name="website"
+									tabIndex={-1}
+									autoComplete="off"
+									data-1p-ignore
+									data-lpignore="true"
+									data-bwignore
+									data-form-type="other"
+									data-protonpass-ignore
+								/>
+							</div>
+							<button className={cn(buttonVariants(), "auth-submit-button")} disabled={isLoading}>
+								{isLoading ? (
+									<LoaderCircle className="me-2 h-4 w-4 animate-spin" />
+								) : (
+									<LogInIcon className="me-2 h-4 w-4" />
+								)}
+								{isFirstRun ? t`Create account` : t`Sign in`}
+							</button>
+						</div>
+					</form>
+					{(isFirstRun || oauthEnabled || (otpEnabled && !mfaEnabled)) && (
+						// only show 'continue with' during onboarding or if we have auth providers
+						<div className="relative">
+							<div className="absolute inset-0 flex items-center">
+								<span className="w-full border-t border-white/12" />
+							</div>
+							<div className="relative flex justify-center text-xs uppercase">
+								<span className="px-3 text-white/45 auth-divider-label">
+									<Trans>Or continue with</Trans>
+								</span>
+							</div>
+						</div>
+					)}
+				</>
+			)}
+			{/* hide OTP button if MFA is enabled (it will be used as MFA) */}
+			{otpEnabled && !mfaEnabled && (
+				<div className="grid gap-2 -mt-1">
+					<Link
+						href="/request-otp"
+						type="button"
+						className={cn(buttonVariants({ variant: "outline" }), "auth-alt-button flex gap-2")}
+					>
+						<KeyIcon className="size-4" />
+						<Trans>One-time password</Trans>
+					</Link>
+				</div>
+			)}
+			{oauthEnabled && (
+				<div className="grid gap-2 -mt-1">
+					{authMethods.oauth2.providers.map((provider) => (
+						<button
+							key={provider.name}
+							type="button"
+							className={cn(buttonVariants({ variant: "outline" }), {
+								"auth-alt-button": true,
+								"justify-self-center": !passwordEnabled,
+								"px-5": !passwordEnabled,
+							})}
+							onClick={() => loginWithOauth(provider)}
+							disabled={isLoading || isOauthLoading}
+						>
+							{isOauthLoading ? (
+								<LoaderCircle className="me-2 h-4 w-4 animate-spin" />
+							) : (
+								<img
+									className="me-2 h-4 w-4 dark:brightness-0 dark:invert"
+									src={getAuthProviderIcon(provider)}
+									alt=""
+									// onError={(e) => {
+									// 	e.currentTarget.src = "/static/lock.svg"
+									// }}
+								/>
+							)}
+							<span className="translate-y-px">{provider.displayName}</span>
+						</button>
+					))}
+				</div>
+			)}
+			{!oauthEnabled && isFirstRun && (
+				// only show GitHub button / dialog during onboarding
+				<Dialog>
+					<DialogTrigger asChild>
+						<button type="button" className={cn(buttonVariants({ variant: "outline" }), "auth-alt-button")}>
+							<img className="me-2 h-4 w-4 dark:invert" src={prependBasePath("/_/images/oauth2/github.svg")} alt="" />
+							<span className="translate-y-px">GitHub</span>
+						</button>
+					</DialogTrigger>
+					<DialogContent style={{ maxWidth: 440, width: "90%" }}>
+						<DialogHeader>
+							<DialogTitle>
+								<Trans>OAuth 2 / OIDC support</Trans>
+							</DialogTitle>
+						</DialogHeader>
+						<div className="text-primary/70 text-[0.95em] contents">
+							<p>
+								<Trans>This application supports OpenID Connect and many OAuth2 authentication providers.</Trans>
+							</p>
+							<p>
+								<Trans>Please configure an OAuth2 provider in the admin dashboard.</Trans>
+							</p>
+						</div>
+					</DialogContent>
+				</Dialog>
+			)}
+			{passwordEnabled && !isFirstRun && (
+				<Link
+					href={getPagePath($router, "forgot_password")}
+					className="text-sm mx-auto text-white/60 hover:text-white underline underline-offset-4 transition-opacity"
+				>
+					<Trans>Forgot password?</Trans>
+				</Link>
+			)}
+		</div>
+	)
+}

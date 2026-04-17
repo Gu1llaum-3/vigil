@@ -1,0 +1,1401 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2024-11-01 11:30-0400\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. placeholder {0}: result.items.length
+#: src/components/routes/settings/notifications/history.tsx
+msgid "{0} entries on this page"
+msgstr "{0} entries on this page"
+
+#: src/components/notification-log-toasts.tsx
+msgid "{name} is back online."
+msgstr "{name} is back online."
+
+#: src/components/notification-log-toasts.tsx
+msgid "{name} is back up."
+msgstr "{name} is back up."
+
+#: src/components/notification-log-toasts.tsx
+msgid "{name} just went down."
+msgstr "{name} just went down."
+
+#: src/components/notification-log-toasts.tsx
+msgid "{name} just went offline."
+msgstr "{name} just went offline."
+
+#: src/components/routes/monitors.tsx
+msgid "0 means instant down. Default is 3."
+msgstr "0 means instant down. Default is 3."
+
+#: src/components/routes/monitors.tsx
+msgid "A unique push URL will be generated automatically. Use it in a cron job or script to send heartbeats."
+msgstr "A unique push URL will be generated automatically. Use it in a cron job or script to send heartbeats."
+
+#: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Actions"
+msgstr "Actions"
+
+#: src/components/routes/monitors.tsx
+msgid "Active"
+msgstr "Active"
+
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Add"
+msgstr "Add"
+
+#: src/components/add-agent.tsx
+#: src/components/navbar.tsx
+#: src/components/navbar.tsx
+msgid "Add agent"
+msgstr "Add agent"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Add channel"
+msgstr "Add channel"
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Add group"
+msgstr "Add group"
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Add monitor"
+msgstr "Add monitor"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Add rule"
+msgstr "Add rule"
+
+#: src/components/routes/settings/general.tsx
+msgid "Adjust the width of the main layout"
+msgstr "Adjust the width of the main layout"
+
+#: src/components/command-palette.tsx
+#: src/components/command-palette.tsx
+#: src/components/navbar.tsx
+msgid "Admin"
+msgstr "Admin"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Agent"
+msgstr "Agent"
+
+#: src/components/command-palette.tsx
+#: src/components/command-palette.tsx
+#: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/layout.tsx
+msgid "Agents"
+msgstr "Agents"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Agents connect to the hub via WebSocket."
+msgstr "Agents connect to the hub via WebSocket."
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "All"
+msgstr "All"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "All events"
+msgstr "All events"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "All rules"
+msgstr "All rules"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "All statuses"
+msgstr "All statuses"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "App Token"
+msgstr "App Token"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Arch"
+msgstr "Arch"
+
+#: src/components/copy-to-clipboard.tsx
+msgid "Automatic copy requires a secure context."
+msgstr "Automatic copy requires a secure context."
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Avg 24h"
+msgstr "Avg 24h"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Back"
+msgstr "Back"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Back to monitors"
+msgstr "Back to monitors"
+
+#: src/components/command-palette.tsx
+#: src/components/navbar.tsx
+msgid "Backups"
+msgstr "Backups"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "BCC"
+msgstr "BCC"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Bearer token for protected topics"
+msgstr "Bearer token for protected topics"
+
+#: src/components/add-agent.tsx
+msgid "Binary"
+msgstr "Binary"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Blue line for successful checks, red background for down periods."
+msgstr "Blue line for successful checks, red background for down periods."
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "CC"
+msgstr "CC"
+
+#: src/components/routes/settings/general.tsx
+msgid "Change general application options."
+msgstr "Change general application options."
+
+#: src/components/routes/settings/notifications/history.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Channel"
+msgstr "Channel"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Channel (optional)"
+msgstr "Channel (optional)"
+
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Channels"
+msgstr "Channels"
+
+#: src/components/login/forgot-pass-form.tsx
+msgid "Check {email} for a reset link."
+msgstr "Check {email} for a reset link."
+
+#: src/components/routes/settings/layout.tsx
+msgid "Check logs for more details."
+msgstr "Check logs for more details."
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Checks loaded"
+msgstr "Checks loaded"
+
+#: src/components/routes/monitors.tsx
+msgid "Click \"Add monitor\" to start monitoring your services."
+msgstr "Click \"Add monitor\" to start monitoring your services."
+
+#: src/components/ui/input-copy.tsx
+msgid "Click to copy"
+msgstr "Click to copy"
+
+#: src/components/login/forgot-pass-form.tsx
+#: src/components/login/forgot-pass-form.tsx
+msgid "Command line instructions"
+msgstr "Command line instructions"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Configuration"
+msgstr "Configuration"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Configure a notification delivery destination."
+msgstr "Configure a notification delivery destination."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Configure notification channels and routing rules. Notifications are sent when monitors or agents change state."
+msgstr "Configure notification channels and routing rules. Notifications are sent when monitors or agents change state."
+
+#: src/components/login/auth-form.tsx
+#: src/components/login/auth-form.tsx
+msgid "Confirm password"
+msgstr "Confirm password"
+
+#: src/components/routes/dashboard/empty-state.tsx
+msgid "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
+msgstr "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+#~ msgid "Connected"
+#~ msgstr "Connected"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Container"
+msgstr "Container"
+
+#: src/components/routes/home.tsx
+msgid "Container fleet"
+msgstr "Container fleet"
+
+#: src/lib/utils.ts
+msgid "Copied to clipboard"
+msgstr "Copied to clipboard"
+
+#: src/components/add-agent.tsx
+msgid "Copy a Docker-based install snippet for a new agent. The dialog uses the hub public key and the current enrollment token."
+msgstr "Copy a Docker-based install snippet for a new agent. The dialog uses the hub public key and the current enrollment token."
+
+#: src/components/add-agent.tsx
+msgctxt "Button to copy docker compose file content"
+msgid "Copy docker compose"
+msgstr "Copy docker compose"
+
+#: src/components/add-agent.tsx
+msgctxt "Button to copy docker run command"
+msgid "Copy docker run"
+msgstr "Copy docker run"
+
+#: src/components/routes/settings/agents.tsx
+msgctxt "Environment variables"
+msgid "Copy env"
+msgstr "Copy env"
+
+#: src/components/add-agent.tsx
+msgctxt "Button to copy install script command"
+msgid "Copy install script"
+msgstr "Copy install script"
+
+#: src/components/add-agent.tsx
+msgctxt "Button to copy raw binary command"
+msgid "Copy raw command"
+msgstr "Copy raw command"
+
+#: src/components/copy-to-clipboard.tsx
+msgid "Copy text"
+msgstr "Copy text"
+
+#: src/components/add-agent.tsx
+msgid "Copy the install script command or a raw binary launch command for a new agent. The dialog uses the hub public key and the current enrollment token."
+msgstr "Copy the install script command or a raw binary launch command for a new agent. The dialog uses the hub public key and the current enrollment token."
+
+#: src/components/routes/settings/agents.tsx
+msgid "Copy YAML"
+msgstr "Copy YAML"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "CPU"
+msgstr "CPU"
+
+#: src/components/login/auth-form.tsx
+msgid "Create account"
+msgstr "Create account"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Created"
+msgstr "Created"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Critical alerts"
+msgstr "Critical alerts"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Current latency"
+msgstr "Current latency"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "daemon unreachable"
+msgstr "daemon unreachable"
+
+#: src/components/routes/home.tsx
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Dead"
+msgstr "Dead"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Define when and where notifications are sent."
+msgstr "Define when and where notifications are sent."
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Delete agent"
+msgstr "Delete agent"
+
+#: src/components/routes/monitors.tsx
+msgid "Delete group"
+msgstr "Delete group"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Detail"
+msgstr "Detail"
+
+#: src/components/routes/settings/notifications/history.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Details"
+msgstr "Details"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "DNS"
+msgstr "DNS"
+
+#: src/components/routes/monitors.tsx
+msgid "DNS server (optional)"
+msgstr "DNS server (optional)"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Docker"
+msgstr "Docker"
+
+#: src/components/routes/monitors.tsx
+msgid "down"
+msgstr "down"
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Down"
+msgstr "Down"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Each agent authenticates with a token and establishes a stable fingerprint on first connection. Use an enrollment token to allow new agents to self-register."
+msgstr "Each agent authenticates with a token and establishes a stable fingerprint on first connection. Use an enrollment token to allow new agents to self-register."
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Edit"
+msgstr "Edit"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Edit channel"
+msgstr "Edit channel"
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Edit group"
+msgstr "Edit group"
+
+#: src/components/routes/monitors.tsx
+msgid "Edit monitor"
+msgstr "Edit monitor"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Edit rule"
+msgstr "Edit rule"
+
+#: src/components/login/auth-form.tsx
+#: src/components/login/forgot-pass-form.tsx
+#: src/components/login/otp-forms.tsx
+msgid "Email"
+msgstr "Email"
+
+#: src/components/add-agent.tsx
+msgid "Enable enrollment token"
+msgstr "Enable enrollment token"
+
+#: src/components/add-agent.tsx
+msgid "Enable the enrollment token to generate ready-to-use install commands."
+msgstr "Enable the enrollment token to generate ready-to-use install commands."
+
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Enabled"
+msgstr "Enabled"
+
+#: src/components/add-agent.tsx
+#: src/components/command-palette.tsx
+#: src/components/routes/settings/agents.tsx
+msgid "Enrollment token"
+msgstr "Enrollment token"
+
+#: src/components/add-agent.tsx
+msgid "Enrollment token is active. You can also manage it from <0>Settings > Agents</0>."
+msgstr "Enrollment token is active. You can also manage it from <0>Settings > Agents</0>."
+
+#: src/components/login/login.tsx
+msgid "Enter email address to reset password"
+msgstr "Enter email address to reset password"
+
+#: src/components/login/otp-forms.tsx
+msgid "Enter your one-time password."
+msgstr "Enter your one-time password."
+
+#: src/components/routes/settings/agents.tsx
+msgid "Ephemeral"
+msgstr "Ephemeral"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Error"
+msgstr "Error"
+
+#: src/components/routes/settings/notifications/history.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Event"
+msgstr "Event"
+
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Events"
+msgstr "Events"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Exited"
+msgstr "Exited"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Exited since"
+msgstr "Exited since"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Expires after one hour or on hub restart."
+msgstr "Expires after one hour or on hub restart."
+
+#: src/lib/api.ts
+msgid "Failed to authenticate"
+msgstr "Failed to authenticate"
+
+#: src/components/routes/monitors.tsx
+msgid "Failed to delete group"
+msgstr "Failed to delete group"
+
+#: src/components/routes/monitors.tsx
+msgid "Failed to delete monitor"
+msgstr "Failed to delete monitor"
+
+#: src/components/routes/monitors.tsx
+msgid "Failed to save group"
+msgstr "Failed to save group"
+
+#: src/components/routes/monitors.tsx
+msgid "Failed to save monitor"
+msgstr "Failed to save monitor"
+
+#: src/components/routes/settings/layout.tsx
+msgid "Failed to save settings"
+msgstr "Failed to save settings"
+
+#: src/components/routes/monitors.tsx
+msgid "Failures before down"
+msgstr "Failures before down"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Fingerprint"
+msgstr "Fingerprint"
+
+#: src/components/login/auth-form.tsx
+msgid "Forgot password?"
+msgstr "Forgot password?"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "From"
+msgstr "From"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Gateway"
+msgstr "Gateway"
+
+#. Context: General settings
+#: src/components/routes/settings/general.tsx
+#: src/components/routes/settings/layout.tsx
+msgid "General"
+msgstr "General"
+
+#: src/components/routes/monitors.tsx
+msgid "Group"
+msgstr "Group"
+
+#: src/components/routes/monitors.tsx
+msgid "Group created"
+msgstr "Group created"
+
+#: src/components/routes/monitors.tsx
+msgid "Group deleted"
+msgstr "Group deleted"
+
+#: src/components/routes/monitors.tsx
+msgid "Group updated"
+msgstr "Group updated"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Headers (JSON object, optional)"
+msgstr "Headers (JSON object, optional)"
+
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "History"
+msgstr "History"
+
+#: src/components/command-palette.tsx
+msgid "Home"
+msgstr "Home"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Host"
+msgstr "Host"
+
+#: src/components/notification-log-toasts.tsx
+msgid "Host back online"
+msgstr "Host back online"
+
+#: src/components/notification-log-toasts.tsx
+msgid "Host offline"
+msgstr "Host offline"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/monitors.tsx
+msgid "Hostname"
+msgstr "Hostname"
+
+#: src/components/routes/monitors.tsx
+msgid "Hostname to resolve"
+msgstr "Hostname to resolve"
+
+#: src/components/routes/home.tsx
+msgid "Hosts"
+msgstr "Hosts"
+
+#: src/components/add-agent.tsx
+msgid "Hub URL"
+msgstr "Hub URL"
+
+#: src/components/login/forgot-pass-form.tsx
+msgid "If you've lost the password to your admin account, you may reset it using the following command."
+msgstr "If you've lost the password to your admin account, you may reset it using the following command."
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Image"
+msgstr "Image"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Interval"
+msgstr "Interval"
+
+#: src/components/routes/monitors.tsx
+msgid "Interval (s)"
+msgstr "Interval (s)"
+
+#: src/components/login/auth-form.tsx
+msgid "Invalid email address."
+msgstr "Invalid email address."
+
+#: src/components/routes/monitors.tsx
+msgid "Keyword in response body (optional)"
+msgstr "Keyword in response body (optional)"
+
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Kind"
+msgstr "Kind"
+
+#: src/components/lang-toggle.tsx
+#: src/components/routes/settings/general.tsx
+msgid "Language"
+msgstr "Language"
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Last check"
+msgstr "Last check"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Last message"
+msgstr "Last message"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Last upgrade"
+msgstr "Last upgrade"
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Latency"
+msgstr "Latency"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Latency history"
+msgstr "Latency history"
+
+#: src/components/routes/settings/general.tsx
+msgid "Layout width"
+msgstr "Layout width"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Leave as-is to keep the existing value."
+msgstr "Leave as-is to keep the existing value."
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Loading history…"
+msgstr "Loading history…"
+
+#: src/components/add-agent.tsx
+msgid "Loading installation details..."
+msgstr "Loading installation details..."
+
+#: src/components/navbar.tsx
+#: src/components/navbar.tsx
+msgid "Log Out"
+msgstr "Log Out"
+
+#: src/components/login/login.tsx
+msgid "Login"
+msgstr "Login"
+
+#: src/components/login/auth-form.tsx
+#: src/components/login/forgot-pass-form.tsx
+msgid "Login attempt failed"
+msgstr "Login attempt failed"
+
+#: src/components/command-palette.tsx
+#: src/components/navbar.tsx
+msgid "Logs"
+msgstr "Logs"
+
+#: src/components/routes/settings/layout.tsx
+msgid "Manage display preferences."
+msgstr "Manage display preferences."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Message delivered"
+msgstr "Message delivered"
+
+#: src/components/routes/monitors.tsx
+msgid "Method"
+msgstr "Method"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Method (default POST)"
+msgstr "Method (default POST)"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Monitor"
+msgstr "Monitor"
+
+#: src/components/routes/monitors.tsx
+msgid "Monitor created"
+msgstr "Monitor created"
+
+#: src/components/routes/monitors.tsx
+msgid "Monitor deleted"
+msgstr "Monitor deleted"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Monitor details"
+msgstr "Monitor details"
+
+#: src/components/notification-log-toasts.tsx
+msgid "Monitor down"
+msgstr "Monitor down"
+
+#: src/components/notification-log-toasts.tsx
+msgid "Monitor recovered"
+msgstr "Monitor recovered"
+
+#: src/components/routes/monitors.tsx
+msgid "Monitor updated"
+msgstr "Monitor updated"
+
+#: src/components/command-palette.tsx
+#: src/components/navbar.tsx
+#: src/components/navbar.tsx
+#: src/components/routes/dashboard/kpi-cards.tsx
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Monitors"
+msgstr "Monitors"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "My Slack alerts"
+msgstr "My Slack alerts"
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Name"
+msgstr "Name"
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Name is required"
+msgstr "Name is required"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Network"
+msgstr "Network"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Next"
+msgstr "Next"
+
+#: src/components/routes/dashboard/empty-state.tsx
+msgid "No agents connected"
+msgstr "No agents connected"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "No channels configured yet."
+msgstr "No channels configured yet."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "No channels configured. Add one to start sending notifications."
+msgstr "No channels configured. Add one to start sending notifications."
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "No containers match the current filter."
+msgstr "No containers match the current filter."
+
+#: src/components/routes/dashboard/charts.tsx
+#: src/components/routes/dashboard/charts.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "No data"
+msgstr "No data"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
+msgstr "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "No group"
+msgstr "No group"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "No history available."
+msgstr "No history available."
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "No hosts match the current filter."
+msgstr "No hosts match the current filter."
+
+#: src/components/routes/monitor-detail.tsx
+msgid "No latency"
+msgstr "No latency"
+
+#: src/components/routes/monitors.tsx
+msgid "No monitors in this group."
+msgstr "No monitors in this group."
+
+#: src/components/routes/monitors.tsx
+msgid "No monitors yet"
+msgstr "No monitors yet"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "No notification logs match the current filters."
+msgstr "No notification logs match the current filters."
+
+#: src/components/command-palette.tsx
+msgid "No results found."
+msgstr "No results found."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "No rules configured. Add a rule to start routing notifications."
+msgstr "No rules configured. Add a rule to start routing notifications."
+
+#: src/components/notification-log-toasts.tsx
+msgid "Notification"
+msgstr "Notification"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Notification delivery destinations (email, webhooks, chat services)."
+msgstr "Notification delivery destinations (email, webhooks, chat services)."
+
+#: src/components/notification-log-toasts.tsx
+msgid "Notification delivery failed"
+msgstr "Notification delivery failed"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Notification details"
+msgstr "Notification details"
+
+#: src/components/command-palette.tsx
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Notifications"
+msgstr "Notifications"
+
+#: src/components/login/auth-form.tsx
+msgid "OAuth 2 / OIDC support"
+msgstr "OAuth 2 / OIDC support"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Offline"
+msgstr "Offline"
+
+#: src/components/login/auth-form.tsx
+msgid "One-time password"
+msgstr "One-time password"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Online"
+msgstr "Online"
+
+#: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Open menu"
+msgstr "Open menu"
+
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Optional"
+msgstr "Optional"
+
+#: src/components/login/auth-form.tsx
+msgid "Or continue with"
+msgstr "Or continue with"
+
+#: src/components/routes/dashboard/charts.tsx
+msgid "OS Distribution"
+msgstr "OS Distribution"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Outdated"
+msgstr "Outdated"
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "Outdated packages"
+msgstr "Outdated packages"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Packages"
+msgstr "Packages"
+
+#: src/components/command-palette.tsx
+msgid "Page"
+msgstr "Page"
+
+#. placeholder {0}: result.page
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Page {0}"
+msgstr "Page {0}"
+
+#: src/components/command-palette.tsx
+msgid "Pages / Settings"
+msgstr "Pages / Settings"
+
+#: src/components/login/auth-form.tsx
+#: src/components/login/auth-form.tsx
+msgid "Password"
+msgstr "Password"
+
+#: src/components/login/auth-form.tsx
+msgid "Password must be at least 8 characters."
+msgstr "Password must be at least 8 characters."
+
+#: src/components/login/auth-form.tsx
+msgid "Password must be less than 72 bytes."
+msgstr "Password must be less than 72 bytes."
+
+#: src/components/login/forgot-pass-form.tsx
+msgid "Password reset request received"
+msgstr "Password reset request received"
+
+#: src/components/routes/home.tsx
+msgid "Patch Audit Dashboard"
+msgstr "Patch Audit Dashboard"
+
+#: src/components/routes/dashboard/charts.tsx
+msgid "Patch Status"
+msgstr "Patch Status"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Paused"
+msgstr "Paused"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Payload preview"
+msgstr "Payload preview"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Pending"
+msgstr "Pending"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Permanent"
+msgstr "Permanent"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Persistence"
+msgstr "Persistence"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Platform"
+msgstr "Platform"
+
+#: src/components/login/auth-form.tsx
+#: src/components/login/forgot-pass-form.tsx
+msgid "Please check your credentials and try again"
+msgstr "Please check your credentials and try again"
+
+#: src/components/login/auth-form.tsx
+msgid "Please configure an OAuth2 provider in the admin dashboard."
+msgstr "Please configure an OAuth2 provider in the admin dashboard."
+
+#: src/components/login/login.tsx
+msgid "Please create an admin account"
+msgstr "Please create an admin account"
+
+#: src/components/login/auth-form.tsx
+msgid "Please enable pop-ups for this site"
+msgstr "Please enable pop-ups for this site"
+
+#: src/lib/api.ts
+msgid "Please log in again"
+msgstr "Please log in again"
+
+#: src/components/login/login.tsx
+msgid "Please sign in to your account"
+msgstr "Please sign in to your account"
+
+#: src/components/routes/monitors.tsx
+msgid "Port"
+msgstr "Port"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Ports"
+msgstr "Ports"
+
+#: src/components/routes/settings/general.tsx
+msgid "Preferred Language"
+msgstr "Preferred Language"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Previous"
+msgstr "Previous"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Priority (1–5, default 3)"
+msgstr "Priority (1–5, default 3)"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Priority (default 5)"
+msgstr "Priority (default 5)"
+
+#. Use 'Key' if your language requires many more characters
+#: src/components/add-agent.tsx
+msgid "Public Key"
+msgstr "Public Key"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "RAM"
+msgstr "RAM"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Reboot req."
+msgstr "Reboot req."
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "Reboot required"
+msgstr "Reboot required"
+
+#: src/components/routes/monitors.tsx
+msgid "Record type"
+msgstr "Record type"
+
+#: src/components/routes/home.tsx
+msgid "Refresh"
+msgstr "Refresh"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Repos"
+msgstr "Repos"
+
+#: src/components/login/login.tsx
+msgid "Request a one-time password"
+msgstr "Request a one-time password"
+
+#: src/components/login/otp-forms.tsx
+msgid "Request OTP"
+msgstr "Request OTP"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Reset filters"
+msgstr "Reset filters"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Reset fingerprint"
+msgstr "Reset fingerprint"
+
+#: src/components/login/forgot-pass-form.tsx
+msgid "Reset Password"
+msgstr "Reset Password"
+
+#: src/components/routes/settings/notifications/history.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Resource"
+msgstr "Resource"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Resources"
+msgstr "Resources"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Restarting"
+msgstr "Restarting"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Restarting for"
+msgstr "Restarting for"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Review recent notification deliveries and inspect provider errors."
+msgstr "Review recent notification deliveries and inspect provider errors."
+
+#: src/components/routes/settings/agents.tsx
+msgid "Rotate token"
+msgstr "Rotate token"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Routing rules: which events trigger which channels."
+msgstr "Routing rules: which events trigger which channels."
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Rows"
+msgstr "Rows"
+
+#: src/components/routes/settings/notifications/history.tsx
+#: src/components/routes/settings/notifications/history.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Rule"
+msgstr "Rule"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Rules"
+msgstr "Rules"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Running"
+msgstr "Running"
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "Running containers"
+msgstr "Running containers"
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+#: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/notifications.tsx
+msgid "Save"
+msgstr "Save"
+
+#: src/components/routes/settings/general.tsx
+msgid "Save Settings"
+msgstr "Save Settings"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Saved in the database and does not expire until you disable it."
+msgstr "Saved in the database and does not expire until you disable it."
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Saving…"
+msgstr "Saving…"
+
+#: src/components/navbar.tsx
+msgid "Search"
+msgstr "Search"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Search container, image, host, ports…"
+msgstr "Search container, image, host, ports…"
+
+#: src/components/command-palette.tsx
+#~ msgid "Search for settings..."
+#~ msgstr "Search for settings..."
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Search host, IP, OS, kernel…"
+msgstr "Search host, IP, OS, kernel…"
+
+#: src/components/command-palette.tsx
+msgid "Search pages and settings..."
+msgstr "Search pages and settings..."
+
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Security"
+msgstr "Security"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Security upd."
+msgstr "Security upd."
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "Security updates"
+msgstr "Security updates"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Send test"
+msgstr "Send test"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Sent"
+msgstr "Sent"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Server URL"
+msgstr "Server URL"
+
+#: src/components/routes/dashboard/empty-state.tsx
+msgid "Set up agents"
+msgstr "Set up agents"
+
+#: src/components/command-palette.tsx
+#: src/components/command-palette.tsx
+#: src/components/navbar.tsx
+#: src/components/navbar.tsx
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/layout.tsx
+msgid "Settings"
+msgstr "Settings"
+
+#: src/components/routes/settings/layout.tsx
+msgid "Settings saved"
+msgstr "Settings saved"
+
+#: src/components/login/auth-form.tsx
+msgid "Sign in"
+msgstr "Sign in"
+
+#: src/components/command-palette.tsx
+msgid "SMTP settings"
+msgstr "SMTP settings"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "State"
+msgstr "State"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+#: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/notifications/history.tsx
+#: src/components/routes/settings/notifications/history.tsx
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Status"
+msgstr "Status"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Stopped"
+msgstr "Stopped"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Swap"
+msgstr "Swap"
+
+#: src/components/mode-toggle.tsx
+#: src/components/mode-toggle.tsx
+msgid "Switch theme"
+msgstr "Switch theme"
+
+#: src/components/routes/monitors.tsx
+msgid "Target"
+msgstr "Target"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Test failed"
+msgstr "Test failed"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Test sent"
+msgstr "Test sent"
+
+#: src/components/login/forgot-pass-form.tsx
+msgid "Then log into the backend and reset your user account password in the users table."
+msgstr "Then log into the backend and reset your user account password in the users table."
+
+#: src/components/login/auth-form.tsx
+msgid "This application supports OpenID Connect and many OAuth2 authentication providers."
+msgstr "This application supports OpenID Connect and many OAuth2 authentication providers."
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Threshold"
+msgstr "Threshold"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Throttle (seconds, 0 = no throttle)"
+msgstr "Throttle (seconds, 0 = no throttle)"
+
+#: src/components/routes/settings/general.tsx
+#: src/components/routes/settings/general.tsx
+msgid "Time format"
+msgstr "Time format"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Timeout"
+msgstr "Timeout"
+
+#: src/components/routes/monitors.tsx
+msgid "Timeout (s)"
+msgstr "Timeout (s)"
+
+#: src/components/routes/settings/notifications/history.tsx
+msgid "To"
+msgstr "To"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "To (comma-separated)"
+msgstr "To (comma-separated)"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Token"
+msgstr "Token"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Token (optional)"
+msgstr "Token (optional)"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Topic URL"
+msgstr "Topic URL"
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "total"
+msgstr "total"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Total"
+msgstr "Total"
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "Total hosts"
+msgstr "Total hosts"
+
+#: src/components/routes/settings/general.tsx
+msgid "Translations are managed from the project's locale catalogs."
+msgstr "Translations are managed from the project's locale catalogs."
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Type"
+msgstr "Type"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "unknown"
+msgstr "unknown"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Unknown"
+msgstr "Unknown"
+
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "up"
+msgstr "up"
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Up"
+msgstr "Up"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Up to date"
+msgstr "Up to date"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Updates"
+msgstr "Updates"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Updates pending"
+msgstr "Updates pending"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Uptime"
+msgstr "Uptime"
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Uptime 24h"
+msgstr "Uptime 24h"
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Uptime 30d"
+msgstr "Uptime 30d"
+
+#: src/components/routes/monitors.tsx
+msgid "URL"
+msgstr "URL"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Username (optional)"
+msgstr "Username (optional)"
+
+#: src/components/command-palette.tsx
+#: src/components/navbar.tsx
+msgid "Users"
+msgstr "Users"
+
+#: src/components/routes/settings/agents.tsx
+msgid "When enabled, this token allows agents to self-register without prior creation."
+msgstr "When enabled, this token allows agents to self-register without prior creation."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "You can select multiple channels for the same rule."
+msgstr "You can select multiple channels for the same rule."
+
+#: src/components/routes/settings/layout.tsx
+msgid "Your user settings have been updated."
+msgstr "Your user settings have been updated."

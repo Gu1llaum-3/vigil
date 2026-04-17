@@ -1,0 +1,8 @@
+services:
+  vigil-agent:
+    image: 'gu1llaum3/vigil-agent'
+    container_name: 'vigil-agent'
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      KEY: 'ssh-ed25519 YOUR_PUBLIC_KEY'

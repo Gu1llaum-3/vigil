@@ -1,0 +1,19 @@
+services:
+  vigil:
+    image: 'gu1llaum3/vigil'
+    container_name: 'vigil'
+    restart: unless-stopped
+    ports:
+      - '8090:8090'
+    volumes:
+      - ./vigil_data:/vigil_data
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  vigil-agent:
+    image: 'gu1llaum3/vigil-agent'
+    container_name: 'vigil-agent'
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      KEY: '...'

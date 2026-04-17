@@ -1,0 +1,146 @@
+version: 2
+
+project_name: vigil
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: vigil
+    binary: vigil
+    main: internal/cmd/hub/hub.go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: windows
+        goarch: arm
+      - goos: freebsd
+        goarch: arm64
+      - goos: freebsd
+        goarch: arm
+
+  - id: vigil-agent
+    binary: vigil-agent
+    main: internal/cmd/agent/agent.go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - freebsd
+      - openbsd
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - arm
+      - mips64
+      - riscv64
+      - mipsle
+      - mips
+      - ppc64le
+    gomips:
+      - hardfloat
+      - softfloat
+    ignore:
+      - goos: freebsd
+        goarch: arm
+      - goos: openbsd
+        goarch: arm
+      - goos: linux
+        goarch: mips64
+        gomips: softfloat
+      - goos: linux
+        goarch: mipsle
+        gomips: hardfloat
+      - goos: linux
+        goarch: mips
+        gomips: hardfloat
+      - goos: windows
+        goarch: arm
+      - goos: darwin
+        goarch: riscv64
+      - goos: windows
+        goarch: riscv64
+
+archives:
+  - id: vigil-agent
+    formats: [tar.gz]
+    ids:
+      - vigil-agent
+    name_template: >-
+      {{ .Binary }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+  - id: vigil
+    formats: [tar.gz]
+    ids:
+      - vigil
+    name_template: >-
+      {{ .Binary }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+nfpms:
+  - id: vigil-agent
+    package_name: vigil-agent
+    description: |-
+      Agent for Vigil
+      Vigil is a hub/agent patch audit application built on PocketBase.
+    maintainer: Gu1llaum-3 <guillaume.archambault@easyparapharmacie.com>
+    section: net
+    ids:
+      - vigil-agent
+    formats:
+      - deb
+    contents:
+      - src: ./supplemental/debian/vigil-agent.service
+        dst: lib/systemd/system/vigil-agent.service
+        packager: deb
+      - src: ./supplemental/debian/copyright
+        dst: usr/share/doc/vigil-agent/copyright
+        packager: deb
+      - src: ./supplemental/debian/lintian-overrides
+        dst: usr/share/lintian/overrides/vigil-agent
+        packager: deb
+    scripts:
+      postinstall: ./supplemental/debian/postinstall.sh
+      preremove: ./supplemental/debian/prerm.sh
+      postremove: ./supplemental/debian/postrm.sh
+    deb:
+      predepends:
+        - adduser
+        - debconf
+      scripts:
+        templates: ./supplemental/debian/templates
+        config: ./supplemental/debian/config.sh
+
+release:
+  draft: true
+
+changelog:
+  disable: true
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

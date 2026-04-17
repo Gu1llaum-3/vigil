@@ -1,0 +1,8 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Vigil
+Upstream-Contact: Gu1llaum-3 <guillaume.archambault@easyparapharmacie.com>
+Source: https://github.com/Gu1llaum-3/vigil
+
+Files: *
+Copyright: 2024 Gu1llaum-3
+License: MIT

@@ -1,0 +1,25 @@
+[Unit]
+Description=Vigil Agent Service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+EnvironmentFile=/etc/vigil-agent.conf
+ExecStart=/usr/bin/vigil-agent
+User=vigil
+Restart=on-failure
+StateDirectory=vigil-agent
+
+# Security/sandboxing settings
+KeyringMode=private
+LockPersonality=yes
+ProtectClock=yes
+ProtectHome=read-only
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectSystem=strict
+RemoveIPC=yes
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
