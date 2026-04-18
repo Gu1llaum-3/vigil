@@ -4,6 +4,8 @@ Vigil is a hub/agent patch audit application built on [PocketBase](https://pocke
 
 It provides centralized monitoring and reporting of system patches, package updates, repositories, and compliance status across distributed infrastructure.
 
+This project is based on [Beszel](https://github.com/henrygd/beszel) and draws inspiration from [Uptime Kuma](https://github.com/louislam/uptime-kuma) and [Patchmon](https://github.com/PatchMon/PatchMon).
+
 ## Architecture
 
 The project consists of two main components: the **hub** and the **agent**.
