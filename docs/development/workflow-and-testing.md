@@ -178,6 +178,11 @@ Recommended verification:
 2. open the hub on `http://localhost:8090`
 3. verify the data volume persists across container restarts
 
+Important:
+
+- `supplemental/docker/hub/docker-compose.dev.yml` still runs the hub in production-style embedded-frontend mode; it does not proxy to Vite like `make dev-hub`
+- the Docker image now rebuilds `internal/site/dist` from `internal/site/src` during image build, so frontend source changes are picked up even if your local `dist/` is stale
+
 ### Release Verification
 
 Recommended verification:
