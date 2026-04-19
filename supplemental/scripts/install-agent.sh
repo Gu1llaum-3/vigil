@@ -74,6 +74,32 @@ ensure_trailing_slash() {
   fi
 }
 
+print_supported_targets() {
+  echo "Supported release targets: linux/amd64, linux/arm64, linux/arm (armv7)."
+}
+
+require_supported_release_target() {
+  if [ "$1" != "linux" ]; then
+    echo "Error: install-agent.sh currently supports only Linux release targets."
+    print_supported_targets
+    exit 1
+  fi
+
+  case "$2" in
+    amd64|arm64|arm)
+      ;;
+    *)
+      echo "Error: Unsupported architecture '$2' for Vigil Agent release artifacts."
+      print_supported_targets
+      exit 1
+      ;;
+  esac
+}
+
+warn_auto_update_unavailable() {
+  echo "Warning: automatic updates are not available for Vigil Agent yet. Skipping auto-update setup."
+}
+
 # Generate FreeBSD rc service content
 generate_freebsd_rc_service() {
   cat <<'EOF'
@@ -117,9 +143,6 @@ start_precmd="${name}_prestart"
 start_cmd="${name}_start"
 stop_cmd="${name}_stop"
 
-extra_commands="upgrade"
-upgrade_cmd="vigil_agent_upgrade"
-
 vigil_agent_prestart()
 {
     if [ ! -f "${vigil_agent_env_file}" ]; then
@@ -150,16 +173,6 @@ vigil_agent_stop()
     fi
 }
 
-vigil_agent_upgrade()
-{
-    echo "Upgrading ${name}"
-    if command -v sudo >/dev/null; then
-        sudo -u "${vigil_agent_user}" -- "${vigil_agent_bin}" update
-    else
-        su -m "${vigil_agent_user}" -c "${vigil_agent_bin} update"
-    fi
-}
-
 run_rc_command "$1"
 EOF
 }
@@ -177,7 +190,7 @@ detect_architecture() {
     x86_64)
       arch="amd64"
       ;;
-    armv6l|armv7l)
+    armv6l|armv7l|armv8l)
       arch="arm"
       ;;
     aarch64)
@@ -218,7 +231,7 @@ GITHUB_PROXY_URL=""
 KEY=""
 TOKEN=""
 HUB_URL=""
-AUTO_UPDATE_FLAG="" # empty string means prompt, "true" means auto-enable, "false" means skip
+AUTO_UPDATE_FLAG="" # empty string means unused, "true" warns and skips, "false" means skip
 VERSION="latest"
 
 # Check for help flag
@@ -232,10 +245,11 @@ case "$1" in
   printf "  -url                  : Hub URL (optional for backwards compatibility)\n"
   printf "  -v, --version         : Version to install (default: latest)\n"
   printf "  -u                    : Uninstall Vigil Agent\n"
-  printf "  --auto-update [VALUE] : Control automatic daily updates\n"
-  printf "                          VALUE can be true (enable) or false (disable). If not specified, will prompt.\n"
+  printf "  --auto-update [VALUE] : Reserved for future use (currently ignored)\n"
+  printf "                          VALUE can be true or false; the flag is accepted for compatibility.\n"
   printf "  --mirror [URL]        : Use GitHub proxy to resolve network timeout issues in mainland China\n"
   printf "                          URL: optional custom proxy URL (default: https://gh.github.com)\n"
+  print_supported_targets
   printf "  -h, --help            : Display this help message\n"
   exit 0
   ;;
@@ -322,7 +336,7 @@ while [ $# -gt 0 ]; do
       elif [ "$AUTO_UPDATE_VALUE" = "false" ]; then
         AUTO_UPDATE_FLAG="false"
       else
-        echo "Invalid value for --auto-update flag: $AUTO_UPDATE_VALUE. Using default (prompt)."
+        echo "Invalid value for --auto-update flag: $AUTO_UPDATE_VALUE. Ignoring the flag."
       fi
     elif [ "$2" = "true" ] || [ "$2" = "false" ]; then
       # Value provided as next argument
@@ -461,6 +475,10 @@ if [ "$UNINSTALL" = true ]; then
   echo "Vigil Agent has been uninstalled successfully!"
   exit 0
 fi
+
+TARGET_OS=$(uname -s | sed -e 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
+TARGET_ARCH=$(detect_architecture)
+require_supported_release_target "$TARGET_OS" "$TARGET_ARCH"
 
 # Check if a package is installed
 package_installed() {
@@ -615,18 +633,12 @@ fi
 
 # Download and install the Vigil Agent
 
-OS=$(uname -s | sed -e 'y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/')
-ARCH=$(detect_architecture)
-FILE_NAME="vigil-agent_${OS}_${ARCH}.tar.gz"
+FILE_NAME="vigil-agent_${TARGET_OS}_${TARGET_ARCH}.tar.gz"
 
 # Determine version to install
 if [ "$VERSION" = "latest" ]; then
-  INSTALL_VERSION=$(curl -s "https://get.github.com/latest-version")
-  if [ -z "$INSTALL_VERSION" ]; then
-    # Fallback to GitHub API
-    API_RELEASE_URL="https://api.github.com/repos/Gu1llaum-3/vigil/releases/latest"
-    INSTALL_VERSION=$(curl -s "$API_RELEASE_URL" | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | tr -d 'v')
-  fi
+  API_RELEASE_URL="https://api.github.com/repos/Gu1llaum-3/vigil/releases/latest"
+  INSTALL_VERSION=$(curl -fsSL "$API_RELEASE_URL" | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | tr -d 'v')
   if [ -z "$INSTALL_VERSION" ]; then
     echo "Failed to get latest version"
     exit 1
@@ -642,7 +654,7 @@ echo "Downloading vigil-agent v${INSTALL_VERSION}..."
 # Download checksums file
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR" || exit 1
-CHECKSUM=$(curl -fsSL "$GITHUB_URL/Gu1llaum-3/vigil/releases/download/v${INSTALL_VERSION}/app_${INSTALL_VERSION}_checksums.txt" | grep "$FILE_NAME" | cut -d' ' -f1)
+CHECKSUM=$(curl -fsSL "$GITHUB_URL/Gu1llaum-3/vigil/releases/download/v${INSTALL_VERSION}/vigil_${INSTALL_VERSION}_checksums.txt" | grep "$FILE_NAME" | cut -d' ' -f1)
 if [ -z "$CHECKSUM" ] || ! echo "$CHECKSUM" | grep -qE "^[a-fA-F0-9]{64}$"; then
   echo "Failed to get checksum or invalid checksum format"
   echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
@@ -688,7 +700,7 @@ if [ -f "$BIN_PATH" ]; then
 fi
 
 mv vigil-agent "$BIN_PATH"
-chown app:app "$BIN_PATH"
+chown "${AGENT_USER}:${AGENT_USER}" "$BIN_PATH"
 chmod 755 "$BIN_PATH"
 
 # Set SELinux context if needed
@@ -752,27 +764,9 @@ EOF
     exit 1
   fi
 
-  # Auto-update service for Alpine
   if [ "$AUTO_UPDATE_FLAG" = "true" ]; then
-    AUTO_UPDATE="y"
-  elif [ "$AUTO_UPDATE_FLAG" = "false" ]; then
-    AUTO_UPDATE="n"
-  else
-    printf "\nEnable automatic daily updates for vigil-agent? (y/n): "
-    read AUTO_UPDATE
+    warn_auto_update_unavailable
   fi
-  case "$AUTO_UPDATE" in
-  [Yy]*)
-    echo "Setting up daily automatic updates for vigil-agent..."
-
-    # Create cron job to run vigil-agent update command daily at midnight
-    if ! crontab -u root -l 2>/dev/null | grep -q "vigil-agent.*update"; then
-      (crontab -u root -l 2>/dev/null; echo "12 0 * * * $BIN_PATH update >/dev/null 2>&1") | crontab -u root -
-    fi
-
-    printf "\nDaily updates have been enabled via cron job.\n"
-    ;;
-  esac
 
   # Check service status
   if ! rc-service vigil-agent status >/dev/null 2>&1; then
@@ -802,15 +796,6 @@ start_service() {
     procd_close_instance
 }
 
-# Extra command to trigger agent update
-EXTRA_COMMANDS="update restart"
-EXTRA_HELP="        update          Update the App agent
-        restart         Restart the App agent"
-
-update() {
-    $BIN_PATH update
-}
-
 EOF
     # Enable the service
     chmod +x /etc/init.d/vigil-agent
@@ -822,30 +807,9 @@ EOF
   # Start the service
   /etc/init.d/vigil-agent restart
 
-  # Auto-update service for OpenWRT using a crontab job
   if [ "$AUTO_UPDATE_FLAG" = "true" ]; then
-    AUTO_UPDATE="y"
-    sleep 1 # give time for the service to start
-  elif [ "$AUTO_UPDATE_FLAG" = "false" ]; then
-    AUTO_UPDATE="n"
-    sleep 1 # give time for the service to start
-  else
-    printf "\nEnable automatic daily updates for vigil-agent? (y/n): "
-    read AUTO_UPDATE
+    warn_auto_update_unavailable
   fi
-  case "$AUTO_UPDATE" in
-  [Yy]*)
-    echo "Setting up daily automatic updates for vigil-agent..."
-
-    if ! crontab -u root -l 2>/dev/null | grep -q "vigil-agent.*update"; then
-      (crontab -u root -l 2>/dev/null; echo "12 0 * * * /etc/init.d/vigil-agent update") | crontab -u root -
-    fi
-
-    /etc/init.d/cron restart
-
-    printf "\nDaily updates have been enabled.\n"
-    ;;
-  esac
 
   # Check service status
   if ! /etc/init.d/vigil-agent running >/dev/null 2>&1; then
@@ -897,28 +861,9 @@ EOF
     exit 1
   fi
 
-  # Auto-update service for FreeBSD
   if [ "$AUTO_UPDATE_FLAG" = "true" ]; then
-    AUTO_UPDATE="y"
-  elif [ "$AUTO_UPDATE_FLAG" = "false" ]; then
-    AUTO_UPDATE="n"
-  else
-    printf "\nEnable automatic daily updates for vigil-agent? (y/n): "
-    read AUTO_UPDATE
+    warn_auto_update_unavailable
   fi
-  case "$AUTO_UPDATE" in
-  [Yy]*)
-    echo "Setting up daily automatic updates for vigil-agent..."
-
-    # Create cron job in /etc/cron.d 
-    cat >/etc/cron.d/vigil-agent <<EOF
-# Vigil Agent daily update job
-12 0 * * * root $BIN_PATH update >/dev/null 2>&1
-EOF
-    chmod 644 /etc/cron.d/vigil-agent
-    printf "\nDaily updates have been enabled via /etc/cron.d.\n"
-    ;;
-  esac
 
   # Check service status
   if ! service vigil-agent status >/dev/null 2>&1; then
@@ -971,55 +916,9 @@ EOF
   systemctl daemon-reload
   systemctl enable vigil-agent.service >/dev/null 2>&1
   systemctl restart vigil-agent.service
-
-
-
-  # Prompt for auto-update setup
   if [ "$AUTO_UPDATE_FLAG" = "true" ]; then
-    AUTO_UPDATE="y"
-    sleep 1 # give time for the service to start
-  elif [ "$AUTO_UPDATE_FLAG" = "false" ]; then
-    AUTO_UPDATE="n"
-    sleep 1 # give time for the service to start
-  else
-    printf "\nEnable automatic daily updates for vigil-agent? (y/n): "
-    read AUTO_UPDATE
+    warn_auto_update_unavailable
   fi
-  case "$AUTO_UPDATE" in
-  [Yy]*)
-    echo "Setting up daily automatic updates for vigil-agent..."
-
-    # Create systemd service for the daily update
-    cat >/etc/systemd/system/vigil-agent-update.service <<EOF
-[Unit]
-Description=Update vigil-agent if needed
-Wants=vigil-agent.service
-
-[Service]
-Type=oneshot
-ExecStart=$BIN_PATH update
-EOF
-
-    # Create systemd timer for the daily update
-    cat >/etc/systemd/system/vigil-agent-update.timer <<EOF
-[Unit]
-Description=Run vigil-agent update daily
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-RandomizedDelaySec=4h
-
-[Install]
-WantedBy=timers.target
-EOF
-
-    systemctl daemon-reload
-    systemctl enable --now vigil-agent-update.timer >/dev/null 2>&1
-
-    printf "\nDaily updates have been enabled.\n"
-    ;;
-  esac
 
   # Wait for the service to start or fail
   if [ "$(systemctl is-active vigil-agent.service)" != "active" ]; then

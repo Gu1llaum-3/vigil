@@ -149,12 +149,14 @@ Purpose:
 Important note:
 
 - these scripts still use generic boilerplate naming and should be reviewed carefully in derived projects
+- `supplemental/scripts/install-agent.sh` is currently aligned to the agent release artifacts published by `.goreleaser.yml`, which at the moment means Linux only: `amd64`, `arm64`, and `arm` (`armv7`)
+- the agent install script does not currently configure a working self-update flow; treat `--auto-update` as a compatibility placeholder rather than a supported feature
 
 ### FreeBSD-Specific Service Support
 
-The install scripts include FreeBSD rc integration in addition to Linux-oriented service setup.
+Some supplemental assets still include FreeBSD-oriented service examples, but the shipped agent install script should be treated as Linux-only until the agent release matrix expands.
 
-This means the repository already supports more than one operational style, but those paths should still be treated as customizable templates.
+Treat those non-Linux paths as templates rather than verified install flows.
 
 ## Kubernetes Assets
 

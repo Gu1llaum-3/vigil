@@ -51,7 +51,9 @@ curl -sL https://raw.githubusercontent.com/Gu1llaum-3/vigil/main/supplemental/sc
 
 #### Install
 
-You may optionally include the SSH key and port as arguments. Run `./install-agent.sh -h` for more info.
+The agent install script is currently intended for Linux release targets published by `.goreleaser.yml`: `amd64`, `arm64`, and `arm` (`armv7`).
+
+You may optionally include the hub public key, token, and hub URL as arguments. Run `./install-agent.sh -h` for more info.
 
 If specifying your key with `-k`, please make sure to enclose it in quotes.
 
@@ -67,8 +69,12 @@ If specifying your key with `-k`, please make sure to enclose it in quotes.
 
 #### Update
 
+`vigil-agent update` is not available yet.
+
+To upgrade an existing agent installation, re-run the install script and optionally pin a release version:
+
 ```bash
-sudo /opt/vigil-agent/vigil-agent update && sudo systemctl restart vigil-agent
+./install-agent.sh --version v0.1.0
 ```
 
 ## Manual install
