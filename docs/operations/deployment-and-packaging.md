@@ -73,6 +73,7 @@ Release behavior:
 - stable tags like `v1.2.3` are published as normal releases
 - tags containing a hyphen such as `v1.2.3-beta.1` or `v1.2.3-dev.1` are treated as prereleases
 - GitHub prereleases stay separate and are never promoted to `latest`
+- rerunning the same tag replaces existing release artifacts instead of failing on duplicate asset names
 
 ### Agent Compose
 

@@ -107,6 +107,7 @@ release:
   prerelease: auto
   make_latest: false
   draft: false
+  replace_existing_artifacts: true
 
 changelog:
   disable: true
