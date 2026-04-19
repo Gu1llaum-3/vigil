@@ -105,6 +105,7 @@ nfpms:
 
 release:
   prerelease: auto
+  make_latest: true
   draft: false
 
 changelog:
