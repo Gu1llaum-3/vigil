@@ -10,6 +10,8 @@ interface KpiCardsProps {
 	summary: DashboardSummary
 	activeFilter: string | null
 	onFilterChange: (filter: string | null) => void
+	hasContainersSection: boolean
+	onRunningContainersClick: () => void
 }
 
 interface KpiCardDef {
@@ -21,7 +23,13 @@ interface KpiCardDef {
 	variant: "default" | "warning" | "danger" | "success"
 }
 
-export const KpiCards = memo(function KpiCards({ summary, activeFilter, onFilterChange }: KpiCardsProps) {
+export const KpiCards = memo(function KpiCards({
+	summary,
+	activeFilter,
+	onFilterChange,
+	hasContainersSection,
+	onRunningContainersClick,
+}: KpiCardsProps) {
 	const cards: KpiCardDef[] = [
 		{
 			key: "hosts",
@@ -94,9 +102,10 @@ export const KpiCards = memo(function KpiCards({ summary, activeFilter, onFilter
 	return (
 		<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
 			{cards.map((item) => {
-				const isInteractive = item.filterKey !== undefined
+				const isRunningContainersCard = item.key === "docker"
+				const isInteractive = item.filterKey !== undefined && !isRunningContainersCard
 				const isNavigable = item.key === "monitors"
-				const isClickable = isInteractive || isNavigable
+				const isClickable = isInteractive || isNavigable || (isRunningContainersCard && hasContainersSection)
 				const isActive = isInteractive && activeFilter === item.filterKey
 				const cardContent = (
 					<Card
@@ -104,6 +113,10 @@ export const KpiCards = memo(function KpiCards({ summary, activeFilter, onFilter
 							isActive ? "ring-2 ring-primary" : isClickable ? "hover:border-primary/40" : ""
 						}`}
 						onClick={() => {
+							if (isRunningContainersCard) {
+								onRunningContainersClick()
+								return
+							}
 							if (!isInteractive) return
 							onFilterChange(isActive ? null : (item.filterKey ?? null))
 						}}

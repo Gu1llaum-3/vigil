@@ -17,8 +17,10 @@ export default memo(function Home() {
 	const [loading, setLoading] = useState(true)
 	const [refreshing, setRefreshing] = useState(false)
 	const [activeFilter, setActiveFilter] = useState<string | null>(null)
+	const [containerFilter, setContainerFilter] = useState("all")
 	const snapshotDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const monitorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const containersSectionRef = useRef<HTMLElement | null>(null)
 
 	const fetchDashboard = useCallback(async () => {
 		try {
@@ -141,6 +143,12 @@ export default memo(function Home() {
 
 	const hasContainers = (dashboard.containers ?? []).length > 0
 
+	function handleRunningContainersClick() {
+		if (!hasContainers) return
+		setContainerFilter("running")
+		containersSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+	}
+
 	return (
 		<div className="flex flex-1 flex-col gap-6 py-6 sm:py-8">
 			<div className="flex items-center justify-between">
@@ -159,7 +167,13 @@ export default memo(function Home() {
 				</Button>
 			</div>
 
-			<KpiCards summary={dashboard.summary} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+			<KpiCards
+				summary={dashboard.summary}
+				activeFilter={activeFilter}
+				onFilterChange={setActiveFilter}
+				hasContainersSection={hasContainers}
+				onRunningContainersClick={handleRunningContainersClick}
+			/>
 
 			<Charts summary={dashboard.summary} />
 
@@ -171,11 +185,15 @@ export default memo(function Home() {
 			</section>
 
 			{hasContainers && (
-				<section className="space-y-3">
+				<section ref={containersSectionRef} className="space-y-3">
 					<h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
 						<Trans>Container fleet</Trans>
 					</h2>
-					<ContainersTable containers={dashboard.containers} />
+					<ContainersTable
+						containers={dashboard.containers}
+						chipFilter={containerFilter}
+						onChipFilterChange={setContainerFilter}
+					/>
 				</section>
 			)}
 		</div>

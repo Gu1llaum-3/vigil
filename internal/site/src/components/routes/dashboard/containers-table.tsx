@@ -11,7 +11,7 @@ import {
 	useReactTable,
 } from "@tanstack/react-table"
 import { ChevronDownIcon } from "lucide-react"
-import { memo, useMemo, useState } from "react"
+import { memo, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -97,9 +97,7 @@ function StatusCell({ container }: { container: ContainerFleetEntry }) {
 
 	if (isRunning) return badge
 
-	const popoverRows: Array<{ label: string; value: string }> = [
-		{ label: t`State`, value: container.status },
-	]
+	const popoverRows: Array<{ label: string; value: string }> = [{ label: t`State`, value: container.status }]
 	if (isStoppedContainer(container.status)) {
 		popoverRows.push({ label: t`Exited since`, value: uptime !== "—" ? uptime : t`unknown` })
 	} else if (container.status === "restarting") {
@@ -152,16 +150,21 @@ function SortBtn({ column, children }: { column: Column<ContainerFleetEntry, unk
 	)
 }
 
-
 // ── props ─────────────────────────────────────────────────────────────────────
 
 interface ContainersTableProps {
 	containers: ContainerFleetEntry[]
+	chipFilter: string
+	onChipFilterChange: (filter: string) => void
 }
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export const ContainersTable = memo(function ContainersTable({ containers }: ContainersTableProps) {
+export const ContainersTable = memo(function ContainersTable({
+	containers,
+	chipFilter,
+	onChipFilterChange,
+}: ContainersTableProps) {
 	const { t } = useLingui()
 
 	const chips = useMemo(
@@ -173,13 +176,16 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 			{ key: "paused", label: t`Paused` },
 			{ key: "created", label: t`Created` },
 		],
-		[t],
+		[t]
 	)
 
 	const [sorting, setSorting] = useState<SortingState>([{ id: "status_rank", desc: true }])
 	const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
 	const [search, setSearch] = useState("")
-	const [chipFilter, setChipFilter] = useState("all")
+
+	useEffect(() => {
+		setPagination((p) => ({ ...p, pageIndex: 0 }))
+	}, [chipFilter])
 
 	const filteredContainers = useMemo(() => {
 		let result = containers
@@ -203,14 +209,12 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 		if (!search) return result
 		const q = search.toLowerCase()
 		return result.filter((c) =>
-			[c.host_name, c.host_ip, c.name, c.id, c.image, c.status_text, c.ports].some((v) =>
-				v?.toLowerCase().includes(q),
-			),
+			[c.host_name, c.host_ip, c.name, c.id, c.image, c.status_text, c.ports].some((v) => v?.toLowerCase().includes(q))
 		)
 	}, [containers, chipFilter, search])
 
 	function handleChip(key: string) {
-		setChipFilter(key)
+		onChipFilterChange(key)
 		setPagination((p) => ({ ...p, pageIndex: 0 }))
 	}
 
@@ -247,9 +251,7 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 				cell: ({ row: { original: c } }) => (
 					<div>
 						<div className="font-semibold">{c.name || c.id || "—"}</div>
-						{c.id && (
-							<div className="font-mono text-xs text-muted-foreground">{c.id.slice(0, 12)}</div>
-						)}
+						{c.id && <div className="font-mono text-xs text-muted-foreground">{c.id.slice(0, 12)}</div>}
 					</div>
 				),
 			},
@@ -261,9 +263,7 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 						<Trans>Image</Trans>
 					</SortBtn>
 				),
-				cell: ({ row: { original: c } }) => (
-					<span className="font-mono text-xs">{c.image || "—"}</span>
-				),
+				cell: ({ row: { original: c } }) => <span className="font-mono text-xs">{c.image || "—"}</span>,
 			},
 			{
 				id: "status_rank",
@@ -302,7 +302,7 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 				),
 			},
 		],
-		[t],
+		[t]
 	)
 
 	const table = useReactTable({
@@ -336,7 +336,7 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 								"rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
 								chipFilter === chip.key
 									? "border-primary/60 bg-primary/10 text-foreground"
-									: "border-border/60 bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground",
+									: "border-border/60 bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground"
 							)}
 						>
 							{chip.label}
@@ -372,9 +372,7 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 							<TableRow key={hg.id}>
 								{hg.headers.map((header) => (
 									<TableHead key={header.id}>
-										{header.isPlaceholder
-											? null
-											: flexRender(header.column.columnDef.header, header.getContext())}
+										{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 									</TableHead>
 								))}
 							</TableRow>
@@ -383,10 +381,7 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 					<TableBody>
 						{table.getRowModel().rows.length === 0 ? (
 							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-16 text-center text-sm text-muted-foreground"
-								>
+								<TableCell colSpan={columns.length} className="h-16 text-center text-sm text-muted-foreground">
 									<Trans>No containers match the current filter.</Trans>
 								</TableCell>
 							</TableRow>
@@ -394,9 +389,7 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 							table.getRowModel().rows.map((row) => (
 								<TableRow key={row.id}>
 									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(cell.column.columnDef.cell, cell.getContext())}
-										</TableCell>
+										<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
 									))}
 								</TableRow>
 							))
@@ -421,12 +414,7 @@ export const ContainersTable = memo(function ContainersTable({ containers }: Con
 					<span>
 						{pagination.pageIndex + 1} / {Math.max(1, table.getPageCount())}
 					</span>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => table.nextPage()}
-						disabled={!table.getCanNextPage()}
-					>
+					<Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
 						<ChevronDownIcon className="size-3 -rotate-90" />
 					</Button>
 				</div>
