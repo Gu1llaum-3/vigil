@@ -252,10 +252,6 @@ msgstr "Confirmar contraseña"
 msgid "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
 msgstr ""
 
-#: src/components/routes/dashboard/kpi-cards.tsx
-#~ msgid "Connected"
-#~ msgstr ""
-
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Container"
 msgstr ""
@@ -334,6 +330,7 @@ msgstr ""
 msgid "daemon unreachable"
 msgstr ""
 
+#: src/components/routes/home.tsx
 #: src/components/routes/home.tsx
 msgid "Dashboard"
 msgstr ""
@@ -940,10 +937,6 @@ msgstr "La contraseña debe ser menor de 72 bytes."
 msgid "Password reset request received"
 msgstr "Solicitud de restablecimiento de contraseña recibida"
 
-#: src/components/routes/home.tsx
-msgid "Patch Audit Dashboard"
-msgstr ""
-
 #: src/components/routes/dashboard/charts.tsx
 msgid "Patch Status"
 msgstr ""
@@ -1155,10 +1148,6 @@ msgstr "Buscar"
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Search container, image, host, ports…"
 msgstr ""
-
-#: src/components/command-palette.tsx
-#~ msgid "Search for settings..."
-#~ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Search host, IP, OS, kernel…"

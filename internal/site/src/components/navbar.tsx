@@ -103,12 +103,15 @@ export default function Navbar() {
 			<Link
 				href={basePath}
 				aria-label="Home"
-				className="p-2 ps-0 me-3 group"
+				className="group me-4 flex items-center gap-2 p-2 ps-0"
 				onMouseEnter={runOnce(() => import("@/components/routes/home"))}
 			>
 				<span className="logo-halo">
 					<span className="logo-halo-aura" aria-hidden="true" />
 					<Logo interactive className="logo-halo-eye h-8 w-8 md:h-9 md:w-9 text-foreground shrink-0" />
+				</span>
+				<span className="auth-title shrink-0 whitespace-nowrap" style={{ color: "hsl(var(--foreground))", fontSize: "1.25rem" }}>
+					Vigil
 				</span>
 			</Link>
 			<Button

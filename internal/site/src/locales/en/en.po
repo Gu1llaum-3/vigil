@@ -247,10 +247,6 @@ msgstr "Confirm password"
 msgid "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
 msgstr "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
 
-#: src/components/routes/dashboard/kpi-cards.tsx
-#~ msgid "Connected"
-#~ msgstr "Connected"
-
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Container"
 msgstr "Container"
@@ -329,6 +325,7 @@ msgstr "Current latency"
 msgid "daemon unreachable"
 msgstr "daemon unreachable"
 
+#: src/components/routes/home.tsx
 #: src/components/routes/home.tsx
 msgid "Dashboard"
 msgstr "Dashboard"
@@ -935,10 +932,6 @@ msgstr "Password must be less than 72 bytes."
 msgid "Password reset request received"
 msgstr "Password reset request received"
 
-#: src/components/routes/home.tsx
-msgid "Patch Audit Dashboard"
-msgstr "Patch Audit Dashboard"
-
 #: src/components/routes/dashboard/charts.tsx
 msgid "Patch Status"
 msgstr "Patch Status"
@@ -1150,10 +1143,6 @@ msgstr "Search"
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Search container, image, host, ports…"
 msgstr "Search container, image, host, ports…"
-
-#: src/components/command-palette.tsx
-#~ msgid "Search for settings..."
-#~ msgstr "Search for settings..."
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Search host, IP, OS, kernel…"

@@ -145,7 +145,7 @@ export default memo(function Home() {
 		<div className="flex flex-1 flex-col gap-6 py-6 sm:py-8">
 			<div className="flex items-center justify-between">
 				<h1 className="text-2xl font-semibold tracking-tight">
-					<Trans>Patch Audit Dashboard</Trans>
+					<Trans>Dashboard</Trans>
 				</h1>
 				<Button
 					variant="outline"
