@@ -78,6 +78,11 @@ print_supported_targets() {
   echo "Supported release targets: linux/amd64, linux/arm64, linux/arm (armv7)."
 }
 
+print_prerelease_hint() {
+  echo "If you want to install a beta or other pre-release, pass it explicitly with --version or -v."
+  echo "Example: ./install-agent.sh --version v0.1.0-beta.5 ..."
+}
+
 require_supported_release_target() {
   if [ "$1" != "linux" ]; then
     echo "Error: install-agent.sh currently supports only Linux release targets."
@@ -640,7 +645,8 @@ if [ "$VERSION" = "latest" ]; then
   API_RELEASE_URL="https://api.github.com/repos/Gu1llaum-3/vigil/releases/latest"
   INSTALL_VERSION=$(curl -fsSL "$API_RELEASE_URL" | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | tr -d 'v')
   if [ -z "$INSTALL_VERSION" ]; then
-    echo "Failed to get latest version"
+    echo "Failed to get latest stable version from GitHub."
+    print_prerelease_hint
     exit 1
   fi
 else

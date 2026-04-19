@@ -55,10 +55,18 @@ The agent install script is currently intended for Linux release targets publish
 
 You may optionally include the hub public key, token, and hub URL as arguments. Run `./install-agent.sh -h` for more info.
 
+If you want to test a beta or another pre-release, pass it explicitly with `--version` because GitHub's `latest` endpoint only returns stable releases.
+
 If specifying your key with `-k`, please make sure to enclose it in quotes.
 
 ```bash
 ./install-agent.sh
+```
+
+Example for a beta:
+
+```bash
+./install-agent.sh --version v0.1.0-beta.5
 ```
 
 #### Uninstall
