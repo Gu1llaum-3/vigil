@@ -170,6 +170,14 @@ Recommended verification:
 2. `npm run --prefix ./internal/site build`
 3. if backend integration changed, `go test -tags=testing ./...`
 
+### Docker Hub Verification
+
+Recommended verification:
+
+1. `docker compose -f supplemental/docker/hub/docker-compose.dev.yml up --build`
+2. open the hub on `http://localhost:8090`
+3. verify the data volume persists across container restarts
+
 ### Rename Or Boilerplate Metadata Change
 
 Recommended verification:

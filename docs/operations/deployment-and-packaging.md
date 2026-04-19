@@ -41,6 +41,21 @@ Typical use case:
 - local evaluation
 - simple single-service deployment
 
+### Hub Dev Compose
+
+Path:
+
+- `supplemental/docker/hub/docker-compose.dev.yml`
+
+Purpose:
+
+- build the hub image locally from the repository
+- run the built image with a persistent data volume
+
+Typical use case:
+
+- local Docker-based verification of the hub and web UI
+
 ### Agent Compose
 
 Path:
@@ -70,6 +85,17 @@ Typical use case:
 
 - quick smoke testing of the full architecture
 - demos or evaluation setups
+
+### Hub Dockerfile
+
+Path:
+
+- `internal/dockerfile_hub`
+
+Purpose:
+
+- build the frontend bundle and hub binary in a multi-stage Docker build
+- produce a container image that serves the embedded web UI and PocketBase runtime
 
 ## Service Management And Install Scripts
 

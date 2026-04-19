@@ -1,0 +1,15 @@
+services:
+  vigil:
+    build:
+      context: ../../..
+      dockerfile: internal/dockerfile_hub
+    image: vigil:dev
+    container_name: vigil
+    restart: unless-stopped
+    ports:
+      - '8090:8090'
+    volumes:
+      - vigil_data:/vigil_data
+
+volumes:
+  vigil_data:
