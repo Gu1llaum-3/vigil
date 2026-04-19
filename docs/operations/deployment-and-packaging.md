@@ -56,6 +56,23 @@ Typical use case:
 
 - local Docker-based verification of the hub and web UI
 
+### Release Workflows
+
+Paths:
+
+- `.github/workflows/release.yml`
+- `.github/workflows/docker-images.yml`
+
+Purpose:
+
+- publish Go release artifacts for tagged versions
+- build and push the hub Docker image to GHCR
+
+Release behavior:
+
+- stable tags like `v1.2.3` are published as normal releases
+- tags containing a hyphen such as `v1.2.3-beta.1` or `v1.2.3-dev.1` are treated as prereleases
+
 ### Agent Compose
 
 Path:

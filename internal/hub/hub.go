@@ -137,11 +137,49 @@ func (h *Hub) initialize(app core.App) error {
 	if err := app.Save(settings); err != nil {
 		return err
 	}
+	if err := h.bootstrapInitialUsers(app); err != nil {
+		return err
+	}
 	// Pre-load the SSH key so h.pubKey is available before any agent connects.
 	if _, err := h.GetSSHKey(app.DataDir()); err != nil {
 		return fmt.Errorf("failed to initialize SSH key: %w", err)
 	}
 	return setCollectionAuthSettings(app)
+}
+
+func (h *Hub) bootstrapInitialUsers(app core.App) error {
+	totalUsers, err := app.CountRecords("users")
+	if err != nil || totalUsers > 0 {
+		return nil
+	}
+
+	email, _ := utils.GetEnv("USER_EMAIL")
+	password, _ := utils.GetEnv("USER_PASSWORD")
+	if email == "" || password == "" {
+		return nil
+	}
+
+	usersCollection, err := app.FindCollectionByNameOrId("users")
+	if err != nil {
+		return err
+	}
+	user := core.NewRecord(usersCollection)
+	user.SetEmail(email)
+	user.SetPassword(password)
+	user.SetVerified(true)
+	user.Set("role", "admin")
+	if err := app.Save(user); err != nil {
+		return err
+	}
+
+	superusersCollection, err := app.FindCollectionByNameOrId(core.CollectionNameSuperusers)
+	if err != nil {
+		return err
+	}
+	superuser := core.NewRecord(superusersCollection)
+	superuser.SetEmail(email)
+	superuser.SetPassword(password)
+	return app.Save(superuser)
 }
 
 // GetSSHKey generates an ED25519 key pair if it doesn't exist and returns the signer.

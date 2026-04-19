@@ -67,6 +67,9 @@ func GetEnv(key string) (value string, exists bool) {
 	if value, exists = os.LookupEnv(appmeta.HubEnvPrefix + key); exists {
 		return value, exists
 	}
+	if value, exists = os.LookupEnv("APP_HUB_" + key); exists {
+		return value, exists
+	}
 	// Fallback to the unprefixed key
 	return os.LookupEnv(key)
 }

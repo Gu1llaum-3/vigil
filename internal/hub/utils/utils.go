@@ -12,5 +12,8 @@ func GetEnv(key string) (value string, exists bool) {
 	if value, exists = os.LookupEnv(app.HubEnvPrefix + key); exists {
 		return value, exists
 	}
+	if value, exists = os.LookupEnv("APP_HUB_" + key); exists {
+		return value, exists
+	}
 	return os.LookupEnv(key)
 }

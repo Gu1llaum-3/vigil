@@ -41,6 +41,10 @@ func newMonitorScheduler(hub *Hub) *MonitorScheduler {
 func (ms *MonitorScheduler) start(ctx context.Context) {
 	ms.ctx = ctx
 	ms.startedAt = time.Now()
+	if ms.hub == nil || ms.hub.DB() == nil {
+		slog.Warn("Skipping monitor scheduler start: database not ready")
+		return
+	}
 	monitors, err := ms.hub.FindRecordsByFilter("monitors", "active = true", "", 0, 0)
 	if err != nil {
 		slog.Warn("Failed to load monitors on startup", "err", err)

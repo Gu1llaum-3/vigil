@@ -178,6 +178,14 @@ Recommended verification:
 2. open the hub on `http://localhost:8090`
 3. verify the data volume persists across container restarts
 
+### Release Verification
+
+Recommended verification:
+
+1. `goreleaser check`
+2. `go test -tags=testing ./...`
+3. create a test tag locally if you want to validate prerelease behavior
+
 ### Rename Or Boilerplate Metadata Change
 
 Recommended verification:
