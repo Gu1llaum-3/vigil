@@ -34,8 +34,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}/vigil
-          flavor:
-            latest: auto
+          flavor: |
+            latest=auto
           tags: |
             type=semver,pattern={{version}},enable=${{ !contains(github.ref_name, '-') }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
