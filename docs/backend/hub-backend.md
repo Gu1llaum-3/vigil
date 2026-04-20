@@ -479,6 +479,62 @@ DELETE /api/app/notifications/rules/{id}
 GET    /api/app/notifications/logs?rule_id=&resource_id=&status=&event_kind=&since=&until=&page=&limit=
 ```
 
+## Data Retention And Manual Purge
+
+The hub is also responsible for lifecycle cleanup of the two append-only high-growth collections:
+
+- `monitor_events`
+- `notification_logs`
+
+### Stored settings
+
+Global purge settings live in the `data_retention_settings` collection as a single `key=global` record.
+
+Fields:
+
+- `monitor_events_retention_days`
+- `notification_logs_retention_days`
+- `monitor_events_manual_default_days`
+- `notification_logs_manual_default_days`
+- `offline_agents_manual_default_days`
+
+### Automatic retention
+
+`StartHub()` runs one retention pass synchronously at startup, then starts a 24-hour ticker.
+
+Current automatic behavior:
+
+- delete `monitor_events` older than the configured retention window
+- delete `notification_logs` older than the configured retention window
+
+Current non-behavior:
+
+- no automatic deletion of agents
+- no automatic age-based deletion of `host_snapshots`
+
+This is intentional because `host_snapshots` is already latest-only. Deleting hosts would remove current state, not old historical rows.
+
+### Manual purge API routes (admin only)
+
+```
+GET   /api/app/purge/settings
+PATCH /api/app/purge/settings
+POST  /api/app/purge/run
+```
+
+`POST /api/app/purge/run` supports these scopes:
+
+- `monitor_events`
+- `notification_logs`
+- `offline_agents`
+
+And these modes:
+
+- `older_than_days`
+- `all`
+
+For `offline_agents`, both modes only target agents where `status = 'offline'`. The destructive `all` mode never deletes connected agents.
+
 The logs endpoint returns a paginated object with `{items, page, limit, has_more}` sorted by `-sent_at`.
 
 Secrets in `notification_channels.config` are redacted to `"**REDACTED**"` in all read responses. When a client PATCHes a channel and sends back `"**REDACTED**"` for a sensitive field, the existing stored value is preserved.

@@ -79,6 +79,8 @@ func (h *Hub) StartHub() error {
 		interval := parseSnapshotInterval()
 		slog.Info("Snapshot ticker started", "interval", interval)
 		go h.startSnapshotTicker(ctx, interval)
+		h.runAutomaticRetentionPurge()
+		go h.startRetentionPurgeTicker(ctx)
 		// start monitor scheduler
 		go h.monitorScheduler.start(ctx)
 		// start notification dispatcher

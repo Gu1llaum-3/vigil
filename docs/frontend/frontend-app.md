@@ -217,6 +217,8 @@ Important files:
 - `layout.tsx`
 - `general.tsx`
 - `agents.tsx`
+- `notifications.tsx`
+- `purge.tsx`
 
 ### `layout.tsx`
 
@@ -241,6 +243,26 @@ Handles agent-related administration such as:
 The navbar also exposes a lightweight installation dialog that fetches the hub public key and the current enrollment token, then provides ready-to-copy Docker and binary installation commands for new agents.
 
 The agents settings table prefers the persisted agent hostname (`agents.name`) over the record id. If more than one agent shares the same hostname, the UI appends a short fingerprint suffix for display-only disambiguation.
+
+### `purge.tsx`
+
+Admin-only settings page used to manage automatic retention and manual cleanup.
+
+Current responsibilities:
+
+- configure automatic retention for `monitor_events`
+- configure automatic retention for `notification_logs`
+- configure the default manual day values shown in the purge forms
+- run manual purge actions for:
+  - probe history
+  - notification history
+  - offline hosts
+
+Important behavior:
+
+- `offline hosts` means agent records with `status='offline'`
+- deleting offline hosts also removes their current `host_snapshots` through cascade delete
+- the destructive `Delete all offline hosts` action never touches connected agents
 
 ## State Management
 

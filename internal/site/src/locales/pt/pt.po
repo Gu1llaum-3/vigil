@@ -23,6 +23,11 @@ msgstr ""
 msgid "{0} entries on this page"
 msgstr ""
 
+#. placeholder {0}: res.deleted_count
+#: src/components/routes/settings/purge.tsx
+msgid "{0} record(s) deleted."
+msgstr ""
+
 #: src/components/notification-log-toasts.tsx
 msgid "{name} is back online."
 msgstr ""
@@ -41,6 +46,10 @@ msgstr ""
 
 #: src/components/routes/monitors.tsx
 msgid "0 means instant down. Default is 3."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "A background job runs daily and deletes monitoring events and notification logs older than the configured retention window."
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -142,6 +151,18 @@ msgstr ""
 msgid "Automatic copy requires a secure context."
 msgstr "A cópia automática requer um contexto seguro."
 
+#: src/components/routes/settings/purge.tsx
+msgid "Automatic Retention"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Automatic retention and manual purge defaults have been updated."
+#~ msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Automatic retention settings have been updated."
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 msgid "Avg 24h"
@@ -180,6 +201,7 @@ msgstr ""
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/purge.tsx
 msgid "Cancel"
 msgstr ""
 
@@ -239,6 +261,10 @@ msgstr ""
 msgid "Configure a notification delivery destination."
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+msgid "Configure automatic retention for monitoring and notification history, then run manual cleanups when needed."
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Configure notification channels and routing rules. Notifications are sent when monitors or agents change state."
 msgstr ""
@@ -247,6 +273,10 @@ msgstr ""
 #: src/components/login/auth-form.tsx
 msgid "Confirm password"
 msgstr "Confirmar senha"
+
+#: src/components/routes/settings/purge.tsx
+msgid "Confirm Purge"
+msgstr ""
 
 #: src/components/routes/dashboard/empty-state.tsx
 msgid "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
@@ -335,9 +365,30 @@ msgstr ""
 msgid "Dashboard"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+#: src/components/routes/settings/purge.tsx
+msgid "Days to keep"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Days To Keep"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
 msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Default Manual Days For Notifications"
+#~ msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Default Manual Days For Offline Hosts"
+#~ msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Default Manual Days For Probes"
+#~ msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Define when and where notifications are sent."
@@ -353,8 +404,36 @@ msgstr ""
 msgid "Delete agent"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+msgid "Delete All"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Delete all notification history?"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Delete All Offline Hosts"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Delete all offline hosts?"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Delete all probe history?"
+msgstr ""
+
 #: src/components/routes/monitors.tsx
 msgid "Delete group"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Delete monitoring events older than the chosen number of days, or wipe the entire probe history."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Delete notification delivery logs older than the chosen number of days, or wipe the full notification history."
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -507,12 +586,20 @@ msgstr ""
 msgid "Failed to delete monitor"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+msgid "Failed to load purge settings"
+msgstr ""
+
 #: src/components/routes/monitors.tsx
 msgid "Failed to save group"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
 msgid "Failed to save monitor"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Failed to save purge settings"
 msgstr ""
 
 #: src/components/routes/settings/layout.tsx
@@ -600,6 +687,10 @@ msgstr ""
 msgid "Hosts"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+msgid "Hosts are not historized. This cleanup deletes offline agent records and their current snapshots."
+msgstr ""
+
 #: src/components/add-agent.tsx
 msgid "Hub URL"
 msgstr ""
@@ -676,6 +767,10 @@ msgstr ""
 msgid "Loading installation details..."
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+msgid "Loading purge settings…"
+msgstr ""
+
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Log Out"
@@ -697,6 +792,10 @@ msgstr ""
 
 #: src/components/routes/settings/layout.tsx
 msgid "Manage display preferences."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Manual Purge"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -854,9 +953,18 @@ msgstr ""
 msgid "Notification details"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Notification History Retention"
+#~ msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Notification History Retention (days)"
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/purge.tsx
 msgid "Notifications"
 msgstr ""
 
@@ -866,6 +974,14 @@ msgstr "Suporte a OAuth 2 / OIDC"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Offline"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Offline for more than (days)"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Offline Hosts"
 msgstr ""
 
 #: src/components/login/auth-form.tsx
@@ -1015,9 +1131,54 @@ msgstr ""
 msgid "Priority (default 5)"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Probe History Retention"
+#~ msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Probe History Retention (days)"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Probes"
+msgstr ""
+
 #. Use 'Key' if your language requires many more characters
 #: src/components/add-agent.tsx
 msgid "Public Key"
+msgstr ""
+
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/purge.tsx
+msgid "Purge"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Purge completed"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Purge failed"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Purge Offline Hosts"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Purge old notification history?"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Purge old offline hosts?"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Purge old probe history?"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Purge Older Records"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -1111,6 +1272,10 @@ msgstr ""
 msgid "Rules"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+msgid "Run manual cleanups for old history or remove all offline hosts when needed."
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -1126,6 +1291,10 @@ msgstr ""
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Save"
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "Save Retention Settings"
 msgstr ""
 
 #: src/components/routes/settings/general.tsx
@@ -1196,6 +1365,7 @@ msgid "Settings"
 msgstr "Configurações"
 
 #: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/purge.tsx
 msgid "Settings saved"
 msgstr "Definições guardadas"
 
@@ -1255,6 +1425,30 @@ msgstr "Em seguida, faça login no backend e redefina a senha da sua conta de us
 
 #: src/components/login/auth-form.tsx
 msgid "This application supports OpenID Connect and many OAuth2 authentication providers."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "This will delete notification logs older than {notificationDays} days."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "This will delete offline hosts whose last seen timestamp is older than {offlineDays} days, plus their snapshots."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "This will delete probe events older than {monitorDays} days."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "This will permanently delete all notification logs."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "This will permanently delete all offline hosts and their snapshots. Connected hosts will not be touched."
+msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+msgid "This will permanently delete all probe events."
 msgstr ""
 
 #: src/components/routes/monitor-detail.tsx

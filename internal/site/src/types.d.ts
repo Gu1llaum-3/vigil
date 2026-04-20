@@ -94,3 +94,17 @@ export interface NotificationLogsPage {
 	limit: number
 	has_more: boolean
 }
+
+export interface PurgeSettings {
+	monitor_events_retention_days: number
+	notification_logs_retention_days: number
+	monitor_events_manual_default_days: number
+	notification_logs_manual_default_days: number
+	offline_agents_manual_default_days: number
+}
+
+export interface PurgeRunResponse {
+	scope: "monitor_events" | "notification_logs" | "offline_agents"
+	mode: "older_than_days" | "all"
+	deleted_count: number
+}

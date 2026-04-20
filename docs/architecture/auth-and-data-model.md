@@ -111,6 +111,19 @@ The collection is tied to the user that created the enrollment token.
 - the extra `created_by` and `channel_kind` fields exist so the frontend can subscribe in realtime only to the current user's relevant notification logs and distinguish virtual `in-app` deliveries from external providers
 - list/view rules: admin only; create/update/delete forbidden from the API (written only by backend)
 
+### `data_retention_settings`
+
+- created by migration `8_create_data_retention_settings.go`
+- singleton-like admin collection used for global lifecycle settings (`key = global`)
+- fields:
+  - `monitor_events_retention_days`
+  - `notification_logs_retention_days`
+  - `monitor_events_manual_default_days`
+  - `notification_logs_manual_default_days`
+  - `offline_agents_manual_default_days`
+- used by the hub startup retention pass, the daily purge ticker, and the admin purge settings UI
+- only monitoring events and notification logs currently have automatic age-based retention; hosts cleanup is manual-only and targets offline agents
+
 ## First-Run User Flow
 
 The first-run behavior is exposed through the hub and consumed by the frontend login flow.

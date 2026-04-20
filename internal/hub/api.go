@@ -135,6 +135,10 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.DELETE("/notifications/rules/{id}", h.deleteNotificationRule).BindFunc(requireAdminRole)
 	// notification logs (admin only)
 	apiAuth.GET("/notifications/logs", h.getNotificationLogs).BindFunc(requireAdminRole)
+	// purge settings and execution (admin only)
+	apiAuth.GET("/purge/settings", h.getPurgeSettings).BindFunc(requireAdminRole)
+	apiAuth.PATCH("/purge/settings", h.updatePurgeSettings).BindFunc(requireAdminRole)
+	apiAuth.POST("/purge/run", h.runPurge).BindFunc(requireAdminRole)
 
 	return nil
 }

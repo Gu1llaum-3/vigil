@@ -45,6 +45,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 - If the task is “change the monitors page, monitor groups UI, or push heartbeat flow”, read `docs/frontend/frontend-app.md` (Monitors Route section) and `docs/backend/hub-backend.md`.
 - If the task is “add or change a notification channel, rule, or log — or change dispatcher, providers, throttle, or retry behavior”, read `docs/backend/hub-backend.md` (Notification Dispatcher section), `docs/architecture/auth-and-data-model.md` (notification collections), and `docs/conventions-and-gotchas.md` (no-hook pattern).
 - If the task is “change the notifications settings UI or notification logs history UI”, read `docs/frontend/frontend-app.md` and `docs/backend/hub-backend.md`.
+- If the task is “change retention, purge, or data lifecycle behavior”, read `docs/backend/hub-backend.md`, `docs/architecture/auth-and-data-model.md`, and `docs/frontend/frontend-app.md` when the settings UI is affected.
 - If the task is “change build, dev, or test workflow”, read `docs/development/workflow-and-testing.md`.
 - If the task is “rename or derive a new product from Nexus”, read `docs/customization/renaming-and-derived-projects.md`.
 - If the task is “deployment, packaging, or release work”, read `docs/operations/deployment-and-packaging.md`.
@@ -241,6 +242,7 @@ Defined in `internal/migrations/0_collections_snapshot_*.go`.
 | `notification_channels` | `pbc_6000000001` | One record per notification destination. Kind: `email`/`webhook`/`slack`/`teams`/`gchat`/`ntfy`/`gotify`/`in-app`. Sensitive config redacted in API. Extended by migration `6_notification_in_app.go`. |
 | `notification_rules` | `pbc_6000000002` | Routing rules: events array, optional resource filter, multi-relation to channels, throttle_seconds. Multi-channel persistence corrected by migration `7_notification_rule_channels_multi.go`. |
 | `notification_logs` | `pbc_6000000003` | Append-only delivery log written by dispatcher via `SaveNoValidate`. Includes `created_by` and `channel_kind` for frontend realtime toast filtering. Indexed on `(rule, sent_at)` and `(resource_id, sent_at)`, plus `(created_by, sent_at)` via migration `6_notification_in_app.go`. |
+| `data_retention_settings` | `pbc_6000000004` | Global singleton-like lifecycle settings for automatic retention and manual purge defaults. |
 
 **Adding a collection:**
 1. Edit the JSON in the migration file — or create a new migration file
