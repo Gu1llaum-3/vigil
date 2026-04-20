@@ -155,6 +155,11 @@ msgstr ""
 msgid "Arch"
 msgstr ""
 
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Auto"
+msgstr ""
+
 #: src/components/routes/settings/purge.tsx
 #~ msgid "Automatic Cleanup Job"
 #~ msgstr ""
@@ -347,6 +352,10 @@ msgstr ""
 #: src/components/routes/settings/agents.tsx
 msgid "Copy YAML"
 msgstr "Copiar YAML"
+
+#: src/components/routes/monitors.tsx
+msgid "Count"
+msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "CPU"
@@ -749,6 +758,10 @@ msgstr ""
 msgid "Invalid email address."
 msgstr "Dirección de correo electrónico no válida."
 
+#: src/components/routes/monitors.tsx
+msgid "IP family"
+msgstr ""
+
 #: src/components/routes/settings/jobs.tsx
 msgid "Job completed"
 msgstr ""
@@ -1136,6 +1149,10 @@ msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Pending"
+msgstr ""
+
+#: src/components/routes/monitors.tsx
+msgid "Per-request timeout"
 msgstr ""
 
 #: src/components/routes/settings/agents.tsx

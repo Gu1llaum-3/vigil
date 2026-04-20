@@ -150,6 +150,11 @@ msgstr "App Token"
 msgid "Arch"
 msgstr "Arch"
 
+#: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
+msgid "Auto"
+msgstr "Auto"
+
 #: src/components/routes/settings/purge.tsx
 #~ msgid "Automatic Cleanup Job"
 #~ msgstr "Automatic Cleanup Job"
@@ -342,6 +347,10 @@ msgstr "Copy the install script command or a raw binary launch command for a new
 #: src/components/routes/settings/agents.tsx
 msgid "Copy YAML"
 msgstr "Copy YAML"
+
+#: src/components/routes/monitors.tsx
+msgid "Count"
+msgstr "Count"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "CPU"
@@ -744,6 +753,10 @@ msgstr "Interval (s)"
 msgid "Invalid email address."
 msgstr "Invalid email address."
 
+#: src/components/routes/monitors.tsx
+msgid "IP family"
+msgstr "IP family"
+
 #: src/components/routes/settings/jobs.tsx
 msgid "Job completed"
 msgstr "Job completed"
@@ -1132,6 +1145,10 @@ msgstr "Payload preview"
 #: src/components/routes/monitor-detail.tsx
 msgid "Pending"
 msgstr "Pending"
+
+#: src/components/routes/monitors.tsx
+msgid "Per-request timeout"
+msgstr "Per-request timeout"
 
 #: src/components/routes/settings/agents.tsx
 msgid "Permanent"

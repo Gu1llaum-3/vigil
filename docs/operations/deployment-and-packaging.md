@@ -120,6 +120,7 @@ Purpose:
 Operational note:
 
 - the image includes `iputils` so the `ping` monitor works in the official hub container
+- ICMP still depends on the runtime environment allowing echo requests; network policy or capability restrictions can block it even when `ping` is installed
 - hardened container or cluster policies can still block ICMP echo at runtime even when the binary is present
 
 ## Service Management And Install Scripts

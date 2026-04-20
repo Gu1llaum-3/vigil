@@ -263,6 +263,37 @@ func init() {
 			},
 			{
 				"hidden": false,
+				"id": "number5200000008",
+				"min": 1,
+				"name": "ping_count",
+				"presentable": false,
+				"required": false,
+				"system": false,
+				"type": "number"
+			},
+			{
+				"hidden": false,
+				"id": "number5200000009",
+				"min": 1,
+				"name": "ping_per_request_timeout",
+				"presentable": false,
+				"required": false,
+				"system": false,
+				"type": "number"
+			},
+			{
+				"hidden": false,
+				"id": "select5200000004",
+				"name": "ping_ip_family",
+				"presentable": false,
+				"required": false,
+				"system": false,
+				"type": "select",
+				"maxSelect": 1,
+				"values": ["", "ipv4", "ipv6"]
+			},
+			{
+				"hidden": false,
 				"id": "number5200000004",
 				"name": "status",
 				"presentable": false,

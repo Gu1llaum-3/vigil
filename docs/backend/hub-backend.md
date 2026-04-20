@@ -323,8 +323,15 @@ Both use `SaveNoValidate` — see the critical note above.
 The `ping` monitor type is intentionally minimal in this repository:
 
 - it reuses the existing `hostname`, `timeout`, `interval`, and `failure_threshold` fields
-- the hub executes the system `ping` binary with a single probe
+- phase 1 adds `ping_count`, `ping_per_request_timeout`, and `ping_ip_family`
+- the hub executes the system `ping` binary and passes those values through to the command line
 - latency is parsed from the command output when available and otherwise falls back to the wall-clock runtime of the probe
+
+The backend maps the advanced options to common `ping` flags:
+
+- `ping_count` -> `-c`
+- `ping_per_request_timeout` -> `-W`
+- `ping_ip_family` -> `-4` / `-6`
 
 Operational implication:
 

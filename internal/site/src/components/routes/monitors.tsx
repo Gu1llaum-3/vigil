@@ -180,8 +180,11 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups }: MonitorDialo
 					dns_host: monitor.dns_host || "",
 					dns_type: monitor.dns_type || "A",
 					dns_server: monitor.dns_server || "",
-					failure_threshold: monitor.failure_threshold ?? 3,
-				})
+						failure_threshold: monitor.failure_threshold ?? 3,
+						ping_count: monitor.ping_count ?? 1,
+						ping_per_request_timeout: monitor.ping_per_request_timeout ?? 2,
+						ping_ip_family: monitor.ping_ip_family || "",
+					})
 			} else {
 				setForm(defaultMonitorForm)
 			}
@@ -216,6 +219,9 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups }: MonitorDialo
 					break
 				case "ping":
 					payload.hostname = form.hostname
+					payload.ping_count = Number(form.ping_count) || 1
+					payload.ping_per_request_timeout = Number(form.ping_per_request_timeout) || 2
+					payload.ping_ip_family = form.ping_ip_family || ""
 					break
 				case "tcp":
 					payload.hostname = form.hostname
@@ -390,16 +396,54 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups }: MonitorDialo
 
 					{/* Ping fields */}
 					{form.type === "ping" && (
-						<div className="grid gap-1.5">
-							<Label>
-								<Trans>Hostname</Trans>
-							</Label>
-							<Input
-								value={form.hostname}
-								onChange={(e) => set("hostname", e.target.value)}
-								placeholder="1.1.1.1"
-							/>
-						</div>
+						<>
+							<div className="grid gap-1.5">
+								<Label>
+									<Trans>Hostname</Trans>
+								</Label>
+								<Input
+									value={form.hostname}
+									onChange={(e) => set("hostname", e.target.value)}
+									placeholder="1.1.1.1"
+								/>
+							</div>
+							<div className="grid grid-cols-3 gap-3">
+								<div className="grid gap-1.5">
+									<Label>
+										<Trans>Count</Trans>
+									</Label>
+									<Input type="number" min={1} value={form.ping_count} onChange={(e) => set("ping_count", Number(e.target.value))} />
+								</div>
+								<div className="grid gap-1.5">
+									<Label>
+										<Trans>Per-request timeout</Trans>
+									</Label>
+									<Input
+										type="number"
+										min={1}
+										value={form.ping_per_request_timeout}
+										onChange={(e) => set("ping_per_request_timeout", Number(e.target.value))}
+									/>
+								</div>
+								<div className="grid gap-1.5">
+									<Label>
+										<Trans>IP family</Trans>
+									</Label>
+									<Select value={form.ping_ip_family || "__auto__"} onValueChange={(v) => set("ping_ip_family", v === "__auto__" ? "" : (v as "ipv4" | "ipv6"))}>
+										<SelectTrigger>
+											<SelectValue placeholder={t`Auto`} />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="__auto__">
+												<Trans>Auto</Trans>
+											</SelectItem>
+											<SelectItem value="ipv4">IPv4</SelectItem>
+											<SelectItem value="ipv6">IPv6</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							</div>
+						</>
 					)}
 
 					{/* TCP fields */}

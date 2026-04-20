@@ -18,6 +18,10 @@ export interface MonitorRecord {
 	// TCP
 	hostname?: string
 	port?: number
+	// Ping
+	ping_count?: number
+	ping_per_request_timeout?: number
+	ping_ip_family?: "" | "ipv4" | "ipv6"
 	// DNS
 	dns_host?: string
 	dns_type?: string
@@ -72,6 +76,9 @@ export interface MonitorFormData {
 	keyword_invert: boolean
 	hostname: string
 	port: number | ""
+	ping_count: number | ""
+	ping_per_request_timeout: number | ""
+	ping_ip_family: "" | "ipv4" | "ipv6"
 	dns_host: string
 	dns_type: string
 	dns_server: string
@@ -91,6 +98,9 @@ export const defaultMonitorForm: MonitorFormData = {
 	keyword_invert: false,
 	hostname: "",
 	port: "",
+	ping_count: 1,
+	ping_per_request_timeout: 2,
+	ping_ip_family: "",
 	dns_host: "",
 	dns_type: "A",
 	dns_server: "",

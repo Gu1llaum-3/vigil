@@ -292,13 +292,15 @@ Focus on:
 - the deployment environment blocks ICMP echo for the hub process
 - a hardened container or Kubernetes policy removed the network privileges needed by the system `ping`
 - the target host or network drops ICMP while still allowing TCP or HTTP traffic
+- the monitor’s `count`, timeout, or IP family settings do not match the network path you are testing
 
 ### Fix
 
 1. verify the hub host or container can run `ping <target>` manually
 2. if running the official container image, confirm the deployment did not strip the packaged `ping` binary or over-restrict networking
 3. inspect `last_msg` on the monitor record for the exact runtime failure reported by the hub
-4. if ICMP is intentionally filtered in your environment, use a `tcp` or `http` monitor instead
+4. try adjusting `count`, per-request timeout, or `IPv4` / `IPv6` if the default path is not reachable
+5. if ICMP is intentionally filtered in your environment, use a `tcp` or `http` monitor instead
 
 ### Related Files
 

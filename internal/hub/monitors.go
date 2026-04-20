@@ -325,8 +325,26 @@ func checkPing(ctx context.Context, monitor *core.Record) (status int, latencyMs
 		return monitorStatusDown, 0, "Ping executable not available on hub"
 	}
 
+	count := monitor.GetInt("ping_count")
+	if count <= 0 {
+		count = 1
+	}
+	perRequestTimeout := monitor.GetInt("ping_per_request_timeout")
+	if perRequestTimeout <= 0 {
+		perRequestTimeout = 2
+	}
+
+	args := []string{"-n"}
+	switch monitor.GetString("ping_ip_family") {
+	case "ipv4":
+		args = append(args, "-4")
+	case "ipv6":
+		args = append(args, "-6")
+	}
+	args = append(args, "-c", strconv.Itoa(count), "-W", strconv.Itoa(perRequestTimeout), hostname)
+
 	start := time.Now()
-	cmd := pingCommandContext(ctx, "ping", "-n", "-c", "1", hostname)
+	cmd := pingCommandContext(ctx, "ping", args...)
 	out, err := cmd.CombinedOutput()
 	latencyMs = time.Since(start).Milliseconds()
 	output := strings.TrimSpace(string(out))
@@ -349,6 +367,9 @@ func checkPing(ctx context.Context, monitor *core.Record) (status int, latencyMs
 }
 
 func parsePingLatency(output string) (int64, bool) {
+	if avg, ok := parsePingSummaryLatency(output); ok {
+		return avg, true
+	}
 	matches := pingLatencyPattern.FindStringSubmatch(output)
 	if len(matches) != 2 {
 		return 0, false
@@ -360,6 +381,31 @@ func parsePingLatency(output string) (int64, bool) {
 	}
 
 	return int64(math.Round(ms)), true
+}
+
+func parsePingSummaryLatency(output string) (int64, bool) {
+	for _, line := range strings.Split(output, "\n") {
+		if !strings.Contains(line, "=") || !strings.Contains(line, "/") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		fields := strings.Fields(strings.TrimSpace(parts[1]))
+		if len(fields) == 0 {
+			continue
+		}
+		stats := strings.Split(fields[0], "/")
+		if len(stats) < 2 {
+			continue
+		}
+		avg, err := strconv.ParseFloat(stats[1], 64)
+		if err == nil {
+			return int64(math.Round(avg)), true
+		}
+	}
+	return 0, false
 }
 
 func compactMonitorMessage(output string) string {

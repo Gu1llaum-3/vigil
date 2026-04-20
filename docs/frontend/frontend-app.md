@@ -191,6 +191,7 @@ Monitor-related TypeScript types live in `internal/site/src/lib/monitor-types.ts
 - `MonitorFormData`, `defaultMonitorForm`
 
 For the `ping` type, the monitors UI reuses the existing `hostname` field and lets the backend measure ICMP latency from the hub.
+The phase 1 advanced options exposed in the form are `count`, per-request timeout, and IP family selection (`Auto`, `IPv4`, `IPv6`).
 
 Rolling monitor metrics can render as `N/A` until the window has enough check history.
 

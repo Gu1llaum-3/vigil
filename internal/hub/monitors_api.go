@@ -38,6 +38,9 @@ type MonitorRecord struct {
 	DNSServer        string              `json:"dns_server,omitempty"`
 	PushToken        string              `json:"push_token,omitempty"`
 	PushURL          string              `json:"push_url,omitempty"`
+	PingCount        int                 `json:"ping_count,omitempty"`
+	PingPerRequestTimeout int            `json:"ping_per_request_timeout,omitempty"`
+	PingIPFamily     string              `json:"ping_ip_family,omitempty"`
 	FailureThreshold int                 `json:"failure_threshold"`
 	Status           int                 `json:"status"`
 	LastCheckedAt    string              `json:"last_checked_at"`
@@ -136,6 +139,19 @@ func monitorToRecord(m *core.Record, appURL string, metrics *MonitorMetrics, rec
 		DNSType:       m.GetString("dns_type"),
 		DNSServer:     m.GetString("dns_server"),
 		PushToken:     m.GetString("push_token"),
+		PingCount: func() int {
+			if raw := m.Get("ping_count"); raw == nil {
+				return 1
+			}
+			return m.GetInt("ping_count")
+		}(),
+		PingPerRequestTimeout: func() int {
+			if raw := m.Get("ping_per_request_timeout"); raw == nil {
+				return 2
+			}
+			return m.GetInt("ping_per_request_timeout")
+		}(),
+		PingIPFamily:  m.GetString("ping_ip_family"),
 		FailureThreshold: func() int {
 			if raw := m.Get("failure_threshold"); raw == nil {
 				return 3
@@ -515,6 +531,7 @@ func applyMonitorFields(rec *core.Record, body map[string]any) {
 		"name", "type", "group", "active", "interval", "timeout",
 		"url", "http_method", "http_accepted_codes", "keyword", "keyword_invert",
 		"hostname", "port", "dns_host", "dns_type", "dns_server", "push_token",
+		"ping_count", "ping_per_request_timeout", "ping_ip_family",
 		"failure_threshold",
 	}
 	for _, f := range fields {
