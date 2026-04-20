@@ -223,6 +223,8 @@ All collectors in this package use the `//go:build linux` build tag and are Linu
 
 `snapshot.go` in the same package is the orchestrator: it calls each collector and assembles the full `HostSnapshotResponse`.
 
+**Subprocess timeout:** `CollectSnapshot()` creates a `context.WithTimeout(45s)` that is propagated to every collector that spawns a subprocess (`packages_debian.go`, `packages_redhat.go`, `reboot.go`, `docker.go`). If a command blocks (e.g. a slow or unreachable DNF repository), it is killed after 45 seconds and the partial result is returned. Collectors that only read files (`system.go`, `storage.go`, `repositories_*.go`) do not receive the context. The 45s budget sits below the hub's 60s WebSocket timeout for `GetHostSnapshot`, leaving 15s for the response to be transmitted.
+
 `DockerAvailable()` is exported from this package and used by `GetAgentInfoHandler` to populate the `"docker"` capability flag.
 
 ## How To Add A New Handler

@@ -3,6 +3,7 @@
 package collectors
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -34,7 +35,7 @@ func TestCollectRebootDebianRebootRequired(t *testing.T) {
 }
 
 func TestCollectRebootUnknownFamily(t *testing.T) {
-	info, err := CollectReboot("Unknown")
+	info, err := CollectReboot(context.Background(), "Unknown")
 	assert.NoError(t, err)
 	assert.False(t, info.Required)
 }

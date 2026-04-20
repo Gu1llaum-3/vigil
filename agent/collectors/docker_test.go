@@ -3,6 +3,7 @@
 package collectors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ func TestCollectDockerUnavailable(t *testing.T) {
 	if DockerAvailable() {
 		t.Skip("Docker is available on this system — skipping unavailable test")
 	}
-	info, err := CollectDocker()
+	info, err := CollectDocker(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, "unavailable", info.State)
 	assert.Equal(t, 0, info.ContainerCount)
@@ -29,7 +30,7 @@ func TestCollectDockerAvailable(t *testing.T) {
 	if !DockerAvailable() {
 		t.Skip("Docker not available on this system")
 	}
-	info, err := CollectDocker()
+	info, err := CollectDocker(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, "available", info.State)
 	assert.GreaterOrEqual(t, info.ContainerCount, 0)

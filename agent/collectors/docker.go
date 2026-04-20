@@ -4,6 +4,7 @@ package collectors
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -19,12 +20,12 @@ func DockerAvailable() bool {
 }
 
 // CollectDocker collects Docker container inventory.
-func CollectDocker() (common.DockerInfo, error) {
+func CollectDocker(ctx context.Context) (common.DockerInfo, error) {
 	if !DockerAvailable() {
 		return common.DockerInfo{State: "unavailable"}, nil
 	}
 
-	cmd := exec.Command("docker", "ps", "-a", "--format", "{{json .}}")
+	cmd := exec.CommandContext(ctx, "docker", "ps", "-a", "--format", "{{json .}}")
 	out, err := cmd.Output()
 	if err != nil {
 		return common.DockerInfo{State: "error"}, err

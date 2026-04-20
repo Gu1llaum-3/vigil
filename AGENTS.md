@@ -289,7 +289,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `HEARTBEAT_INTERVAL` | Seconds between heartbeat pings | `60` |
 | `HEARTBEAT_METHOD` | HTTP method for heartbeat (`GET`, `POST`) | `POST` |
 | `CHECK_UPDATES` | Enable GitHub update check endpoint | — |
-| `SNAPSHOT_INTERVAL` | Interval between periodic snapshot collections (e.g. `5m`, `10m`, `1h`) | `5m` |
+| `SNAPSHOT_INTERVAL` | Interval between periodic snapshot collections (e.g. `5m`, `10m`, `1h`) | `15m` |
 
 ---
 
@@ -379,6 +379,7 @@ func TestSomething(t *testing.T) {
 
 - **No `Save` for internal agent status updates** — use `SaveNoValidate` to avoid triggering validation hooks
 - **Always `context.WithTimeout`** when calling agent actions from the hub (the request manager applies a 5s default if no deadline is set, but be explicit)
+- **`CollectSnapshot` owns a 45s subprocess timeout** — the context is created inside `CollectSnapshot()` and propagated to collectors that spawn subprocesses (`apt-get`, `dnf`, `rpm`, `needs-restarting`, `docker`). File-only collectors do not receive it. The 45s sits below the hub's 60s WebSocket timeout for `GetHostSnapshot`.
 - **Append-only for WebSocket actions** — never reorder or renumber constants in `common-ws.go`; values are encoded on the wire
 - **`agent.keys` is nil when no KEY is provided** — `verifySignature` in `client.go` iterates over them; an empty slice means hub verification is skipped silently
 - **Multiple agents can share one enrollment token** — there is intentionally no unique constraint on `agents.token`

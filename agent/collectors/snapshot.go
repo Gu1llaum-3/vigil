@@ -3,6 +3,7 @@
 package collectors
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -11,7 +12,14 @@ import (
 
 // CollectSnapshot assembles a full HostSnapshotResponse from all collectors.
 // Each domain is collected independently — a failure in one does not block others.
+// A 45s timeout is applied to subprocess-based collectors (packages, reboot, docker)
+// so that a blocked apt/dnf/needs-restarting call does not hang the agent indefinitely.
+// The hub's WebSocket timeout for GetHostSnapshot is 60s; the 15s margin allows
+// the response to be transmitted before the hub gives up.
 func CollectSnapshot() common.HostSnapshotResponse {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
 	hostname, primaryIP, osInfo, kernel, arch, uptimeSecs, resources, network, sysErr := CollectSystem()
 	if sysErr != nil {
 		slog.Warn("system collector failed", "err", sysErr)
@@ -22,7 +30,7 @@ func CollectSnapshot() common.HostSnapshotResponse {
 		slog.Warn("storage collector failed", "err", err)
 	}
 
-	packages, err := CollectPackages(osInfo.Family)
+	packages, err := CollectPackages(ctx, osInfo.Family)
 	if err != nil {
 		slog.Warn("packages collector failed", "err", err)
 	}
@@ -32,12 +40,12 @@ func CollectSnapshot() common.HostSnapshotResponse {
 		slog.Warn("repositories collector failed", "err", err)
 	}
 
-	reboot, err := CollectReboot(osInfo.Family)
+	reboot, err := CollectReboot(ctx, osInfo.Family)
 	if err != nil {
 		slog.Warn("reboot collector failed", "err", err)
 	}
 
-	docker, err := CollectDocker()
+	docker, err := CollectDocker(ctx)
 	if err != nil {
 		slog.Warn("docker collector failed", "err", err)
 	}

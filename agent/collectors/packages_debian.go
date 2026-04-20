@@ -5,6 +5,7 @@ package collectors
 import (
 	"bufio"
 	"compress/gzip"
+	"context"
 	"io"
 	"os"
 	"os/exec"
@@ -15,10 +16,10 @@ import (
 	"github.com/Gu1llaum-3/vigil/internal/common"
 )
 
-func collectPackagesDebian() (common.PackageInfo, error) {
+func collectPackagesDebian(ctx context.Context) (common.PackageInfo, error) {
 	info := common.PackageInfo{}
 
-	outdated, err := aptOutdatedPackages()
+	outdated, err := aptOutdatedPackages(ctx)
 	if err == nil {
 		info.Outdated = outdated
 		info.OutdatedCount = len(outdated)
@@ -29,7 +30,7 @@ func collectPackagesDebian() (common.PackageInfo, error) {
 		}
 	}
 
-	installed, err := dpkgInstalledCount()
+	installed, err := dpkgInstalledCount(ctx)
 	if err == nil {
 		info.InstalledCount = installed
 	}
@@ -44,16 +45,16 @@ func collectPackagesDebian() (common.PackageInfo, error) {
 	return info, nil
 }
 
-func aptOutdatedPackages() ([]common.OutdatedPackage, error) {
+func aptOutdatedPackages(ctx context.Context) ([]common.OutdatedPackage, error) {
 	// apt-get -s upgrade lists packages that would be upgraded
-	cmd := exec.Command("apt-get", "-s", "upgrade")
+	cmd := exec.CommandContext(ctx, "apt-get", "-s", "upgrade")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 
 	// Also get security packages list
-	securityPkgs := aptSecurityPackages()
+	securityPkgs := aptSecurityPackages(ctx)
 
 	var packages []common.OutdatedPackage
 	scanner := bufio.NewScanner(strings.NewReader(string(out)))
@@ -93,9 +94,9 @@ func aptOutdatedPackages() ([]common.OutdatedPackage, error) {
 }
 
 // aptSecurityPackages returns a set of package names that have security updates.
-func aptSecurityPackages() map[string]bool {
+func aptSecurityPackages(ctx context.Context) map[string]bool {
 	result := make(map[string]bool)
-	cmd := exec.Command("apt-get", "-s", "-o", "APT::Get::Show-Upgraded=true",
+	cmd := exec.CommandContext(ctx, "apt-get", "-s", "-o", "APT::Get::Show-Upgraded=true",
 		"--just-print", "dist-upgrade")
 	out, err := cmd.Output()
 	if err != nil {
@@ -118,8 +119,8 @@ func aptSecurityPackages() map[string]bool {
 	return result
 }
 
-func dpkgInstalledCount() (int, error) {
-	cmd := exec.Command("dpkg", "-l")
+func dpkgInstalledCount(ctx context.Context) (int, error) {
+	cmd := exec.CommandContext(ctx, "dpkg", "-l")
 	out, err := cmd.Output()
 	if err != nil {
 		return 0, err

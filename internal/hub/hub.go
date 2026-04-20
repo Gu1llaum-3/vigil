@@ -112,7 +112,10 @@ func (h *Hub) StartHub() error {
 // parseSnapshotInterval reads SNAPSHOT_INTERVAL from env and returns the parsed duration.
 // Defaults to 5 minutes; enforces a minimum of 1 minute.
 func parseSnapshotInterval() time.Duration {
-	const defaultInterval = 5 * time.Minute
+	// 15 minutes: package/repo collection runs apt-get or dnf subprocesses that are
+	// CPU-intensive and potentially network-dependent. Agent liveness (up/down) is
+	// tracked separately via WebSocket Ping every 30s and is unaffected by this interval.
+	const defaultInterval = 15 * time.Minute
 	const minInterval = time.Minute
 	raw, ok := utils.GetEnv("SNAPSHOT_INTERVAL")
 	if !ok || raw == "" {

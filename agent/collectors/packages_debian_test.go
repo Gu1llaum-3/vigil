@@ -3,6 +3,7 @@
 package collectors
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -37,12 +38,12 @@ End-Date: 2024-01-15  10:31:00
 
 func TestAptOutdatedPackagesGraceful(t *testing.T) {
 	// Verify the function handles environments without apt gracefully
-	result, _ := aptOutdatedPackages()
+	result, _ := aptOutdatedPackages(context.Background())
 	assert.NotNil(t, result)
 }
 
 func TestDpkgInstalledCount(t *testing.T) {
-	count, err := dpkgInstalledCount()
+	count, err := dpkgInstalledCount(context.Background())
 	if err != nil {
 		t.Skip("dpkg not available")
 	}

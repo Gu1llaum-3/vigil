@@ -3,6 +3,7 @@
 package collectors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,12 +11,12 @@ import (
 
 func TestDnfOutdatedPackagesGraceful(t *testing.T) {
 	// Verify the function handles environments without dnf gracefully
-	result, _ := dnfOutdatedPackages()
+	result, _ := dnfOutdatedPackages(context.Background())
 	assert.NotNil(t, result)
 }
 
 func TestRpmInstalledCountGraceful(t *testing.T) {
-	count, err := rpmInstalledCount()
+	count, err := rpmInstalledCount(context.Background())
 	if err != nil {
 		t.Skip("rpm not available")
 	}
@@ -23,5 +24,5 @@ func TestRpmInstalledCountGraceful(t *testing.T) {
 }
 
 func TestDnfLastUpgradeTimeGraceful(t *testing.T) {
-	_, _, _ = dnfLastUpgradeTime()
+	_, _, _ = dnfLastUpgradeTime(context.Background())
 }

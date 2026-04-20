@@ -4,6 +4,7 @@ package collectors
 
 import (
 	"bufio"
+	"context"
 	"os/exec"
 	"strings"
 	"time"
@@ -11,10 +12,10 @@ import (
 	"github.com/Gu1llaum-3/vigil/internal/common"
 )
 
-func collectPackagesRedHat() (common.PackageInfo, error) {
+func collectPackagesRedHat(ctx context.Context) (common.PackageInfo, error) {
 	info := common.PackageInfo{}
 
-	outdated, err := dnfOutdatedPackages()
+	outdated, err := dnfOutdatedPackages(ctx)
 	if err == nil {
 		info.Outdated = outdated
 		info.OutdatedCount = len(outdated)
@@ -25,12 +26,12 @@ func collectPackagesRedHat() (common.PackageInfo, error) {
 		}
 	}
 
-	installed, err := rpmInstalledCount()
+	installed, err := rpmInstalledCount(ctx)
 	if err == nil {
 		info.InstalledCount = installed
 	}
 
-	lastUpgrade, known, err := dnfLastUpgradeTime()
+	lastUpgrade, known, err := dnfLastUpgradeTime(ctx)
 	if err == nil && known {
 		info.LastUpgradeAt = lastUpgrade.Format(time.RFC3339)
 		info.LastUpgradeAgeDays = int(time.Since(lastUpgrade).Hours() / 24)
@@ -40,12 +41,12 @@ func collectPackagesRedHat() (common.PackageInfo, error) {
 	return info, nil
 }
 
-func dnfOutdatedPackages() ([]common.OutdatedPackage, error) {
+func dnfOutdatedPackages(ctx context.Context) ([]common.OutdatedPackage, error) {
 	// dnf check-update exits with code 100 when updates are available, 0 when none
-	cmd := exec.Command("dnf", "check-update", "--quiet")
+	cmd := exec.CommandContext(ctx, "dnf", "check-update", "--quiet")
 	out, _ := cmd.Output() // ignore error: exit 100 is normal
 
-	securityPkgs := dnfSecurityPackages()
+	securityPkgs := dnfSecurityPackages(ctx)
 
 	var packages []common.OutdatedPackage
 	scanner := bufio.NewScanner(strings.NewReader(string(out)))
@@ -77,9 +78,9 @@ func dnfOutdatedPackages() ([]common.OutdatedPackage, error) {
 }
 
 // dnfSecurityPackages returns a set of package names with security updates.
-func dnfSecurityPackages() map[string]bool {
+func dnfSecurityPackages(ctx context.Context) map[string]bool {
 	result := make(map[string]bool)
-	cmd := exec.Command("dnf", "updateinfo", "list", "security", "--quiet")
+	cmd := exec.CommandContext(ctx, "dnf", "updateinfo", "list", "security", "--quiet")
 	out, err := cmd.Output()
 	if err != nil {
 		return result
@@ -103,8 +104,8 @@ func dnfSecurityPackages() map[string]bool {
 	return result
 }
 
-func rpmInstalledCount() (int, error) {
-	cmd := exec.Command("rpm", "-qa")
+func rpmInstalledCount(ctx context.Context) (int, error) {
+	cmd := exec.CommandContext(ctx, "rpm", "-qa")
 	out, err := cmd.Output()
 	if err != nil {
 		return 0, err
@@ -119,9 +120,9 @@ func rpmInstalledCount() (int, error) {
 	return count, nil
 }
 
-func dnfLastUpgradeTime() (time.Time, bool, error) {
+func dnfLastUpgradeTime(ctx context.Context) (time.Time, bool, error) {
 	// dnf history gives last transaction times
-	cmd := exec.Command("dnf", "history", "--quiet")
+	cmd := exec.CommandContext(ctx, "dnf", "history", "--quiet")
 	out, err := cmd.Output()
 	if err != nil {
 		return time.Time{}, false, err

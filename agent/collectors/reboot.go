@@ -3,6 +3,7 @@
 package collectors
 
 import (
+	"context"
 	"os"
 	"os/exec"
 
@@ -10,12 +11,12 @@ import (
 )
 
 // CollectReboot checks whether a system reboot is required.
-func CollectReboot(osFamily string) (common.RebootInfo, error) {
+func CollectReboot(ctx context.Context, osFamily string) (common.RebootInfo, error) {
 	switch osFamily {
 	case "Debian":
 		return collectRebootDebian()
 	case "RedHat":
-		return collectRebootRedHat()
+		return collectRebootRedHat(ctx)
 	default:
 		return common.RebootInfo{}, nil
 	}
@@ -34,8 +35,8 @@ func collectRebootDebian() (common.RebootInfo, error) {
 	return common.RebootInfo{Required: false}, nil
 }
 
-func collectRebootRedHat() (common.RebootInfo, error) {
-	cmd := exec.Command("needs-restarting", "-r")
+func collectRebootRedHat(ctx context.Context) (common.RebootInfo, error) {
+	cmd := exec.CommandContext(ctx, "needs-restarting", "-r")
 	err := cmd.Run()
 	if err != nil {
 		// Exit code 1 means reboot needed

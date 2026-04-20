@@ -409,7 +409,11 @@ Two hub files support snapshot collection and dashboard aggregation:
 
 ### Periodic Snapshot Ticker
 
-At startup, `StartHub()` launches `startSnapshotTicker` as a background goroutine. The interval is read from the `SNAPSHOT_INTERVAL` env var (default: `5m`, minimum: `1m`). The goroutine is cancelled when the hub terminates via `OnTerminate`.
+At startup, `StartHub()` launches `startSnapshotTicker` as a background goroutine. The interval is read from the `SNAPSHOT_INTERVAL` env var (default: `15m`, minimum: `1m`). The goroutine is cancelled when the hub terminates via `OnTerminate`.
+
+**Why 15 minutes?** Snapshot collection runs `apt-get` or `dnf` subprocesses on each agent. These commands are CPU-intensive (they run the full package solver or parse DNF metadata) and may be network-dependent on RedHat systems. Running them every minute would generate measurable load on resource-constrained agents, especially with many packages. Package and repository state changes on the order of hours or days, not minutes.
+
+Agent liveness (up/down) is tracked independently via WebSocket Ping every 30 seconds (`agentPingInterval`) and is not affected by this interval. When a future lightweight metrics collection action is added (CPU, RAM), it will use a separate, more frequent ticker — not this one.
 
 The ticker coexists with the manual `POST /api/app/refresh-snapshots` endpoint — both call the same `collectAllSnapshots` function.
 
