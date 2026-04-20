@@ -284,6 +284,15 @@ func (h *Hub) CreateAgent(record *AgentRecord, fingerprint, userId, version stri
 
 const agentPingInterval = 30 * time.Second
 
+// agentOfflineGracePeriod is the time to wait after a WebSocket disconnect before
+// marking an agent offline. This absorbs brief connection drops caused by service
+// restarts or upgrades: the agent typically reconnects within a few seconds, so
+// waiting 30s prevents spurious offline notifications and status flaps.
+// Combined with the 5s delay already applied in ws.go OnClose, the total window
+// before an offline status is written is ~35s.
+// Ping failures bypass this grace period and mark offline immediately.
+const agentOfflineGracePeriod = 30 * time.Second
+
 // manageAgentLifecycle keeps the connection alive with periodic pings and sets
 // the agent status to offline when the connection drops.
 func (h *Hub) manageAgentLifecycle(wsConn *ws.WsConn, agentId string) {
@@ -293,12 +302,19 @@ func (h *Hub) manageAgentLifecycle(wsConn *ws.WsConn, agentId string) {
 	for {
 		select {
 		case <-wsConn.DownChan:
-			h.agentConns.Delete(agentId)
-			h.setAgentStatus(agentId, "offline")
+			// CompareAndDelete ensures we only remove this specific WsConn pointer.
+			// A rapid restart may have already stored a new WsConn for the same
+			// agentId — a plain Delete would evict it and leave the hub blind.
+			h.agentConns.CompareAndDelete(agentId, wsConn)
 			slog.Info("Agent disconnected", "id", agentId)
+			time.Sleep(agentOfflineGracePeriod)
+			if _, stillConnected := h.agentConns.Load(agentId); !stillConnected {
+				h.setAgentStatus(agentId, "offline")
+			}
 			return
 		case <-ticker.C:
 			if err := wsConn.Ping(); err != nil {
+				h.agentConns.CompareAndDelete(agentId, wsConn)
 				h.setAgentStatus(agentId, "offline")
 				slog.Warn("Agent ping failed", "id", agentId, "err", err)
 				return

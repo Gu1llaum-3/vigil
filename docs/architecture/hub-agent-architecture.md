@@ -183,6 +183,10 @@ It retries connection attempts on a ticker while disconnected.
 
 On the hub side, `WsConn.DownChan` is triggered after a short delay in `internal/hub/ws/ws.go`. That delay allows reconnection before the hub flips the agent to offline too aggressively.
 
+An additional **30-second grace period** (`agentOfflineGracePeriod`) is applied in `manageAgentLifecycle` after `DownChan` fires: the hub waits before writing `status=offline` and only does so if the agent has not already reconnected (checked via `agentConns.Load`). Combined with the `ws.go` delay, the total window before an offline status is committed is ~35 seconds. This prevents spurious offline notifications and status flaps caused by service restarts or binary upgrades.
+
+Ping failures bypass the grace period and mark the agent offline immediately, since a failed ping indicates a genuinely dead connection rather than a planned restart.
+
 This behavior matters when debugging brief network interruptions.
 
 ## Current Transport Truth

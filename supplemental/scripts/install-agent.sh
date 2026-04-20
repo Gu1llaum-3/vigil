@@ -917,6 +917,20 @@ EOF
     echo "Systemd service file already exists. Skipping creation."
   fi
 
+  # Always update environment variables in the service file if new values were provided.
+  # This ensures that upgrades passing a new -t / -k / -url actually take effect,
+  # since the service file is not recreated when it already exists.
+  SERVICE_FILE="/etc/systemd/system/vigil-agent.service"
+  if [ -n "$TOKEN" ]; then
+    sed -i "s|Environment=\"TOKEN=.*\"|Environment=\"TOKEN=$TOKEN\"|" "$SERVICE_FILE"
+  fi
+  if [ -n "$KEY" ]; then
+    sed -i "s|Environment=\"KEY=.*\"|Environment=\"KEY=$KEY\"|" "$SERVICE_FILE"
+  fi
+  if [ -n "$HUB_URL" ]; then
+    sed -i "s|Environment=\"HUB_URL=.*\"|Environment=\"HUB_URL=$HUB_URL\"|" "$SERVICE_FILE"
+  fi
+
   # Load and start the service
   printf "\nLoading and starting the agent service...\n"
   systemctl daemon-reload
