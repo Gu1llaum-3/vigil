@@ -23,6 +23,14 @@ msgstr ""
 msgid "{0} entries on this page"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+#~ msgid "{0} probes, {1} notifications"
+#~ msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+#~ msgid "{0} probes, {1} notifications deleted."
+#~ msgstr ""
+
 #. placeholder {0}: res.deleted_count
 #: src/components/routes/settings/purge.tsx
 msgid "{0} record(s) deleted."
@@ -147,10 +155,15 @@ msgstr ""
 msgid "Arch"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Automatic Cleanup Job"
+#~ msgstr ""
+
 #: src/components/copy-to-clipboard.tsx
 msgid "Automatic copy requires a secure context."
 msgstr "La copia automática requiere un contexto seguro."
 
+#: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/purge.tsx
 msgid "Automatic Retention"
 msgstr ""
@@ -436,6 +449,10 @@ msgstr ""
 msgid "Delete notification delivery logs older than the chosen number of days, or wipe the full notification history."
 msgstr ""
 
+#: src/components/routes/settings/jobs.tsx
+msgid "Deletes old probe and notification history based on retention settings."
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Detail"
 msgstr ""
@@ -466,6 +483,10 @@ msgstr ""
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 msgid "Down"
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Duration"
 msgstr ""
 
 #: src/components/routes/settings/agents.tsx
@@ -586,8 +607,16 @@ msgstr ""
 msgid "Failed to delete monitor"
 msgstr ""
 
+#: src/components/routes/settings/jobs.tsx
+msgid "Failed to load jobs"
+msgstr ""
+
 #: src/components/routes/settings/purge.tsx
 msgid "Failed to load purge settings"
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Failed to run job"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -695,6 +724,10 @@ msgstr ""
 msgid "Hub URL"
 msgstr ""
 
+#: src/components/routes/settings/jobs.tsx
+msgid "Idle"
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "If you've lost the password to your admin account, you may reset it using the following command."
 msgstr "Si has perdido la contraseña de tu cuenta de administrador, puedes restablecerla usando el siguiente comando."
@@ -715,6 +748,15 @@ msgstr ""
 msgid "Invalid email address."
 msgstr "Dirección de correo electrónico no válida."
 
+#: src/components/routes/settings/jobs.tsx
+msgid "Job completed"
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+#: src/components/routes/settings/layout.tsx
+msgid "Jobs"
+msgstr ""
+
 #: src/components/routes/monitors.tsx
 msgid "Keyword in response body (optional)"
 msgstr ""
@@ -734,8 +776,24 @@ msgstr "Idioma"
 msgid "Last check"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Last Deleted"
+#~ msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Last message"
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Last Result"
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Last Run"
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Last Success"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -765,6 +823,10 @@ msgstr ""
 
 #: src/components/add-agent.tsx
 msgid "Loading installation details..."
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Loading jobs…"
 msgstr ""
 
 #: src/components/routes/settings/purge.tsx
@@ -868,6 +930,10 @@ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Network"
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Never"
 msgstr ""
 
 #: src/components/routes/settings/notifications/history.tsx
@@ -1202,6 +1268,10 @@ msgstr ""
 msgid "Refresh"
 msgstr ""
 
+#: src/components/routes/settings/purge.tsx
+#~ msgid "Registered as a PocketBase cron job and scheduled daily at midnight UTC."
+#~ msgstr ""
+
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Repos"
 msgstr ""
@@ -1244,6 +1314,10 @@ msgstr ""
 msgid "Restarting for"
 msgstr ""
 
+#: src/components/routes/settings/jobs.tsx
+msgid "Review active scheduled jobs, their usual schedule, latest execution state, and run them manually."
+msgstr ""
+
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Review recent notification deliveries and inspect provider errors."
 msgstr ""
@@ -1273,7 +1347,15 @@ msgid "Rules"
 msgstr ""
 
 #: src/components/routes/settings/purge.tsx
+#~ msgid "Run automatic cleanup now?"
+#~ msgstr ""
+
+#: src/components/routes/settings/purge.tsx
 msgid "Run manual cleanups for old history or remove all offline hosts when needed."
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Run Now"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1308,6 +1390,10 @@ msgstr "Guardado en la base de datos y no expira hasta que lo desactives."
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Saving…"
+msgstr ""
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Schedule"
 msgstr ""
 
 #: src/components/navbar.tsx
@@ -1388,6 +1474,7 @@ msgstr ""
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/notifications/history.tsx
 #: src/components/routes/settings/notifications/history.tsx
 #: src/components/routes/settings/notifications/history.tsx
@@ -1419,6 +1506,10 @@ msgstr ""
 msgid "Test sent"
 msgstr ""
 
+#: src/components/routes/settings/jobs.tsx
+msgid "The job ran successfully."
+msgstr ""
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "Then log into the backend and reset your user account password in the users table."
 msgstr "Luego inicia sesión en el backend y restablece la contraseña de tu cuenta de usuario en la tabla de usuarios."
@@ -1438,6 +1529,10 @@ msgstr ""
 #: src/components/routes/settings/purge.tsx
 msgid "This will delete probe events older than {monitorDays} days."
 msgstr ""
+
+#: src/components/routes/settings/purge.tsx
+#~ msgid "This will immediately run the automatic retention job for probe and notification history."
+#~ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "This will permanently delete all notification logs."

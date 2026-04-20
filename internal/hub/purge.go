@@ -1,7 +1,6 @@
 package hub
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -13,12 +12,13 @@ import (
 const (
 	dataRetentionSettingsCollection          = "data_retention_settings"
 	dataRetentionSettingsSingletonKey        = "global"
+	autoRetentionCronJobID                   = "vigilAutoRetention"
+	autoRetentionCronExpr                    = "0 0 * * *"
 	defaultMonitorEventsRetentionDays        = 30
 	defaultNotificationLogsRetentionDays     = 30
 	defaultMonitorEventsManualDefaultDays    = 180
 	defaultNotificationLogsManualDefaultDays = 180
 	defaultOfflineAgentsManualDefaultDays    = 180
-	retentionPurgeInterval                   = 24 * time.Hour
 )
 
 var allowedAutoRetentionDays = map[int]bool{30: true, 90: true, 180: true, 360: true}
@@ -29,6 +29,15 @@ type DataRetentionSettings struct {
 	MonitorEventsManualDefaultDays    int `json:"monitor_events_manual_default_days"`
 	NotificationLogsManualDefaultDays int `json:"notification_logs_manual_default_days"`
 	OfflineAgentsManualDefaultDays    int `json:"offline_agents_manual_default_days"`
+}
+
+type AutomaticRetentionRunResult struct {
+	MonitorEventsDeleted    int    `json:"monitor_events_deleted"`
+	NotificationLogsDeleted int    `json:"notification_logs_deleted"`
+	Status                  string `json:"status"`
+	Error                   string `json:"error,omitempty"`
+	RanAt                   string `json:"ran_at"`
+	SucceededAt             string `json:"succeeded_at,omitempty"`
 }
 
 func normalizeAutoRetentionDays(days, fallback int) int {
@@ -213,37 +222,49 @@ func (h *Hub) purgeAllOfflineAgents() (int, error) {
 	return deleted, nil
 }
 
-func (h *Hub) runAutomaticRetentionPurge() {
+func (h *Hub) runAutomaticRetentionPurge() AutomaticRetentionRunResult {
+	ranAt := time.Now().UTC()
+	result := AutomaticRetentionRunResult{
+		Status: "failed",
+		RanAt:  ranAt.Format(time.RFC3339),
+	}
+
 	settings, err := h.getRetentionSettings()
 	if err != nil {
+		result.Error = err.Error()
 		slog.Warn("retention purge: failed to load settings", "err", err)
-		return
+		return result
 	}
 
 	monitorDeleted, monitorErr := h.purgeMonitorEventsOlderThan(settings.MonitorEventsRetentionDays)
+	notificationDeleted, notificationErr := h.purgeNotificationLogsOlderThan(settings.NotificationLogsRetentionDays)
+	result.MonitorEventsDeleted = monitorDeleted
+	result.NotificationLogsDeleted = notificationDeleted
+
+	if monitorErr != nil || notificationErr != nil {
+		switch {
+		case monitorErr != nil && notificationErr != nil:
+			result.Error = fmt.Sprintf("monitor events: %v; notification logs: %v", monitorErr, notificationErr)
+		case monitorErr != nil:
+			result.Error = fmt.Sprintf("monitor events: %v", monitorErr)
+		default:
+			result.Error = fmt.Sprintf("notification logs: %v", notificationErr)
+		}
+	} else {
+		result.Status = "success"
+		result.SucceededAt = ranAt.Format(time.RFC3339)
+	}
+
 	if monitorErr != nil {
 		slog.Warn("retention purge: failed to purge monitor events", "days", settings.MonitorEventsRetentionDays, "err", monitorErr)
 	} else {
 		slog.Info("retention purge: purged monitor events", "days", settings.MonitorEventsRetentionDays, "deleted", monitorDeleted)
 	}
-
-	notificationDeleted, notificationErr := h.purgeNotificationLogsOlderThan(settings.NotificationLogsRetentionDays)
 	if notificationErr != nil {
 		slog.Warn("retention purge: failed to purge notification logs", "days", settings.NotificationLogsRetentionDays, "err", notificationErr)
 	} else {
 		slog.Info("retention purge: purged notification logs", "days", settings.NotificationLogsRetentionDays, "deleted", notificationDeleted)
 	}
-}
 
-func (h *Hub) startRetentionPurgeTicker(ctx context.Context) {
-	ticker := time.NewTicker(retentionPurgeInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			h.runAutomaticRetentionPurge()
-		}
-	}
+	return result
 }

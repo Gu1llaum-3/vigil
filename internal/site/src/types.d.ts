@@ -108,3 +108,16 @@ export interface PurgeRunResponse {
 	mode: "older_than_days" | "all"
 	deleted_count: number
 }
+
+export interface ScheduledJobRecord {
+	key: string
+	label: string
+	description: string
+	schedule: string
+	last_run_at: string
+	last_success_at: string
+	last_status: string
+	last_error: string
+	last_result?: Record<string, unknown>
+	last_duration_ms: number
+}

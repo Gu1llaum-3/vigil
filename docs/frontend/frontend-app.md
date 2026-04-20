@@ -244,6 +244,17 @@ The navbar also exposes a lightweight installation dialog that fetches the hub p
 
 The agents settings table prefers the persisted agent hostname (`agents.name`) over the record id. If more than one agent shares the same hostname, the UI appends a short fingerprint suffix for display-only disambiguation.
 
+### `jobs.tsx`
+
+Admin-only settings page used to inspect and run registered scheduled jobs.
+
+Current responsibilities:
+
+- list active jobs from `GET /api/app/jobs`
+- show each job schedule, last run, last success, last duration, and last error
+- expose `Run Now` via `POST /api/app/jobs/{key}/run`
+- render the last persisted result payload for debugging/admin visibility
+
 ### `purge.tsx`
 
 Admin-only settings page used to manage automatic retention and manual cleanup.
@@ -252,7 +263,6 @@ Current responsibilities:
 
 - configure automatic retention for `monitor_events`
 - configure automatic retention for `notification_logs`
-- configure the default manual day values shown in the purge forms
 - run manual purge actions for:
   - probe history
   - notification history

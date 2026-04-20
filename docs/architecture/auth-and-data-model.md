@@ -121,8 +121,15 @@ The collection is tied to the user that created the enrollment token.
   - `monitor_events_manual_default_days`
   - `notification_logs_manual_default_days`
   - `offline_agents_manual_default_days`
-- used by the hub startup retention pass, the daily purge ticker, and the admin purge settings UI
+- used by the retention cleanup logic and the admin purge settings UI
 - only monitoring events and notification logs currently have automatic age-based retention; hosts cleanup is manual-only and targets offline agents
+
+### `scheduled_jobs`
+
+- created by migration `10_create_scheduled_jobs.go`
+- admin-only collection used to persist runtime state for registered scheduled jobs
+- fields: `key`, `schedule`, `last_run_at`, `last_success_at`, `last_status`, `last_error`, `last_result`, `last_duration_ms`
+- the hub keeps job definitions in code, while this collection stores the latest execution state shown in the admin UI
 
 ## First-Run User Flow
 

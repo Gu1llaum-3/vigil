@@ -500,7 +500,7 @@ Fields:
 
 ### Automatic retention
 
-`StartHub()` runs one retention pass synchronously at startup, then starts a 24-hour ticker.
+`StartHub()` registers application cron jobs through a shared scheduled-jobs registry backed by PocketBase cron.
 
 Current automatic behavior:
 
@@ -513,6 +513,30 @@ Current non-behavior:
 - no automatic age-based deletion of `host_snapshots`
 
 This is intentional because `host_snapshots` is already latest-only. Deleting hosts would remove current state, not old historical rows.
+
+### Scheduled jobs
+
+Global scheduled job state is stored in the `scheduled_jobs` collection. Each job stores:
+
+- `key`
+- `schedule`
+- `last_run_at`
+- `last_success_at`
+- `last_status`
+- `last_error`
+- `last_result`
+- `last_duration_ms`
+
+The current retention cleanup is one registered job (`vigilAutoRetention`) in this shared registry.
+
+Admin job routes:
+
+```
+GET  /api/app/jobs
+POST /api/app/jobs/{key}/run
+```
+
+`POST /api/app/jobs/{key}/run` executes the job immediately and returns the updated persisted job state.
 
 ### Manual purge API routes (admin only)
 
