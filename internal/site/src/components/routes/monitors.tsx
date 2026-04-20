@@ -124,6 +124,7 @@ function checkBarClass(status: number): string {
 }
 
 const monitorGroupStateKey = "vigil.monitors.open-groups"
+const ungroupedGroupStateKey = "__ungrouped__"
 
 function readOpenGroups(): Record<string, boolean> {
 	if (typeof window === "undefined") return {}
@@ -635,6 +636,7 @@ export default memo(function MonitorsPage() {
 	const allMonitors = groups.flatMap((g) => g.monitors)
 	const upCount = allMonitors.filter((m) => m.last_checked_at && m.status === 1).length
 	const downCount = allMonitors.filter((m) => m.last_checked_at && m.status !== 1).length
+	const orderedGroups = [...groups.filter((group) => !group.id), ...groups.filter((group) => group.id)]
 
 	function toggleGroup(id: string) {
 		setOpenGroups((current) => {
@@ -650,7 +652,7 @@ export default memo(function MonitorsPage() {
 	return (
 		<div className="pb-14">
 			{/* Header */}
-			<div className="flex items-center justify-between mb-6">
+			<div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-center gap-3">
 					<h1 className="text-2xl font-semibold">
 						<Trans>Monitors</Trans>
@@ -676,7 +678,7 @@ export default memo(function MonitorsPage() {
 					)}
 				</div>
 				{!readonly && (
-					<div className="flex gap-2">
+					<div className="flex flex-wrap gap-2">
 						<Button
 							variant="outline"
 							size="sm"
@@ -719,15 +721,13 @@ export default memo(function MonitorsPage() {
 
 			{/* Groups + monitors */}
 			<div className="flex flex-col gap-6">
-				{groups.map((group) => (
+				{orderedGroups.map((group) => (
 					<MonitorGroupSection
-						key={group.id || "__ungrouped__"}
+						key={group.id || ungroupedGroupStateKey}
 						group={group}
 						readonly={readonly}
-						open={group.id ? (openGroups[group.id] ?? false) : true}
-						onToggle={() => {
-							if (group.id) toggleGroup(group.id)
-						}}
+						open={openGroups[group.id || ungroupedGroupStateKey] ?? !group.id}
+						onToggle={() => toggleGroup(group.id || ungroupedGroupStateKey)}
 						onEditMonitor={(m) => {
 							setEditMonitor(m)
 							setMonitorDialog(true)
@@ -782,56 +782,57 @@ function MonitorGroupSection({
 }: MonitorGroupSectionProps) {
 	if (group.monitors.length === 0 && !group.id) return null
 
+	const isUngrouped = !group.id
+	const title = isUngrouped ? <Trans>No group</Trans> : group.name
+
 	return (
 		<div className="rounded-md border border-border/60 overflow-hidden bg-card">
 			{/* Group header */}
-			{group.id && (
-				<div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 bg-muted/20 px-4 py-3">
-					<Button
-						variant="ghost"
-						size="sm"
-						className="h-8 justify-start px-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-						onClick={onToggle}
-					>
-						{open ? <ChevronDownIcon className="h-4 w-4 me-1" /> : <ChevronRightIcon className="h-4 w-4 me-1" />}
-						<FolderIcon className="h-4 w-4 me-2" />
-						{group.name}
-					</Button>
-					<div className="flex items-center gap-2 justify-self-start text-xs whitespace-nowrap text-muted-foreground">
-						<span className="text-green-600 dark:text-green-400 font-medium">
-							{group.monitors.filter((m) => m.last_checked_at && m.status === 1).length} <Trans>up</Trans>
-						</span>
-						<span>·</span>
-						<span>
-							{group.monitors.length} <Trans>total</Trans>
-						</span>
-					</div>
-					<div className="justify-self-end">
-						{!readonly && (
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-										<MoreHorizontalIcon className="h-4 w-4" />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end">
-									<DropdownMenuItem onClick={onEditGroup}>
-										<PencilIcon className="h-4 w-4 me-2" />
-										<Trans>Edit group</Trans>
-									</DropdownMenuItem>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDeleteGroup}>
-										<Trash2Icon className="h-4 w-4 me-2" />
-										<Trans>Delete group</Trans>
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						)}
-					</div>
+			<div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 bg-muted/20 px-4 py-3">
+				<Button
+					variant="ghost"
+					size="sm"
+					className="h-8 justify-start px-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+					onClick={onToggle}
+				>
+					{open ? <ChevronDownIcon className="h-4 w-4 me-1" /> : <ChevronRightIcon className="h-4 w-4 me-1" />}
+					<FolderIcon className="h-4 w-4 me-2" />
+					{title}
+				</Button>
+				<div className="flex items-center gap-2 justify-self-start text-xs whitespace-nowrap text-muted-foreground">
+					<span className="text-green-600 dark:text-green-400 font-medium">
+						{group.monitors.filter((m) => m.last_checked_at && m.status === 1).length} <Trans>up</Trans>
+					</span>
+					<span>·</span>
+					<span>
+						{group.monitors.length} <Trans>total</Trans>
+					</span>
 				</div>
-			)}
+				<div className="justify-self-end">
+					{group.id && !readonly && (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+									<MoreHorizontalIcon className="h-4 w-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuItem onClick={onEditGroup}>
+									<PencilIcon className="h-4 w-4 me-2" />
+									<Trans>Edit group</Trans>
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDeleteGroup}>
+									<Trash2Icon className="h-4 w-4 me-2" />
+									<Trans>Delete group</Trans>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					)}
+				</div>
+			</div>
 
-			{!group.id || open ? (
+			{open ? (
 				<div>
 					<Table>
 						<TableHeader>

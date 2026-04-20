@@ -54,7 +54,7 @@ msgstr "{name} vient de passer hors ligne."
 
 #: src/components/routes/monitors.tsx
 msgid "0 means instant down. Default is 3."
-msgstr ""
+msgstr "0 = arrêt immédiat. Valeur par défaut : 3."
 
 #: src/components/routes/settings/purge.tsx
 msgid "A background job runs daily and deletes monitoring events and notification logs older than the configured retention window."
@@ -62,7 +62,7 @@ msgstr "Une tâche de fond s'exécute chaque jour et supprime les événements d
 
 #: src/components/routes/monitors.tsx
 msgid "A unique push URL will be generated automatically. Use it in a cron job or script to send heartbeats."
-msgstr ""
+msgstr "Une URL de push unique sera générée automatiquement. Utilisez-la dans une tâche cron ou un script pour envoyer des battements de vie."
 
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -72,7 +72,7 @@ msgstr "Actions"
 
 #: src/components/routes/monitors.tsx
 msgid "Active"
-msgstr ""
+msgstr "Actif"
 
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -94,12 +94,12 @@ msgstr "Ajouter un canal"
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Add group"
-msgstr ""
+msgstr "Ajouter un dossier"
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Add monitor"
-msgstr ""
+msgstr "Ajouter une sonde"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Add rule"
@@ -255,7 +255,7 @@ msgstr "Vérifications chargées"
 
 #: src/components/routes/monitors.tsx
 msgid "Click \"Add monitor\" to start monitoring your services."
-msgstr ""
+msgstr "Cliquez sur \"Ajouter une sonde\" pour commencer à surveiller vos services."
 
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
@@ -381,7 +381,7 @@ msgstr "Tableau de bord"
 #: src/components/routes/settings/purge.tsx
 #: src/components/routes/settings/purge.tsx
 msgid "Days to keep"
-msgstr ""
+msgstr "Jours à conserver"
 
 #: src/components/routes/settings/purge.tsx
 msgid "Days To Keep"
@@ -439,7 +439,7 @@ msgstr "Supprimer tout l'historique des sondes ?"
 
 #: src/components/routes/monitors.tsx
 msgid "Delete group"
-msgstr ""
+msgstr "Supprimer le dossier"
 
 #: src/components/routes/settings/purge.tsx
 msgid "Delete monitoring events older than the chosen number of days, or wipe the entire probe history."
@@ -468,7 +468,7 @@ msgstr "DNS"
 
 #: src/components/routes/monitors.tsx
 msgid "DNS server (optional)"
-msgstr ""
+msgstr "Serveur DNS (optionnel)"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -477,7 +477,7 @@ msgstr "Docker"
 
 #: src/components/routes/monitors.tsx
 msgid "down"
-msgstr ""
+msgstr "hs"
 
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitor-detail.tsx
@@ -506,11 +506,11 @@ msgstr "Modifier le canal"
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Edit group"
-msgstr ""
+msgstr "Modifier le dossier"
 
 #: src/components/routes/monitors.tsx
 msgid "Edit monitor"
-msgstr ""
+msgstr "Modifier la sonde"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Edit rule"
@@ -601,11 +601,11 @@ msgstr "Échec de l'authentification"
 
 #: src/components/routes/monitors.tsx
 msgid "Failed to delete group"
-msgstr ""
+msgstr "Échec de la suppression du dossier"
 
 #: src/components/routes/monitors.tsx
 msgid "Failed to delete monitor"
-msgstr ""
+msgstr "Échec de la suppression de la sonde"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Failed to load jobs"
@@ -621,11 +621,11 @@ msgstr "Impossible d'exécuter la tâche"
 
 #: src/components/routes/monitors.tsx
 msgid "Failed to save group"
-msgstr ""
+msgstr "Échec de l'enregistrement du dossier"
 
 #: src/components/routes/monitors.tsx
 msgid "Failed to save monitor"
-msgstr ""
+msgstr "Échec de l'enregistrement de la sonde"
 
 #: src/components/routes/settings/purge.tsx
 msgid "Failed to save purge settings"
@@ -637,7 +637,7 @@ msgstr "Échec de l'enregistrement des paramètres"
 
 #: src/components/routes/monitors.tsx
 msgid "Failures before down"
-msgstr ""
+msgstr "Échecs avant mise hors service"
 
 #: src/components/routes/settings/agents.tsx
 msgid "Fingerprint"
@@ -663,19 +663,19 @@ msgstr "Général"
 
 #: src/components/routes/monitors.tsx
 msgid "Group"
-msgstr ""
+msgstr "Dossier"
 
 #: src/components/routes/monitors.tsx
 msgid "Group created"
-msgstr ""
+msgstr "Dossier créé"
 
 #: src/components/routes/monitors.tsx
 msgid "Group deleted"
-msgstr ""
+msgstr "Dossier supprimé"
 
 #: src/components/routes/monitors.tsx
 msgid "Group updated"
-msgstr ""
+msgstr "Dossier mis à jour"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Headers (JSON object, optional)"
@@ -710,7 +710,7 @@ msgstr "Nom d'hôte"
 
 #: src/components/routes/monitors.tsx
 msgid "Hostname to resolve"
-msgstr ""
+msgstr "Nom d'hôte à résoudre"
 
 #: src/components/routes/home.tsx
 msgid "Hosts"
@@ -726,7 +726,7 @@ msgstr "URL du hub"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Idle"
-msgstr ""
+msgstr "Inactif"
 
 #: src/components/login/forgot-pass-form.tsx
 msgid "If you've lost the password to your admin account, you may reset it using the following command."
@@ -742,7 +742,7 @@ msgstr "Intervalle"
 
 #: src/components/routes/monitors.tsx
 msgid "Interval (s)"
-msgstr ""
+msgstr "Intervalle (s)"
 
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
@@ -759,7 +759,7 @@ msgstr "Tâches"
 
 #: src/components/routes/monitors.tsx
 msgid "Keyword in response body (optional)"
-msgstr ""
+msgstr "Mot-clé dans le corps de la réponse (optionnel)"
 
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -803,7 +803,7 @@ msgstr "Dernière mise à jour"
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 msgid "Latency"
-msgstr ""
+msgstr "Latence"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Latency history"
@@ -866,7 +866,7 @@ msgstr "Message envoyé"
 
 #: src/components/routes/monitors.tsx
 msgid "Method"
-msgstr ""
+msgstr "Méthode"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Method (default POST)"
@@ -878,15 +878,15 @@ msgstr "Sonde"
 
 #: src/components/routes/monitors.tsx
 msgid "Monitor created"
-msgstr ""
+msgstr "Sonde créée"
 
 #: src/components/routes/monitors.tsx
 msgid "Monitor deleted"
-msgstr ""
+msgstr "Sonde supprimée"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Monitor details"
-msgstr ""
+msgstr "Détails de la sonde"
 
 #: src/components/notification-log-toasts.tsx
 msgid "Monitor down"
@@ -898,7 +898,7 @@ msgstr "Sonde rétablie"
 
 #: src/components/routes/monitors.tsx
 msgid "Monitor updated"
-msgstr ""
+msgstr "Sonde mise à jour"
 
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
@@ -907,7 +907,7 @@ msgstr ""
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Monitors"
-msgstr ""
+msgstr "Sondes"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "My Slack alerts"
@@ -926,7 +926,7 @@ msgstr "Nom"
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Name is required"
-msgstr ""
+msgstr "Le nom est requis"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Network"
@@ -934,7 +934,7 @@ msgstr "Réseau"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Never"
-msgstr ""
+msgstr "Jamais"
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Next"
@@ -968,12 +968,13 @@ msgstr "Aucune configuration externe n'est requise. Les événements corresponda
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 msgid "No group"
-msgstr ""
+msgstr "Sans dossier"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "No history available."
-msgstr ""
+msgstr "Aucun historique disponible."
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "No hosts match the current filter."
@@ -981,15 +982,15 @@ msgstr "Aucun hôte ne correspond au filtre actuel."
 
 #: src/components/routes/monitor-detail.tsx
 msgid "No latency"
-msgstr ""
+msgstr "Aucune latence"
 
 #: src/components/routes/monitors.tsx
 msgid "No monitors in this group."
-msgstr ""
+msgstr "Aucune sonde dans ce dossier."
 
 #: src/components/routes/monitors.tsx
 msgid "No monitors yet"
-msgstr ""
+msgstr "Aucune sonde pour le moment"
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "No notification logs match the current filters."
@@ -1175,7 +1176,7 @@ msgstr "Veuillez vous connecter à votre compte"
 
 #: src/components/routes/monitors.tsx
 msgid "Port"
-msgstr ""
+msgstr "Port"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Ports"
@@ -1262,7 +1263,7 @@ msgstr "Redémarrage requis"
 
 #: src/components/routes/monitors.tsx
 msgid "Record type"
-msgstr ""
+msgstr "Type d'enregistrement"
 
 #: src/components/routes/home.tsx
 msgid "Refresh"
@@ -1390,7 +1391,7 @@ msgstr "Enregistré dans la base de données et n'expire pas tant que vous ne le
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Saving…"
-msgstr ""
+msgstr "Enregistrement…"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Schedule"
@@ -1410,7 +1411,7 @@ msgstr "Rechercher hôte, IP, OS, noyau…"
 
 #: src/components/command-palette.tsx
 msgid "Search pages and settings..."
-msgstr ""
+msgstr "Rechercher des pages et des paramètres..."
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -1496,7 +1497,7 @@ msgstr "Changer de thème"
 
 #: src/components/routes/monitors.tsx
 msgid "Target"
-msgstr ""
+msgstr "Cible"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Test failed"
@@ -1565,7 +1566,7 @@ msgstr "Délai"
 
 #: src/components/routes/monitors.tsx
 msgid "Timeout (s)"
-msgstr ""
+msgstr "Délai (s)"
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "To"
@@ -1590,7 +1591,7 @@ msgstr "URL du topic"
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "total"
-msgstr ""
+msgstr "total"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Total"
@@ -1623,7 +1624,7 @@ msgstr "Inconnu"
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "up"
-msgstr ""
+msgstr "OK"
 
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
@@ -1660,7 +1661,7 @@ msgstr "Disponibilité 30j"
 
 #: src/components/routes/monitors.tsx
 msgid "URL"
-msgstr ""
+msgstr "URL"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Username (optional)"
