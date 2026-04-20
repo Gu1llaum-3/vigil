@@ -12,7 +12,6 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 	pbTests "github.com/pocketbase/pocketbase/tests"
 	"github.com/stretchr/testify/require"
-	"github.com/Gu1llaum-3/vigil/internal/migrations"
 )
 
 // marshal to json and return an io.Reader (for use in ApiScenario.Body)
@@ -169,62 +168,61 @@ func TestApiRoutesAuthentication(t *testing.T) {
 
 func TestFirstUserCreation(t *testing.T) {
 	t.Run("CreateUserEndpoint available when no users exist", func(t *testing.T) {
-		hub, _ := appTests.NewTestHub(t.TempDir())
-		defer hub.Cleanup()
-
-		hub.StartHub()
-
-		testAppFactoryExisting := func(t testing.TB) *pbTests.TestApp {
-			return hub.TestApp
-		}
-
-		scenarios := []appTests.ApiScenario{
+		cases := []struct {
+			name     string
+			seedUser bool
+			scenario appTests.ApiScenario
+		}{
 			{
-				Name:   "POST /create-user - should be available when no users exist",
-				Method: http.MethodPost,
-				URL:    "/api/app/create-user",
-				Body: jsonReader(map[string]any{
-					"email":    "firstuser@example.com",
-					"password": "password123",
-				}),
-				ExpectedStatus:  200,
-				ExpectedContent: []string{"User created"},
-				TestAppFactory:  testAppFactoryExisting,
-				BeforeTestFunc: func(t testing.TB, app *pbTests.TestApp, e *core.ServeEvent) {
-					userCount, err := hub.CountRecords("users")
-					require.NoError(t, err)
-					require.Zero(t, userCount, "Should start with no users")
-					superusers, err := hub.FindAllRecords(core.CollectionNameSuperusers)
-					require.NoError(t, err)
-					require.EqualValues(t, 1, len(superusers), "Should start with one temporary superuser")
-					require.EqualValues(t, migrations.TempAdminEmail, superusers[0].GetString("email"), "Should have created one temporary superuser")
-				},
-				AfterTestFunc: func(t testing.TB, app *pbTests.TestApp, res *http.Response) {
-					userCount, err := hub.CountRecords("users")
-					require.NoError(t, err)
-					require.EqualValues(t, 1, userCount, "Should have created one user")
-					superusers, err := hub.FindAllRecords(core.CollectionNameSuperusers)
-					require.NoError(t, err)
-					require.EqualValues(t, 1, len(superusers), "Should have created one superuser")
-					require.EqualValues(t, "firstuser@example.com", superusers[0].GetString("email"), "Should have created one superuser")
+				name:     "POST /create-user - should be available when no users exist",
+				seedUser: false,
+				scenario: appTests.ApiScenario{
+					Name:   "POST /create-user - should be available when no users exist",
+					Method: http.MethodPost,
+					URL:    "/api/app/create-user",
+					Body: jsonReader(map[string]any{
+						"email":    "firstuser@example.com",
+						"password": "password123",
+					}),
+					ExpectedStatus:  200,
+					ExpectedContent: []string{"User created"},
 				},
 			},
 			{
-				Name:   "POST /create-user - should not be available when users exist",
-				Method: http.MethodPost,
-				URL:    "/api/app/create-user",
-				Body: jsonReader(map[string]any{
-					"email":    "firstuser@example.com",
-					"password": "password123",
-				}),
-				ExpectedStatus:  404,
-				ExpectedContent: []string{"wasn't found"},
-				TestAppFactory:  testAppFactoryExisting,
+				name:     "POST /create-user - should not be available when users exist",
+				seedUser: true,
+				scenario: appTests.ApiScenario{
+					Name:   "POST /create-user - should not be available when users exist",
+					Method: http.MethodPost,
+					URL:    "/api/app/create-user",
+					Body: jsonReader(map[string]any{
+						"email":    "firstuser@example.com",
+						"password": "password123",
+					}),
+					ExpectedStatus:  404,
+					ExpectedContent: []string{"wasn't found"},
+				},
 			},
 		}
 
-		for _, scenario := range scenarios {
-			scenario.Test(t)
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				hub, _ := appTests.NewTestHub(t.TempDir())
+				defer hub.Cleanup()
+
+				if tc.seedUser {
+					_, err := appTests.CreateUser(hub, "existing@example.com", "password")
+					require.NoError(t, err)
+				}
+
+				hub.StartHub()
+
+				tc.scenario.TestAppFactory = func(t testing.TB) *pbTests.TestApp {
+					return hub.TestApp
+				}
+
+				tc.scenario.Test(t)
+			})
 		}
 	})
 

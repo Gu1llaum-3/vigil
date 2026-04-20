@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,6 +19,13 @@ import (
 	pbtests "github.com/pocketbase/pocketbase/tests"
 	"github.com/pocketbase/pocketbase/tools/hook"
 )
+
+var testAppServeState sync.Map
+
+type cachedServeState struct {
+	serveEvent *core.ServeEvent
+	mux        http.Handler
+}
 
 // NOTE: This is a copy of https://github.com/pocketbase/pocketbase/blob/master/tests/api.go
 // with the following changes:
@@ -179,131 +187,141 @@ func (scenario *ApiScenario) test(t testing.TB) {
 	}
 	// defer testApp.Cleanup()
 
-	baseRouter, err := apis.NewRouter(testApp)
-	if err != nil {
-		t.Fatal(err)
-	}
+	stateAny, _ := testAppServeState.LoadOrStore(testApp, &cachedServeState{})
+	state := stateAny.(*cachedServeState)
 
-	// manually trigger the serve event to ensure that custom app routes and middlewares are registered
-	serveEvent := new(core.ServeEvent)
-	serveEvent.App = testApp
-	serveEvent.Router = baseRouter
-
-	serveErr := testApp.OnServe().Trigger(serveEvent, func(e *core.ServeEvent) error {
-		if scenario.BeforeTestFunc != nil {
-			scenario.BeforeTestFunc(t, testApp, e)
+	if state.mux == nil {
+		baseRouter, err := apis.NewRouter(testApp)
+		if err != nil {
+			t.Fatal(err)
 		}
 
-		// reset the event counters in case a hook was triggered from a before func (eg. db save)
-		testApp.ResetEventCalls()
+		serveEvent := new(core.ServeEvent)
+		serveEvent.App = testApp
+		serveEvent.Router = baseRouter
 
-		// add middleware to timeout long-running requests (eg. keep-alive routes)
-		e.Router.Bind(&hook.Handler[*core.RequestEvent]{
-			Func: func(re *core.RequestEvent) error {
-				slowTimer := time.AfterFunc(3*time.Second, func() {
-					t.Logf("[WARN] Long running test %q", scenario.Name)
-				})
-				defer slowTimer.Stop()
+		serveErr := testApp.OnServe().Trigger(serveEvent, func(e *core.ServeEvent) error {
+			state.serveEvent = e
+			if scenario.BeforeTestFunc != nil {
+				scenario.BeforeTestFunc(t, testApp, e)
+			}
 
-				if scenario.Timeout > 0 {
-					ctx, cancelFunc := context.WithTimeout(re.Request.Context(), scenario.Timeout)
-					defer cancelFunc()
-					re.Request = re.Request.Clone(ctx)
-				}
+			// reset the event counters in case a hook was triggered from a before func (eg. db save)
+			testApp.ResetEventCalls()
 
-				return re.Next()
-			},
-			Priority: -9999,
+			// add middleware to timeout long-running requests (eg. keep-alive routes)
+			e.Router.Bind(&hook.Handler[*core.RequestEvent]{
+				Func: func(re *core.RequestEvent) error {
+					slowTimer := time.AfterFunc(3*time.Second, func() {
+						t.Logf("[WARN] Long running test %q", scenario.Name)
+					})
+					defer slowTimer.Stop()
+
+					if scenario.Timeout > 0 {
+						ctx, cancelFunc := context.WithTimeout(re.Request.Context(), scenario.Timeout)
+						defer cancelFunc()
+						re.Request = re.Request.Clone(ctx)
+					}
+
+					return re.Next()
+				},
+				Priority: -9999,
+			})
+
+			return e.Next()
 		})
-
-		recorder := httptest.NewRecorder()
-
-		req := httptest.NewRequest(scenario.Method, scenario.URL, scenario.Body)
-
-		// set default header
-		req.Header.Set("content-type", "application/json")
-
-		// set scenario headers
-		for k, v := range scenario.Headers {
-			req.Header.Set(k, v)
+		if serveErr != nil {
+			t.Fatalf("Failed to serve the test app instance: %v", serveErr)
 		}
 
-		// execute request
-		mux, err := e.Router.BuildMux()
+		mux, err := serveEvent.Router.BuildMux()
 		if err != nil {
 			t.Fatalf("Failed to build router mux: %v", err)
 		}
-		mux.ServeHTTP(recorder, req)
+		state.mux = mux
+	} else if scenario.BeforeTestFunc != nil {
+		scenario.BeforeTestFunc(t, testApp, state.serveEvent)
+		// reset the event counters in case a hook was triggered from a before func (eg. db save)
+		testApp.ResetEventCalls()
+	}
 
-		res := recorder.Result()
+	recorder := httptest.NewRecorder()
 
-		if res.StatusCode != scenario.ExpectedStatus {
-			t.Errorf("Expected status code %d, got %d", scenario.ExpectedStatus, res.StatusCode)
+	req := httptest.NewRequest(scenario.Method, scenario.URL, scenario.Body)
+
+	// set default header
+	req.Header.Set("content-type", "application/json")
+
+	// set scenario headers
+	for k, v := range scenario.Headers {
+		req.Header.Set(k, v)
+	}
+
+	// execute request
+	state.mux.ServeHTTP(recorder, req)
+
+	res := recorder.Result()
+
+	if res.StatusCode != scenario.ExpectedStatus {
+		t.Errorf("Expected status code %d, got %d", scenario.ExpectedStatus, res.StatusCode)
+	}
+
+	if scenario.Delay > 0 {
+		time.Sleep(scenario.Delay)
+	}
+
+	if len(scenario.ExpectedContent) == 0 && len(scenario.NotExpectedContent) == 0 {
+		if len(recorder.Body.Bytes()) != 0 {
+			t.Errorf("Expected empty body, got \n%v", recorder.Body.String())
 		}
-
-		if scenario.Delay > 0 {
-			time.Sleep(scenario.Delay)
-		}
-
-		if len(scenario.ExpectedContent) == 0 && len(scenario.NotExpectedContent) == 0 {
-			if len(recorder.Body.Bytes()) != 0 {
-				t.Errorf("Expected empty body, got \n%v", recorder.Body.String())
-			}
+	} else {
+		// normalize json response format
+		buffer := new(bytes.Buffer)
+		err := json.Compact(buffer, recorder.Body.Bytes())
+		var normalizedBody string
+		if err != nil {
+			// not a json...
+			normalizedBody = recorder.Body.String()
 		} else {
-			// normalize json response format
-			buffer := new(bytes.Buffer)
-			err := json.Compact(buffer, recorder.Body.Bytes())
-			var normalizedBody string
-			if err != nil {
-				// not a json...
-				normalizedBody = recorder.Body.String()
-			} else {
-				normalizedBody = buffer.String()
-			}
+			normalizedBody = buffer.String()
+		}
 
-			for _, item := range scenario.ExpectedContent {
-				if !strings.Contains(normalizedBody, item) {
-					t.Errorf("Cannot find %v in response body \n%v", item, normalizedBody)
-					break
-				}
-			}
-
-			for _, item := range scenario.NotExpectedContent {
-				if strings.Contains(normalizedBody, item) {
-					t.Errorf("Didn't expect %v in response body \n%v", item, normalizedBody)
-					break
-				}
+		for _, item := range scenario.ExpectedContent {
+			if !strings.Contains(normalizedBody, item) {
+				t.Errorf("Cannot find %v in response body \n%v", item, normalizedBody)
+				break
 			}
 		}
 
-		remainingEvents := maps.Clone(testApp.EventCalls)
-
-		var noOtherEventsShouldRemain bool
-		for event, expectedNum := range scenario.ExpectedEvents {
-			if event == "*" && expectedNum <= 0 {
-				noOtherEventsShouldRemain = true
-				continue
+		for _, item := range scenario.NotExpectedContent {
+			if strings.Contains(normalizedBody, item) {
+				t.Errorf("Didn't expect %v in response body \n%v", item, normalizedBody)
+				break
 			}
+		}
+	}
 
-			actualNum := remainingEvents[event]
-			if actualNum != expectedNum {
-				t.Errorf("Expected event %s to be called %d, got %d", event, expectedNum, actualNum)
-			}
-
-			delete(remainingEvents, event)
+	remainingEvents := maps.Clone(testApp.EventCalls)
+	var noOtherEventsShouldRemain bool
+	for event, expectedNum := range scenario.ExpectedEvents {
+		if event == "*" && expectedNum <= 0 {
+			noOtherEventsShouldRemain = true
+			continue
 		}
 
-		if noOtherEventsShouldRemain && len(remainingEvents) > 0 {
-			t.Errorf("Missing expected remaining events:\n%#v\nAll triggered app events are:\n%#v", remainingEvents, testApp.EventCalls)
+		actualNum := remainingEvents[event]
+		if actualNum != expectedNum {
+			t.Errorf("Expected event %s to be called %d, got %d", event, expectedNum, actualNum)
 		}
 
-		if scenario.AfterTestFunc != nil {
-			scenario.AfterTestFunc(t, testApp, res)
-		}
+		delete(remainingEvents, event)
+	}
 
-		return nil
-	})
-	if serveErr != nil {
-		t.Fatalf("Failed to trigger app serve hook: %v", serveErr)
+	if noOtherEventsShouldRemain && len(remainingEvents) > 0 {
+		t.Errorf("Missing expected remaining events:\n%#v\nAll triggered app events are:\n%#v", remainingEvents, testApp.EventCalls)
+	}
+
+	if scenario.AfterTestFunc != nil {
+		scenario.AfterTestFunc(t, testApp, res)
 	}
 }
