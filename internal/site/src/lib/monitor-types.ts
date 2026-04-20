@@ -1,4 +1,4 @@
-export type MonitorType = "http" | "tcp" | "dns" | "push"
+export type MonitorType = "http" | "ping" | "tcp" | "dns" | "push"
 export type MonitorStatus = -1 | 0 | 1 // -1=unknown, 0=down, 1=up
 
 export interface MonitorRecord {

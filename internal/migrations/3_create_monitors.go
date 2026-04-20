@@ -115,7 +115,7 @@ func init() {
 				"system": false,
 				"type": "select",
 				"maxSelect": 1,
-				"values": ["http", "tcp", "dns", "push"]
+				"values": ["http", "ping", "tcp", "dns", "push"]
 			},
 			{
 				"cascadeDelete": false,

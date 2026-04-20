@@ -6,8 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
+	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +24,12 @@ const (
 	monitorStatusUnknown = -1
 	monitorStatusDown    = 0
 	monitorStatusUp      = 1
+)
+
+var (
+	pingLookPath       = exec.LookPath
+	pingCommandContext = exec.CommandContext
+	pingLatencyPattern = regexp.MustCompile(`time[=<]?\s*([0-9]+(?:\.[0-9]+)?)\s*ms`)
 )
 
 // MonitorScheduler manages per-monitor check goroutines.
@@ -123,6 +133,8 @@ func (ms *MonitorScheduler) doCheck(ctx context.Context, monitorID string) {
 	case "http":
 		status, msg = checkHTTP(checkCtx, monitor)
 		latencyMs = time.Since(start).Milliseconds()
+	case "ping":
+		status, latencyMs, msg = checkPing(checkCtx, monitor)
 	case "tcp":
 		status, msg = checkTCP(checkCtx, monitor)
 		latencyMs = time.Since(start).Milliseconds()
@@ -301,6 +313,64 @@ func checkHTTP(ctx context.Context, monitor *core.Record) (status int, msg strin
 	}
 
 	return monitorStatusUp, fmt.Sprintf("HTTP %d", resp.StatusCode)
+}
+
+func checkPing(ctx context.Context, monitor *core.Record) (status int, latencyMs int64, msg string) {
+	hostname := strings.TrimSpace(monitor.GetString("hostname"))
+	if hostname == "" {
+		return monitorStatusDown, 0, "Missing hostname"
+	}
+
+	if _, err := pingLookPath("ping"); err != nil {
+		return monitorStatusDown, 0, "Ping executable not available on hub"
+	}
+
+	start := time.Now()
+	cmd := pingCommandContext(ctx, "ping", "-n", "-c", "1", hostname)
+	out, err := cmd.CombinedOutput()
+	latencyMs = time.Since(start).Milliseconds()
+	output := strings.TrimSpace(string(out))
+
+	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return monitorStatusDown, latencyMs, fmt.Sprintf("Ping timed out after %s", time.Since(start).Round(time.Second))
+		}
+		if output == "" {
+			return monitorStatusDown, latencyMs, fmt.Sprintf("Ping failed: %v", err)
+		}
+		return monitorStatusDown, latencyMs, compactMonitorMessage(output)
+	}
+
+	if parsed, ok := parsePingLatency(output); ok {
+		latencyMs = parsed
+	}
+
+	return monitorStatusUp, latencyMs, "Ping successful"
+}
+
+func parsePingLatency(output string) (int64, bool) {
+	matches := pingLatencyPattern.FindStringSubmatch(output)
+	if len(matches) != 2 {
+		return 0, false
+	}
+
+	ms, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil {
+		return 0, false
+	}
+
+	return int64(math.Round(ms)), true
+}
+
+func compactMonitorMessage(output string) string {
+	message := strings.Join(strings.Fields(output), " ")
+	if len(message) > 180 {
+		return message[:177] + "..."
+	}
+	if message == "" {
+		return "Check failed"
+	}
+	return message
 }
 
 func checkTCP(ctx context.Context, monitor *core.Record) (status int, msg string) {

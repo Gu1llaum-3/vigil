@@ -700,6 +700,7 @@ msgstr "Host offline"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 msgid "Hostname"
 msgstr "Hostname"
 

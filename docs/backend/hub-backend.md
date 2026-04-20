@@ -262,6 +262,7 @@ The monitor scheduler is the hub-side engine that drives uptime monitoring check
 | Type | Check mechanism |
 |------|----------------|
 | `http` | HTTP/HTTPS request with configurable method, accepted status codes, optional keyword match |
+| `ping` | ICMP echo via the hub host's `ping` executable; measures round-trip latency from the hub itself |
 | `tcp` | TCP dial — success means the port is reachable |
 | `dns` | DNS lookup via Go resolver (supports A, AAAA, CNAME, MX, NS, TXT; optional custom DNS server) |
 | `push` | Passive — hub checks `last_push_at` against `interval + 30s` grace period |
@@ -316,6 +317,19 @@ Monitors also have a `failure_threshold` field. The default is `3`, `0` means in
 The startup grace period only softens the initial `unknown` path after hub boot. Monitors that already had a known status such as `up` still honor their configured threshold immediately, and low thresholds (`0` and `1`) still apply immediately.
 
 Both use `SaveNoValidate` — see the critical note above.
+
+### Ping Monitor Runtime Notes
+
+The `ping` monitor type is intentionally minimal in this repository:
+
+- it reuses the existing `hostname`, `timeout`, `interval`, and `failure_threshold` fields
+- the hub executes the system `ping` binary with a single probe
+- latency is parsed from the command output when available and otherwise falls back to the wall-clock runtime of the probe
+
+Operational implication:
+
+- the hub environment must have a working `ping` executable available on `PATH`
+- if the binary is missing or the runtime does not permit ICMP echo, the monitor goes `down` with an explicit `last_msg`
 
 Those historical `monitor_events` records are also used to derive rolling stats for the monitors page:
 

@@ -90,6 +90,8 @@ function monitorTarget(monitor: MonitorRecord): string {
 	switch (monitor.type) {
 		case "http":
 			return monitor.url || ""
+		case "ping":
+			return monitor.hostname || ""
 		case "tcp":
 			return monitor.hostname ? `${monitor.hostname}:${monitor.port}` : ""
 		case "dns":

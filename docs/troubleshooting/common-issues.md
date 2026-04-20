@@ -279,6 +279,33 @@ Focus on:
 - `internal/hub/heartbeat/heartbeat.go`
 - `internal/hub/api.go`
 
+## Ping Monitor Stays Down Even For Reachable Hosts
+
+### Symptoms
+
+- a `ping` monitor always reports `down`
+- `last_msg` mentions missing `ping`, timeout, or a command error from the hub
+
+### Common Causes
+
+- the hub runtime does not have the `ping` executable on `PATH`
+- the deployment environment blocks ICMP echo for the hub process
+- a hardened container or Kubernetes policy removed the network privileges needed by the system `ping`
+- the target host or network drops ICMP while still allowing TCP or HTTP traffic
+
+### Fix
+
+1. verify the hub host or container can run `ping <target>` manually
+2. if running the official container image, confirm the deployment did not strip the packaged `ping` binary or over-restrict networking
+3. inspect `last_msg` on the monitor record for the exact runtime failure reported by the hub
+4. if ICMP is intentionally filtered in your environment, use a `tcp` or `http` monitor instead
+
+### Related Files
+
+- `internal/hub/monitors.go`
+- `internal/dockerfile_hub`
+- `docs/operations/deployment-and-packaging.md`
+
 ## When In Doubt
 
 For most repository-specific issues, inspect these in order:

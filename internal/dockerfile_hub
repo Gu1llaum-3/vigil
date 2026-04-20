@@ -30,7 +30,7 @@ RUN set -eu; \
 
 FROM alpine:3.21
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates iputils
 
 COPY --from=builder /out/vigil /app/vigil
 

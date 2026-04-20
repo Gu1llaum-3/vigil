@@ -156,7 +156,7 @@ const MonitorsPage = lazy(() => import("@/components/routes/monitors.tsx"))
 - `MonitorDialog` — create/edit form with type-conditional fields plus the failure threshold setting (`0` = instant down, default `3`)
 - `GroupDialog` — simple group name form
 - `StatusBadge` — green (UP), red (DOWN), outline (Pending — no last_checked_at yet)
-- `TypeBadge` — monospace uppercase label (http/tcp/dns/push)
+- `TypeBadge` — monospace uppercase label (http/ping/tcp/dns/push)
 
 ### Push Monitors
 
@@ -185,10 +185,12 @@ The debounce is critical: the hub scheduler updates monitor records frequently v
 
 Monitor-related TypeScript types live in `internal/site/src/lib/monitor-types.ts`:
 
-- `MonitorType` — `"http" | "tcp" | "dns" | "push"`
+- `MonitorType` — `"http" | "ping" | "tcp" | "dns" | "push"`
 - `MonitorStatus` — `-1 | 0 | 1`
 - `MonitorRecord`, `MonitorGroupResponse`, `MonitorGroupRecord`, `MonitorEventRecord`
 - `MonitorFormData`, `defaultMonitorForm`
+
+For the `ping` type, the monitors UI reuses the existing `hostname` field and lets the backend measure ICMP latency from the hub.
 
 Rolling monitor metrics can render as `N/A` until the window has enough check history.
 

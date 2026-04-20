@@ -115,6 +115,12 @@ Purpose:
 
 - build the frontend bundle and hub binary in a multi-stage Docker build
 - produce a container image that serves the embedded web UI and PocketBase runtime
+- install the system `ping` binary used by the hub `ping` monitor type
+
+Operational note:
+
+- the image includes `iputils` so the `ping` monitor works in the official hub container
+- hardened container or cluster policies can still block ICMP echo at runtime even when the binary is present
 
 ## Service Management And Install Scripts
 

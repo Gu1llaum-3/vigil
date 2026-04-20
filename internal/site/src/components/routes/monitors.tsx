@@ -81,6 +81,8 @@ function monitorTarget(m: MonitorRecord): string {
 	switch (m.type) {
 		case "http":
 			return m.url || ""
+		case "ping":
+			return m.hostname || ""
 		case "tcp":
 			return m.hostname ? `${m.hostname}:${m.port}` : ""
 		case "dns":
@@ -212,6 +214,9 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups }: MonitorDialo
 					payload.keyword = form.keyword
 					payload.keyword_invert = form.keyword_invert
 					break
+				case "ping":
+					payload.hostname = form.hostname
+					break
 				case "tcp":
 					payload.hostname = form.hostname
 					payload.port = Number(form.port) || 0
@@ -272,11 +277,12 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups }: MonitorDialo
 							<SelectTrigger>
 								<SelectValue />
 							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="http">HTTP / HTTPS</SelectItem>
-								<SelectItem value="tcp">TCP</SelectItem>
-								<SelectItem value="dns">DNS</SelectItem>
-								<SelectItem value="push">Push</SelectItem>
+					<SelectContent>
+						<SelectItem value="http">HTTP / HTTPS</SelectItem>
+						<SelectItem value="ping">Ping</SelectItem>
+						<SelectItem value="tcp">TCP</SelectItem>
+						<SelectItem value="dns">DNS</SelectItem>
+						<SelectItem value="push">Push</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -380,6 +386,20 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups }: MonitorDialo
 								<Input value={form.keyword} onChange={(e) => set("keyword", e.target.value)} placeholder="" />
 							</div>
 						</>
+					)}
+
+					{/* Ping fields */}
+					{form.type === "ping" && (
+						<div className="grid gap-1.5">
+							<Label>
+								<Trans>Hostname</Trans>
+							</Label>
+							<Input
+								value={form.hostname}
+								onChange={(e) => set("hostname", e.target.value)}
+								placeholder="1.1.1.1"
+							/>
+						</div>
 					)}
 
 					{/* TCP fields */}

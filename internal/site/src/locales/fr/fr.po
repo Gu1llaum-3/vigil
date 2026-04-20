@@ -705,6 +705,7 @@ msgstr "Hôte hors ligne"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 msgid "Hostname"
 msgstr "Nom d'hôte"
 
