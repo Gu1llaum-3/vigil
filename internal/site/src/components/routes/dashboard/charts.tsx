@@ -1,4 +1,4 @@
-import { Trans } from "@lingui/react/macro"
+import { Trans, useLingui } from "@lingui/react/macro"
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js"
 import { memo } from "react"
 import { Doughnut } from "react-chartjs-2"
@@ -14,6 +14,8 @@ interface ChartsProps {
 const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316", "#84cc16"]
 
 export const Charts = memo(function Charts({ summary }: ChartsProps) {
+	const { t } = useLingui()
+
 	const osData = {
 		labels: (summary.os_distribution ?? []).map((e) => e.label),
 		datasets: [
@@ -26,20 +28,26 @@ export const Charts = memo(function Charts({ summary }: ChartsProps) {
 	}
 
 	const updateLabels: Record<string, string> = {
-		security: "Security",
-		needs_update: "Needs update",
-		pending: "Pending",
-		up_to_date: "Up to date",
+		reboot_required: t`Reboot required`,
+		security_updates: t`Security updates`,
+		stale_updates: t`Out of SLA (>30d)`,
+		compliant: t`Compliant`,
+		unknown: t`Unknown / Pending`,
 	}
 
 	const updateColors: Record<string, string> = {
-		security: "#ef4444",
-		needs_update: "#f59e0b",
-		pending: "#94a3b8",
-		up_to_date: "#22c55e",
+		reboot_required: "#ef4444",
+		security_updates: "#f97316",
+		stale_updates: "#eab308",
+		compliant: "#22c55e",
+		unknown: "#94a3b8",
 	}
 
-	const updateDist = summary.update_status_distribution ?? []
+	const preferredOrder = ["reboot_required", "security_updates", "stale_updates", "compliant", "unknown"]
+	const updateDist = preferredOrder
+		.map((key) => (summary.update_status_distribution ?? []).find((e) => e.label === key))
+		.filter((e): e is NonNullable<typeof e> => Boolean(e))
+		.concat((summary.update_status_distribution ?? []).filter((e) => !preferredOrder.includes(e.label)))
 	const updateData = {
 		labels: updateDist.map((e) => updateLabels[e.label] ?? e.label),
 		datasets: [

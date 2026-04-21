@@ -48,8 +48,9 @@ function patchStatusRank(h: DashboardHost): number {
 	if (h.status !== "connected") return -1
 	if (h.reboot?.required) return 4
 	if ((h.packages?.security_count ?? 0) > 0) return 3
-	if ((h.packages?.outdated_count ?? 0) > 0) return 2
-	return 1
+	if ((h.packages?.outdated_count ?? 0) > 0 && (h.packages?.last_upgrade_age_days ?? 0) > 30) return 2
+	if ((h.packages?.outdated_count ?? 0) > 0 && !h.packages?.last_upgrade_known) return 1
+	return 0
 }
 
 // ── sub-components ────────────────────────────────────────────────────────────
@@ -95,7 +96,6 @@ function SortBtn({ column, children }: { column: Column<DashboardHost, unknown>;
 	)
 }
 
-
 // ── props ─────────────────────────────────────────────────────────────────────
 
 interface HostsTableProps {
@@ -117,10 +117,11 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 			{ key: "docker", label: t`Docker` },
 			{ key: "reboot", label: t`Reboot req.` },
 			{ key: "security", label: t`Security` },
-			{ key: "outdated", label: t`Updates` },
-			{ key: "clean", label: t`Up to date` },
+			{ key: "stale", label: t`Out of SLA` },
+			{ key: "unknown", label: t`Unknown` },
+			{ key: "clean", label: t`Compliant` },
 		],
-		[t],
+		[t]
 	)
 
 	const [sorting, setSorting] = useState<SortingState>([{ id: "connection", desc: true }])
@@ -141,8 +142,13 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 			case "security":
 				result = hosts.filter((h) => (h.packages?.security_count ?? 0) > 0)
 				break
-			case "outdated":
-				result = hosts.filter((h) => (h.packages?.outdated_count ?? 0) > 0)
+			case "stale":
+				result = hosts.filter(
+					(h) => (h.packages?.outdated_count ?? 0) > 0 && (h.packages?.last_upgrade_age_days ?? 0) > 30
+				)
+				break
+			case "unknown":
+				result = hosts.filter((h) => (h.packages?.outdated_count ?? 0) > 0 && !h.packages?.last_upgrade_known)
 				break
 			case "reboot":
 				result = hosts.filter((h) => h.reboot?.required)
@@ -151,15 +157,21 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 				result = hosts.filter((h) => h.docker?.state === "available")
 				break
 			case "clean":
-				result = hosts.filter((h) => !h.reboot?.required && !(h.packages?.outdated_count ?? 0))
+				result = hosts.filter(
+					(h) =>
+						!h.reboot?.required &&
+						!(h.packages?.security_count ?? 0) &&
+						!((h.packages?.outdated_count ?? 0) > 0 && (h.packages?.last_upgrade_age_days ?? 0) > 30) &&
+						!((h.packages?.outdated_count ?? 0) > 0 && !h.packages?.last_upgrade_known)
+				)
 				break
 		}
 		if (!search) return result
 		const q = search.toLowerCase()
 		return result.filter((h) =>
 			[h.name, h.hostname, h.primary_ip, h.network?.gateway, h.os?.name, h.kernel].some((v) =>
-				v?.toLowerCase().includes(q),
-			),
+				v?.toLowerCase().includes(q)
+			)
 		)
 	}, [hosts, activeChip, search])
 
@@ -186,9 +198,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 					<div className="group flex items-center">
 						<div>
 							<div className="font-semibold">{h.name || h.hostname || h.id}</div>
-							{h.hostname && h.name !== h.hostname && (
-								<div className="text-xs text-muted-foreground">{h.hostname}</div>
-							)}
+							{h.hostname && h.name !== h.hostname && <div className="text-xs text-muted-foreground">{h.hostname}</div>}
 						</div>
 						<InfoBtn rows={[{ label: t`Hostname`, value: h.hostname || "—" }]} />
 					</div>
@@ -286,7 +296,12 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 								rows={[
 									{ label: t`Security`, value: sec },
 									{ label: t`Outdated`, value: upd },
-									{ label: t`Last upgrade`, value: pkg.last_upgrade_known ? formatAgeDays(pkg.last_upgrade_age_days, pkg.last_upgrade_known) : t`unknown` },
+									{
+										label: t`Last upgrade`,
+										value: pkg.last_upgrade_known
+											? formatAgeDays(pkg.last_upgrade_age_days, pkg.last_upgrade_known)
+											: t`unknown`,
+									},
 									{ label: t`Repos`, value: h.repositories?.length ?? 0 },
 								]}
 							/>
@@ -309,18 +324,14 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 					if (docker.state === "daemon_unreachable") {
 						return (
 							<div className="group flex items-center">
-								<Badge
-									variant="outline"
-									className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400"
-								>
+								<Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
 									{t`Error`}
 								</Badge>
 								<InfoBtn rows={[{ label: t`State`, value: t`daemon unreachable` }]} />
 							</div>
 						)
 					}
-					const allRunning =
-						docker.running_count === docker.container_count && docker.container_count > 0
+					const allRunning = docker.running_count === docker.container_count && docker.container_count > 0
 					const someDown = docker.running_count < docker.container_count
 					const pillCls = allRunning
 						? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
@@ -360,37 +371,31 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 						)
 					if (h.reboot?.required)
 						return (
-							<Badge
-								variant="outline"
-								className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400"
-							>
+							<Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
 								<Trans>Reboot req.</Trans>
 							</Badge>
 						)
 					if ((h.packages?.security_count ?? 0) > 0)
 						return (
-							<Badge
-								variant="outline"
-								className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400"
-							>
+							<Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
 								<Trans>Security upd.</Trans>
 							</Badge>
 						)
-					if ((h.packages?.outdated_count ?? 0) > 0)
+					if ((h.packages?.outdated_count ?? 0) > 0 && (h.packages?.last_upgrade_age_days ?? 0) > 30)
 						return (
-							<Badge
-								variant="outline"
-								className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-400"
-							>
-								<Trans>Updates pending</Trans>
+							<Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-400">
+								<Trans>Out of SLA</Trans>
+							</Badge>
+						)
+					if ((h.packages?.outdated_count ?? 0) > 0 && !h.packages?.last_upgrade_known)
+						return (
+							<Badge variant="outline" className="border-slate-500/30 bg-slate-500/10 text-[10px] text-slate-400">
+								<Trans>Unknown</Trans>
 							</Badge>
 						)
 					return (
-						<Badge
-							variant="outline"
-							className="border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-400"
-						>
-							<Trans>Up to date</Trans>
+						<Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-400">
+							<Trans>Compliant</Trans>
 						</Badge>
 					)
 				},
@@ -401,10 +406,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 				header: ({ column }) => <SortBtn column={column}>UP</SortBtn>,
 				cell: ({ row: { original: h } }) =>
 					h.status === "connected" ? (
-						<Badge
-							variant="outline"
-							className="border-emerald-500/40 bg-emerald-500/10 text-[10px] text-emerald-500"
-						>
+						<Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-[10px] text-emerald-500">
 							UP
 						</Badge>
 					) : (
@@ -428,7 +430,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 				),
 			},
 		],
-		[t],
+		[t]
 	)
 
 	const table = useReactTable({
@@ -462,7 +464,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 								"rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
 								activeChip === chip.key
 									? "border-primary/60 bg-primary/10 text-foreground"
-									: "border-border/60 bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground",
+									: "border-border/60 bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground"
 							)}
 						>
 							{chip.label}
@@ -498,9 +500,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 							<TableRow key={hg.id}>
 								{hg.headers.map((header) => (
 									<TableHead key={header.id}>
-										{header.isPlaceholder
-											? null
-											: flexRender(header.column.columnDef.header, header.getContext())}
+										{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
 									</TableHead>
 								))}
 							</TableRow>
@@ -509,10 +509,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 					<TableBody>
 						{table.getRowModel().rows.length === 0 ? (
 							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-20 text-center text-sm text-muted-foreground"
-								>
+								<TableCell colSpan={columns.length} className="h-20 text-center text-sm text-muted-foreground">
 									<Trans>No hosts match the current filter.</Trans>
 								</TableCell>
 							</TableRow>
@@ -520,9 +517,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 							table.getRowModel().rows.map((row) => (
 								<TableRow key={row.id}>
 									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(cell.column.columnDef.cell, cell.getContext())}
-										</TableCell>
+										<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
 									))}
 								</TableRow>
 							))
@@ -547,12 +542,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 					<span>
 						{pagination.pageIndex + 1} / {Math.max(1, table.getPageCount())}
 					</span>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => table.nextPage()}
-						disabled={!table.getCanNextPage()}
-					>
+					<Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
 						<ChevronDownIcon className="size-3 -rotate-90" />
 					</Button>
 				</div>

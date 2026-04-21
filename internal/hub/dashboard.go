@@ -3,9 +3,18 @@ package hub
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/pocketbase/pocketbase/core"
+)
+
+const (
+	patchStatusRebootRequired  = "reboot_required"
+	patchStatusSecurityUpdates = "security_updates"
+	patchStatusStaleUpdates    = "stale_updates"
+	patchStatusCompliant       = "compliant"
+	patchStatusUnknown         = "unknown"
 )
 
 // DashboardSummary holds fleet-wide KPI counters.
@@ -171,16 +180,7 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 		osCount[osLabel]++
 
 		// Update status distribution
-		switch {
-		case snapshot.Packages.SecurityCount > 0:
-			updateStatusCount["security"]++
-		case snapshot.Packages.OutdatedCount > 0:
-			updateStatusCount["needs_update"]++
-		case !snapshot.Packages.LastUpgradeKnown:
-			updateStatusCount["pending"]++
-		default:
-			updateStatusCount["up_to_date"]++
-		}
+		updateStatusCount[classifyPatchStatus(snapshot)]++
 
 		// Repositories
 		for _, repo := range snapshot.Repositories {
@@ -234,6 +234,16 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 	for label, count := range updateStatusCount {
 		summary.UpdateStatusDistribution = append(summary.UpdateStatusDistribution, DistributionEntry{Label: label, Value: count})
 	}
+	sort.SliceStable(summary.UpdateStatusDistribution, func(i, j int) bool {
+		order := map[string]int{
+			patchStatusRebootRequired:  0,
+			patchStatusSecurityUpdates: 1,
+			patchStatusStaleUpdates:    2,
+			patchStatusCompliant:       3,
+			patchStatusUnknown:         4,
+		}
+		return order[summary.UpdateStatusDistribution[i].Label] < order[summary.UpdateStatusDistribution[j].Label]
+	})
 
 	// Flatten maps to slices
 	var packages []PackageAggregate
@@ -252,4 +262,22 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 		"repositories": repositories,
 		"containers":   containers,
 	})
+}
+
+func classifyPatchStatus(snapshot common.HostSnapshotResponse) string {
+	if snapshot.Reboot.Required {
+		return patchStatusRebootRequired
+	}
+	if snapshot.Packages.SecurityCount > 0 {
+		return patchStatusSecurityUpdates
+	}
+	if snapshot.Packages.OutdatedCount > 0 {
+		if !snapshot.Packages.LastUpgradeKnown {
+			return patchStatusUnknown
+		}
+		if snapshot.Packages.LastUpgradeAgeDays > 30 {
+			return patchStatusStaleUpdates
+		}
+	}
+	return patchStatusCompliant
 }

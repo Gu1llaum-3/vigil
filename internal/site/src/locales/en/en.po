@@ -266,6 +266,12 @@ msgstr "Click to copy"
 msgid "Command line instructions"
 msgstr "Command line instructions"
 
+#: src/components/routes/dashboard/charts.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Compliant"
+msgstr "Compliant"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Configuration"
 msgstr "Configuration"
@@ -1088,6 +1094,15 @@ msgid "OS Distribution"
 msgstr "OS Distribution"
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Out of SLA"
+msgstr "Out of SLA"
+
+#: src/components/routes/dashboard/charts.tsx
+msgid "Out of SLA (>30d)"
+msgstr "Out of SLA (>30d)"
+
+#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Outdated"
 msgstr "Outdated"
 
@@ -1270,6 +1285,7 @@ msgstr "RAM"
 msgid "Reboot req."
 msgstr "Reboot req."
 
+#: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Reboot required"
 msgstr "Reboot required"
@@ -1435,6 +1451,7 @@ msgstr "Security"
 msgid "Security upd."
 msgstr "Security upd."
 
+#: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Security updates"
 msgstr "Security updates"
@@ -1631,8 +1648,14 @@ msgid "unknown"
 msgstr "unknown"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Unknown"
 msgstr "Unknown"
+
+#: src/components/routes/dashboard/charts.tsx
+msgid "Unknown / Pending"
+msgstr "Unknown / Pending"
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
@@ -1646,16 +1669,16 @@ msgstr "Up"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Up to date"
-msgstr "Up to date"
+#~ msgid "Up to date"
+#~ msgstr "Up to date"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Updates"
-msgstr "Updates"
+#~ msgid "Updates"
+#~ msgstr "Updates"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Updates pending"
-msgstr "Updates pending"
+#~ msgid "Updates pending"
+#~ msgstr "Updates pending"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx

@@ -61,7 +61,7 @@ export const KpiCards = memo(function KpiCards({
 			label: <Trans>Reboot required</Trans>,
 			value: summary.hosts_needing_reboot,
 			icon: <AlertTriangleIcon className="size-4" />,
-			variant: summary.hosts_needing_reboot > 0 ? "warning" : "success",
+			variant: summary.hosts_needing_reboot > 0 ? "danger" : "success",
 		},
 		{
 			key: "docker",

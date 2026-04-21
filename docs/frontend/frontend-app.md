@@ -209,6 +209,9 @@ Components:
 - `charts.tsx` — bar/doughnut charts using `chart.js` and `react-chartjs-2`
 - `empty-state.tsx` — shown when no snapshot data is available yet
 
+The `Patch Status` donut and the host patch badge both follow the same priority order: `Reboot required`, `Security updates`, `Out of SLA (>30d)`, `Compliant`, and `Unknown / Pending`.
+The `Unknown / Pending` state is used when update data exists but the agent could not determine the last upgrade time.
+
 Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`.
 
 `chart.js` and `react-chartjs-2` are added dependencies. They are used only within the dashboard route and should not be imported in other parts of the application.

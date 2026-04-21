@@ -428,6 +428,8 @@ Two hub files support snapshot collection and dashboard aggregation:
   - `startSnapshotTicker(ctx, interval)` background goroutine started at hub boot; calls `collectAllSnapshots` on each tick
 - `internal/hub/dashboard.go` — `getDashboard()` handler for `GET /api/app/dashboard`; reads from the `host_snapshots` and `agents` collections and returns an aggregated JSON payload to the frontend
 
+The dashboard patch-status donut uses a strict priority order: `reboot_required`, `security_updates`, `stale_updates` (>30 days since last upgrade), `compliant`, then `unknown` when update data exists but the last upgrade time is not known.
+
 ### Periodic Snapshot Ticker
 
 At startup, `StartHub()` launches `startSnapshotTicker` as a background goroutine. The interval is read from the `SNAPSHOT_INTERVAL` env var (default: `15m`, minimum: `1m`). The goroutine is cancelled when the hub terminates via `OnTerminate`.

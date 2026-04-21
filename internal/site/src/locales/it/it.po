@@ -271,6 +271,12 @@ msgstr "Clicca per copiare"
 msgid "Command line instructions"
 msgstr "Istruzioni da riga di comando"
 
+#: src/components/routes/dashboard/charts.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Compliant"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Configuration"
 msgstr ""
@@ -1093,6 +1099,15 @@ msgid "OS Distribution"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Out of SLA"
+msgstr ""
+
+#: src/components/routes/dashboard/charts.tsx
+msgid "Out of SLA (>30d)"
+msgstr ""
+
+#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Outdated"
 msgstr ""
 
@@ -1275,6 +1290,7 @@ msgstr ""
 msgid "Reboot req."
 msgstr ""
 
+#: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Reboot required"
 msgstr ""
@@ -1440,6 +1456,7 @@ msgstr ""
 msgid "Security upd."
 msgstr ""
 
+#: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Security updates"
 msgstr ""
@@ -1636,7 +1653,13 @@ msgid "unknown"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Unknown"
+msgstr ""
+
+#: src/components/routes/dashboard/charts.tsx
+msgid "Unknown / Pending"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -1651,16 +1674,16 @@ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Up to date"
-msgstr ""
+#~ msgid "Up to date"
+#~ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Updates"
-msgstr ""
+#~ msgid "Updates"
+#~ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Updates pending"
-msgstr ""
+#~ msgid "Updates pending"
+#~ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
