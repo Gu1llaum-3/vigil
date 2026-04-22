@@ -101,6 +101,10 @@ msgstr ""
 msgid "Add monitor"
 msgstr ""
 
+#: src/components/routes/monitors.tsx
+msgid "Add monitor here"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Add rule"
 msgstr ""
@@ -217,6 +221,7 @@ msgstr ""
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
@@ -265,6 +270,10 @@ msgstr ""
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
 msgstr "Kopyalamak için tıklayın"
+
+#: src/components/routes/monitors.tsx
+msgid "Collapse all"
+msgstr ""
 
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/forgot-pass-form.tsx
@@ -423,6 +432,7 @@ msgid "Define when and where notifications are sent."
 msgstr ""
 
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Delete"
@@ -456,6 +466,10 @@ msgstr ""
 msgid "Delete group"
 msgstr ""
 
+#: src/components/routes/monitors.tsx
+msgid "Delete group?"
+msgstr ""
+
 #: src/components/routes/settings/purge.tsx
 msgid "Delete monitoring events older than the chosen number of days, or wipe the entire probe history."
 msgstr ""
@@ -466,6 +480,10 @@ msgstr ""
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Deletes old probe and notification history based on retention settings."
+msgstr ""
+
+#: src/components/routes/monitors.tsx
+msgid "Destination"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -606,6 +624,10 @@ msgstr ""
 msgid "Exited since"
 msgstr ""
 
+#: src/components/routes/monitors.tsx
+msgid "Expand all"
+msgstr ""
+
 #: src/components/routes/settings/agents.tsx
 msgid "Expires after one hour or on hub restart."
 msgstr "Bir saat sonra veya hub yeniden başlatıldığında sona erer."
@@ -628,6 +650,10 @@ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Failed to load purge settings"
+msgstr ""
+
+#: src/components/routes/monitors.tsx
+msgid "Failed to move monitor"
 msgstr ""
 
 #: src/components/routes/settings/jobs.tsx
@@ -912,6 +938,10 @@ msgstr ""
 msgid "Monitor down"
 msgstr ""
 
+#: src/components/routes/monitors.tsx
+msgid "Monitor moved"
+msgstr ""
+
 #: src/components/notification-log-toasts.tsx
 msgid "Monitor recovered"
 msgstr ""
@@ -927,6 +957,10 @@ msgstr ""
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Monitors"
+msgstr ""
+
+#: src/components/routes/monitors.tsx
+msgid "Move to"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -986,6 +1020,7 @@ msgstr ""
 msgid "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
 msgstr ""
 
+#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
@@ -1552,6 +1587,11 @@ msgstr "Ardından arka uca giriş yapın ve kullanıcılar tablosunda kullanıc�
 
 #: src/components/login/auth-form.tsx
 msgid "This application supports OpenID Connect and many OAuth2 authentication providers."
+msgstr ""
+
+#. placeholder {0}: deleteGroupConfirm.monitors.length
+#: src/components/routes/monitors.tsx
+msgid "This group contains {0} monitor(s). They will be moved to No group."
 msgstr ""
 
 #: src/components/routes/settings/purge.tsx

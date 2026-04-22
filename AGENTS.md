@@ -469,6 +469,14 @@ Common docs to consider for broader changes:
 
 If no documentation changes are needed, make that a conscious scope-based decision, not an assumption.
 
+### Translation Check Before Finishing
+
+When a task adds or changes user-facing text, always check whether locale catalogs need updates.
+
+- Update translations in the same task when new strings are introduced.
+- Prioritize the main shipped languages, especially French (`fr`), for new or changed UI text.
+- Do not assume the generated catalogs are complete just because the build succeeds.
+
 ---
 
 ## Adding a New API Endpoint

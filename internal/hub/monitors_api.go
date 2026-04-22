@@ -330,6 +330,29 @@ func (h *Hub) updateMonitor(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, monitorToRecord(rec, h.Settings().Meta.AppURL, nil, nil))
 }
 
+// moveMonitor updates only the monitor group.
+func (h *Hub) moveMonitor(e *core.RequestEvent) error {
+	id := e.Request.PathValue("id")
+	rec, err := h.FindRecordById("monitors", id)
+	if err != nil {
+		return e.NotFoundError("Monitor not found", nil)
+	}
+
+	var body struct {
+		Group string `json:"group"`
+	}
+	if err := e.BindBody(&body); err != nil {
+		return e.BadRequestError("Invalid body", err)
+	}
+
+	rec.Set("group", body.Group)
+	if err := h.SaveNoValidate(rec); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, monitorToRecord(rec, h.Settings().Meta.AppURL, nil, nil))
+}
+
 // deleteMonitor deletes a monitor and its events.
 func (h *Hub) deleteMonitor(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")

@@ -19,9 +19,23 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -154,9 +168,10 @@ interface MonitorDialogProps {
 	onSaved: () => void
 	monitor?: MonitorRecord | null
 	groups: MonitorGroupRecord[]
+	defaultGroupId?: string
 }
 
-function MonitorDialog({ open, onClose, onSaved, monitor, groups }: MonitorDialogProps) {
+function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId }: MonitorDialogProps) {
 	const { t } = useLingui()
 	const [saving, setSaving] = useState(false)
 	const [form, setForm] = useState<MonitorFormData>(defaultMonitorForm)
@@ -184,12 +199,12 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups }: MonitorDialo
 						ping_count: monitor.ping_count ?? 1,
 						ping_per_request_timeout: monitor.ping_per_request_timeout ?? 2,
 						ping_ip_family: monitor.ping_ip_family || "",
-					})
+				})
 			} else {
-				setForm(defaultMonitorForm)
+				setForm({ ...defaultMonitorForm, group: defaultGroupId || "" })
 			}
 		}
-	}, [open, monitor])
+	}, [open, monitor, defaultGroupId])
 
 	const set = <K extends keyof MonitorFormData>(key: K, value: MonitorFormData[K]) =>
 		setForm((f) => ({ ...f, [key]: value }))
@@ -639,8 +654,10 @@ export default memo(function MonitorsPage() {
 
 	const [monitorDialog, setMonitorDialog] = useState(false)
 	const [editMonitor, setEditMonitor] = useState<MonitorRecord | null>(null)
+	const [monitorDefaultGroupId, setMonitorDefaultGroupId] = useState("")
 	const [groupDialog, setGroupDialog] = useState(false)
 	const [editGroup, setEditGroup] = useState<MonitorGroupRecord | null>(null)
+	const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<MonitorGroupResponse | null>(null)
 	const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => readOpenGroups())
 
 	const fetchMonitors = useCallback(async () => {
@@ -697,6 +714,28 @@ export default memo(function MonitorsPage() {
 		}
 	}
 
+	function requestDeleteGroup(group: MonitorGroupResponse) {
+		if (group.monitors.length > 0) {
+			setDeleteGroupConfirm(group)
+			return
+		}
+		void deleteGroup(group.id)
+	}
+
+	async function moveMonitorToGroup(monitorId: string, group: string) {
+		try {
+			await pb.send(`/api/app/monitors/${monitorId}/move`, {
+				method: "POST",
+				body: JSON.stringify({ group } satisfies MonitorMovePayload),
+				headers: { "Content-Type": "application/json" },
+			})
+			toast({ title: t`Monitor moved` })
+			fetchMonitors()
+		} catch {
+			toast({ title: t`Failed to move monitor`, variant: "destructive" })
+		}
+	}
+
 	const allMonitors = groups.flatMap((g) => g.monitors)
 	const upCount = allMonitors.filter((m) => m.last_checked_at && m.status === 1).length
 	const downCount = allMonitors.filter((m) => m.last_checked_at && m.status !== 1).length
@@ -711,6 +750,12 @@ export default memo(function MonitorsPage() {
 			writeOpenGroups(next)
 			return next
 		})
+	}
+
+	function setAllGroupsOpen(open: boolean) {
+		const next = Object.fromEntries(orderedGroups.map((group) => [group.id || ungroupedGroupStateKey, open]))
+		setOpenGroups(next)
+		writeOpenGroups(next)
 	}
 
 	return (
@@ -743,6 +788,14 @@ export default memo(function MonitorsPage() {
 				</div>
 				{!readonly && (
 					<div className="flex flex-wrap gap-2">
+						<Button variant="outline" size="sm" onClick={() => setAllGroupsOpen(true)} disabled={orderedGroups.length === 0}>
+							<ChevronDownIcon className="h-4 w-4 me-1.5" />
+							<Trans>Expand all</Trans>
+						</Button>
+						<Button variant="outline" size="sm" onClick={() => setAllGroupsOpen(false)} disabled={orderedGroups.length === 0}>
+							<ChevronRightIcon className="h-4 w-4 me-1.5" />
+							<Trans>Collapse all</Trans>
+						</Button>
 						<Button
 							variant="outline"
 							size="sm"
@@ -758,6 +811,7 @@ export default memo(function MonitorsPage() {
 							size="sm"
 							onClick={() => {
 								setEditMonitor(null)
+								setMonitorDefaultGroupId("")
 								setMonitorDialog(true)
 							}}
 						>
@@ -794,6 +848,12 @@ export default memo(function MonitorsPage() {
 						onToggle={() => toggleGroup(group.id || ungroupedGroupStateKey)}
 						onEditMonitor={(m) => {
 							setEditMonitor(m)
+							setMonitorDefaultGroupId("")
+							setMonitorDialog(true)
+						}}
+						onAddMonitor={() => {
+							setEditMonitor(null)
+							setMonitorDefaultGroupId(group.id)
 							setMonitorDialog(true)
 						}}
 						onDeleteMonitor={deleteMonitor}
@@ -803,7 +863,9 @@ export default memo(function MonitorsPage() {
 								setGroupDialog(true)
 							}
 						}}
-						onDeleteGroup={() => group.id && deleteGroup(group.id)}
+						onDeleteGroup={() => requestDeleteGroup(group)}
+						onMoveMonitor={moveMonitorToGroup}
+						availableGroups={groupList}
 					/>
 				))}
 			</div>
@@ -811,12 +873,47 @@ export default memo(function MonitorsPage() {
 			{/* Dialogs */}
 			<MonitorDialog
 				open={monitorDialog}
-				onClose={() => setMonitorDialog(false)}
+				onClose={() => {
+					setMonitorDialog(false)
+					setMonitorDefaultGroupId("")
+				}}
 				onSaved={fetchMonitors}
 				monitor={editMonitor}
 				groups={groupList}
+				defaultGroupId={monitorDefaultGroupId}
 			/>
 			<GroupDialog open={groupDialog} onClose={() => setGroupDialog(false)} onSaved={fetchMonitors} group={editGroup} />
+			<AlertDialog open={deleteGroupConfirm != null} onOpenChange={(open) => !open && setDeleteGroupConfirm(null)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							<Trans>Delete group?</Trans>
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{deleteGroupConfirm && (
+								<Trans>
+									This group contains {deleteGroupConfirm.monitors.length} monitor(s). They will be moved to No group.
+								</Trans>
+							)}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel onClick={() => setDeleteGroupConfirm(null)}>
+							<Trans>Cancel</Trans>
+						</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => {
+								if (!deleteGroupConfirm) return
+								const group = deleteGroupConfirm
+								setDeleteGroupConfirm(null)
+								void deleteGroup(group.id)
+							}}
+						>
+							<Trans>Delete</Trans>
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	)
 })
@@ -825,24 +922,30 @@ export default memo(function MonitorsPage() {
 
 interface MonitorGroupSectionProps {
 	group: MonitorGroupResponse
+	availableGroups: MonitorGroupRecord[]
 	readonly: boolean
 	open: boolean
 	onToggle: () => void
 	onEditMonitor: (m: MonitorRecord) => void
+	onAddMonitor: () => void
 	onDeleteMonitor: (id: string) => void
 	onEditGroup: () => void
 	onDeleteGroup: () => void
+	onMoveMonitor: (monitorId: string, groupId: string) => void
 }
 
 function MonitorGroupSection({
 	group,
+	availableGroups,
 	readonly,
 	open,
 	onToggle,
 	onEditMonitor,
+	onAddMonitor,
 	onDeleteMonitor,
 	onEditGroup,
 	onDeleteGroup,
+	onMoveMonitor,
 }: MonitorGroupSectionProps) {
 	if (group.monitors.length === 0 && !group.id) return null
 
@@ -881,6 +984,11 @@ function MonitorGroupSection({
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
+								<DropdownMenuItem onClick={onAddMonitor}>
+									<PlusIcon className="h-4 w-4 me-2" />
+									<Trans>Add monitor here</Trans>
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
 								<DropdownMenuItem onClick={onEditGroup}>
 									<PencilIcon className="h-4 w-4 me-2" />
 									<Trans>Edit group</Trans>
@@ -940,13 +1048,15 @@ function MonitorGroupSection({
 								</TableRow>
 							) : (
 								group.monitors.map((m) => (
-									<MonitorRow
-										key={m.id}
-										monitor={m}
-										readonly={readonly}
-										onEdit={() => onEditMonitor(m)}
-										onDelete={() => onDeleteMonitor(m.id)}
-									/>
+						<MonitorRow
+							key={m.id}
+							monitor={m}
+							availableGroups={availableGroups}
+							readonly={readonly}
+							onMoveMonitor={onMoveMonitor}
+							onEdit={() => onEditMonitor(m)}
+							onDelete={() => onDeleteMonitor(m.id)}
+						/>
 								))
 							)}
 						</TableBody>
@@ -961,13 +1071,16 @@ function MonitorGroupSection({
 
 interface MonitorRowProps {
 	monitor: MonitorRecord
+	availableGroups: MonitorGroupRecord[]
 	readonly: boolean
+	onMoveMonitor: (monitorId: string, groupId: string) => void
 	onEdit: () => void
 	onDelete: () => void
 }
 
-function MonitorRow({ monitor: m, readonly, onEdit, onDelete }: MonitorRowProps) {
+function MonitorRow({ monitor: m, availableGroups, readonly, onMoveMonitor, onEdit, onDelete }: MonitorRowProps) {
 	const target = monitorTarget(m)
+	const currentGroupId = m.group || ungroupedGroupStateKey
 
 	return (
 		<TableRow>
@@ -1042,6 +1155,33 @@ function MonitorRow({ monitor: m, readonly, onEdit, onDelete }: MonitorRowProps)
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
+							<DropdownMenuSub>
+								<DropdownMenuSubTrigger>
+									<Trans>Move to</Trans>
+								</DropdownMenuSubTrigger>
+								<DropdownMenuSubContent>
+									<DropdownMenuLabel>
+										<Trans>Destination</Trans>
+									</DropdownMenuLabel>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem
+										disabled={currentGroupId === ungroupedGroupStateKey}
+										onClick={() => onMoveMonitor(m.id, "")}
+									>
+										<Trans>No group</Trans>
+									</DropdownMenuItem>
+									{availableGroups.map((group) => (
+										<DropdownMenuItem
+											key={group.id}
+											disabled={currentGroupId === group.id}
+											onClick={() => onMoveMonitor(m.id, group.id)}
+										>
+											{group.name}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuSubContent>
+							</DropdownMenuSub>
+							<DropdownMenuSeparator />
 							<DropdownMenuItem onClick={onEdit}>
 								<PencilIcon className="h-4 w-4 me-2" />
 								<Trans>Edit</Trans>

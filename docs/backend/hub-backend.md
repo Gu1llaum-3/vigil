@@ -301,9 +301,14 @@ Goroutine start/stop is **only triggered from the API handlers**, not from Pocke
 
 - `createMonitor` — calls `go h.monitorScheduler.startMonitor(rec.Id)` if active
 - `updateMonitor` — calls `stopMonitor` then `startMonitor` if active
+- `moveMonitor` — updates only the `group` field via `SaveNoValidate`; it does not restart the scheduler
 - `deleteMonitor` — goroutine stopped via `OnRecordAfterDeleteSuccess` hook (the only remaining hook for monitors)
 
 **Critical: do NOT add `OnRecordAfterCreateSuccess` or `OnRecordAfterUpdateSuccess` hooks for the monitors collection.** The scheduler calls `SaveNoValidate` to write check results, which triggers PocketBase update events. A hook that calls `startMonitor` from those events creates an infinite loop: save → hook → startMonitor → doCheck → save → hook → …
+
+### Monitor Group Deletion
+
+`deleteMonitorGroup` first moves any monitors in that group back to `group = ""` with `SaveNoValidate`, then deletes the group record. The frontend now warns before deleting a non-empty group so the ungrouping is explicit.
 
 ### Result Persistence
 

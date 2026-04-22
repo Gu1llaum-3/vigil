@@ -101,6 +101,10 @@ msgstr "Ajouter un dossier"
 msgid "Add monitor"
 msgstr "Ajouter une sonde"
 
+#: src/components/routes/monitors.tsx
+msgid "Add monitor here"
+msgstr "Ajouter une sonde ici"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Add rule"
 msgstr "Ajouter une règle"
@@ -217,6 +221,7 @@ msgstr "La ligne bleue représente les vérifications réussies, l'arrière-plan
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
@@ -265,6 +270,10 @@ msgstr "Cliquez sur \"Ajouter une sonde\" pour commencer à surveiller vos servi
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
 msgstr "Cliquez pour copier"
+
+#: src/components/routes/monitors.tsx
+msgid "Collapse all"
+msgstr "Tout replier"
 
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/forgot-pass-form.tsx
@@ -423,6 +432,7 @@ msgid "Define when and where notifications are sent."
 msgstr "Définissez quand et où les notifications sont envoyées."
 
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Delete"
@@ -456,6 +466,10 @@ msgstr "Supprimer tout l'historique des sondes ?"
 msgid "Delete group"
 msgstr "Supprimer le dossier"
 
+#: src/components/routes/monitors.tsx
+msgid "Delete group?"
+msgstr "Supprimer le dossier ?"
+
 #: src/components/routes/settings/purge.tsx
 msgid "Delete monitoring events older than the chosen number of days, or wipe the entire probe history."
 msgstr "Supprimez les événements de supervision plus anciens que le nombre de jours choisi, ou effacez tout l'historique des sondes."
@@ -467,6 +481,10 @@ msgstr "Supprimez les journaux de notification plus anciens que le nombre de jou
 #: src/components/routes/settings/jobs.tsx
 msgid "Deletes old probe and notification history based on retention settings."
 msgstr "Supprime l'historique des sondes et des notifications selon les paramètres de rétention."
+
+#: src/components/routes/monitors.tsx
+msgid "Destination"
+msgstr "Destination"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Detail"
@@ -606,6 +624,10 @@ msgstr "Arrêté"
 msgid "Exited since"
 msgstr "Arrêté depuis"
 
+#: src/components/routes/monitors.tsx
+msgid "Expand all"
+msgstr "Tout déplier"
+
 #: src/components/routes/settings/agents.tsx
 msgid "Expires after one hour or on hub restart."
 msgstr "Expire après une heure ou au redémarrage du hub."
@@ -629,6 +651,10 @@ msgstr "Impossible de charger les tâches"
 #: src/components/routes/settings/purge.tsx
 msgid "Failed to load purge settings"
 msgstr "Impossible de charger les paramètres de purge"
+
+#: src/components/routes/monitors.tsx
+msgid "Failed to move monitor"
+msgstr "Échec du déplacement de la sonde"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Failed to run job"
@@ -912,6 +938,10 @@ msgstr "Détails de la sonde"
 msgid "Monitor down"
 msgstr "Sonde hors service"
 
+#: src/components/routes/monitors.tsx
+msgid "Monitor moved"
+msgstr "Sonde déplacée"
+
 #: src/components/notification-log-toasts.tsx
 msgid "Monitor recovered"
 msgstr "Sonde rétablie"
@@ -928,6 +958,10 @@ msgstr "Sonde mise à jour"
 #: src/components/routes/monitors.tsx
 msgid "Monitors"
 msgstr "Sondes"
+
+#: src/components/routes/monitors.tsx
+msgid "Move to"
+msgstr "Déplacer vers"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "My Slack alerts"
@@ -986,6 +1020,7 @@ msgstr "Aucune donnée"
 msgid "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
 msgstr "Aucune configuration externe n'est requise. Les événements correspondants apparaîtront comme des notifications intégrées pour le propriétaire de la règle."
 
+#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
@@ -1553,6 +1588,11 @@ msgstr "Ensuite, connectez-vous au backend et réinitialisez le mot de passe de 
 #: src/components/login/auth-form.tsx
 msgid "This application supports OpenID Connect and many OAuth2 authentication providers."
 msgstr "Cette application prend en charge OpenID Connect et de nombreux fournisseurs OAuth2."
+
+#. placeholder {0}: deleteGroupConfirm.monitors.length
+#: src/components/routes/monitors.tsx
+msgid "This group contains {0} monitor(s). They will be moved to No group."
+msgstr "Ce dossier contient {0} sonde(s). Elles seront déplacées vers Sans dossier."
 
 #: src/components/routes/settings/purge.tsx
 msgid "This will delete notification logs older than {notificationDays} days."

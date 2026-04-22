@@ -96,6 +96,10 @@ msgstr "Add group"
 msgid "Add monitor"
 msgstr "Add monitor"
 
+#: src/components/routes/monitors.tsx
+msgid "Add monitor here"
+msgstr "Add monitor here"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Add rule"
 msgstr "Add rule"
@@ -212,6 +216,7 @@ msgstr "Blue line for successful checks, red background for down periods."
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
@@ -260,6 +265,10 @@ msgstr "Click \"Add monitor\" to start monitoring your services."
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
 msgstr "Click to copy"
+
+#: src/components/routes/monitors.tsx
+msgid "Collapse all"
+msgstr "Collapse all"
 
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/forgot-pass-form.tsx
@@ -418,6 +427,7 @@ msgid "Define when and where notifications are sent."
 msgstr "Define when and where notifications are sent."
 
 #: src/components/routes/monitors.tsx
+#: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Delete"
@@ -451,6 +461,10 @@ msgstr "Delete all probe history?"
 msgid "Delete group"
 msgstr "Delete group"
 
+#: src/components/routes/monitors.tsx
+msgid "Delete group?"
+msgstr "Delete group?"
+
 #: src/components/routes/settings/purge.tsx
 msgid "Delete monitoring events older than the chosen number of days, or wipe the entire probe history."
 msgstr "Delete monitoring events older than the chosen number of days, or wipe the entire probe history."
@@ -462,6 +476,10 @@ msgstr "Delete notification delivery logs older than the chosen number of days, 
 #: src/components/routes/settings/jobs.tsx
 msgid "Deletes old probe and notification history based on retention settings."
 msgstr "Deletes old probe and notification history based on retention settings."
+
+#: src/components/routes/monitors.tsx
+msgid "Destination"
+msgstr "Destination"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Detail"
@@ -601,6 +619,10 @@ msgstr "Exited"
 msgid "Exited since"
 msgstr "Exited since"
 
+#: src/components/routes/monitors.tsx
+msgid "Expand all"
+msgstr "Expand all"
+
 #: src/components/routes/settings/agents.tsx
 msgid "Expires after one hour or on hub restart."
 msgstr "Expires after one hour or on hub restart."
@@ -624,6 +646,10 @@ msgstr "Failed to load jobs"
 #: src/components/routes/settings/purge.tsx
 msgid "Failed to load purge settings"
 msgstr "Failed to load purge settings"
+
+#: src/components/routes/monitors.tsx
+msgid "Failed to move monitor"
+msgstr "Failed to move monitor"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Failed to run job"
@@ -907,6 +933,10 @@ msgstr "Monitor details"
 msgid "Monitor down"
 msgstr "Monitor down"
 
+#: src/components/routes/monitors.tsx
+msgid "Monitor moved"
+msgstr "Monitor moved"
+
 #: src/components/notification-log-toasts.tsx
 msgid "Monitor recovered"
 msgstr "Monitor recovered"
@@ -923,6 +953,10 @@ msgstr "Monitor updated"
 #: src/components/routes/monitors.tsx
 msgid "Monitors"
 msgstr "Monitors"
+
+#: src/components/routes/monitors.tsx
+msgid "Move to"
+msgstr "Move to"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "My Slack alerts"
@@ -981,6 +1015,7 @@ msgstr "No data"
 msgid "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
 msgstr "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
 
+#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
@@ -1548,6 +1583,11 @@ msgstr "Then log into the backend and reset your user account password in the us
 #: src/components/login/auth-form.tsx
 msgid "This application supports OpenID Connect and many OAuth2 authentication providers."
 msgstr "This application supports OpenID Connect and many OAuth2 authentication providers."
+
+#. placeholder {0}: deleteGroupConfirm.monitors.length
+#: src/components/routes/monitors.tsx
+msgid "This group contains {0} monitor(s). They will be moved to No group."
+msgstr "This group contains {0} monitor(s). They will be moved to No group."
 
 #: src/components/routes/settings/purge.tsx
 msgid "This will delete notification logs older than {notificationDays} days."

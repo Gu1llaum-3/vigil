@@ -111,6 +111,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.GET("/monitors/{id}", h.getMonitor)
 	apiAuth.POST("/monitors", h.createMonitor).BindFunc(excludeReadOnlyRole)
 	apiAuth.PUT("/monitors/{id}", h.updateMonitor).BindFunc(excludeReadOnlyRole)
+	apiAuth.POST("/monitors/{id}/move", h.moveMonitor).BindFunc(excludeReadOnlyRole)
 	apiAuth.DELETE("/monitors/{id}", h.deleteMonitor).BindFunc(excludeReadOnlyRole)
 	apiAuth.GET("/monitors/{id}/events", h.getMonitorEvents)
 	// monitor groups
