@@ -20,36 +20,36 @@ type MonitorGroupResponse struct {
 
 // MonitorRecord is a monitor with its current status, returned by the API.
 type MonitorRecord struct {
-	ID               string              `json:"id"`
-	Name             string              `json:"name"`
-	Type             string              `json:"type"`
-	Group            string              `json:"group"`
-	Active           bool                `json:"active"`
-	Interval         int                 `json:"interval"`
-	Timeout          int                 `json:"timeout"`
-	URL              string              `json:"url,omitempty"`
-	HTTPMethod       string              `json:"http_method,omitempty"`
-	Keyword          string              `json:"keyword,omitempty"`
-	KeywordInvert    bool                `json:"keyword_invert,omitempty"`
-	Hostname         string              `json:"hostname,omitempty"`
-	Port             int                 `json:"port,omitempty"`
-	DNSHost          string              `json:"dns_host,omitempty"`
-	DNSType          string              `json:"dns_type,omitempty"`
-	DNSServer        string              `json:"dns_server,omitempty"`
-	PushToken        string              `json:"push_token,omitempty"`
-	PushURL          string              `json:"push_url,omitempty"`
-	PingCount        int                 `json:"ping_count,omitempty"`
-	PingPerRequestTimeout int            `json:"ping_per_request_timeout,omitempty"`
-	PingIPFamily     string              `json:"ping_ip_family,omitempty"`
-	FailureThreshold int                 `json:"failure_threshold"`
-	Status           int                 `json:"status"`
-	LastCheckedAt    string              `json:"last_checked_at"`
-	LastLatencyMs    int                 `json:"last_latency_ms"`
-	LastMsg          string              `json:"last_msg"`
-	AvgLatency24hMs  *float64            `json:"avg_latency_24h_ms,omitempty"`
-	Uptime24h        *float64            `json:"uptime_24h,omitempty"`
-	Uptime30d        *float64            `json:"uptime_30d,omitempty"`
-	RecentChecks     []MonitorCheckPoint `json:"recent_checks,omitempty"`
+	ID                    string              `json:"id"`
+	Name                  string              `json:"name"`
+	Type                  string              `json:"type"`
+	Group                 string              `json:"group"`
+	Active                bool                `json:"active"`
+	Interval              int                 `json:"interval"`
+	Timeout               int                 `json:"timeout"`
+	URL                   string              `json:"url,omitempty"`
+	HTTPMethod            string              `json:"http_method,omitempty"`
+	Keyword               string              `json:"keyword,omitempty"`
+	KeywordInvert         bool                `json:"keyword_invert,omitempty"`
+	Hostname              string              `json:"hostname,omitempty"`
+	Port                  int                 `json:"port,omitempty"`
+	DNSHost               string              `json:"dns_host,omitempty"`
+	DNSType               string              `json:"dns_type,omitempty"`
+	DNSServer             string              `json:"dns_server,omitempty"`
+	PushToken             string              `json:"push_token,omitempty"`
+	PushURL               string              `json:"push_url,omitempty"`
+	PingCount             int                 `json:"ping_count,omitempty"`
+	PingPerRequestTimeout int                 `json:"ping_per_request_timeout,omitempty"`
+	PingIPFamily          string              `json:"ping_ip_family,omitempty"`
+	FailureThreshold      int                 `json:"failure_threshold"`
+	Status                int                 `json:"status"`
+	LastCheckedAt         string              `json:"last_checked_at"`
+	LastLatencyMs         int                 `json:"last_latency_ms"`
+	LastMsg               string              `json:"last_msg"`
+	AvgLatency24hMs       *float64            `json:"avg_latency_24h_ms,omitempty"`
+	Uptime24h             *float64            `json:"uptime_24h,omitempty"`
+	Uptime30d             *float64            `json:"uptime_30d,omitempty"`
+	RecentChecks          []MonitorCheckPoint `json:"recent_checks,omitempty"`
 }
 
 type MonitorCheckPoint struct {
@@ -66,18 +66,6 @@ type monitorMetrics struct {
 }
 
 func (h *Hub) loadMonitorMetrics(m *core.Record) (*MonitorMetrics, error) {
-	var oldest struct {
-		CheckedAt time.Time `db:"checked_at"`
-	}
-	if err := h.DB().NewQuery(`
-		SELECT checked_at
-		FROM monitor_events
-		WHERE monitor = {:id}
-		ORDER BY checked_at ASC
-		LIMIT 1
-	`).Bind(dbx.Params{"id": m.Id}).One(&oldest); err != nil {
-		return &MonitorMetrics{}, nil
-	}
 	now := time.Now()
 
 	var row monitorMetrics
@@ -92,14 +80,14 @@ FROM monitor_events
 WHERE monitor = {:id} AND checked_at >= {:since30}`
 	if err := h.DB().NewQuery(query).Bind(dbx.Params{
 		"id":      m.Id,
-		"since24": now.Add(-24 * time.Hour),
-		"since30": now.Add(-30 * 24 * time.Hour),
+		"since24": now.Add(-24 * time.Hour).UTC(),
+		"since30": now.Add(-30 * 24 * time.Hour).UTC(),
 	}).One(&row); err != nil {
 		return nil, err
 	}
 
 	metrics := &MonitorMetrics{}
-	if !oldest.CheckedAt.IsZero() && oldest.CheckedAt.Before(now.Add(-24*time.Hour)) && row.Total24h > 0 {
+	if row.Total24h > 0 {
 		if m.GetString("type") != "push" {
 			avg := row.AvgLatency24hMs
 			metrics.AvgLatency24hMs = &avg
@@ -107,7 +95,7 @@ WHERE monitor = {:id} AND checked_at >= {:since30}`
 		uptime24 := float64(row.Up24h) / float64(row.Total24h) * 100
 		metrics.Uptime24h = &uptime24
 	}
-	if !oldest.CheckedAt.IsZero() && oldest.CheckedAt.Before(now.Add(-30*24*time.Hour)) && row.Total30d > 0 {
+	if row.Total30d > 0 {
 		uptime30 := float64(row.Up30d) / float64(row.Total30d) * 100
 		metrics.Uptime30d = &uptime30
 	}
@@ -151,7 +139,7 @@ func monitorToRecord(m *core.Record, appURL string, metrics *MonitorMetrics, rec
 			}
 			return m.GetInt("ping_per_request_timeout")
 		}(),
-		PingIPFamily:  m.GetString("ping_ip_family"),
+		PingIPFamily: m.GetString("ping_ip_family"),
 		FailureThreshold: func() int {
 			if raw := m.Get("failure_threshold"); raw == nil {
 				return 3

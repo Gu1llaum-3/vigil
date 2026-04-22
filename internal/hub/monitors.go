@@ -167,7 +167,7 @@ func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latency
 		event.Set("status", status)
 		event.Set("latency_ms", latencyMs)
 		event.Set("msg", msg)
-		event.Set("checked_at", time.Now())
+		event.Set("checked_at", time.Now().UTC())
 		if saveErr := ms.hub.SaveNoValidate(event); saveErr != nil {
 			slog.Warn("Failed to save monitor event", "monitor", monitorID, "err", saveErr)
 		}

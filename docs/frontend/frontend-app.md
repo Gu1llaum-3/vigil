@@ -197,7 +197,7 @@ Monitor-related TypeScript types live in `internal/site/src/lib/monitor-types.ts
 For the `ping` type, the monitors UI reuses the existing `hostname` field and lets the backend measure ICMP latency from the hub.
 The phase 1 advanced options exposed in the form are `count`, per-request timeout, and IP family selection (`Auto`, `IPv4`, `IPv6`).
 
-Rolling monitor metrics can render as `N/A` until the window has enough check history.
+Rolling monitor metrics render as `N/A` only when no events exist in the window. As soon as at least one event is recorded within the 24h or 30d window, the corresponding metric is shown.
 
 ## Settings Area
 

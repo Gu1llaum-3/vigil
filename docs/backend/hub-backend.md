@@ -350,7 +350,7 @@ Those historical `monitor_events` records are also used to derive rolling stats 
 - `uptime_30d`
 - `recent_checks` (last 10 statuses for the timeline bars in the table)
 
-The rolling uptime and average latency values stay unavailable until the monitor has enough history to cover the full window, so the frontend can show `N/A` instead of a misleading partial value.
+The rolling uptime and average latency values are computed over the available events in each window. They are exposed as soon as at least one event exists in the window (`total > 0`), so the frontend shows real data immediately. `N/A` is only shown when there are no events at all for the window. `avg_latency_24h_ms` is never set for `push`-type monitors.
 
 The monitor detail page uses the same history data through:
 
