@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 const (
@@ -31,6 +32,10 @@ const (
 	imageAuditStatusUnknown         = "unknown"
 	imageAuditStatusUnsupported     = "unsupported"
 	imageAuditStatusCheckFailed     = "check_failed"
+
+	imageAuditLineStatusPatchAvailable = "patch_available"
+	imageAuditLineStatusMinorAvailable = "minor_available"
+	imageAuditLineStatusTagRebuilt     = "tag_rebuilt"
 )
 
 type ContainerImageAudit struct {
@@ -45,6 +50,12 @@ type ContainerImageAudit struct {
 	LatestImageID string `json:"latest_image_id"`
 	LatestTag     string `json:"latest_tag"`
 	LatestDigest  string `json:"latest_digest"`
+	LineStatus    string `json:"line_status,omitempty"`
+	LineLatestTag string `json:"line_latest_tag,omitempty"`
+	SameMajorTag  string `json:"same_major_latest_tag,omitempty"`
+	OverallTag    string `json:"overall_latest_tag,omitempty"`
+	NewMajorTag   string `json:"new_major_tag,omitempty"`
+	HasMajorUpdate bool `json:"major_update_available,omitempty"`
 	CheckedAt     string `json:"checked_at"`
 	Error         string `json:"error,omitempty"`
 }
@@ -68,9 +79,15 @@ type imageAuditTarget struct {
 type imageAuditResult struct {
 	Target        imageAuditTarget
 	Status        string
+	LineStatus    string
 	LatestImageID string
 	LatestTag     string
 	LatestDigest  string
+	LineLatestTag string
+	SameMajorTag  string
+	OverallTag    string
+	NewMajorTag   string
+	HasMajorUpdate bool
 	CheckedAt     time.Time
 	Error         string
 }
@@ -168,53 +185,117 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 		remoteDigest, err := registryClient.ResolvedDigest(ctx, target.CurrentRef, target.Architecture)
 		if err != nil {
 			result.Status = imageAuditStatusCheckFailed
+			result.LineStatus = imageAuditStatusCheckFailed
 			result.Error = err.Error()
 			return result
 		}
 		result.LatestTag = target.Tag
+		result.LineLatestTag = target.Tag
+		result.SameMajorTag = target.Tag
+		result.OverallTag = target.Tag
 		result.LatestDigest = remoteDigest
 		result.LatestImageID = remoteDigest
 		if target.LocalImageID == "" {
 			result.Status = imageAuditStatusUnknown
+			result.LineStatus = imageAuditStatusUnknown
 			return result
 		}
 		if target.LocalImageID == remoteDigest {
 			result.Status = imageAuditStatusUpToDate
+			result.LineStatus = imageAuditStatusUpToDate
 		} else {
 			result.Status = imageAuditStatusUpdateAvailable
+			result.LineStatus = imageAuditStatusUpdateAvailable
 		}
 		return result
 	case imageAuditPolicySemverMajor, imageAuditPolicySemverMinor:
 		currentVersion, ok := parseNumericVersion(target.Tag)
 		if !ok {
 			result.Status = imageAuditStatusUnsupported
+			result.LineStatus = imageAuditStatusUnsupported
 			return result
 		}
 		tags, err := registryClient.ListTags(ctx, fmt.Sprintf("%s/%s", target.Registry, target.Repository))
 		if err != nil {
 			result.Status = imageAuditStatusCheckFailed
+			result.LineStatus = imageAuditStatusCheckFailed
 			result.Error = err.Error()
 			return result
 		}
-		candidateTag, found := selectAuditTag(tags, currentVersion, target.Policy)
-		if !found {
-			result.Status = imageAuditStatusUpToDate
-			result.LatestTag = target.Tag
-			return result
+		lineTag, foundLine := selectAuditTag(tags, target.Tag, currentVersion, target.Policy)
+		sameMajorTag, _ := selectAuditTag(tags, target.Tag, currentVersion, imageAuditPolicySemverMajor)
+		overallTag, overallVersion, foundOverall := selectLatestSemverTag(tags)
+		if !foundOverall {
+			overallTag = target.Tag
 		}
-		result.LatestTag = candidateTag
-		if candidateTag != target.Tag {
+
+		result.LatestTag = lineTag
+		result.LineLatestTag = lineTag
+		result.SameMajorTag = sameMajorTag
+		result.OverallTag = overallTag
+		if currentVersion.Parts < 3 {
+			remoteDigest, err := registryClient.ResolvedDigest(ctx, target.CurrentRef, target.Architecture)
+			if err != nil {
+				result.Status = imageAuditStatusCheckFailed
+				result.LineStatus = imageAuditStatusCheckFailed
+				result.Error = err.Error()
+				return result
+			}
+			result.LatestDigest = remoteDigest
+			result.LatestImageID = remoteDigest
+			if target.LocalImageID == "" {
+				result.Status = imageAuditStatusUnknown
+				result.LineStatus = imageAuditStatusUnknown
+			} else if target.LocalImageID == remoteDigest {
+				result.Status = imageAuditStatusUpToDate
+				result.LineStatus = imageAuditStatusUpToDate
+			} else {
+				result.Status = imageAuditStatusUpdateAvailable
+				if target.Policy == imageAuditPolicySemverMajor {
+					result.LineStatus = imageAuditLineStatusMinorAvailable
+				} else {
+					result.LineStatus = imageAuditLineStatusPatchAvailable
+				}
+			}
+		} else if foundLine {
 			result.Status = imageAuditStatusUpdateAvailable
+			result.LineStatus = imageAuditLineStatusPatchAvailable
 		} else {
-			result.Status = imageAuditStatusUpToDate
+			remoteDigest, err := registryClient.ResolvedDigest(ctx, target.CurrentRef, target.Architecture)
+			if err != nil {
+				result.Status = imageAuditStatusCheckFailed
+				result.LineStatus = imageAuditStatusCheckFailed
+				result.Error = err.Error()
+				return result
+			}
+			result.LatestDigest = remoteDigest
+			result.LatestImageID = remoteDigest
+			if target.LocalImageID == "" {
+				result.Status = imageAuditStatusUnknown
+				result.LineStatus = imageAuditStatusUnknown
+			} else if target.LocalImageID == remoteDigest {
+				result.Status = imageAuditStatusUpToDate
+				result.LineStatus = imageAuditStatusUpToDate
+			} else {
+				result.Status = imageAuditStatusUpdateAvailable
+				result.LineStatus = imageAuditLineStatusTagRebuilt
+			}
 		}
-		candidateDigest, err := registryClient.HeadDigest(ctx, fmt.Sprintf("%s/%s:%s", target.Registry, target.Repository, candidateTag))
+		if foundOverall && overallVersion.Major > currentVersion.Major {
+			result.HasMajorUpdate = true
+			result.NewMajorTag = overallTag
+		}
+		candidateDigest, err := registryClient.HeadDigest(ctx, fmt.Sprintf("%s/%s:%s", target.Registry, target.Repository, lineTag))
 		if err == nil {
 			result.LatestDigest = candidateDigest
+			if result.LatestImageID == "" {
+				result.LatestImageID = candidateDigest
+			}
 		}
 		return result
 	default:
 		result.Status = imageAuditStatusUnsupported
+		result.LineStatus = imageAuditStatusUnsupported
 		return result
 	}
 }
@@ -278,12 +359,18 @@ func (h *Hub) upsertContainerImageAudit(result imageAuditResult) error {
 	rec.Set("checked_at", result.CheckedAt.UTC().Format(time.RFC3339))
 	rec.Set("error", result.Error)
 	rec.Set("details", map[string]any{
-		"current_ref":     result.Target.CurrentRef,
-		"local_image_id":  result.Target.LocalImageID,
-		"local_digest":    result.Target.LocalDigest,
-		"latest_image_id": result.LatestImageID,
-		"latest_tag":      result.LatestTag,
-		"latest_digest":   result.LatestDigest,
+		"current_ref":            result.Target.CurrentRef,
+		"local_image_id":         result.Target.LocalImageID,
+		"local_digest":           result.Target.LocalDigest,
+		"latest_image_id":        result.LatestImageID,
+		"latest_tag":             result.LatestTag,
+		"latest_digest":          result.LatestDigest,
+		"line_status":            result.LineStatus,
+		"line_latest_tag":        result.LineLatestTag,
+		"same_major_latest_tag":  result.SameMajorTag,
+		"overall_latest_tag":     result.OverallTag,
+		"new_major_tag":          result.NewMajorTag,
+		"major_update_available": result.HasMajorUpdate,
 	})
 	return h.SaveNoValidate(rec)
 }
@@ -397,7 +484,7 @@ func normalizeImageAuditRef(raw string) (registry, repository, tag, policy strin
 	if version.Parts == 2 {
 		return registry, repository, tag, imageAuditPolicySemverMinor, nil
 	}
-	return registry, repository, tag, imageAuditPolicySemverMajor, nil
+	return registry, repository, tag, imageAuditPolicySemverMinor, nil
 }
 
 func normalizeRegistry(registry string) string {
@@ -443,9 +530,10 @@ func parseNumericVersion(tag string) (numericVersion, bool) {
 	return numericVersion{Major: values[0], Minor: values[1], Patch: values[2], Parts: len(parts)}, true
 }
 
-func selectAuditTag(tags []string, current numericVersion, policy string) (string, bool) {
+func selectAuditTag(tags []string, currentTag string, current numericVersion, policy string) (string, bool) {
 	best := current
-	bestTag := ""
+	bestTag := currentTag
+	found := false
 	for _, tag := range tags {
 		candidate, ok := parseNumericVersion(tag)
 		if !ok {
@@ -466,12 +554,28 @@ func selectAuditTag(tags []string, current numericVersion, policy string) (strin
 		if compareNumericVersions(candidate, best) > 0 {
 			best = candidate
 			bestTag = tag
+			found = true
 		}
 	}
-	if bestTag == "" {
-		return versionToTag(current), false
+	return bestTag, found
+}
+
+func selectLatestSemverTag(tags []string) (string, numericVersion, bool) {
+	var best numericVersion
+	bestTag := ""
+	found := false
+	for _, tag := range tags {
+		candidate, ok := parseNumericVersion(tag)
+		if !ok {
+			continue
+		}
+		if !found || compareNumericVersions(candidate, best) > 0 {
+			best = candidate
+			bestTag = tag
+			found = true
+		}
 	}
-	return bestTag, true
+	return bestTag, best, found
 }
 
 func compareNumericVersions(left, right numericVersion) int {
@@ -504,6 +608,7 @@ func containerImageAuditFromRecord(rec *core.Record) *ContainerImageAudit {
 	if status == "" {
 		return nil
 	}
+	details := auditDetailsMap(rec.Get("details"))
 	return &ContainerImageAudit{
 		Status:        status,
 		Policy:        rec.GetString("policy"),
@@ -516,9 +621,59 @@ func containerImageAuditFromRecord(rec *core.Record) *ContainerImageAudit {
 		LatestImageID: rec.GetString("latest_image_id"),
 		LatestTag:     rec.GetString("latest_tag"),
 		LatestDigest:  rec.GetString("latest_digest"),
+		LineStatus:    stringDetail(details, "line_status"),
+		LineLatestTag: firstNonEmpty(stringDetail(details, "line_latest_tag"), rec.GetString("latest_tag")),
+		SameMajorTag:  stringDetail(details, "same_major_latest_tag"),
+		OverallTag:    stringDetail(details, "overall_latest_tag"),
+		NewMajorTag:   stringDetail(details, "new_major_tag"),
+		HasMajorUpdate: boolDetail(details, "major_update_available"),
 		CheckedAt:     rec.GetString("checked_at"),
 		Error:         rec.GetString("error"),
 	}
+}
+
+func auditDetailsMap(raw any) map[string]any {
+	if raw == nil {
+		return nil
+	}
+	if details, ok := raw.(map[string]any); ok {
+		return details
+	}
+	var payload []byte
+	switch value := raw.(type) {
+	case []byte:
+		payload = value
+	case types.JSONRaw:
+		payload = []byte(value)
+	case string:
+		payload = []byte(value)
+	default:
+		return nil
+	}
+	if len(payload) == 0 {
+		return nil
+	}
+	var details map[string]any
+	if err := json.Unmarshal(payload, &details); err != nil {
+		return nil
+	}
+	return details
+}
+
+func stringDetail(details map[string]any, key string) string {
+	if details == nil {
+		return ""
+	}
+	value, _ := details[key].(string)
+	return value
+}
+
+func boolDetail(details map[string]any, key string) bool {
+	if details == nil {
+		return false
+	}
+	value, _ := details[key].(bool)
+	return value
 }
 
 func auditMap(records []*core.Record) map[string]*ContainerImageAudit {

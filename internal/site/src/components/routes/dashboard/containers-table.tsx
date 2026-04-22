@@ -10,7 +10,7 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table"
-import { ChevronDownIcon } from "lucide-react"
+import { ChevronDownIcon, PartyPopperIcon } from "lucide-react"
 import { memo, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -157,48 +157,93 @@ function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 		)
 	}
 
+	const lineStatus = audit.line_status || audit.status
+	const lineLatestTag = audit.line_latest_tag || audit.latest_tag || ""
+	const sameMajorTag = audit.same_major_latest_tag || ""
+	const overallTag = audit.overall_latest_tag || ""
+	const showLineTarget =
+		(lineStatus === "patch_available" || lineStatus === "minor_available" || audit.status === "update_available") &&
+		lineLatestTag &&
+		lineLatestTag !== audit.tag
+	const showSameMajorTarget = sameMajorTag !== "" && sameMajorTag !== lineLatestTag
+	const showOverallTarget = overallTag !== "" && overallTag !== sameMajorTag && overallTag !== lineLatestTag
+
 	const cls =
-		audit.status === "up_to_date"
+		lineStatus === "up_to_date"
 			? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-			: audit.status === "update_available"
+			: lineStatus === "patch_available" || lineStatus === "minor_available" || lineStatus === "tag_rebuilt" || audit.status === "update_available"
 				? "border-amber-500/30 bg-amber-500/10 text-amber-400"
 				: audit.status === "check_failed"
 					? "border-red-500/30 bg-red-500/10 text-red-400"
 					: "border-border/50 text-muted-foreground"
 
 	const label =
-		audit.status === "up_to_date"
+		lineStatus === "up_to_date"
 			? t`Up to date`
-			: audit.status === "update_available"
-				? t`Update available`
-				: audit.status === "unsupported"
-					? t`Unsupported`
-					: audit.status === "check_failed"
-						? t`Check failed`
-						: t`Unknown`
+			: lineStatus === "patch_available"
+				? t`Patch available`
+				: lineStatus === "minor_available"
+					? t`Minor available`
+					: lineStatus === "tag_rebuilt"
+						? t`Tag rebuilt`
+					: audit.status === "update_available"
+						? t`Update available`
+					: audit.status === "unsupported"
+						? t`Unsupported`
+						: audit.status === "check_failed"
+							? t`Check failed`
+							: t`Unknown`
 
 	const rows: Array<{ label: string; value: string }> = [
 		{ label: t`Policy`, value: audit.policy || "—" },
 		{ label: t`Current`, value: audit.current_ref || container.image_ref || container.image || "—" },
-		{ label: t`Local image id`, value: audit.local_image_id || "—" },
-		{ label: t`Latest image id`, value: audit.latest_image_id || "—" },
-		{ label: t`Latest tag`, value: audit.latest_tag || "—" },
-		{ label: t`Checked`, value: audit.checked_at ? new Date(audit.checked_at).toLocaleString() : "—" },
 	]
+	if (lineLatestTag) {
+		rows.push({ label: t`Latest in line`, value: lineLatestTag })
+	}
+	if (showSameMajorTarget) {
+		rows.push({ label: t`Latest same major`, value: sameMajorTag })
+	}
+	if (showOverallTarget) {
+		rows.push({ label: t`Latest overall`, value: overallTag })
+	}
+	if (audit.local_image_id) {
+		rows.push({ label: t`Local image id`, value: audit.local_image_id })
+	}
+	if (audit.latest_image_id) {
+		rows.push({ label: t`Latest image id`, value: audit.latest_image_id })
+	}
+	rows.push({ label: t`Checked`, value: audit.checked_at ? new Date(audit.checked_at).toLocaleString() : "—" })
 	if (audit.error) {
 		rows.push({ label: t`Error`, value: audit.error })
 	}
 
 	return (
-		<div className="group flex items-center">
+		<div className="group flex flex-wrap items-center gap-1.5">
 			<Badge variant="outline" className={cn("text-[10px]", cls)}>
 				{label}
 			</Badge>
+			{showLineTarget && (
+				<Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 font-mono text-[10px] text-amber-300">
+					{lineLatestTag}
+				</Badge>
+			)}
+			{showSameMajorTarget && (
+				<Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 font-mono text-[10px] text-violet-300">
+					{sameMajorTag}
+				</Badge>
+			)}
+			{audit.major_update_available && audit.new_major_tag && (
+				<Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 font-mono text-[10px] text-sky-300">
+					<PartyPopperIcon className="mr-1 size-3" aria-hidden="true" />
+					<span>{audit.new_major_tag}</span>
+				</Badge>
+			)}
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<button
 						type="button"
-						className="ml-1.5 inline-flex size-[15px] shrink-0 cursor-default items-center justify-center rounded-full border border-border/50 bg-background/80 text-[9px] font-bold text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 hover:border-border hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
+						className="inline-flex size-[15px] shrink-0 cursor-default items-center justify-center rounded-full border border-border/50 bg-background/80 text-[9px] font-bold text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 hover:border-border hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
 						onClick={(e) => e.stopPropagation()}
 						tabIndex={-1}
 					>
@@ -291,7 +336,10 @@ export const ContainersTable = memo(function ContainersTable({
 				result = containers.filter((c) => c.status === "created")
 				break
 			case "updates":
-				result = containers.filter((c) => c.image_audit?.status === "update_available")
+				result = containers.filter((c) => {
+					const lineStatus = c.image_audit?.line_status || c.image_audit?.status
+					return lineStatus === "patch_available" || lineStatus === "minor_available" || lineStatus === "update_available"
+				})
 				break
 		}
 		if (!search) return result

@@ -3,6 +3,9 @@ services:
     build:
       context: ../../..
       dockerfile: internal/dockerfile_hub
+      args:
+        GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+        GOSUMDB: ${GOSUMDB:-sum.golang.org}
     image: vigil:dev
     container_name: vigil
     restart: unless-stopped

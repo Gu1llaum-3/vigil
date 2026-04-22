@@ -218,7 +218,14 @@ The `Unknown / Pending` state is used when update data exists but the agent coul
 
 Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`, including the optional per-container `image_audit` block merged from the backend `container_image_audits` collection.
 
-The containers table remains on the dashboard route. It now exposes an additional `Updates` chip and an `Image audit` column so operators can filter containers with newer public image tags available without leaving the main fleet view.
+The containers table remains on the dashboard route. It exposes an `Updates` chip and an `Image audit` column so operators can filter containers that are behind in their current update line without leaving the main fleet view.
+
+The image-audit cell now distinguishes:
+
+- a primary line status such as `Up to date`, `Patch available`, or `Minor available`
+- an optional secondary badge when a newer major exists
+
+The tooltip expands that summary with `Current`, `Latest in line`, `Latest same major`, and `Latest overall` so a pinned tag can still be shown as current in its patch line while surfacing a future major upgrade path.
 
 `chart.js` and `react-chartjs-2` are added dependencies. They are used only within the dashboard route and should not be imported in other parts of the application.
 

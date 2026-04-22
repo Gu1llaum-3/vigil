@@ -569,9 +569,16 @@ Tag selection rules are intentionally simple:
 - `latest` uses `digest_latest` and compares the container's current local image ID with the remote digest resolved for the same tag and platform
 - one-part numeric tags such as `15` use `semver_major` and track the newest `15.x.x`
 - two-part numeric tags such as `15.2` use `semver_minor` and track the newest `15.2.x`
-- three-part numeric tags such as `15.2.3` also use `semver_major` and track the newest `15.x.x`
+- three-part numeric tags such as `15.2.3` also use `semver_minor` and track the newest `15.2.x`
 
-That last rule means a container pinned to `ghcr.io/mealie-recipes/mealie:v2.2.0` is expected to compare against the latest `v2.x.x` tag, not only `v2.2.x`.
+For semver-like tags, the backend now separates two concepts:
+
+- the primary line status answers whether the container is current within its own line (`15` -> latest `15.x.x`, `15.2` or `15.2.3` -> latest `15.2.x`)
+- the audit also records the latest tag in the same major and the latest overall tag so the UI can show that a newer major exists without marking the current patch line as outdated
+
+Example: `ghcr.io/mealie-recipes/mealie:v2.2.5` can be `up_to_date` in its `v2.2.x` line while still surfacing `v3.15.2` as a newer major to plan for.
+
+For exact semver tags such as `1.2.5`, the audit also resolves the remote digest of that same tag. If the registry republishes `1.2.5` with a different image digest, Vigil marks it as a dedicated rebuilt-tag update instead of silently treating it as current.
 
 Admin job routes:
 

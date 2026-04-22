@@ -247,6 +247,7 @@ Defined in `internal/migrations/0_collections_snapshot_*.go`.
 | `notification_logs` | `pbc_6000000003` | Append-only delivery log written by dispatcher via `SaveNoValidate`. Includes `created_by` and `channel_kind` for frontend realtime toast filtering. Indexed on `(rule, sent_at)` and `(resource_id, sent_at)`, plus `(created_by, sent_at)` via migration `6_notification_in_app.go`. |
 | `data_retention_settings` | `pbc_6000000004` | Global singleton-like lifecycle settings for automatic retention and manual purge defaults. |
 | `scheduled_jobs` | `pbc_6000000005` | Admin-visible persisted state for registered scheduled jobs. Stores `key`, `schedule`, last run/success/error, last result payload, and duration. |
+| `container_image_audits` | `pbc_6000000006` | Latest read-only image audit result per `(agent, container_id)` for public Docker / GHCR images discovered in snapshots. Stores normalized image metadata, audit policy, status, latest candidate tag/digest, and last check error/timestamp. Created by migration `13_create_container_image_audits.go`. |
 
 **Adding a collection:**
 1. Edit the JSON in the migration file — or create a new migration file

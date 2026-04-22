@@ -50,7 +50,7 @@ func TestNormalizeImageAuditRef(t *testing.T) {
 	}{
 		{name: "docker hub latest", input: "nginx:latest", registry: "docker.io", repository: "library/nginx", tag: "latest", policy: imageAuditPolicyDigestLatest},
 		{name: "docker hub major", input: "postgres:15", registry: "docker.io", repository: "library/postgres", tag: "15", policy: imageAuditPolicySemverMajor},
-		{name: "docker hub three-part tag stays within major", input: "postgres:15.2.3", registry: "docker.io", repository: "library/postgres", tag: "15.2.3", policy: imageAuditPolicySemverMajor},
+		{name: "docker hub three-part tag stays within patch line", input: "postgres:15.2.3", registry: "docker.io", repository: "library/postgres", tag: "15.2.3", policy: imageAuditPolicySemverMinor},
 		{name: "ghcr public", input: "ghcr.io/example/app:1.4", registry: "ghcr.io", repository: "example/app", tag: "1.4", policy: imageAuditPolicySemverMinor},
 		{name: "unsupported registry", input: "quay.io/example/app:1.0.0", registry: "quay.io", repository: "example/app", tag: "1.0.0", policy: imageAuditPolicyUnsupported},
 		{name: "unsupported tag", input: "nginx:stable-alpine", registry: "docker.io", repository: "library/nginx", tag: "stable-alpine", policy: imageAuditPolicyUnsupported},
@@ -71,13 +71,13 @@ func TestNormalizeImageAuditRef(t *testing.T) {
 func TestSelectAuditTag(t *testing.T) {
 	current, ok := parseNumericVersion("15.2.3")
 	require.True(t, ok)
-	tag, found := selectAuditTag([]string{"15.2.0", "15.2.4", "15.3.0", "16.0.0"}, current, imageAuditPolicySemverMinor)
+	tag, found := selectAuditTag([]string{"15.2.0", "15.2.4", "15.3.0", "16.0.0"}, "15.2.3", current, imageAuditPolicySemverMinor)
 	require.True(t, found)
 	require.Equal(t, "15.2.4", tag)
 
 	current, ok = parseNumericVersion("15")
 	require.True(t, ok)
-	tag, found = selectAuditTag([]string{"15.1.0", "15.3.2", "16.0.0"}, current, imageAuditPolicySemverMajor)
+	tag, found = selectAuditTag([]string{"15.1.0", "15.3.2", "16.0.0"}, "15", current, imageAuditPolicySemverMajor)
 	require.True(t, found)
 	require.Equal(t, "15.3.2", tag)
 }
@@ -147,22 +147,101 @@ func TestResolveImageAuditSemverMinor(t *testing.T) {
 		Policy:     imageAuditPolicySemverMinor,
 	})
 	require.Equal(t, imageAuditStatusUpdateAvailable, result.Status)
+	require.Equal(t, imageAuditLineStatusPatchAvailable, result.LineStatus)
 	require.Equal(t, "15.2.4", result.LatestTag)
+	require.Equal(t, "15.2.4", result.LineLatestTag)
+	require.Equal(t, "15.3.0", result.SameMajorTag)
+	require.Equal(t, "15.3.0", result.OverallTag)
 }
 
-func TestResolveImageAuditThreePartTagTracksLatestWithinMajor(t *testing.T) {
+func TestResolveImageAuditPinnedTagTracksPatchLineAndShowsNewMajor(t *testing.T) {
 	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
-		tags:        map[string][]string{"ghcr.io/mealie-recipes/mealie": {"v2.2.0", "v2.8.0", "v3.15.2"}},
-		headDigests: map[string]string{"ghcr.io/mealie-recipes/mealie:v2.8.0": "sha256:new"},
+		tags:        map[string][]string{"ghcr.io/mealie-recipes/mealie": {"v2.2.0", "v2.2.5", "v2.8.0", "v3.15.2"}},
+		headDigests: map[string]string{"ghcr.io/mealie-recipes/mealie:v2.2.5": "sha256:new"},
 	}, imageAuditTarget{
 		CurrentRef: "ghcr.io/mealie-recipes/mealie:v2.2.0",
 		Registry:   "ghcr.io",
 		Repository: "mealie-recipes/mealie",
 		Tag:        "v2.2.0",
-		Policy:     imageAuditPolicySemverMajor,
+		Policy:     imageAuditPolicySemverMinor,
 	})
 	require.Equal(t, imageAuditStatusUpdateAvailable, result.Status)
-	require.Equal(t, "v2.8.0", result.LatestTag)
+	require.Equal(t, imageAuditLineStatusPatchAvailable, result.LineStatus)
+	require.Equal(t, "v2.2.5", result.LatestTag)
+	require.Equal(t, "v2.2.5", result.LineLatestTag)
+	require.Equal(t, "v2.8.0", result.SameMajorTag)
+	require.Equal(t, "v3.15.2", result.OverallTag)
+	require.True(t, result.HasMajorUpdate)
+	require.Equal(t, "v3.15.2", result.NewMajorTag)
+}
+
+func TestResolveImageAuditUpToDatePatchLineStillShowsNewMajor(t *testing.T) {
+	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
+		tags:        map[string][]string{"ghcr.io/mealie-recipes/mealie": {"v2.2.5", "v2.8.0", "v3.15.2"}},
+		headDigests: map[string]string{"ghcr.io/mealie-recipes/mealie:v2.2.5": "sha256:current"},
+		resolvedDigests: map[string]string{"ghcr.io/mealie-recipes/mealie:v2.2.5|amd64": "sha256:current"},
+	}, imageAuditTarget{
+		CurrentRef: "ghcr.io/mealie-recipes/mealie:v2.2.5",
+		Registry:   "ghcr.io",
+		Repository: "mealie-recipes/mealie",
+		Tag:        "v2.2.5",
+		LocalImageID: "sha256:current",
+		Architecture: "amd64",
+		Policy:     imageAuditPolicySemverMinor,
+	})
+	require.Equal(t, imageAuditStatusUpToDate, result.Status)
+	require.Equal(t, imageAuditStatusUpToDate, result.LineStatus)
+	require.Equal(t, "v2.2.5", result.LineLatestTag)
+	require.Equal(t, "v2.8.0", result.SameMajorTag)
+	require.Equal(t, "v3.15.2", result.OverallTag)
+	require.True(t, result.HasMajorUpdate)
+	require.Equal(t, "v3.15.2", result.NewMajorTag)
+}
+
+func TestResolveImageAuditFloatingMinorTagUsesResolvedDigestForUpToDate(t *testing.T) {
+	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
+		tags: map[string][]string{"docker.io/library/nginx": {"1.29", "1.29.8", "1.30.0"}},
+		headDigests: map[string]string{"docker.io/library/nginx:1.29.8": "sha256:head-current"},
+		resolvedDigests: map[string]string{"docker.io/library/nginx:1.29|amd64": "sha256:current"},
+	}, imageAuditTarget{
+		CurrentRef:   "docker.io/library/nginx:1.29",
+		Registry:     "docker.io",
+		Repository:   "library/nginx",
+		Tag:          "1.29",
+		LocalImageID: "sha256:current",
+		Architecture: "amd64",
+		Policy:       imageAuditPolicySemverMinor,
+	})
+	require.Equal(t, imageAuditStatusUpToDate, result.Status)
+	require.Equal(t, imageAuditStatusUpToDate, result.LineStatus)
+	require.Equal(t, "1.29.8", result.LineLatestTag)
+	require.Equal(t, "1.30.0", result.SameMajorTag)
+	require.Equal(t, "1.30.0", result.OverallTag)
+	require.False(t, result.HasMajorUpdate)
+}
+
+func TestResolveImageAuditPinnedTagDetectsRebuiltDigest(t *testing.T) {
+	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
+		tags: map[string][]string{"docker.io/library/nginx": {"1.2.5", "1.8.0", "2.0.0"}},
+		headDigests: map[string]string{"docker.io/library/nginx:1.2.5": "sha256:remote-rebuilt"},
+		resolvedDigests: map[string]string{"docker.io/library/nginx:1.2.5|amd64": "sha256:remote-rebuilt"},
+	}, imageAuditTarget{
+		CurrentRef:   "docker.io/library/nginx:1.2.5",
+		Registry:     "docker.io",
+		Repository:   "library/nginx",
+		Tag:          "1.2.5",
+		LocalImageID: "sha256:local-old",
+		Architecture: "amd64",
+		Policy:       imageAuditPolicySemverMinor,
+	})
+	require.Equal(t, imageAuditStatusUpdateAvailable, result.Status)
+	require.Equal(t, imageAuditLineStatusTagRebuilt, result.LineStatus)
+	require.Equal(t, "1.2.5", result.LineLatestTag)
+	require.Equal(t, "1.8.0", result.SameMajorTag)
+	require.Equal(t, "2.0.0", result.OverallTag)
+	require.True(t, result.HasMajorUpdate)
+	require.Equal(t, "2.0.0", result.NewMajorTag)
+	require.Equal(t, "sha256:remote-rebuilt", result.LatestImageID)
 }
 
 func TestResolveImageAuditRegistryFailure(t *testing.T) {

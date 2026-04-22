@@ -877,8 +877,20 @@ msgid "Latest image id"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
-msgid "Latest tag"
+msgid "Latest in line"
 msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest overall"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest same major"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+#~ msgid "Latest tag"
+#~ msgstr ""
 
 #: src/components/routes/settings/general.tsx
 msgid "Layout width"
@@ -945,6 +957,10 @@ msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Method (default POST)"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Minor available"
 msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
@@ -1018,6 +1034,10 @@ msgstr ""
 #: src/components/routes/settings/jobs.tsx
 msgid "Never"
 msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+#~ msgid "New major"
+#~ msgstr ""
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Next"
@@ -1216,6 +1236,10 @@ msgstr "A jelszó legfeljebb 72 byte lehet."
 #: src/components/login/forgot-pass-form.tsx
 msgid "Password reset request received"
 msgstr "Jelszó-visszaállítási kérelmet kaptunk"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Patch available"
+msgstr ""
 
 #: src/components/routes/dashboard/charts.tsx
 msgid "Patch Status"
@@ -1600,6 +1624,10 @@ msgstr ""
 #: src/components/mode-toggle.tsx
 #: src/components/mode-toggle.tsx
 msgid "Switch theme"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Tag rebuilt"
 msgstr ""
 
 #: src/components/routes/monitors.tsx

@@ -90,6 +90,12 @@ export interface ContainerImageAudit {
 	latest_image_id: string
 	latest_tag: string
 	latest_digest: string
+	line_status?: string
+	line_latest_tag?: string
+	same_major_latest_tag?: string
+	overall_latest_tag?: string
+	new_major_tag?: string
+	major_update_available?: boolean
 	checked_at: string
 	error?: string
 }

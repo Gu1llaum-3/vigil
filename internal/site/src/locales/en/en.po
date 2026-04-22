@@ -872,8 +872,20 @@ msgid "Latest image id"
 msgstr "Latest image id"
 
 #: src/components/routes/dashboard/containers-table.tsx
-msgid "Latest tag"
-msgstr "Latest tag"
+msgid "Latest in line"
+msgstr "Latest in line"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest overall"
+msgstr "Latest overall"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest same major"
+msgstr "Latest same major"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#~ msgid "Latest tag"
+#~ msgstr "Latest tag"
 
 #: src/components/routes/settings/general.tsx
 msgid "Layout width"
@@ -941,6 +953,10 @@ msgstr "Method"
 #: src/components/routes/settings/notifications.tsx
 msgid "Method (default POST)"
 msgstr "Method (default POST)"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Minor available"
+msgstr "Minor available"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Monitor"
@@ -1013,6 +1029,10 @@ msgstr "Network"
 #: src/components/routes/settings/jobs.tsx
 msgid "Never"
 msgstr "Never"
+
+#: src/components/routes/dashboard/containers-table.tsx
+#~ msgid "New major"
+#~ msgstr "New major"
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Next"
@@ -1211,6 +1231,10 @@ msgstr "Password must be less than 72 bytes."
 #: src/components/login/forgot-pass-form.tsx
 msgid "Password reset request received"
 msgstr "Password reset request received"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Patch available"
+msgstr "Patch available"
 
 #: src/components/routes/dashboard/charts.tsx
 msgid "Patch Status"
@@ -1596,6 +1620,10 @@ msgstr "Swap"
 #: src/components/mode-toggle.tsx
 msgid "Switch theme"
 msgstr "Switch theme"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Tag rebuilt"
+msgstr "Tag rebuilt"
 
 #: src/components/routes/monitors.tsx
 msgid "Target"

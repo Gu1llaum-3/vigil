@@ -182,6 +182,7 @@ Important:
 
 - `supplemental/docker/hub/docker-compose.dev.yml` still runs the hub in production-style embedded-frontend mode; it does not proxy to Vite like `make dev-hub`
 - the Docker image now rebuilds `internal/site/dist` from `internal/site/src` during image build, so frontend source changes are picked up even if your local `dist/` is stale
+- if the Docker builder cannot resolve `storage.googleapis.com` during `go mod download`, retry with a direct Go module fetch path, for example: `GOPROXY=direct docker compose -f supplemental/docker/hub/docker-compose.dev.yml build --no-cache`; the Dockerfile now supports overriding `GOPROXY` and includes `git` in the Go builder stage for this fallback
 
 ### Release Verification
 
