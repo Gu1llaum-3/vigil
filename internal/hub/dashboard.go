@@ -19,20 +19,21 @@ const (
 
 // DashboardSummary holds fleet-wide KPI counters.
 type DashboardSummary struct {
-	TotalHosts               int                 `json:"total_hosts"`
-	ConnectedHosts           int                 `json:"connected_hosts"`
-	OfflineHosts             int                 `json:"offline_hosts"`
-	TotalMonitors            int                 `json:"total_monitors"`
-	UpMonitors               int                 `json:"up_monitors"`
-	HostsNeedingUpdates      int                 `json:"hosts_needing_updates"`
-	HostsNeedingReboot       int                 `json:"hosts_needing_reboot"`
-	TotalOutdatedPackages    int                 `json:"total_outdated_packages"`
-	TotalSecurityUpdates     int                 `json:"total_security_updates"`
-	TotalContainers          int                 `json:"total_containers"`
-	RunningContainers        int                 `json:"running_containers"`
-	InsecureRepositories     int                 `json:"insecure_repositories"`
-	OSDistribution           []DistributionEntry `json:"os_distribution"`
-	UpdateStatusDistribution []DistributionEntry `json:"update_status_distribution"`
+	TotalHosts                 int                 `json:"total_hosts"`
+	ConnectedHosts             int                 `json:"connected_hosts"`
+	OfflineHosts               int                 `json:"offline_hosts"`
+	TotalMonitors              int                 `json:"total_monitors"`
+	UpMonitors                 int                 `json:"up_monitors"`
+	HostsNeedingUpdates        int                 `json:"hosts_needing_updates"`
+	HostsNeedingReboot         int                 `json:"hosts_needing_reboot"`
+	TotalOutdatedPackages      int                 `json:"total_outdated_packages"`
+	TotalSecurityUpdates       int                 `json:"total_security_updates"`
+	TotalContainers            int                 `json:"total_containers"`
+	RunningContainers          int                 `json:"running_containers"`
+	ContainersWithImageUpdates int                 `json:"containers_with_image_updates"`
+	InsecureRepositories       int                 `json:"insecure_repositories"`
+	OSDistribution             []DistributionEntry `json:"os_distribution"`
+	UpdateStatusDistribution   []DistributionEntry `json:"update_status_distribution"`
 }
 
 // DistributionEntry is a label/value pair for chart data.
@@ -71,6 +72,7 @@ type ContainerFleetEntry struct {
 	HostName string `json:"host_name"`
 	HostIP   string `json:"host_ip"`
 	common.ContainerInfo
+	ImageAudit *ContainerImageAudit `json:"image_audit,omitempty"`
 }
 
 // getDashboard returns an aggregated view of all host snapshots.
@@ -99,6 +101,8 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 	// Fetch all snapshots
 	snapshotRecords, _ := h.FindAllRecords("host_snapshots")
 	monitorRecords, _ := h.FindAllRecords("monitors")
+	auditRecords, _ := loadContainerImageAuditRecords(h)
+	auditsByContainer := auditMap(auditRecords)
 
 	// Build hosts list and aggregations
 	var hosts []DashboardHost
@@ -163,11 +167,16 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 			summary.TotalContainers += snapshot.Docker.ContainerCount
 			summary.RunningContainers += snapshot.Docker.RunningCount
 			for _, c := range snapshot.Docker.Containers {
+				audit := auditsByContainer[auditContainerKey(agentId, c.ID)]
+				if audit != nil && audit.Status == imageAuditStatusUpdateAvailable {
+					summary.ContainersWithImageUpdates++
+				}
 				containers = append(containers, ContainerFleetEntry{
 					HostID:        agentId,
 					HostName:      agent.name,
 					HostIP:        snapshot.PrimaryIP,
 					ContainerInfo: c,
+					ImageAudit:    audit,
 				})
 			}
 		}

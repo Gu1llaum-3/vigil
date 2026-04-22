@@ -16,13 +16,13 @@ func TestDockerAvailable(t *testing.T) {
 }
 
 func TestCollectDockerUnavailable(t *testing.T) {
-	// If docker socket doesn't exist, state should be "unavailable"
+	// If docker socket doesn't exist, state should be "not_configured"
 	if DockerAvailable() {
 		t.Skip("Docker is available on this system — skipping unavailable test")
 	}
 	info, err := CollectDocker(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, "unavailable", info.State)
+	assert.Equal(t, "not_configured", info.State)
 	assert.Equal(t, 0, info.ContainerCount)
 }
 

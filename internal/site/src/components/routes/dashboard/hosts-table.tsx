@@ -61,19 +61,19 @@ function InfoBtn({ rows }: { rows: Array<{ label: string; value: string | number
 			<TooltipTrigger asChild>
 				<button
 					type="button"
-					className="ml-1.5 inline-flex size-[15px] shrink-0 cursor-default items-center justify-center rounded-full border border-border/50 text-[9px] font-bold text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:border-border hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
+					className="ml-1.5 inline-flex size-[15px] shrink-0 cursor-default items-center justify-center rounded-full border border-border/50 bg-background/80 text-[9px] font-bold text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 hover:border-border hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
 					onClick={(e) => e.stopPropagation()}
 					tabIndex={-1}
 				>
 					i
 				</button>
 			</TooltipTrigger>
-			<TooltipContent side="bottom" className="min-w-[170px] p-2.5">
+			<TooltipContent side="bottom" className="max-w-[min(32rem,calc(100vw-2rem))] min-w-[220px] p-2.5">
 				<div className="space-y-1.5">
 					{rows.map((r, i) => (
 						<div key={i} className="flex justify-between gap-4 text-xs">
 							<span className="text-muted-foreground">{r.label}</span>
-							<span className="text-right font-medium">{String(r.value)}</span>
+							<span className="max-w-[18rem] break-all text-right font-medium">{String(r.value)}</span>
 						</div>
 					))}
 				</div>
@@ -319,15 +319,15 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 				),
 				cell: ({ row: { original: h } }) => {
 					const docker = h.docker
-					if (!docker || docker.state === "not_installed")
+					if (!docker || docker.state === "not_configured" || docker.state === "cli_missing")
 						return <span className="text-xs text-muted-foreground">—</span>
-					if (docker.state === "daemon_unreachable") {
+					if (docker.state === "daemon_unreachable" || docker.state === "permission_denied" || docker.state === "error") {
 						return (
 							<div className="group flex items-center">
 								<Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
 									{t`Error`}
 								</Badge>
-								<InfoBtn rows={[{ label: t`State`, value: t`daemon unreachable` }]} />
+								<InfoBtn rows={[{ label: t`State`, value: docker.state.replace(/_/g, " ") }]} />
 							</div>
 						)
 					}

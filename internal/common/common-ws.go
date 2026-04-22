@@ -24,10 +24,10 @@ type HubRequest[T any] struct {
 
 // AgentResponse defines the structure for responses sent from agent to hub.
 type AgentResponse struct {
-	Id    *uint32         `cbor:"0,keyasint,omitempty"`
-	Error string          `cbor:"3,keyasint,omitempty,omitzero"`
+	Id    *uint32 `cbor:"0,keyasint,omitempty"`
+	Error string  `cbor:"3,keyasint,omitempty,omitzero"`
 	// Data is the generic response payload.
-	Data  cbor.RawMessage `cbor:"7,keyasint,omitempty,omitzero"`
+	Data cbor.RawMessage `cbor:"7,keyasint,omitempty,omitzero"`
 }
 
 // FingerprintRequest is sent by the hub to request agent fingerprint verification.
@@ -142,10 +142,15 @@ type DockerInfo struct {
 
 // ContainerInfo describes a single Docker container.
 type ContainerInfo struct {
-	ID         string `cbor:"id"          json:"id"`
-	Name       string `cbor:"name"        json:"name"`
-	Image      string `cbor:"image"       json:"image"`
-	Status     string `cbor:"status"      json:"status"`
-	StatusText string `cbor:"status_text" json:"status_text"`
-	Ports      string `cbor:"ports"       json:"ports"`
+	ID                    string   `cbor:"id"                     json:"id"`
+	Name                  string   `cbor:"name"                   json:"name"`
+	Image                 string   `cbor:"image"                  json:"image"`
+	ImageRef              string   `cbor:"image_ref"              json:"image_ref"`
+	ImageID               string   `cbor:"image_id"               json:"image_id"`
+	RepoDigests           []string `cbor:"repo_digests"           json:"repo_digests"`
+	CurrentRefImageID     string   `cbor:"current_ref_image_id"   json:"current_ref_image_id"`
+	CurrentRefRepoDigests []string `cbor:"current_ref_repo_digests" json:"current_ref_repo_digests"`
+	Status                string   `cbor:"status"                 json:"status"`
+	StatusText            string   `cbor:"status_text"            json:"status_text"`
+	Ports                 string   `cbor:"ports"                  json:"ports"`
 }

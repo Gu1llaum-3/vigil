@@ -435,6 +435,8 @@ Two hub files support snapshot collection and dashboard aggregation:
 
 The dashboard patch-status donut uses a strict priority order: `reboot_required`, `security_updates`, `stale_updates` (>30 days since last upgrade), `compliant`, then `unknown` when update data exists but the last upgrade time is not known.
 
+Docker inventory is still sourced from the latest `host_snapshots` record for each agent, but image freshness is now audited separately in the `container_image_audits` collection. `getDashboard()` merges the latest per-container audit result back into the flattened container list so the frontend stays on the same dashboard route.
+
 ### Periodic Snapshot Ticker
 
 At startup, `StartHub()` launches `startSnapshotTicker` as a background goroutine. The interval is read from the `SNAPSHOT_INTERVAL` env var (default: `15m`, minimum: `1m`). The goroutine is cancelled when the hub terminates via `OnTerminate`.
@@ -555,7 +557,21 @@ Global scheduled job state is stored in the `scheduled_jobs` collection. Each jo
 - `last_result`
 - `last_duration_ms`
 
-The current retention cleanup is one registered job (`vigilAutoRetention`) in this shared registry.
+The currently registered jobs are:
+
+- `vigilAutoRetention` — deletes old monitor and notification history according to retention settings
+- `vigilContainerImageAudit` — audits public Docker / GHCR image tags used by the current Docker container inventory and persists the result in `container_image_audits`
+
+The image-audit job is read-only: it does not ask agents to start, stop, or restart containers, and it does not mutate workloads on remote hosts.
+
+Tag selection rules are intentionally simple:
+
+- `latest` uses `digest_latest` and compares the container's current local image ID with the remote digest resolved for the same tag and platform
+- one-part numeric tags such as `15` use `semver_major` and track the newest `15.x.x`
+- two-part numeric tags such as `15.2` use `semver_minor` and track the newest `15.2.x`
+- three-part numeric tags such as `15.2.3` also use `semver_major` and track the newest `15.x.x`
+
+That last rule means a container pinned to `ghcr.io/mealie-recipes/mealie:v2.2.0` is expected to compare against the latest `v2.x.x` tag, not only `v2.2.x`.
 
 Admin job routes:
 

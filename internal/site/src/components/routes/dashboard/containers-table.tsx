@@ -53,6 +53,16 @@ function isStoppedContainer(status: string): boolean {
 	return status === "exited" || status === "dead"
 }
 
+function displayImageRef(container: ContainerFleetEntry): string {
+	if (container.image && !container.image.startsWith("sha256:")) {
+		return container.image
+	}
+	if (container.image_ref) {
+		return container.image_ref
+	}
+	return container.image || "—"
+}
+
 // ── sub-components ────────────────────────────────────────────────────────────
 
 function ContainerStatusBadge({ status }: { status: string }) {
@@ -114,19 +124,93 @@ function StatusCell({ container }: { container: ContainerFleetEntry }) {
 				<TooltipTrigger asChild>
 					<button
 						type="button"
-						className="ml-1.5 inline-flex size-[15px] shrink-0 cursor-default items-center justify-center rounded-full border border-border/50 text-[9px] font-bold text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:border-border hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
+						className="ml-1.5 inline-flex size-[15px] shrink-0 cursor-default items-center justify-center rounded-full border border-border/50 bg-background/80 text-[9px] font-bold text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 hover:border-border hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
 						onClick={(e) => e.stopPropagation()}
 						tabIndex={-1}
 					>
 						i
 					</button>
 				</TooltipTrigger>
-				<TooltipContent side="bottom" className="min-w-[190px] p-2.5">
+				<TooltipContent side="bottom" className="max-w-[min(32rem,calc(100vw-2rem))] min-w-[220px] p-2.5">
 					<div className="space-y-1.5">
 						{popoverRows.map((r, i) => (
 							<div key={i} className="flex justify-between gap-4 text-xs">
 								<span className="text-muted-foreground">{r.label}</span>
-								<span className="text-right font-medium">{r.value}</span>
+								<span className="max-w-[18rem] break-all text-right font-medium">{r.value}</span>
+							</div>
+						))}
+					</div>
+				</TooltipContent>
+			</Tooltip>
+		</div>
+	)
+}
+
+function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
+	const { t } = useLingui()
+	const audit = container.image_audit
+	if (!audit) {
+		return (
+			<Badge variant="outline" className="border-border/50 text-[10px] text-muted-foreground">
+				{t`Not checked`}
+			</Badge>
+		)
+	}
+
+	const cls =
+		audit.status === "up_to_date"
+			? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+			: audit.status === "update_available"
+				? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+				: audit.status === "check_failed"
+					? "border-red-500/30 bg-red-500/10 text-red-400"
+					: "border-border/50 text-muted-foreground"
+
+	const label =
+		audit.status === "up_to_date"
+			? t`Up to date`
+			: audit.status === "update_available"
+				? t`Update available`
+				: audit.status === "unsupported"
+					? t`Unsupported`
+					: audit.status === "check_failed"
+						? t`Check failed`
+						: t`Unknown`
+
+	const rows: Array<{ label: string; value: string }> = [
+		{ label: t`Policy`, value: audit.policy || "—" },
+		{ label: t`Current`, value: audit.current_ref || container.image_ref || container.image || "—" },
+		{ label: t`Local image id`, value: audit.local_image_id || "—" },
+		{ label: t`Latest image id`, value: audit.latest_image_id || "—" },
+		{ label: t`Latest tag`, value: audit.latest_tag || "—" },
+		{ label: t`Checked`, value: audit.checked_at ? new Date(audit.checked_at).toLocaleString() : "—" },
+	]
+	if (audit.error) {
+		rows.push({ label: t`Error`, value: audit.error })
+	}
+
+	return (
+		<div className="group flex items-center">
+			<Badge variant="outline" className={cn("text-[10px]", cls)}>
+				{label}
+			</Badge>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<button
+						type="button"
+						className="ml-1.5 inline-flex size-[15px] shrink-0 cursor-default items-center justify-center rounded-full border border-border/50 bg-background/80 text-[9px] font-bold text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 hover:border-border hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none"
+						onClick={(e) => e.stopPropagation()}
+						tabIndex={-1}
+					>
+						i
+					</button>
+				</TooltipTrigger>
+				<TooltipContent side="bottom" className="max-w-[min(36rem,calc(100vw-2rem))] min-w-[240px] p-2.5">
+					<div className="space-y-1.5">
+						{rows.map((r, i) => (
+							<div key={i} className="flex justify-between gap-4 text-xs">
+								<span className="text-muted-foreground">{r.label}</span>
+								<span className="max-w-[22rem] break-all text-right font-medium">{r.value}</span>
 							</div>
 						))}
 					</div>
@@ -175,6 +259,7 @@ export const ContainersTable = memo(function ContainersTable({
 			{ key: "restarting", label: t`Restarting` },
 			{ key: "paused", label: t`Paused` },
 			{ key: "created", label: t`Created` },
+			{ key: "updates", label: t`Updates` },
 		],
 		[t]
 	)
@@ -189,7 +274,7 @@ export const ContainersTable = memo(function ContainersTable({
 
 	const filteredContainers = useMemo(() => {
 		let result = containers
-		switch (chipFilter) {
+			switch (chipFilter) {
 			case "running":
 				result = containers.filter((c) => c.status === "running")
 				break
@@ -205,11 +290,25 @@ export const ContainersTable = memo(function ContainersTable({
 			case "created":
 				result = containers.filter((c) => c.status === "created")
 				break
+			case "updates":
+				result = containers.filter((c) => c.image_audit?.status === "update_available")
+				break
 		}
 		if (!search) return result
 		const q = search.toLowerCase()
 		return result.filter((c) =>
-			[c.host_name, c.host_ip, c.name, c.id, c.image, c.status_text, c.ports].some((v) => v?.toLowerCase().includes(q))
+			[
+				c.host_name,
+				c.host_ip,
+				c.name,
+				c.id,
+				c.image,
+				c.image_ref,
+				c.status_text,
+				c.ports,
+				c.image_audit?.latest_tag,
+				c.image_audit?.status,
+			].some((v) => v?.toLowerCase().includes(q))
 		)
 	}, [containers, chipFilter, search])
 
@@ -257,13 +356,23 @@ export const ContainersTable = memo(function ContainersTable({
 			},
 			{
 				id: "image",
-				accessorFn: (c) => c.image || "",
+				accessorFn: (c) => displayImageRef(c),
 				header: ({ column }) => (
 					<SortBtn column={column}>
 						<Trans>Image</Trans>
 					</SortBtn>
 				),
-				cell: ({ row: { original: c } }) => <span className="font-mono text-xs">{c.image || "—"}</span>,
+				cell: ({ row: { original: c } }) => <span className="font-mono text-xs">{displayImageRef(c)}</span>,
+			},
+			{
+				id: "image_audit",
+				accessorFn: (c) => c.image_audit?.status || "not_checked",
+				header: ({ column }) => (
+					<SortBtn column={column}>
+						<Trans>Image audit</Trans>
+					</SortBtn>
+				),
+				cell: ({ row: { original: c } }) => <ImageAuditBadge container={c} />,
 			},
 			{
 				id: "status_rank",

@@ -255,9 +255,17 @@ msgstr ""
 msgid "Check {email} for a reset link."
 msgstr "Провери {email} за линк за нулиране."
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Check failed"
+msgstr ""
+
 #: src/components/routes/settings/layout.tsx
 msgid "Check logs for more details."
 msgstr "Провери log-овете за повече информация."
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Checked"
+msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Checks loaded"
@@ -389,13 +397,17 @@ msgstr ""
 msgid "Critical alerts"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Current"
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Current latency"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "daemon unreachable"
-msgstr ""
+#~ msgid "daemon unreachable"
+#~ msgstr ""
 
 #: src/components/routes/home.tsx
 #: src/components/routes/home.tsx
@@ -592,6 +604,7 @@ msgstr "Въведете Вашата еднократна парола."
 msgid "Ephemeral"
 msgstr "Ефимерен"
 
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/agents.tsx
@@ -778,6 +791,10 @@ msgstr "Ако си загубил паролата до администрат�
 msgid "Image"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Image audit"
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Interval"
 msgstr ""
@@ -855,6 +872,14 @@ msgstr ""
 msgid "Latency history"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest image id"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest tag"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Layout width"
 msgstr "Ширина на макета"
@@ -877,6 +902,10 @@ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Loading purge settings…"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Local image id"
 msgstr ""
 
 #: src/components/navbar.tsx
@@ -1057,6 +1086,10 @@ msgstr "Няма намерени резултати."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "No rules configured. Add a rule to start routing notifications."
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Not checked"
 msgstr ""
 
 #: src/components/notification-log-toasts.tsx
@@ -1241,6 +1274,10 @@ msgstr "Моля влез отново"
 #: src/components/login/login.tsx
 msgid "Please sign in to your account"
 msgstr "Моля влез в акаунта ти"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Policy"
+msgstr ""
 
 #: src/components/routes/monitors.tsx
 msgid "Port"
@@ -1693,6 +1730,7 @@ msgid "unknown"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Unknown"
@@ -1700,6 +1738,10 @@ msgstr ""
 
 #: src/components/routes/dashboard/charts.tsx
 msgid "Unknown / Pending"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Unsupported"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -1712,14 +1754,17 @@ msgstr ""
 msgid "Up"
 msgstr ""
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Up to date"
-#~ msgstr ""
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Up to date"
+msgstr ""
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Updates"
-#~ msgstr ""
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Update available"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Updates"
+msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "Updates pending"

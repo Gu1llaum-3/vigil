@@ -195,7 +195,7 @@ Built-in actions currently cover:
 - liveness ping
 - host snapshot collection (`GetHostSnapshot`)
 
-`GetAgentInfoHandler` now reports `"docker": collectors.DockerAvailable()` in the capabilities map so the hub knows whether Docker data will be present in snapshots.
+`GetAgentInfoHandler` reports `"docker": collectors.DockerAvailable()` in the capabilities map so the hub knows whether Docker data may be present in snapshots. This remains a read-only inventory capability: the agent does not expose Docker start/stop/restart or other active workload operations.
 
 The handler context provides access to:
 
@@ -217,7 +217,7 @@ Each collector is a focused function that gathers one domain of host data:
 - `repositories_debian.go` — APT repository sources
 - `repositories_redhat.go` — DNF/YUM repository sources
 - `reboot.go` — reboot-required detection
-- `docker.go` — running container inventory
+- `docker.go` — read-only Docker inventory (container state, image refs, image IDs, repo digests)
 
 All collectors in this package use the `//go:build linux` build tag and are Linux-only. A non-Linux stub (`collectors_stub.go` or equivalent) provides no-op implementations so the agent compiles on other platforms without errors.
 
@@ -225,7 +225,7 @@ All collectors in this package use the `//go:build linux` build tag and are Linu
 
 **Subprocess timeout:** `CollectSnapshot()` creates a `context.WithTimeout(45s)` that is propagated to every collector that spawns a subprocess (`packages_debian.go`, `packages_redhat.go`, `reboot.go`, `docker.go`). If a command blocks (e.g. a slow or unreachable DNF repository), it is killed after 45 seconds and the partial result is returned. Collectors that only read files (`system.go`, `storage.go`, `repositories_*.go`) do not receive the context. The 45s budget sits below the hub's 60s WebSocket timeout for `GetHostSnapshot`, leaving 15s for the response to be transmitted.
 
-`DockerAvailable()` is exported from this package and used by `GetAgentInfoHandler` to populate the `"docker"` capability flag.
+`DockerAvailable()` is exported from this package and used by `GetAgentInfoHandler` to populate the `"docker"` capability flag. The collector now returns more specific snapshot states such as `not_configured`, `cli_missing`, `daemon_unreachable`, and `permission_denied` so the hub and UI can distinguish configuration errors from a healthy Docker inventory.
 
 ## How To Add A New Handler
 

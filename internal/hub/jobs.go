@@ -53,6 +53,15 @@ func (h *Hub) scheduledJobs() []ScheduledJobDefinition {
 				return payload, nil
 			},
 		},
+		{
+			Key:         containerImageAuditCronJobID,
+			Label:       "Container Image Audit",
+			Description: "Checks public container image tags for newer compatible versions.",
+			Schedule:    containerImageAuditCronExpr,
+			Run: func() (map[string]any, error) {
+				return h.runContainerImageAudit()
+			},
+		},
 	}
 }
 

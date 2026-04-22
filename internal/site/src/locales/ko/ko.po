@@ -255,9 +255,17 @@ msgstr ""
 msgid "Check {email} for a reset link."
 msgstr "{email}에서 재설정 링크를 확인하세요."
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Check failed"
+msgstr ""
+
 #: src/components/routes/settings/layout.tsx
 msgid "Check logs for more details."
 msgstr "자세한 내용은 로그를 확인하세요."
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Checked"
+msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Checks loaded"
@@ -389,13 +397,17 @@ msgstr ""
 msgid "Critical alerts"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Current"
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Current latency"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "daemon unreachable"
-msgstr ""
+#~ msgid "daemon unreachable"
+#~ msgstr ""
 
 #: src/components/routes/home.tsx
 #: src/components/routes/home.tsx
@@ -592,6 +604,7 @@ msgstr "OTP를 입력하세요."
 msgid "Ephemeral"
 msgstr "일시적"
 
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/agents.tsx
@@ -778,6 +791,10 @@ msgstr "관리자 계정의 비밀번호를 잃어버린 경우, 다음 명령�
 msgid "Image"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Image audit"
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Interval"
 msgstr ""
@@ -855,6 +872,14 @@ msgstr ""
 msgid "Latency history"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest image id"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest tag"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Layout width"
 msgstr "레이아웃 너비"
@@ -877,6 +902,10 @@ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Loading purge settings…"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Local image id"
 msgstr ""
 
 #: src/components/navbar.tsx
@@ -1057,6 +1086,10 @@ msgstr "결과가 없습니다."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "No rules configured. Add a rule to start routing notifications."
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Not checked"
 msgstr ""
 
 #: src/components/notification-log-toasts.tsx
@@ -1241,6 +1274,10 @@ msgstr "다시 로그인하세요."
 #: src/components/login/login.tsx
 msgid "Please sign in to your account"
 msgstr "계정에 로그인하세요."
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Policy"
+msgstr ""
 
 #: src/components/routes/monitors.tsx
 msgid "Port"
@@ -1693,6 +1730,7 @@ msgid "unknown"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Unknown"
@@ -1700,6 +1738,10 @@ msgstr ""
 
 #: src/components/routes/dashboard/charts.tsx
 msgid "Unknown / Pending"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Unsupported"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -1712,14 +1754,17 @@ msgstr ""
 msgid "Up"
 msgstr ""
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Up to date"
-#~ msgstr ""
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Up to date"
+msgstr ""
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Updates"
-#~ msgstr ""
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Update available"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Updates"
+msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "Updates pending"

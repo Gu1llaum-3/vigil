@@ -44,6 +44,8 @@ Why:
 
 If you add collection steps to the snapshot, keep this timeout in mind and extend it if necessary. Do not silently drop the timeout or rely on the request manager default for this call.
 
+Container image freshness checks are intentionally not part of `GetHostSnapshot`. They run later from a hub-side scheduled job against the latest stored Docker inventory so registry/network variability does not slow down normal host snapshot collection.
+
 ## Agent Collectors Are Linux-Only
 
 The `agent/collectors/` package contains files built with `//go:build linux`.

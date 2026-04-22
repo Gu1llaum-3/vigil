@@ -255,9 +255,17 @@ msgstr "Canaux"
 msgid "Check {email} for a reset link."
 msgstr "Vérifiez {email} pour un lien de réinitialisation."
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Check failed"
+msgstr ""
+
 #: src/components/routes/settings/layout.tsx
 msgid "Check logs for more details."
 msgstr "Vérifiez les journaux pour plus de détails."
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Checked"
+msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Checks loaded"
@@ -389,13 +397,17 @@ msgstr "Créé"
 msgid "Critical alerts"
 msgstr "Alertes critiques"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Current"
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Current latency"
 msgstr "Latence actuelle"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "daemon unreachable"
-msgstr "daemon inaccessible"
+#~ msgid "daemon unreachable"
+#~ msgstr "daemon inaccessible"
 
 #: src/components/routes/home.tsx
 #: src/components/routes/home.tsx
@@ -592,6 +604,7 @@ msgstr "Entrez votre mot de passe à usage unique."
 msgid "Ephemeral"
 msgstr "Éphémère"
 
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/agents.tsx
@@ -778,6 +791,10 @@ msgstr "Si vous avez perdu le mot de passe de votre compte administrateur, vous 
 msgid "Image"
 msgstr "Image"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Image audit"
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Interval"
 msgstr "Intervalle"
@@ -855,6 +872,14 @@ msgstr "Latence"
 msgid "Latency history"
 msgstr "Historique des latences"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest image id"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Latest tag"
+msgstr ""
+
 #: src/components/routes/settings/general.tsx
 msgid "Layout width"
 msgstr "Largeur de la mise en page"
@@ -878,6 +903,10 @@ msgstr "Chargement des tâches…"
 #: src/components/routes/settings/purge.tsx
 msgid "Loading purge settings…"
 msgstr "Chargement des paramètres de purge…"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Local image id"
+msgstr ""
 
 #: src/components/navbar.tsx
 #: src/components/navbar.tsx
@@ -1058,6 +1087,10 @@ msgstr "Aucun résultat trouvé."
 #: src/components/routes/settings/notifications.tsx
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr "Aucune règle configurée. Ajoutez une règle pour commencer à router les notifications."
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Not checked"
+msgstr ""
 
 #: src/components/notification-log-toasts.tsx
 msgid "Notification"
@@ -1241,6 +1274,10 @@ msgstr "Veuillez vous reconnecter"
 #: src/components/login/login.tsx
 msgid "Please sign in to your account"
 msgstr "Veuillez vous connecter à votre compte"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Policy"
+msgstr ""
 
 #: src/components/routes/monitors.tsx
 msgid "Port"
@@ -1693,6 +1730,7 @@ msgid "unknown"
 msgstr "inconnu"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Unknown"
@@ -1700,6 +1738,10 @@ msgstr "Inconnu"
 
 #: src/components/routes/dashboard/charts.tsx
 msgid "Unknown / Pending"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Unsupported"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -1712,14 +1754,17 @@ msgstr "OK"
 msgid "Up"
 msgstr "OK"
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Up to date"
-#~ msgstr "À jour"
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Up to date"
+msgstr "À jour"
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Updates"
-#~ msgstr "Mises à jour"
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Update available"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Updates"
+msgstr "Mises à jour"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "Updates pending"

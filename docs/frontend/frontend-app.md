@@ -209,14 +209,16 @@ Components:
 
 - `kpi-cards.tsx` — summary metric cards (host connectivity ratio, monitor up/total ratio, pending updates, etc.)
 - `hosts-table.tsx` — per-host patch state table
-- `containers-table.tsx` — running Docker container inventory
+- `containers-table.tsx` — running Docker container inventory plus read-only image audit badges
 - `charts.tsx` — bar/doughnut charts using `chart.js` and `react-chartjs-2`
 - `empty-state.tsx` — shown when no snapshot data is available yet
 
 The `Patch Status` donut and the host patch badge both follow the same priority order: `Reboot required`, `Security updates`, `Out of SLA (>30d)`, `Compliant`, and `Unknown / Pending`.
 The `Unknown / Pending` state is used when update data exists but the agent could not determine the last upgrade time.
 
-Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`.
+Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`, including the optional per-container `image_audit` block merged from the backend `container_image_audits` collection.
+
+The containers table remains on the dashboard route. It now exposes an additional `Updates` chip and an `Image audit` column so operators can filter containers with newer public image tags available without leaving the main fleet view.
 
 `chart.js` and `react-chartjs-2` are added dependencies. They are used only within the dashboard route and should not be imported in other parts of the application.
 
@@ -265,6 +267,8 @@ Current responsibilities:
 - execution timestamps are stored in UTC and rendered in the viewer's local browser timezone with timezone abbreviation via `Intl.DateTimeFormat` with `timeZoneName: "short"`
 - expose `Run Now` via `POST /api/app/jobs/{key}/run`
 - render the last persisted result payload for debugging/admin visibility
+
+Current built-in jobs shown in this page include the retention cleanup job and the public container image audit job.
 
 ### `purge.tsx`
 

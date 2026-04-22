@@ -61,6 +61,11 @@ export interface ContainerInfo {
 	id: string
 	name: string
 	image: string
+	image_ref: string
+	image_id: string
+	repo_digests: string[]
+	current_ref_image_id: string
+	current_ref_repo_digests: string[]
 	status: string
 	status_text: string
 	ports: string
@@ -71,6 +76,22 @@ export interface DockerInfo {
 	container_count: number
 	running_count: number
 	containers: ContainerInfo[]
+}
+
+export interface ContainerImageAudit {
+	status: string
+	policy: string
+	registry: string
+	repository: string
+	tag: string
+	current_ref: string
+	local_image_id: string
+	local_digest: string
+	latest_image_id: string
+	latest_tag: string
+	latest_digest: string
+	checked_at: string
+	error?: string
 }
 
 export interface HostSnapshot {
@@ -114,6 +135,7 @@ export interface DashboardSummary {
 	total_security_updates: number
 	total_containers: number
 	running_containers: number
+	containers_with_image_updates: number
 	insecure_repositories: number
 	os_distribution: DistributionEntry[]
 	update_status_distribution: DistributionEntry[]
@@ -136,6 +158,7 @@ export interface ContainerFleetEntry extends ContainerInfo {
 	host_id: string
 	host_name: string
 	host_ip: string
+	image_audit?: ContainerImageAudit | null
 }
 
 export interface DashboardResponse {
