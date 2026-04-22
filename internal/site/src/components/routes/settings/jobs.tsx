@@ -105,7 +105,7 @@ const JobsSettingsPage = memo(() => {
 							</CardHeader>
 							<CardContent className="space-y-3">
 								<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-									<StatusItem label={t`Schedule`} value={job.schedule} />
+									<StatusItem label={t`Schedule`} value={formatSchedule(job.schedule)} />
 									<StatusItem label={t`Status`} value={job.last_status || t`Idle`} />
 									<StatusItem label={t`Last Run`} value={formatDateTime(job.last_run_at)} />
 									<StatusItem label={t`Last Success`} value={formatDateTime(job.last_success_at)} />
@@ -142,7 +142,19 @@ function formatDateTime(value?: string) {
 	if (!value) return "Never"
 	const parsed = new Date(value)
 	if (Number.isNaN(parsed.getTime())) return value
-	return parsed.toLocaleString()
+	return new Intl.DateTimeFormat(undefined, {
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+		timeZoneName: "short",
+	}).format(parsed)
+}
+
+function formatSchedule(cron: string) {
+	return `${cron} (UTC)`
 }
 
 export default JobsSettingsPage

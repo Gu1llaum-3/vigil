@@ -261,7 +261,8 @@ Admin-only settings page used to inspect and run registered scheduled jobs.
 Current responsibilities:
 
 - list active jobs from `GET /api/app/jobs`
-- show each job schedule, last run, last success, last duration, and last error
+- show each job schedule (displayed as `<cron> (UTC)` since all cron schedules are evaluated in UTC by PocketBase), last run, last success, last duration, and last error
+- execution timestamps are stored in UTC and rendered in the viewer's local browser timezone with timezone abbreviation via `Intl.DateTimeFormat` with `timeZoneName: "short"`
 - expose `Run Now` via `POST /api/app/jobs/{key}/run`
 - render the last persisted result payload for debugging/admin visibility
 
