@@ -4,7 +4,7 @@
 
 ### Required
 
-- Go
+- Go 1.26.2 or newer
 - Node.js with `npm`
 
 ### Optional But Useful
