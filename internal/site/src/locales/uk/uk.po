@@ -36,6 +36,11 @@ msgstr ""
 msgid "{0} record(s) deleted."
 msgstr ""
 
+#. placeholder {0}: summary.containers_with_image_updates
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{0} updates available"
+msgstr ""
+
 #: src/components/notification-log-toasts.tsx
 msgid "{name} is back online."
 msgstr ""
@@ -335,6 +340,10 @@ msgstr ""
 
 #: src/components/routes/home.tsx
 msgid "Container fleet"
+msgstr ""
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "Containers"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1116,6 +1125,10 @@ msgstr "Результатів не знайдено."
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr ""
 
+#: src/components/routes/dashboard/kpi-cards.tsx
+#~ msgid "No updates available"
+#~ msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Not checked"
 msgstr ""
@@ -1504,8 +1517,8 @@ msgid "Running"
 msgstr ""
 
 #: src/components/routes/dashboard/kpi-cards.tsx
-msgid "Running containers"
-msgstr ""
+#~ msgid "Running containers"
+#~ msgstr ""
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
@@ -1833,6 +1846,10 @@ msgstr ""
 #: src/components/navbar.tsx
 msgid "Users"
 msgstr "Користувачі"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Warnings"
+msgstr ""
 
 #: src/components/routes/settings/agents.tsx
 msgid "When enabled, this token allows agents to self-register without prior creation."

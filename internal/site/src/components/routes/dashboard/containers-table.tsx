@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { isStoppedContainerStatus, isWarningContainerStatus } from "@/lib/container-status"
 import { cn, copyToClipboard } from "@/lib/utils"
 import type { ContainerFleetEntry } from "@/lib/dashboard-types"
 
@@ -47,10 +48,6 @@ function containerStatusRank(status: string): number {
 		default:
 			return 0
 	}
-}
-
-function isStoppedContainer(status: string): boolean {
-	return status === "exited" || status === "dead"
 }
 
 function displayImageRef(container: ContainerFleetEntry): string {
@@ -87,7 +84,7 @@ function ContainerStatusBadge({ status }: { status: string }) {
 			? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
 			: status === "restarting"
 				? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-				: isStoppedContainer(status)
+				: isStoppedContainerStatus(status)
 					? "border-red-500/30 bg-red-500/10 text-red-400"
 					: "border-border/50 text-muted-foreground"
 
@@ -108,7 +105,7 @@ function StatusCell({ container }: { container: ContainerFleetEntry }) {
 	if (isRunning) return badge
 
 	const popoverRows: Array<{ label: string; value: string }> = [{ label: t`State`, value: container.status }]
-	if (isStoppedContainer(container.status)) {
+	if (isStoppedContainerStatus(container.status)) {
 		popoverRows.push({ label: t`Exited since`, value: uptime !== "—" ? uptime : t`unknown` })
 	} else if (container.status === "restarting") {
 		popoverRows.push({ label: t`Restarting for`, value: uptime !== "—" ? uptime : t`unknown` })
@@ -360,6 +357,7 @@ export const ContainersTable = memo(function ContainersTable({
 		() => [
 			{ key: "all", label: t`All` },
 			{ key: "running", label: t`Running` },
+			{ key: "warning", label: t`Warnings` },
 			{ key: "stopped", label: t`Stopped` },
 			{ key: "restarting", label: t`Restarting` },
 			{ key: "paused", label: t`Paused` },
@@ -383,8 +381,11 @@ export const ContainersTable = memo(function ContainersTable({
 			case "running":
 				result = containers.filter((c) => c.status === "running")
 				break
+			case "warning":
+				result = containers.filter((c) => isWarningContainerStatus(c.status))
+				break
 			case "stopped":
-				result = containers.filter((c) => isStoppedContainer(c.status))
+				result = containers.filter((c) => isStoppedContainerStatus(c.status))
 				break
 			case "restarting":
 				result = containers.filter((c) => c.status === "restarting")

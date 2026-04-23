@@ -31,6 +31,11 @@ msgstr "{0} entries on this page"
 msgid "{0} record(s) deleted."
 msgstr "{0} record(s) deleted."
 
+#. placeholder {0}: summary.containers_with_image_updates
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{0} updates available"
+msgstr "{0} updates available"
+
 #: src/components/notification-log-toasts.tsx
 msgid "{name} is back online."
 msgstr "{name} is back online."
@@ -331,6 +336,10 @@ msgstr "Container"
 #: src/components/routes/home.tsx
 msgid "Container fleet"
 msgstr "Container fleet"
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "Containers"
+msgstr "Containers"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1111,6 +1120,10 @@ msgstr "No results found."
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr "No rules configured. Add a rule to start routing notifications."
 
+#: src/components/routes/dashboard/kpi-cards.tsx
+#~ msgid "No updates available"
+#~ msgstr "No updates available"
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Not checked"
 msgstr "Not checked"
@@ -1499,8 +1512,8 @@ msgid "Running"
 msgstr "Running"
 
 #: src/components/routes/dashboard/kpi-cards.tsx
-msgid "Running containers"
-msgstr "Running containers"
+#~ msgid "Running containers"
+#~ msgstr "Running containers"
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
@@ -1828,6 +1841,10 @@ msgstr "Username (optional)"
 #: src/components/navbar.tsx
 msgid "Users"
 msgstr "Users"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Warnings"
+msgstr "Warnings"
 
 #: src/components/routes/settings/agents.tsx
 msgid "When enabled, this token allows agents to self-register without prior creation."

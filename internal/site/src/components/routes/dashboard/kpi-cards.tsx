@@ -1,9 +1,18 @@
 import { Trans } from "@lingui/react/macro"
 import { getPagePath } from "@nanostores/router"
-import { ActivityIcon, AlertTriangleIcon, BoxIcon, RefreshCwIcon, ServerIcon, ShieldAlertIcon } from "lucide-react"
+import {
+	ActivityIcon,
+	AlertTriangleIcon,
+	ArrowUpIcon,
+	BoxIcon,
+	RefreshCwIcon,
+	ServerIcon,
+	ShieldAlertIcon,
+} from "lucide-react"
 import { memo } from "react"
 import { $router, Link } from "@/components/router"
 import { Card, CardContent } from "@/components/ui/card"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { DashboardSummary } from "@/lib/dashboard-types"
 
 interface KpiCardsProps {
@@ -11,7 +20,8 @@ interface KpiCardsProps {
 	activeFilter: string | null
 	onFilterChange: (filter: string | null) => void
 	hasContainersSection: boolean
-	onRunningContainersClick: () => void
+	hasContainerWarnings: boolean
+	onContainersClick: () => void
 }
 
 interface KpiCardDef {
@@ -28,7 +38,8 @@ export const KpiCards = memo(function KpiCards({
 	activeFilter,
 	onFilterChange,
 	hasContainersSection,
-	onRunningContainersClick,
+	hasContainerWarnings,
+	onContainersClick,
 }: KpiCardsProps) {
 	const cards: KpiCardDef[] = [
 		{
@@ -66,10 +77,10 @@ export const KpiCards = memo(function KpiCards({
 		{
 			key: "docker",
 			filterKey: "docker",
-			label: <Trans>Running containers</Trans>,
-			value: summary.running_containers,
+			label: <Trans>Containers</Trans>,
+			value: `${summary.running_containers}/${summary.total_containers}`,
 			icon: <BoxIcon className="size-4" />,
-			variant: "default",
+			variant: hasContainerWarnings ? "warning" : "success",
 		},
 		{
 			key: "monitors",
@@ -107,6 +118,7 @@ export const KpiCards = memo(function KpiCards({
 				const isNavigable = item.key === "monitors"
 				const isClickable = isInteractive || isNavigable || (isRunningContainersCard && hasContainersSection)
 				const isActive = isInteractive && activeFilter === item.filterKey
+				const showContainerUpdates = isRunningContainersCard && summary.containers_with_image_updates > 0
 				const cardContent = (
 					<Card
 						className={`${isClickable ? "cursor-pointer" : "cursor-default"} transition-all ${variantClasses[item.variant]} ${
@@ -114,14 +126,26 @@ export const KpiCards = memo(function KpiCards({
 						}`}
 						onClick={() => {
 							if (isRunningContainersCard) {
-								onRunningContainersClick()
+								onContainersClick()
 								return
 							}
 							if (!isInteractive) return
 							onFilterChange(isActive ? null : (item.filterKey ?? null))
 						}}
 					>
-						<CardContent className="p-4">
+						<CardContent className="relative p-4">
+							{showContainerUpdates ? (
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div className="absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400">
+											<ArrowUpIcon className="size-3.5" />
+										</div>
+									</TooltipTrigger>
+									<TooltipContent side="top">
+										<Trans>{summary.containers_with_image_updates} updates available</Trans>
+									</TooltipContent>
+								</Tooltip>
+							) : null}
 							<div className={`mb-2 ${iconClasses[item.variant]}`}>{item.icon}</div>
 							<div className="text-2xl font-bold tabular-nums">{item.value}</div>
 							<div className="mt-0.5 text-xs text-muted-foreground">{item.label}</div>

@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react"
 import Spinner from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { pb, isReadOnlyUser } from "@/lib/api"
+import { isWarningContainerStatus } from "@/lib/container-status"
 import type { DashboardResponse } from "@/lib/dashboard-types"
 import { Charts } from "./dashboard/charts"
 import { ContainersTable } from "./dashboard/containers-table"
@@ -142,10 +143,13 @@ export default memo(function Home() {
 	}
 
 	const hasContainers = (dashboard.containers ?? []).length > 0
+	const hasContainerWarnings = (dashboard.containers ?? []).some((container) =>
+		isWarningContainerStatus(container.status)
+	)
 
-	function handleRunningContainersClick() {
+	function handleContainersClick() {
 		if (!hasContainers) return
-		setContainerFilter("running")
+		setContainerFilter(hasContainerWarnings ? "warning" : "running")
 		containersSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
 	}
 
@@ -172,7 +176,8 @@ export default memo(function Home() {
 				activeFilter={activeFilter}
 				onFilterChange={setActiveFilter}
 				hasContainersSection={hasContainers}
-				onRunningContainersClick={handleRunningContainersClick}
+				hasContainerWarnings={hasContainerWarnings}
+				onContainersClick={handleContainersClick}
 			/>
 
 			<Charts summary={dashboard.summary} />

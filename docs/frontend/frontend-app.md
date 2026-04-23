@@ -218,7 +218,7 @@ The `Unknown / Pending` state is used when update data exists but the agent coul
 
 Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`, including the optional per-container `image_audit` block merged from the backend `container_image_audits` collection.
 
-The containers table remains on the dashboard route. It exposes an `Updates` chip and an `Image audit` column so operators can filter containers that are behind in their current update line without leaving the main fleet view.
+The containers table remains on the dashboard route. It exposes `Warnings` and `Updates` chips plus an `Image audit` column so operators can focus either on unhealthy container states (`restarting` / `dead`) or on containers that are behind in their current update line without leaving the main fleet view.
 
 The image-audit cell now distinguishes:
 

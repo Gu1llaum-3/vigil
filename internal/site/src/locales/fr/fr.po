@@ -36,6 +36,11 @@ msgstr "{0} entrées sur cette page"
 msgid "{0} record(s) deleted."
 msgstr "{0} enregistrement(s) supprimé(s)."
 
+#. placeholder {0}: summary.containers_with_image_updates
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{0} updates available"
+msgstr "{0} mises à jour disponibles"
+
 #: src/components/notification-log-toasts.tsx
 msgid "{name} is back online."
 msgstr "{name} est de nouveau en ligne."
@@ -336,6 +341,10 @@ msgstr "Conteneur"
 #: src/components/routes/home.tsx
 msgid "Container fleet"
 msgstr "Flotte de conteneurs"
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "Containers"
+msgstr "Conteneurs"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1116,6 +1125,10 @@ msgstr "Aucun résultat trouvé."
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr "Aucune règle configurée. Ajoutez une règle pour commencer à router les notifications."
 
+#: src/components/routes/dashboard/kpi-cards.tsx
+#~ msgid "No updates available"
+#~ msgstr "Aucune mise à jour disponible"
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Not checked"
 msgstr "Non vérifié"
@@ -1504,8 +1517,8 @@ msgid "Running"
 msgstr "En cours"
 
 #: src/components/routes/dashboard/kpi-cards.tsx
-msgid "Running containers"
-msgstr "Conteneurs actifs"
+#~ msgid "Running containers"
+#~ msgstr "Conteneurs actifs"
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
@@ -1833,6 +1846,10 @@ msgstr "Nom d'utilisateur (optionnel)"
 #: src/components/navbar.tsx
 msgid "Users"
 msgstr "Utilisateurs"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Warnings"
+msgstr "Avertissements"
 
 #: src/components/routes/settings/agents.tsx
 msgid "When enabled, this token allows agents to self-register without prior creation."
