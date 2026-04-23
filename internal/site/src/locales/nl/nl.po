@@ -275,6 +275,8 @@ msgstr ""
 msgid "Click \"Add monitor\" to start monitoring your services."
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
 msgstr "Klik om te kopiëren"
@@ -335,6 +337,8 @@ msgstr ""
 msgid "Container fleet"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/lib/utils.ts
 msgid "Copied to clipboard"
 msgstr "Gekopieerd naar het klembord"

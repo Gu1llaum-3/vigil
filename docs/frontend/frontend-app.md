@@ -209,7 +209,7 @@ Components:
 
 - `kpi-cards.tsx` — summary metric cards (host connectivity ratio, monitor up/total ratio, pending updates, etc.)
 - `hosts-table.tsx` — per-host patch state table
-- `containers-table.tsx` — running Docker container inventory plus read-only image audit badges
+- `containers-table.tsx` — running Docker container inventory plus read-only image audit badges, with a clipboard shortcut on the image reference
 - `charts.tsx` — bar/doughnut charts using `chart.js` and `react-chartjs-2`
 - `empty-state.tsx` — shown when no snapshot data is available yet
 

@@ -270,6 +270,8 @@ msgstr "Checks loaded"
 msgid "Click \"Add monitor\" to start monitoring your services."
 msgstr "Click \"Add monitor\" to start monitoring your services."
 
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
 msgstr "Click to copy"
@@ -330,6 +332,8 @@ msgstr "Container"
 msgid "Container fleet"
 msgstr "Container fleet"
 
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/lib/utils.ts
 msgid "Copied to clipboard"
 msgstr "Copied to clipboard"

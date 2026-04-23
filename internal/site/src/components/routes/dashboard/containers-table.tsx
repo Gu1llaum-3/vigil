@@ -10,15 +10,15 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table"
-import { ChevronDownIcon, PartyPopperIcon } from "lucide-react"
-import { memo, useEffect, useMemo, useState } from "react"
+import { CheckIcon, ChevronDownIcon, CopyIcon, PartyPopperIcon } from "lucide-react"
+import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import type { ContainerFleetEntry } from "@/lib/dashboard-types"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -171,7 +171,10 @@ function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 	const cls =
 		lineStatus === "up_to_date"
 			? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-			: lineStatus === "patch_available" || lineStatus === "minor_available" || lineStatus === "tag_rebuilt" || audit.status === "update_available"
+			: lineStatus === "patch_available" ||
+					lineStatus === "minor_available" ||
+					lineStatus === "tag_rebuilt" ||
+					audit.status === "update_available"
 				? "border-amber-500/30 bg-amber-500/10 text-amber-400"
 				: audit.status === "check_failed"
 					? "border-red-500/30 bg-red-500/10 text-red-400"
@@ -186,13 +189,13 @@ function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 					? t`Minor available`
 					: lineStatus === "tag_rebuilt"
 						? t`Tag rebuilt`
-					: audit.status === "update_available"
-						? t`Update available`
-					: audit.status === "unsupported"
-						? t`Unsupported`
-						: audit.status === "check_failed"
-							? t`Check failed`
-							: t`Unknown`
+						: audit.status === "update_available"
+							? t`Update available`
+							: audit.status === "unsupported"
+								? t`Unsupported`
+								: audit.status === "check_failed"
+									? t`Check failed`
+									: t`Unknown`
 
 	const rows: Array<{ label: string; value: string }> = [
 		{ label: t`Policy`, value: audit.policy || "—" },
@@ -229,7 +232,10 @@ function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 				</Badge>
 			)}
 			{showSameMajorTarget && (
-				<Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 font-mono text-[10px] text-violet-300">
+				<Badge
+					variant="outline"
+					className="border-violet-500/30 bg-violet-500/10 font-mono text-[10px] text-violet-300"
+				>
 					{sameMajorTag}
 				</Badge>
 			)}
@@ -259,6 +265,60 @@ function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 							</div>
 						))}
 					</div>
+				</TooltipContent>
+			</Tooltip>
+		</div>
+	)
+}
+
+function ImageCell({ container }: { container: ContainerFleetEntry }) {
+	const { t } = useLingui()
+	const imageRef = displayImageRef(container)
+	const resetTimeoutRef = useRef<number | null>(null)
+	const [copied, setCopied] = useState(false)
+
+	useEffect(() => {
+		return () => {
+			if (resetTimeoutRef.current !== null) {
+				window.clearTimeout(resetTimeoutRef.current)
+			}
+		}
+	}, [])
+
+	if (imageRef === "—") {
+		return <span className="font-mono text-xs">{imageRef}</span>
+	}
+
+	async function handleCopy() {
+		await copyToClipboard(imageRef)
+		setCopied(true)
+		if (resetTimeoutRef.current !== null) {
+			window.clearTimeout(resetTimeoutRef.current)
+		}
+		resetTimeoutRef.current = window.setTimeout(() => {
+			setCopied(false)
+			resetTimeoutRef.current = null
+		}, 1500)
+	}
+
+	return (
+		<div className="flex max-w-[24rem] items-center gap-1.5">
+			<span className="truncate font-mono text-xs">{imageRef}</span>
+			<Tooltip disableHoverableContent={true}>
+				<TooltipTrigger asChild>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className={cn("h-5 w-5 shrink-0", copied && "text-emerald-500 hover:text-emerald-500")}
+						onClick={handleCopy}
+						aria-label={copied ? t`Copied to clipboard` : t`Click to copy`}
+					>
+						{copied ? <CheckIcon className="h-3 w-3" /> : <CopyIcon className="h-3 w-3" />}
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent>
+					<p>{copied ? t`Copied to clipboard` : t`Click to copy`}</p>
 				</TooltipContent>
 			</Tooltip>
 		</div>
@@ -319,7 +379,7 @@ export const ContainersTable = memo(function ContainersTable({
 
 	const filteredContainers = useMemo(() => {
 		let result = containers
-			switch (chipFilter) {
+		switch (chipFilter) {
 			case "running":
 				result = containers.filter((c) => c.status === "running")
 				break
@@ -338,7 +398,9 @@ export const ContainersTable = memo(function ContainersTable({
 			case "updates":
 				result = containers.filter((c) => {
 					const lineStatus = c.image_audit?.line_status || c.image_audit?.status
-					return lineStatus === "patch_available" || lineStatus === "minor_available" || lineStatus === "update_available"
+					return (
+						lineStatus === "patch_available" || lineStatus === "minor_available" || lineStatus === "update_available"
+					)
 				})
 				break
 		}
@@ -410,7 +472,7 @@ export const ContainersTable = memo(function ContainersTable({
 						<Trans>Image</Trans>
 					</SortBtn>
 				),
-				cell: ({ row: { original: c } }) => <span className="font-mono text-xs">{displayImageRef(c)}</span>,
+				cell: ({ row: { original: c } }) => <ImageCell container={c} />,
 			},
 			{
 				id: "image_audit",
