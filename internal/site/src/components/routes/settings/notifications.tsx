@@ -35,7 +35,7 @@ import type { NotificationChannel, NotificationKind, NotificationRule } from "@/
 import NotificationHistory from "./notifications/history.tsx"
 
 const ALL_KINDS: NotificationKind[] = ["email", "webhook", "slack", "teams", "gchat", "ntfy", "gotify", "in-app"]
-const ALL_EVENTS = ["monitor.down", "monitor.up", "agent.offline", "agent.online"]
+const ALL_EVENTS = ["monitor.down", "monitor.up", "agent.offline", "agent.online", "container_image.update_available"]
 // --- API helpers ---
 
 function apiGet<T>(path: string): Promise<T> {
@@ -996,7 +996,7 @@ const NotificationsSettings = memo(() => {
 				</h3>
 				<p className="text-sm text-muted-foreground leading-relaxed">
 					<Trans>
-						Configure notification channels and routing rules. Notifications are sent when monitors or agents change
+						Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change
 						state.
 					</Trans>
 				</p>

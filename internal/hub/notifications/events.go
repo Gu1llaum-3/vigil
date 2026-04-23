@@ -10,6 +10,7 @@ const (
 	EventMonitorUp    EventKind = "monitor.up"
 	EventAgentOffline EventKind = "agent.offline"
 	EventAgentOnline  EventKind = "agent.online"
+	EventContainerImageUpdateAvailable EventKind = "container_image.update_available"
 )
 
 // ResourceRef identifies the resource that triggered the event.
@@ -51,6 +52,8 @@ func (k EventKind) Severity() string {
 	switch k {
 	case EventMonitorDown, EventAgentOffline:
 		return "critical"
+	case EventContainerImageUpdateAvailable:
+		return "warning"
 	default:
 		return "info"
 	}

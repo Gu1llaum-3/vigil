@@ -140,6 +140,7 @@ The collection is tied to the user that created the enrollment token.
 - `policy` is one of `digest_latest`, `semver_major`, `semver_minor`, `unsupported`
 - tag selection currently works like this: `latest` -> `digest_latest`; one-part numeric tags like `15` -> latest `15.x.x`; two-part tags like `15.2` -> latest `15.2.x`; three-part tags like `15.2.3` -> latest `15.2.x`
 - `details` stores the richer audit view used by the dashboard UI, including the primary `line_status`, `line_latest_tag`, `same_major_latest_tag`, `overall_latest_tag`, and whether a newer major exists
+- `last_notified_signature` and `last_notified_at` persist which newer version set has already been announced for this container so update notifications are not re-sent on every audit run
 - the hub writes this collection from the scheduled image-audit job; agents never write it directly
 
 ## First-Run User Flow

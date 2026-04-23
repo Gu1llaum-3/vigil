@@ -457,6 +457,7 @@ Notifications are sent by a `*notifications.Dispatcher` (`internal/hub/notificat
 
 - **Monitor state transition** (`internal/hub/monitors.go` `saveResult`): after writing the new status with `SaveNoValidate`, if `effectiveStatus != previousStatus && previousStatus != monitorStatusUnknown`, calls `h.notifier.Dispatch(...)`.
 - **Agent status transition** (`internal/hub/agent_connect.go` `setAgentStatus`): reads the previous status before overwriting; if changed, calls `h.notifier.Dispatch(...)` after `SaveNoValidate`.
+- **Container image update discovery** (`internal/hub/image_audits.go` `upsertContainerImageAudit`): after each scheduled audit result is merged into `container_image_audits`, the hub computes a persisted notification signature from the newer compatible tags currently available for that container. It dispatches only when that signature changes, so the same discovered version set is not re-notified on every run.
 
 **No `OnRecordAfterUpdate` hooks are used for notifications** — doing so on `monitors` creates an infinite save loop (see conventions doc).
 
@@ -563,6 +564,7 @@ The currently registered jobs are:
 - `vigilContainerImageAudit` — audits public Docker / GHCR image tags used by the current Docker container inventory and persists the result in `container_image_audits`
 
 The image-audit job is read-only: it does not ask agents to start, stop, or restart containers, and it does not mutate workloads on remote hosts.
+It now runs twice per day at `03:00` and `15:00` UTC (`0 3,15 * * *`).
 
 Tag selection rules are intentionally simple:
 
@@ -577,6 +579,15 @@ For semver-like tags, the backend now separates two concepts:
 - the audit also records the latest tag in the same major and the latest overall tag so the UI can show that a newer major exists without marking the current patch line as outdated
 
 Example: `ghcr.io/mealie-recipes/mealie:v2.2.5` can be `up_to_date` in its `v2.2.x` line while still surfacing `v3.15.2` as a newer major to plan for.
+
+Notification dispatch for image updates intentionally follows a different rule than the raw audit `status` field. The hub notifies on newer compatible tags becoming available, even if the current tag is still up to date in its own line. For example, `1.2.5` may stay `up_to_date` in `1.2.x` while still notifying when `1.3.0` or `2.0.0` first appear.
+
+The per-container notification state is stored directly on `container_image_audits`:
+
+- `last_notified_signature` — normalized set of the higher versions already announced for this container
+- `last_notified_at` — timestamp of the last emitted update-available notification for that signature
+
+This makes image update notifications durable across hub restarts and avoids relying on the in-memory throttle cache for this use case.
 
 For exact semver tags such as `1.2.5`, the audit also resolves the remote digest of that same tag. If the registry republishes `1.2.5` with a different image digest, Vigil marks it as a dedicated rebuilt-tag update instead of silently treating it as current.
 

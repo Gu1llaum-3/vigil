@@ -307,7 +307,11 @@ msgid "Configure automatic retention for monitoring and notification history, th
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Configure notification channels and routing rules. Notifications are sent when monitors or agents change state."
+#~ msgid "Configure notification channels and routing rules. Notifications are sent when monitors or agents change state."
+#~ msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
 msgstr ""
 
 #: src/components/login/auth-form.tsx

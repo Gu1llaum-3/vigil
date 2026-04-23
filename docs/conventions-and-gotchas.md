@@ -243,6 +243,7 @@ Current dispatch points:
 
 - `internal/hub/monitors.go` `saveResult` — after status transition
 - `internal/hub/agent_connect.go` `setAgentStatus` — after agent status change
+- `internal/hub/image_audits.go` `upsertContainerImageAudit` — after the scheduled image audit detects a newly changed set of newer available versions for a container
 
 When adding new notification triggers, follow this pattern and do not use `OnRecordAfterUpdate` hooks on high-frequency collections.
 

@@ -12,7 +12,7 @@ import type { NotificationChannel, NotificationLog, NotificationLogsPage, Notifi
 
 const ALL_FILTERS = "__all__"
 const STATUS_VALUES = ["sent", "failed", "throttled"] as const
-const EVENT_VALUES = ["monitor.down", "monitor.up", "agent.offline", "agent.online"] as const
+const EVENT_VALUES = ["monitor.down", "monitor.up", "agent.offline", "agent.online", "container_image.update_available"] as const
 
 type NotificationHistoryProps = {
 	rules: NotificationRule[]

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -20,7 +21,7 @@ import (
 const (
 	containerImageAuditsCollection = "container_image_audits"
 	containerImageAuditCronJobID   = "vigilContainerImageAudit"
-	containerImageAuditCronExpr    = "0 3 * * *"
+	containerImageAuditCronExpr    = "0 3,15 * * *"
 
 	imageAuditPolicyDigestLatest = "digest_latest"
 	imageAuditPolicySemverMajor  = "semver_major"
@@ -90,6 +91,11 @@ type imageAuditResult struct {
 	HasMajorUpdate bool
 	CheckedAt     time.Time
 	Error         string
+}
+
+type imageNotificationTarget struct {
+	Scope string
+	Tag   string
 }
 
 type numericVersion struct {
@@ -307,10 +313,15 @@ func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 	}
 
 	counts := map[string]int{}
+	notificationsEmitted := 0
 	for _, result := range results {
 		counts[result.Status]++
-		if err := h.upsertContainerImageAudit(result); err != nil {
+		notified, err := h.upsertContainerImageAudit(result)
+		if err != nil {
 			return nil, err
+		}
+		if notified {
+			notificationsEmitted++
 		}
 	}
 
@@ -323,26 +334,31 @@ func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 		"checked_containers": seenCount,
 		"audited_records":    len(results),
 		"removed_records":    removed,
+		"notifications_emitted": notificationsEmitted,
 		"status_counts":      counts,
 	}
 	return payload, nil
 }
 
-func (h *Hub) upsertContainerImageAudit(result imageAuditResult) error {
+func (h *Hub) upsertContainerImageAudit(result imageAuditResult) (bool, error) {
 	rec, err := h.FindFirstRecordByFilter(
 		containerImageAuditsCollection,
 		"agent = {:agent} && container_id = {:container_id}",
 		dbx.Params{"agent": result.Target.AgentID, "container_id": result.Target.ContainerID},
 	)
+	created := false
 	if err != nil {
 		collection, colErr := h.FindCachedCollectionByNameOrId(containerImageAuditsCollection)
 		if colErr != nil {
-			return colErr
+			return false, colErr
 		}
 		rec = core.NewRecord(collection)
 		rec.Set("agent", result.Target.AgentID)
 		rec.Set("container_id", result.Target.ContainerID)
+		created = true
 	}
+
+	prevSignature := rec.GetString("last_notified_signature")
 
 	rec.Set("container_name", result.Target.ContainerName)
 	rec.Set("image_ref", result.Target.CurrentRef)
@@ -372,7 +388,115 @@ func (h *Hub) upsertContainerImageAudit(result imageAuditResult) error {
 		"new_major_tag":          result.NewMajorTag,
 		"major_update_available": result.HasMajorUpdate,
 	})
-	return h.SaveNoValidate(rec)
+
+	targets := buildImageNotificationTargets(result)
+	signature := buildImageNotificationSignature(targets)
+	notified := false
+	if signature == "" {
+		rec.Set("last_notified_signature", "")
+		rec.Set("last_notified_at", "")
+	} else if signature != prevSignature {
+		h.dispatchContainerImageAuditNotification(rec, result, targets)
+		notified = true
+		rec.Set("last_notified_signature", signature)
+		rec.Set("last_notified_at", result.CheckedAt.UTC().Format(time.RFC3339))
+	} else if created && prevSignature == "" {
+		rec.Set("last_notified_signature", prevSignature)
+	}
+
+	if err := h.SaveNoValidate(rec); err != nil {
+		return false, err
+	}
+	return notified, nil
+}
+
+func buildImageNotificationTargets(result imageAuditResult) []imageNotificationTarget {
+	targets := make([]imageNotificationTarget, 0, 3)
+	seen := make(map[string]struct{}, 3)
+	appendTarget := func(scope, tag string) {
+		if tag == "" || tag == result.Target.Tag {
+			return
+		}
+		key := scope + ":" + tag
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		targets = append(targets, imageNotificationTarget{Scope: scope, Tag: tag})
+	}
+
+	if result.LineLatestTag != "" && result.LineLatestTag != result.Target.Tag {
+		switch result.LineStatus {
+		case imageAuditLineStatusPatchAvailable, imageAuditLineStatusMinorAvailable:
+			appendTarget("line", result.LineLatestTag)
+		}
+	}
+	if result.SameMajorTag != "" && result.SameMajorTag != result.LineLatestTag && result.SameMajorTag != result.Target.Tag {
+		appendTarget("same_major", result.SameMajorTag)
+	}
+	if result.NewMajorTag != "" {
+		appendTarget("new_major", result.NewMajorTag)
+	}
+
+	return targets
+}
+
+func buildImageNotificationSignature(targets []imageNotificationTarget) string {
+	if len(targets) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(targets))
+	for _, target := range targets {
+		parts = append(parts, target.Scope+":"+target.Tag)
+	}
+	return strings.Join(parts, "|")
+}
+
+func (h *Hub) dispatchContainerImageAuditNotification(rec *core.Record, result imageAuditResult, targets []imageNotificationTarget) {
+	if len(targets) == 0 || h.notifier == nil {
+		return
+	}
+	agentName := result.Target.AgentID
+	if agentID := rec.GetString("agent"); agentID != "" {
+		if agent, err := h.FindRecordById("agents", agentID); err == nil {
+			agentName = firstNonEmpty(agent.GetString("name"), agent.Id)
+		}
+	}
+	labels := make([]string, 0, len(targets))
+	for _, target := range targets {
+		switch target.Scope {
+		case "line":
+			labels = append(labels, fmt.Sprintf("patch line %s", target.Tag))
+		case "same_major":
+			labels = append(labels, fmt.Sprintf("same major %s", target.Tag))
+		case "new_major":
+			labels = append(labels, fmt.Sprintf("new major %s", target.Tag))
+		}
+	}
+
+	h.notifier.Dispatch(notifications.Event{
+		Kind:       notifications.EventContainerImageUpdateAvailable,
+		OccurredAt: result.CheckedAt.UTC(),
+		Resource: notifications.ResourceRef{
+			ID:   auditContainerKey(result.Target.AgentID, result.Target.ContainerID),
+			Name: firstNonEmpty(result.Target.ContainerName, result.Target.ContainerID),
+			Type: "container_image",
+		},
+		Previous: result.Target.Tag,
+		Current:  buildImageNotificationSignature(targets),
+		Details: map[string]any{
+			"agent_id":        result.Target.AgentID,
+			"agent_name":      agentName,
+			"container_id":    result.Target.ContainerID,
+			"container_name":  firstNonEmpty(result.Target.ContainerName, result.Target.ContainerID),
+			"current_ref":     result.Target.CurrentRef,
+			"current_tag":     result.Target.Tag,
+			"update_targets":  labels,
+			"line_latest_tag": result.LineLatestTag,
+			"same_major_tag":  result.SameMajorTag,
+			"new_major_tag":   result.NewMajorTag,
+		},
+	})
 }
 
 func (h *Hub) deleteStaleContainerImageAudits(results []imageAuditResult) (int, error) {

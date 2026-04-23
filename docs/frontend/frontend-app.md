@@ -415,7 +415,7 @@ The page is split into two tabs:
 - "Add rule" dialog fields:
   - name
   - enabled toggle
-  - events checkboxes (monitor.down, monitor.up, agent.offline, agent.online)
+  - events checkboxes (monitor.down, monitor.up, agent.offline, agent.online, container_image.update_available)
   - channels multi-select (scrollable list of existing channels with kind badges); a single rule can target several channels at once
   - older databases are normalized by migration `7_notification_rule_channels_multi.go` so the persisted relation really behaves as multi-select
   - throttle_seconds number input (0 = no throttle)
@@ -446,7 +446,7 @@ GET    /api/app/notifications/logs?rule_id=&status=&event_kind=&since=&until=&pa
 - Filter controls:
   - rule
   - status (`sent` / `failed` / `throttled`)
-  - event kind
+  - event kind, including `container_image.update_available`
   - date range (`since` / `until`)
 - The table shows sent time, event kind, rule, channel, status, and resource id/type
 - Each row opens a detail dialog with the stored `payload_preview` and full `error` text
@@ -463,6 +463,8 @@ This component:
 - surfaces `sent` logs as normal toasts when `channel_kind = "in-app"`
 - also surfaces `sent` logs for `monitor.down` and `agent.offline` as immediate red UI alerts, even if the underlying notification was delivered through webhook, email, Slack, etc.
 - also surfaces `sent` logs for `monitor.up` and `agent.online` as green recovery alerts
+
+Container image update notifications do not currently get a dedicated incident-style toast treatment. They follow the standard delivery flow: normal toast for `in-app`, otherwise only the admin history view and external channel delivery.
 
 The component deduplicates these alert toasts for a short window so a single event does not produce one toast per configured channel, and keeps the alert toasts visible longer than the default informational toast.
 

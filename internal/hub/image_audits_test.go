@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
+	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
 	"github.com/stretchr/testify/require"
 )
 
@@ -251,4 +253,121 @@ func TestResolveImageAuditRegistryFailure(t *testing.T) {
 	})
 	require.Equal(t, imageAuditStatusCheckFailed, result.Status)
 	require.Equal(t, "boom", result.Error)
+}
+
+func TestBuildImageNotificationTargets(t *testing.T) {
+	result := imageAuditResult{
+		Target: imageAuditTarget{Tag: "1.2.5"},
+		LineStatus: imageAuditLineStatusPatchAvailable,
+		LineLatestTag: "1.2.7",
+		SameMajorTag: "1.3.0",
+		NewMajorTag: "2.0.0",
+	}
+
+	targets := buildImageNotificationTargets(result)
+	require.Equal(t, []imageNotificationTarget{
+		{Scope: "line", Tag: "1.2.7"},
+		{Scope: "same_major", Tag: "1.3.0"},
+		{Scope: "new_major", Tag: "2.0.0"},
+	}, targets)
+	require.Equal(t, "line:1.2.7|same_major:1.3.0|new_major:2.0.0", buildImageNotificationSignature(targets))
+}
+
+func TestBuildImageNotificationTargetsIgnoresRebuiltOnlyChange(t *testing.T) {
+	result := imageAuditResult{
+		Target: imageAuditTarget{Tag: "1.2.5"},
+		LineStatus: imageAuditLineStatusTagRebuilt,
+		LineLatestTag: "1.2.5",
+		SameMajorTag: "1.2.5",
+		NewMajorTag: "",
+	}
+
+	targets := buildImageNotificationTargets(result)
+	require.Empty(t, targets)
+	require.Empty(t, buildImageNotificationSignature(targets))
+}
+
+func TestUpsertContainerImageAuditNotifiesOnlyWhenSignatureChanges(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	agent, err := createTestRecord(testApp, "agents", map[string]any{
+		"name":        "host-1",
+		"token":       "token-1",
+		"fingerprint": "fingerprint-1",
+		"status":      "connected",
+	})
+	require.NoError(t, err)
+
+	result := imageAuditResult{
+		Target: imageAuditTarget{
+			AgentID:       agent.Id,
+			ContainerID:   "container-1",
+			ContainerName: "web",
+			CurrentRef:    "docker.io/library/nginx:1.2.5",
+			Tag:           "1.2.5",
+		},
+		Status:        imageAuditStatusUpdateAvailable,
+		LineStatus:    imageAuditLineStatusPatchAvailable,
+		LineLatestTag: "1.2.7",
+		SameMajorTag:  "1.3.0",
+		OverallTag:    "2.0.0",
+		NewMajorTag:   "2.0.0",
+		HasMajorUpdate: true,
+		CheckedAt:     time.Now().UTC(),
+	}
+
+	notified, err := hub.upsertContainerImageAudit(result)
+	require.NoError(t, err)
+	require.True(t, notified)
+
+	rec, err := hub.FindFirstRecordByFilter(containerImageAuditsCollection, "agent = {:agent} && container_id = {:container_id}", map[string]any{"agent": agent.Id, "container_id": "container-1"})
+	require.NoError(t, err)
+	require.Equal(t, "line:1.2.7|same_major:1.3.0|new_major:2.0.0", rec.GetString("last_notified_signature"))
+	require.NotEmpty(t, rec.GetString("last_notified_at"))
+
+	notified, err = hub.upsertContainerImageAudit(result)
+	require.NoError(t, err)
+	require.False(t, notified)
+
+	result.LineLatestTag = "1.2.8"
+	result.CheckedAt = result.CheckedAt.Add(time.Hour)
+	notified, err = hub.upsertContainerImageAudit(result)
+	require.NoError(t, err)
+	require.True(t, notified)
+
+	rec, err = hub.FindFirstRecordByFilter(containerImageAuditsCollection, "agent = {:agent} && container_id = {:container_id}", map[string]any{"agent": agent.Id, "container_id": "container-1"})
+	require.NoError(t, err)
+	require.Equal(t, "line:1.2.8|same_major:1.3.0|new_major:2.0.0", rec.GetString("last_notified_signature"))
+
+	result.LineStatus = imageAuditStatusUpToDate
+	result.LineLatestTag = "1.2.5"
+	result.SameMajorTag = "1.2.5"
+	result.NewMajorTag = ""
+	result.CheckedAt = result.CheckedAt.Add(time.Hour)
+	notified, err = hub.upsertContainerImageAudit(result)
+	require.NoError(t, err)
+	require.False(t, notified)
+
+	rec, err = hub.FindFirstRecordByFilter(containerImageAuditsCollection, "agent = {:agent} && container_id = {:container_id}", map[string]any{"agent": agent.Id, "container_id": "container-1"})
+	require.NoError(t, err)
+	require.Empty(t, rec.GetString("last_notified_signature"))
+	require.Empty(t, rec.GetString("last_notified_at"))
+}
+
+func TestRenderContainerImageUpdateNotificationMessage(t *testing.T) {
+	title, body, err := notifications.RenderMessage(notifications.Event{
+		Kind: notifications.EventContainerImageUpdateAvailable,
+		Resource: notifications.ResourceRef{Name: "web"},
+		Details: map[string]any{
+			"agent_name":     "host-1",
+			"current_ref":    "docker.io/library/nginx:1.2.5",
+			"update_targets": []string{"patch line 1.2.7", "same major 1.3.0", "new major 2.0.0"},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, `Container image update available for "web"`, title)
+	require.Contains(t, body, `Container "web" on agent "host-1" uses docker.io/library/nginx:1.2.5.`)
+	require.Contains(t, body, `patch line 1.2.7, same major 1.3.0, new major 2.0.0`)
 }
