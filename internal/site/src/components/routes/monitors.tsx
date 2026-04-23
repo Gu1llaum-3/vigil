@@ -1080,6 +1080,7 @@ interface MonitorRowProps {
 
 function MonitorRow({ monitor: m, availableGroups, readonly, onMoveMonitor, onEdit, onDelete }: MonitorRowProps) {
 	const target = monitorTarget(m)
+	const canVisitTarget = m.type === "http" && /^https?:\/\//i.test(target)
 	const currentGroupId = m.group || ungroupedGroupStateKey
 
 	return (
@@ -1109,6 +1110,15 @@ function MonitorRow({ monitor: m, availableGroups, readonly, onMoveMonitor, onEd
 							<CopyIcon className="h-3 w-3" />
 						</Button>
 					</div>
+				) : canVisitTarget ? (
+					<a
+						href={target}
+						target="_blank"
+						rel="noreferrer"
+						className="text-sm text-muted-foreground font-mono truncate max-w-xs block underline-offset-4 hover:text-foreground hover:underline"
+					>
+						{target}
+					</a>
 				) : (
 					<span className="text-sm text-muted-foreground font-mono truncate max-w-xs block">{target}</span>
 				)}

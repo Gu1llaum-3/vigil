@@ -151,8 +151,8 @@ const MonitorsPage = lazy(() => import("@/components/routes/monitors.tsx"))
 
 - `MonitorsPage` (memo) — top-level component; fetches `/api/app/monitors` and `/api/app/monitor-groups` on mount; renders group sections
 - `MonitorGroupSection` — collapsible group card (collapsed by default, persisted per browser) with edit/delete controls, an "Add monitor here" action, an up/total summary next to the group title, and a table of monitors inside the same bordered container when expanded; monitors without a group are rendered as a dedicated top section labeled "No group"
-- `MonitorRow` — per-monitor row: status badge, name + last message, type badge, target, latency, rolling 24h average latency, 24h uptime, 30d uptime, mini status bars for the last checks, age, action dropdown with a `Move to` submenu
-- `MonitorDetailPage` — dedicated monitor page with larger summary cards, 1h/3h/6h/24h range selector, and a latency chart with red down bands
+- `MonitorRow` — per-monitor row: status badge, name + last message, type badge, target (clickable for HTTP(S) monitors; push URLs keep their copy button), latency, rolling 24h average latency, 24h uptime, 30d uptime, mini status bars for the last checks, age, action dropdown with a `Move to` submenu
+- `MonitorDetailPage` — dedicated monitor page with larger summary cards, 1h/3h/6h/24h range selector, a latency chart with red down bands, and a clickable target URL for HTTP(S) monitors
 - `MonitorDialog` — create/edit form with type-conditional fields plus the failure threshold setting (`0` = instant down, default `3`)
 - `GroupDialog` — simple group name form
 - `StatusBadge` — green (UP), red (DOWN), outline (Pending — no last_checked_at yet)

@@ -343,6 +343,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 	}
 
 	const target = monitorTarget(monitor)
+	const canVisitTarget = monitor.type === "http" && /^https?:\/\//i.test(target)
 	const latencyPoint = typeof monitor.last_latency_ms === "number" ? monitor.last_latency_ms : undefined
 
 	return (
@@ -355,7 +356,18 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 							<span className="truncate">{monitor.name}</span>
 						</CardTitle>
 						<CardDescription className="mt-2 max-w-3xl space-y-3">
-							<div className="font-mono text-xs sm:text-sm break-all text-muted-foreground">{target || "—"}</div>
+							{canVisitTarget ? (
+								<a
+									href={target}
+									target="_blank"
+									rel="noreferrer"
+									className="font-mono text-xs sm:text-sm break-all text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+								>
+									{target}
+								</a>
+							) : (
+								<div className="font-mono text-xs sm:text-sm break-all text-muted-foreground">{target || "—"}</div>
+							)}
 							<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 text-sm">
 								<div>
 									<div className="text-xs text-muted-foreground"><Trans>Type</Trans></div>
