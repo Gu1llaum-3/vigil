@@ -5,7 +5,7 @@
 ### Required
 
 - Go
-- Node.js with `npm`, or `bun` as an alternative frontend package runner
+- Node.js with `npm`
 
 ### Optional But Useful
 
@@ -58,6 +58,8 @@ Output binaries are written under `build/`.
 Frontend commands live in `internal/site/package.json`.
 
 Run them from the repository root via the `Makefile`, or directly in `internal/site`.
+
+This repository standardizes on `npm` for frontend dependency management and script execution.
 
 Important commands:
 

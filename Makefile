@@ -24,13 +24,8 @@ tidy:
 	go mod tidy
 
 build-web-ui:
-	@if command -v bun >/dev/null 2>&1; then \
-		bun install --cwd ./internal/site && \
-		bun run --cwd ./internal/site build; \
-	else \
-		npm install --prefix ./internal/site && \
-		npm run --prefix ./internal/site build; \
-	fi
+	npm install --prefix ./internal/site
+	npm run --prefix ./internal/site build
 
 build-agent: tidy
 	GOOS=$(OS) GOARCH=$(ARCH) go build -o ./build/vigil-agent_$(OS)_$(ARCH)$(EXE_EXT) -ldflags "-w -s" ./internal/cmd/agent
@@ -47,19 +42,11 @@ build: build-agent build-hub
 generate-locales:
 	@if [ ! -f ./internal/site/src/locales/en/en.ts ]; then \
 		echo "Generating locales..."; \
-		if command -v bun >/dev/null 2>&1; then \
-			bun install --cwd ./internal/site && bun run --cwd ./internal/site sync; \
-		else \
-			npm install --prefix ./internal/site && npm run --prefix ./internal/site sync; \
-		fi \
+		npm install --prefix ./internal/site && npm run --prefix ./internal/site sync; \
 	fi
 
 dev-server: generate-locales
-	@if command -v bun >/dev/null 2>&1; then \
-		bun run --cwd ./internal/site dev; \
-	else \
-		npm run --prefix ./internal/site dev; \
-	fi
+	npm run --prefix ./internal/site dev
 
 dev-hub: export ENV=dev
 dev-hub:
