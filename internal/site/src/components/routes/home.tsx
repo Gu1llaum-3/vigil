@@ -149,7 +149,7 @@ export default memo(function Home() {
 		)
 	}
 
-	const isEmpty = !dashboard || !dashboard.hosts || dashboard.hosts.length === 0
+	const isEmpty = !dashboard?.hosts || dashboard.hosts.length === 0
 	if (isEmpty) {
 		return (
 			<div className="flex flex-1 py-6 sm:py-8">

@@ -7,7 +7,7 @@ SKIP_WEB ?= false
 # Set executable extension based on target OS
 EXE_EXT := $(if $(filter windows,$(OS)),.exe,)
 
-.PHONY: tidy build-agent build-hub build-hub-dev build clean lint dev-server dev-agent dev-hub dev generate-locales build-web-ui
+.PHONY: tidy build-agent build-hub build-hub-dev build clean lint dev-server dev-agent dev-hub dev generate-locales build-web-ui npm-outdated
 .DEFAULT_GOAL := build
 
 clean:
@@ -26,6 +26,13 @@ tidy:
 build-web-ui:
 	npm install --prefix ./internal/site
 	npm run --prefix ./internal/site build
+
+npm-outdated:
+	@npm outdated --prefix ./internal/site; \
+	status=$$?; \
+	if [ $$status -ne 0 ] && [ $$status -ne 1 ]; then \
+		exit $$status; \
+	fi
 
 build-agent: tidy
 	GOOS=$(OS) GOARCH=$(ARCH) go build -o ./build/vigil-agent_$(OS)_$(ARCH)$(EXE_EXT) -ldflags "-w -s" ./internal/cmd/agent

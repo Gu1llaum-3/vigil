@@ -102,7 +102,7 @@ function AuthEye({ isOpen, onOpen }: { isOpen: boolean; onOpen: () => void }) {
 	)
 }
 
-export default function () {
+export default function Login() {
 	const page = useStore($router)
 	const [isFirstRun, setFirstRun] = useState(false)
 	const [authMethods, setAuthMethods] = useState<AuthMethodsList>()

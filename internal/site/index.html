@@ -12,14 +12,15 @@
 			.dark { background: hsl(220 5.5% 9%); color-scheme: dark; }
 		</style>
 		<script>
-			(function() {
+			(() => {
 				try {
-					var theme = localStorage.getItem('ui-theme');
-					var isDark = theme === 'dark' ||
-						(theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-					document.documentElement.classList.add(isDark ? 'dark' : 'light');
-				} catch (e) {}
-			})();
+					const theme = localStorage.getItem("ui-theme")
+					const isDark =
+						theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+
+					document.documentElement.classList.add(isDark ? "dark" : "light")
+				} catch {}
+			})()
 		</script>
 		<script>
 			globalThis.APP = "{info}"

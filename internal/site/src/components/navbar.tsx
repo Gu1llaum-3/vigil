@@ -279,7 +279,7 @@ function AdminDropdownGroup() {
 	return (
 		<DropdownMenuGroup>
 			<DropdownMenuItem asChild>
-				<a href={prependBasePath("/_/")} target="_blank">
+				<a href={prependBasePath("/_/")} target="_blank" rel="noopener">
 					<UsersIcon className="me-2.5 h-4 w-4" />
 					<span>
 						<Trans>Users</Trans>
@@ -287,7 +287,7 @@ function AdminDropdownGroup() {
 				</a>
 			</DropdownMenuItem>
 			<DropdownMenuItem asChild>
-				<a href={prependBasePath("/_/#/logs")} target="_blank">
+				<a href={prependBasePath("/_/#/logs")} target="_blank" rel="noopener">
 					<LogsIcon className="me-2.5 h-4 w-4" />
 					<span>
 						<Trans>Logs</Trans>
@@ -295,7 +295,7 @@ function AdminDropdownGroup() {
 				</a>
 			</DropdownMenuItem>
 			<DropdownMenuItem asChild>
-				<a href={prependBasePath("/_/#/settings/backups")} target="_blank">
+				<a href={prependBasePath("/_/#/settings/backups")} target="_blank" rel="noopener">
 					<DatabaseBackupIcon className="me-2.5 h-4 w-4" />
 					<span>
 						<Trans>Backups</Trans>
