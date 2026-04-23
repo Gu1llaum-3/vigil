@@ -10,11 +10,11 @@ import { toast } from "@/components/ui/use-toast"
 import { isAdmin, pb } from "@/lib/api"
 import type { ScheduledJobRecord } from "@/types"
 
-async function apiGet<T>(path: string): Promise<T> {
+function apiGet<T>(path: string): Promise<T> {
 	return pb.send(path, { method: "GET" }) as Promise<T>
 }
 
-async function apiPost<T>(path: string): Promise<T> {
+function apiPost<T>(path: string): Promise<T> {
 	return pb.send(path, { method: "POST" }) as Promise<T>
 }
 
@@ -72,7 +72,9 @@ const JobsSettingsPage = memo(() => {
 					<Trans>Jobs</Trans>
 				</h3>
 				<p className="text-sm text-muted-foreground leading-relaxed">
-					<Trans>Review active scheduled jobs, their usual schedule, latest execution state, and run them manually.</Trans>
+					<Trans>
+						Review active scheduled jobs, their usual schedule, latest execution state, and run them manually.
+					</Trans>
 				</p>
 			</div>
 			<Separator className="my-4" />
@@ -97,8 +99,12 @@ const JobsSettingsPage = memo(() => {
 												: job.description || job.key}
 										</CardDescription>
 									</div>
-									<Button variant="outline" disabled={runningKey === job.key} onClick={() => void runNow(job.key)}>
-										{runningKey === job.key ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : <PlayIcon className="mr-2 size-4" />}
+									<Button variant="outline" disabled={runningKey === job.key} onClick={() => runNow(job.key)}>
+										{runningKey === job.key ? (
+											<Loader2Icon className="mr-2 size-4 animate-spin" />
+										) : (
+											<PlayIcon className="mr-2 size-4" />
+										)}
 										<Trans>Run Now</Trans>
 									</Button>
 								</div>
@@ -109,14 +115,19 @@ const JobsSettingsPage = memo(() => {
 									<StatusItem label={t`Status`} value={job.last_status || t`Idle`} />
 									<StatusItem label={t`Last Run`} value={formatDateTime(job.last_run_at)} />
 									<StatusItem label={t`Last Success`} value={formatDateTime(job.last_success_at)} />
-									<StatusItem label={t`Duration`} value={job.last_duration_ms > 0 ? `${job.last_duration_ms} ms` : t`Never`} />
+									<StatusItem
+										label={t`Duration`}
+										value={job.last_duration_ms > 0 ? `${job.last_duration_ms} ms` : t`Never`}
+									/>
 								</div>
 								{Object.keys(job.last_result || {}).length > 0 ? (
 									<div className="rounded-md border bg-muted/20 px-3 py-2 text-sm">
 										<p className="font-medium mb-1">
 											<Trans>Last Result</Trans>
 										</p>
-										<pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(job.last_result, null, 2)}</pre>
+										<pre className="whitespace-pre-wrap break-words text-xs">
+											{JSON.stringify(job.last_result, null, 2)}
+										</pre>
 									</div>
 								) : null}
 								{job.last_error ? <p className="text-sm text-destructive">{job.last_error}</p> : null}

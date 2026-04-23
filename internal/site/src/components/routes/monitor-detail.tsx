@@ -1,19 +1,8 @@
 import { Trans, useLingui } from "@lingui/react/macro"
 import { getPagePath } from "@nanostores/router"
 import { useStore } from "@nanostores/react"
-import {
-	ArrowLeftIcon,
-	CheckCircle2Icon,
-	Clock3Icon,
-	GaugeIcon,
-	XCircleIcon,
-} from "lucide-react"
-import {
-	memo,
-	useEffect,
-	useMemo,
-	useState,
-} from "react"
+import { ArrowLeftIcon, CheckCircle2Icon, Clock3Icon, GaugeIcon, XCircleIcon } from "lucide-react"
+import { memo, useEffect, useMemo, useState } from "react"
 import { Line } from "react-chartjs-2"
 import {
 	Chart as ChartJS,
@@ -210,8 +199,9 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 			setError(null)
 			try {
 				const groups = (await pb.send("/api/app/monitors", { method: "GET" })) as MonitorGroupResponse[]
-				const detail = groups.flatMap((group) => group.monitors).find((item) => item.id === monitorId)
-					?? ((await pb.send(`/api/app/monitors/${monitorId}`, { method: "GET" })) as MonitorRecord)
+				const detail =
+					groups.flatMap((group) => group.monitors).find((item) => item.id === monitorId) ??
+					((await pb.send(`/api/app/monitors/${monitorId}`, { method: "GET" })) as MonitorRecord)
 				if (cancelled) return
 				setMonitor(detail)
 
@@ -221,7 +211,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 				const limit = Math.min(Math.max(Math.ceil((selectedRange.hours * 60 * 60 * 1000) / intervalMs) + 50, 250), 5000)
 				const history = (await pb.send(
 					`/api/app/monitors/${monitorId}/events?since=${encodeURIComponent(since)}&limit=${limit}`,
-					{ method: "GET" },
+					{ method: "GET" }
 				)) as MonitorEventRecord[]
 				if (cancelled) return
 				setEvents(history)
@@ -258,7 +248,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 				},
 			],
 		}),
-		[series.points],
+		[series.points]
 	)
 	const chartOptions = useMemo<ChartOptions<"line">>(
 		() => ({
@@ -305,7 +295,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 				},
 			},
 		}),
-		[series.chartEnd, series.points, t],
+		[series.chartEnd, series.points, t]
 	)
 	const downBandPlugin = useMemo(() => createDownBandPlugin(series.downBands), [series.downBands])
 
@@ -370,19 +360,27 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 							)}
 							<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 text-sm">
 								<div>
-									<div className="text-xs text-muted-foreground"><Trans>Type</Trans></div>
+									<div className="text-xs text-muted-foreground">
+										<Trans>Type</Trans>
+									</div>
 									<div className="font-mono uppercase text-foreground">{monitor.type || "—"}</div>
 								</div>
 								<div>
-									<div className="text-xs text-muted-foreground"><Trans>Interval</Trans></div>
+									<div className="text-xs text-muted-foreground">
+										<Trans>Interval</Trans>
+									</div>
 									<div className="text-foreground">{formatSeconds(monitor.interval)}</div>
 								</div>
 								<div>
-									<div className="text-xs text-muted-foreground"><Trans>Timeout</Trans></div>
+									<div className="text-xs text-muted-foreground">
+										<Trans>Timeout</Trans>
+									</div>
 									<div className="text-foreground">{formatSeconds(monitor.timeout)}</div>
 								</div>
 								<div>
-									<div className="text-xs text-muted-foreground"><Trans>Threshold</Trans></div>
+									<div className="text-xs text-muted-foreground">
+										<Trans>Threshold</Trans>
+									</div>
 									<div className="text-foreground">{monitor.failure_threshold ?? 3}</div>
 								</div>
 							</div>
@@ -414,39 +412,57 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 			<CardContent className="p-0 mt-6 space-y-6">
 				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 					<div className="rounded-lg border bg-muted/20 p-4">
-						<div className="text-xs text-muted-foreground"><Trans>Current latency</Trans></div>
+						<div className="text-xs text-muted-foreground">
+							<Trans>Current latency</Trans>
+						</div>
 						<div className="mt-1 text-2xl font-semibold">{formatLatencyMs(latencyPoint)}</div>
 					</div>
 					<div className="rounded-lg border bg-muted/20 p-4">
-						<div className="text-xs text-muted-foreground"><Trans>Avg 24h</Trans></div>
+						<div className="text-xs text-muted-foreground">
+							<Trans>Avg 24h</Trans>
+						</div>
 						<div className="mt-1 text-2xl font-semibold">{formatLatencyMs(monitor.avg_latency_24h_ms)}</div>
 					</div>
 					<div className="rounded-lg border bg-muted/20 p-4">
-						<div className="text-xs text-muted-foreground"><Trans>Uptime 24h</Trans></div>
+						<div className="text-xs text-muted-foreground">
+							<Trans>Uptime 24h</Trans>
+						</div>
 						<div className="mt-1 text-2xl font-semibold">{formatPercent(monitor.uptime_24h)}</div>
 					</div>
 					<div className="rounded-lg border bg-muted/20 p-4">
-						<div className="text-xs text-muted-foreground"><Trans>Uptime 30d</Trans></div>
+						<div className="text-xs text-muted-foreground">
+							<Trans>Uptime 30d</Trans>
+						</div>
 						<div className="mt-1 text-2xl font-semibold">{formatPercent(monitor.uptime_30d)}</div>
 					</div>
 				</div>
 
 				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 					<div className="rounded-lg border bg-muted/20 p-4">
-						<div className="text-xs text-muted-foreground"><Trans>Last check</Trans></div>
-						<div className="mt-1 text-sm font-medium">{monitor.last_checked_at ? formatDateTime(Date.parse(monitor.last_checked_at)) : "—"}</div>
+						<div className="text-xs text-muted-foreground">
+							<Trans>Last check</Trans>
+						</div>
+						<div className="mt-1 text-sm font-medium">
+							{monitor.last_checked_at ? formatDateTime(Date.parse(monitor.last_checked_at)) : "—"}
+						</div>
 						<div className="mt-1 text-xs text-muted-foreground">{formatAge(monitor.last_checked_at)}</div>
 					</div>
 					<div className="rounded-lg border bg-muted/20 p-4">
-						<div className="text-xs text-muted-foreground"><Trans>Last message</Trans></div>
+						<div className="text-xs text-muted-foreground">
+							<Trans>Last message</Trans>
+						</div>
 						<div className="mt-1 text-sm font-medium break-words">{monitor.last_msg || "—"}</div>
 					</div>
 					<div className="rounded-lg border bg-muted/20 p-4">
-						<div className="text-xs text-muted-foreground"><Trans>Checks loaded</Trans></div>
+						<div className="text-xs text-muted-foreground">
+							<Trans>Checks loaded</Trans>
+						</div>
 						<div className="mt-1 text-sm font-medium">{events.length}</div>
 					</div>
 					<div className="rounded-lg border bg-muted/20 p-4">
-						<div className="text-xs text-muted-foreground"><Trans>Status</Trans></div>
+						<div className="text-xs text-muted-foreground">
+							<Trans>Status</Trans>
+						</div>
 						<div className="mt-1">{statusBadge(monitor.status)}</div>
 					</div>
 				</div>

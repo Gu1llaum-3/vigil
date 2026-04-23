@@ -71,6 +71,13 @@ Important commands:
 
 The build command also performs Lingui extraction and compilation.
 
+The frontend `npm run check` command intentionally excludes two categories of files from Biome:
+
+- generated Lingui locale bundles under `internal/site/src/locales/**/*.ts`
+- the Tailwind v4 stylesheet entrypoint `internal/site/src/index.css`
+
+Those files are still validated indirectly by the normal frontend build, but they are not useful Biome targets because the locale bundles are generated artifacts and the Tailwind v4 at-rules used in `index.css` are not parsed cleanly by the current Biome version.
+
 ## Development Modes
 
 ### Production-Style Hub
@@ -235,3 +242,4 @@ This is useful when you are only debugging agent startup, fingerprinting, or hub
 - `make dev-hub` creates a placeholder `internal/site/dist/index.html` because the development server path still expects the directory to exist.
 - `make dev-agent` still uses the placeholder module path from `go.mod`, so derived projects should keep it in sync when renaming.
 - frontend localization artifacts are generated and compiled as part of the normal frontend build flow.
+- `npm run check` is expected to focus on maintainable source files; generated Lingui bundles and the Tailwind v4 root stylesheet are verified through `npm run build` instead.

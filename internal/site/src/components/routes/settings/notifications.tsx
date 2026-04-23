@@ -996,8 +996,8 @@ const NotificationsSettings = memo(() => {
 				</h3>
 				<p className="text-sm text-muted-foreground leading-relaxed">
 					<Trans>
-						Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change
-						state.
+						Configure notification channels and routing rules. Notifications are sent when monitors, agents, or
+						container images change state.
 					</Trans>
 				</p>
 			</div>

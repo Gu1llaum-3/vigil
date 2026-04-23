@@ -45,11 +45,11 @@ const defaultConfirmState: ConfirmState = {
 	description: "",
 }
 
-async function apiGet<T>(path: string): Promise<T> {
+function apiGet<T>(path: string): Promise<T> {
 	return pb.send(path, { method: "GET" }) as Promise<T>
 }
 
-async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+function apiPatch<T>(path: string, body: unknown): Promise<T> {
 	return pb.send(path, {
 		method: "PATCH",
 		body: JSON.stringify(body),
@@ -57,7 +57,7 @@ async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 	}) as Promise<T>
 }
 
-async function apiPost<T>(path: string, body: unknown): Promise<T> {
+function apiPost<T>(path: string, body: unknown): Promise<T> {
 	return pb.send(path, {
 		method: "POST",
 		body: JSON.stringify(body),
@@ -131,7 +131,8 @@ const PurgeSettingsPage = memo(() => {
 				monitor_events_retention_days: Number(monitorRetention),
 				notification_logs_retention_days: Number(notificationRetention),
 				monitor_events_manual_default_days: settings?.monitor_events_manual_default_days ?? Number(monitorRetention),
-				notification_logs_manual_default_days: settings?.notification_logs_manual_default_days ?? Number(notificationRetention),
+				notification_logs_manual_default_days:
+					settings?.notification_logs_manual_default_days ?? Number(notificationRetention),
 				offline_agents_manual_default_days: settings?.offline_agents_manual_default_days ?? 180,
 			})
 			setSettings(updated)
@@ -209,8 +210,8 @@ const PurgeSettingsPage = memo(() => {
 							</CardTitle>
 							<CardDescription>
 								<Trans>
-									A background job runs daily and deletes monitoring events and notification logs older than the configured
-									retention window.
+									A background job runs daily and deletes monitoring events and notification logs older than the
+									configured retention window.
 								</Trans>
 							</CardDescription>
 						</CardHeader>
@@ -340,10 +341,12 @@ const PurgeSettingsPage = memo(() => {
 						<AlertDialogCancel>
 							<Trans>Cancel</Trans>
 						</AlertDialogCancel>
-						<AlertDialogAction onClick={(e) => {
-							e.preventDefault()
-							void runPurge()
-						}}>
+						<AlertDialogAction
+							onClick={(e) => {
+								e.preventDefault()
+								runPurge()
+							}}
+						>
 							{running === confirm.scope && <Loader2Icon className="mr-2 size-4 animate-spin" />}
 							<Trans>Confirm Purge</Trans>
 						</AlertDialogAction>

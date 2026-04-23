@@ -99,14 +99,7 @@ export function Logo({ className, interactive = false }: LogoProps) {
 					<path ref={clipRef} d={OPEN_CLIP_PATH} />
 				</clipPath>
 			</defs>
-			<circle
-				ref={pupilRef}
-				className="logo-eye-pupil"
-				cx="50"
-				cy="50"
-				r="14"
-				clipPath="url(#logo-eye-clip)"
-			/>
+			<circle ref={pupilRef} className="logo-eye-pupil" cx="50" cy="50" r="14" clipPath="url(#logo-eye-clip)" />
 			<path ref={topLidRef} className="logo-eye-lid" d={OPEN_TOP_PATH} />
 			<path ref={bottomLidRef} className="logo-eye-lid" d={OPEN_BOTTOM_PATH} />
 		</svg>

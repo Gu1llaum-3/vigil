@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/a11y/noSvgWithoutTitle: these icon components are decorative by default and accept aria props from callers when needed */
 import type { SVGProps } from "react"
 
 // linux-logo-bold from https://github.com/phosphor-icons/core (MIT license)

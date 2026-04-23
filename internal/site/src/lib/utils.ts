@@ -1,6 +1,5 @@
 import { t } from "@lingui/core/macro"
 import { type ClassValue, clsx } from "clsx"
-import { useEffect, useState } from "react"
 import { twMerge } from "tailwind-merge"
 import { toast } from "@/components/ui/use-toast"
 import { $copyContent } from "./stores"

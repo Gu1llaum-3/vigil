@@ -195,10 +195,10 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 					dns_host: monitor.dns_host || "",
 					dns_type: monitor.dns_type || "A",
 					dns_server: monitor.dns_server || "",
-						failure_threshold: monitor.failure_threshold ?? 3,
-						ping_count: monitor.ping_count ?? 1,
-						ping_per_request_timeout: monitor.ping_per_request_timeout ?? 2,
-						ping_ip_family: monitor.ping_ip_family || "",
+					failure_threshold: monitor.failure_threshold ?? 3,
+					ping_count: monitor.ping_count ?? 1,
+					ping_per_request_timeout: monitor.ping_per_request_timeout ?? 2,
+					ping_ip_family: monitor.ping_ip_family || "",
 				})
 			} else {
 				setForm({ ...defaultMonitorForm, group: defaultGroupId || "" })
@@ -298,12 +298,12 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 							<SelectTrigger>
 								<SelectValue />
 							</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="http">HTTP / HTTPS</SelectItem>
-						<SelectItem value="ping">Ping</SelectItem>
-						<SelectItem value="tcp">TCP</SelectItem>
-						<SelectItem value="dns">DNS</SelectItem>
-						<SelectItem value="push">Push</SelectItem>
+							<SelectContent>
+								<SelectItem value="http">HTTP / HTTPS</SelectItem>
+								<SelectItem value="ping">Ping</SelectItem>
+								<SelectItem value="tcp">TCP</SelectItem>
+								<SelectItem value="dns">DNS</SelectItem>
+								<SelectItem value="push">Push</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -416,18 +416,19 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 								<Label>
 									<Trans>Hostname</Trans>
 								</Label>
-								<Input
-									value={form.hostname}
-									onChange={(e) => set("hostname", e.target.value)}
-									placeholder="1.1.1.1"
-								/>
+								<Input value={form.hostname} onChange={(e) => set("hostname", e.target.value)} placeholder="1.1.1.1" />
 							</div>
 							<div className="grid grid-cols-3 gap-3">
 								<div className="grid gap-1.5">
 									<Label>
 										<Trans>Count</Trans>
 									</Label>
-									<Input type="number" min={1} value={form.ping_count} onChange={(e) => set("ping_count", Number(e.target.value))} />
+									<Input
+										type="number"
+										min={1}
+										value={form.ping_count}
+										onChange={(e) => set("ping_count", Number(e.target.value))}
+									/>
 								</div>
 								<div className="grid gap-1.5">
 									<Label>
@@ -444,7 +445,10 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 									<Label>
 										<Trans>IP family</Trans>
 									</Label>
-									<Select value={form.ping_ip_family || "__auto__"} onValueChange={(v) => set("ping_ip_family", v === "__auto__" ? "" : (v as "ipv4" | "ipv6"))}>
+									<Select
+										value={form.ping_ip_family || "__auto__"}
+										onValueChange={(v) => set("ping_ip_family", v === "__auto__" ? "" : (v as "ipv4" | "ipv6"))}
+									>
 										<SelectTrigger>
 											<SelectValue placeholder={t`Auto`} />
 										</SelectTrigger>
@@ -719,7 +723,7 @@ export default memo(function MonitorsPage() {
 			setDeleteGroupConfirm(group)
 			return
 		}
-		void deleteGroup(group.id)
+		deleteGroup(group.id)
 	}
 
 	async function moveMonitorToGroup(monitorId: string, group: string) {
@@ -788,11 +792,21 @@ export default memo(function MonitorsPage() {
 				</div>
 				{!readonly && (
 					<div className="flex flex-wrap gap-2">
-						<Button variant="outline" size="sm" onClick={() => setAllGroupsOpen(true)} disabled={orderedGroups.length === 0}>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setAllGroupsOpen(true)}
+							disabled={orderedGroups.length === 0}
+						>
 							<ChevronDownIcon className="h-4 w-4 me-1.5" />
 							<Trans>Expand all</Trans>
 						</Button>
-						<Button variant="outline" size="sm" onClick={() => setAllGroupsOpen(false)} disabled={orderedGroups.length === 0}>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setAllGroupsOpen(false)}
+							disabled={orderedGroups.length === 0}
+						>
 							<ChevronRightIcon className="h-4 w-4 me-1.5" />
 							<Trans>Collapse all</Trans>
 						</Button>
@@ -906,7 +920,7 @@ export default memo(function MonitorsPage() {
 								if (!deleteGroupConfirm) return
 								const group = deleteGroupConfirm
 								setDeleteGroupConfirm(null)
-								void deleteGroup(group.id)
+								deleteGroup(group.id)
 							}}
 						>
 							<Trans>Delete</Trans>
@@ -1048,15 +1062,15 @@ function MonitorGroupSection({
 								</TableRow>
 							) : (
 								group.monitors.map((m) => (
-						<MonitorRow
-							key={m.id}
-							monitor={m}
-							availableGroups={availableGroups}
-							readonly={readonly}
-							onMoveMonitor={onMoveMonitor}
-							onEdit={() => onEditMonitor(m)}
-							onDelete={() => onDeleteMonitor(m.id)}
-						/>
+									<MonitorRow
+										key={m.id}
+										monitor={m}
+										availableGroups={availableGroups}
+										readonly={readonly}
+										onMoveMonitor={onMoveMonitor}
+										onEdit={() => onEditMonitor(m)}
+										onDelete={() => onDeleteMonitor(m.id)}
+									/>
 								))
 							)}
 						</TableBody>

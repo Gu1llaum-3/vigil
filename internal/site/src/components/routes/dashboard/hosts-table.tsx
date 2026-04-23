@@ -321,7 +321,11 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 					const docker = h.docker
 					if (!docker || docker.state === "not_configured" || docker.state === "cli_missing")
 						return <span className="text-xs text-muted-foreground">—</span>
-					if (docker.state === "daemon_unreachable" || docker.state === "permission_denied" || docker.state === "error") {
+					if (
+						docker.state === "daemon_unreachable" ||
+						docker.state === "permission_denied" ||
+						docker.state === "error"
+					) {
 						return (
 							<div className="group flex items-center">
 								<Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
