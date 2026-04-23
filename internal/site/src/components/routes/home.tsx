@@ -1,10 +1,14 @@
 import { Trans, useLingui } from "@lingui/react/macro"
+import { useStore } from "@nanostores/react"
 import { RefreshCwIcon } from "lucide-react"
 import { memo, useCallback, useEffect, useRef, useState } from "react"
 import Spinner from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { pb, isReadOnlyUser } from "@/lib/api"
 import { isWarningContainerStatus } from "@/lib/container-status"
+import { HourFormat } from "@/lib/enums"
+import { $userSettings } from "@/lib/stores"
+import { currentHour12 } from "@/lib/utils"
 import type { DashboardResponse } from "@/lib/dashboard-types"
 import { Charts } from "./dashboard/charts"
 import { ContainersTable } from "./dashboard/containers-table"
@@ -12,8 +16,22 @@ import { EmptyState } from "./dashboard/empty-state"
 import { HostsTable } from "./dashboard/hosts-table"
 import { KpiCards } from "./dashboard/kpi-cards"
 
+function formatRefreshDateTime(value: string, hour12: boolean) {
+	const parsed = new Date(value)
+	if (Number.isNaN(parsed.getTime())) {
+		return "-"
+	}
+
+	return new Intl.DateTimeFormat(undefined, {
+		dateStyle: "medium",
+		timeStyle: "short",
+		hour12,
+	}).format(parsed)
+}
+
 export default memo(function Home() {
 	const { t } = useLingui()
+	const userSettings = useStore($userSettings)
 	const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [refreshing, setRefreshing] = useState(false)
@@ -146,6 +164,18 @@ export default memo(function Home() {
 	const hasContainerWarnings = (dashboard.containers ?? []).some((container) =>
 		isWarningContainerStatus(container.status)
 	)
+	const hour12 = userSettings.hourFormat ? userSettings.hourFormat === HourFormat["12h"] : currentHour12()
+	const lastRefreshAt = dashboard.hosts.reduce<string | null>((latest, host) => {
+		if (!host.collected_at) {
+			return latest
+		}
+
+		if (!latest || Date.parse(host.collected_at) > Date.parse(latest)) {
+			return host.collected_at
+		}
+
+		return latest
+	}, null)
 
 	function handleContainersClick() {
 		if (!hasContainers) return
@@ -155,20 +185,29 @@ export default memo(function Home() {
 
 	return (
 		<div className="flex flex-1 flex-col gap-6 py-6 sm:py-8">
-			<div className="flex items-center justify-between">
+			<div className="flex flex-wrap items-center justify-between gap-3">
 				<h1 className="text-2xl font-semibold tracking-tight">
 					<Trans>Dashboard</Trans>
 				</h1>
-				<Button
-					variant="outline"
-					size="sm"
-					disabled={refreshing || isReadOnlyUser()}
-					onClick={handleRefresh}
-					className="gap-2"
-				>
-					<RefreshCwIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
-					<Trans>Refresh</Trans>
-				</Button>
+				<div className="ml-auto flex flex-wrap items-center justify-end gap-3 sm:gap-4">
+					{lastRefreshAt ? (
+						<p className="text-right text-xs text-muted-foreground sm:text-sm">
+							<Trans>Last refresh</Trans>
+							{": "}
+							{formatRefreshDateTime(lastRefreshAt, hour12)}
+						</p>
+					) : null}
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={refreshing || isReadOnlyUser()}
+						onClick={handleRefresh}
+						className="gap-2"
+					>
+						<RefreshCwIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
+						<Trans>Refresh</Trans>
+					</Button>
+				</div>
 			</div>
 
 			<KpiCards

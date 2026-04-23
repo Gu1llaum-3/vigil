@@ -205,6 +205,8 @@ Rolling monitor metrics render as `N/A` only when no events exist in the window.
 
 The dashboard home page lives under `internal/site/src/components/routes/dashboard/`.
 
+The route header also includes a manual `Refresh` action for immediate snapshot collection and now shows the most recent host snapshot timestamp next to that button so operators can see when fleet data last refreshed.
+
 Components:
 
 - `kpi-cards.tsx` — summary metric cards (host connectivity ratio, monitor up/total ratio, pending updates, etc.)

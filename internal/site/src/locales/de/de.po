@@ -23,14 +23,6 @@ msgstr ""
 msgid "{0} entries on this page"
 msgstr ""
 
-#: src/components/routes/settings/purge.tsx
-#~ msgid "{0} probes, {1} notifications"
-#~ msgstr ""
-
-#: src/components/routes/settings/purge.tsx
-#~ msgid "{0} probes, {1} notifications deleted."
-#~ msgstr ""
-
 #. placeholder {0}: res.deleted_count
 #: src/components/routes/settings/purge.tsx
 msgid "{0} record(s) deleted."
@@ -169,10 +161,6 @@ msgstr ""
 msgid "Auto"
 msgstr ""
 
-#: src/components/routes/settings/purge.tsx
-#~ msgid "Automatic Cleanup Job"
-#~ msgstr ""
-
 #: src/components/copy-to-clipboard.tsx
 msgid "Automatic copy requires a secure context."
 msgstr "Automatisches Kopieren erfordert einen sicheren Kontext."
@@ -181,10 +169,6 @@ msgstr "Automatisches Kopieren erfordert einen sicheren Kontext."
 #: src/components/routes/settings/purge.tsx
 msgid "Automatic Retention"
 msgstr ""
-
-#: src/components/routes/settings/purge.tsx
-#~ msgid "Automatic retention and manual purge defaults have been updated."
-#~ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Automatic retention settings have been updated."
@@ -314,10 +298,6 @@ msgid "Configure automatic retention for monitoring and notification history, th
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
-#~ msgid "Configure notification channels and routing rules. Notifications are sent when monitors or agents change state."
-#~ msgstr ""
-
-#: src/components/routes/settings/notifications.tsx
 msgid "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
 msgstr ""
 
@@ -422,10 +402,6 @@ msgstr ""
 msgid "Current latency"
 msgstr ""
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "daemon unreachable"
-#~ msgstr ""
-
 #: src/components/routes/home.tsx
 #: src/components/routes/home.tsx
 msgid "Dashboard"
@@ -443,18 +419,6 @@ msgstr ""
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
 msgstr ""
-
-#: src/components/routes/settings/purge.tsx
-#~ msgid "Default Manual Days For Notifications"
-#~ msgstr ""
-
-#: src/components/routes/settings/purge.tsx
-#~ msgid "Default Manual Days For Offline Hosts"
-#~ msgstr ""
-
-#: src/components/routes/settings/purge.tsx
-#~ msgid "Default Manual Days For Probes"
-#~ msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Define when and where notifications are sent."
@@ -856,12 +820,12 @@ msgstr "Sprache"
 msgid "Last check"
 msgstr ""
 
-#: src/components/routes/settings/purge.tsx
-#~ msgid "Last Deleted"
-#~ msgstr ""
-
 #: src/components/routes/monitor-detail.tsx
 msgid "Last message"
+msgstr ""
+
+#: src/components/routes/home.tsx
+msgid "Last refresh"
 msgstr ""
 
 #: src/components/routes/settings/jobs.tsx
@@ -904,10 +868,6 @@ msgstr ""
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Latest same major"
 msgstr ""
-
-#: src/components/routes/dashboard/containers-table.tsx
-#~ msgid "Latest tag"
-#~ msgstr ""
 
 #: src/components/routes/settings/general.tsx
 msgid "Layout width"
@@ -1052,10 +1012,6 @@ msgstr ""
 msgid "Never"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
-#~ msgid "New major"
-#~ msgstr ""
-
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Next"
 msgstr ""
@@ -1125,10 +1081,6 @@ msgstr "Keine Ergebnisse gefunden."
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr ""
 
-#: src/components/routes/dashboard/kpi-cards.tsx
-#~ msgid "No updates available"
-#~ msgstr ""
-
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Not checked"
 msgstr ""
@@ -1148,10 +1100,6 @@ msgstr ""
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Notification details"
 msgstr ""
-
-#: src/components/routes/settings/purge.tsx
-#~ msgid "Notification History Retention"
-#~ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Notification History Retention (days)"
@@ -1349,10 +1297,6 @@ msgid "Priority (default 5)"
 msgstr ""
 
 #: src/components/routes/settings/purge.tsx
-#~ msgid "Probe History Retention"
-#~ msgstr ""
-
-#: src/components/routes/settings/purge.tsx
 msgid "Probe History Retention (days)"
 msgstr ""
 
@@ -1419,10 +1363,6 @@ msgstr ""
 #: src/components/routes/home.tsx
 msgid "Refresh"
 msgstr ""
-
-#: src/components/routes/settings/purge.tsx
-#~ msgid "Registered as a PocketBase cron job and scheduled daily at midnight UTC."
-#~ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Repos"
@@ -1499,10 +1439,6 @@ msgid "Rules"
 msgstr ""
 
 #: src/components/routes/settings/purge.tsx
-#~ msgid "Run automatic cleanup now?"
-#~ msgstr ""
-
-#: src/components/routes/settings/purge.tsx
 msgid "Run manual cleanups for old history or remove all offline hosts when needed."
 msgstr ""
 
@@ -1515,10 +1451,6 @@ msgstr ""
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Running"
 msgstr ""
-
-#: src/components/routes/dashboard/kpi-cards.tsx
-#~ msgid "Running containers"
-#~ msgstr ""
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
@@ -1693,10 +1625,6 @@ msgid "This will delete probe events older than {monitorDays} days."
 msgstr ""
 
 #: src/components/routes/settings/purge.tsx
-#~ msgid "This will immediately run the automatic retention job for probe and notification history."
-#~ msgstr ""
-
-#: src/components/routes/settings/purge.tsx
 msgid "This will permanently delete all notification logs."
 msgstr ""
 
@@ -1814,10 +1742,6 @@ msgstr ""
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Updates"
 msgstr ""
-
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Updates pending"
-#~ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
