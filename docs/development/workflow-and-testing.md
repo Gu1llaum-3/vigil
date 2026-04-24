@@ -20,7 +20,8 @@ After cloning, run `mise install` to match the repo versions.
 
 If you want the Git hooks enabled, run `lefthook install` once.
 
-The hooks format Go files on commit and run Go/frontend build checks before push.
+The hooks format Go files on commit and run Go tests before push.
+Frontend builds are enforced in GitHub Actions for release and Docker image workflows, not in local pre-push hooks.
 
 ## Main Make Targets
 

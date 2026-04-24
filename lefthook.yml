@@ -12,5 +12,3 @@ pre-push:
   commands:
     go-test:
       run: go test -tags=testing ./...
-    frontend-build:
-      run: npm run --prefix ./internal/site build
