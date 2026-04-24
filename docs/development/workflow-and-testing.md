@@ -5,12 +5,22 @@
 ### Required
 
 - Go 1.26.2 or newer
-- Node.js with `npm`
+- Node.js 24.x with `npm`
 
 ### Optional But Useful
 
+- `mise` for pinned Go/Node/lefthook toolchains
+- `lefthook` for git hooks
 - `entr` for hot-reload during development
 - `golangci-lint` for Go linting
+
+The repository pins its local toolchain in `.mise.toml`.
+
+After cloning, run `mise install` to match the repo versions.
+
+If you want the Git hooks enabled, run `lefthook install` once.
+
+The hooks format Go files on commit and run Go/frontend build checks before push.
 
 ## Main Make Targets
 
