@@ -544,6 +544,7 @@ export const ContainersTable = memo(function ContainersTable({
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 		manualFiltering: true,
+		autoResetPageIndex: false,
 	})
 
 	return (

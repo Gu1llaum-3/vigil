@@ -447,6 +447,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 		manualFiltering: true,
+		autoResetPageIndex: false,
 	})
 
 	return (
