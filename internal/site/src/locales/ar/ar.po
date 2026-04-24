@@ -63,7 +63,6 @@ msgstr ""
 
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Actions"
 msgstr "إجراءات"
 
@@ -72,14 +71,10 @@ msgid "Active"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Add"
 msgstr ""
 
 #: src/components/add-agent.tsx
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Add agent"
 msgstr ""
@@ -89,11 +84,9 @@ msgid "Add channel"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 msgid "Add group"
 msgstr ""
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Add monitor"
 msgstr ""
@@ -111,7 +104,6 @@ msgid "Adjust the width of the main layout"
 msgstr "تعديل عرض التخطيط الرئيسي"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 msgid "Admin"
 msgstr "مسؤول"
@@ -120,7 +112,6 @@ msgstr "مسؤول"
 msgid "Agent"
 msgstr ""
 
-#: src/components/command-palette.tsx
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/layout.tsx
@@ -156,7 +147,6 @@ msgstr ""
 msgid "Arch"
 msgstr ""
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Auto"
 msgstr ""
@@ -209,9 +199,6 @@ msgid "Blue line for successful checks, red background for down periods."
 msgstr ""
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
 msgid "Cancel"
@@ -226,7 +213,6 @@ msgid "Change general application options."
 msgstr "تغيير خيارات التطبيق العامة."
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Channel"
 msgstr ""
 
@@ -234,8 +220,6 @@ msgstr ""
 msgid "Channel (optional)"
 msgstr ""
 
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Channels"
 msgstr ""
@@ -265,7 +249,6 @@ msgid "Click \"Add monitor\" to start monitoring your services."
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
 msgstr "انقر للنسخ"
@@ -275,12 +258,10 @@ msgid "Collapse all"
 msgstr ""
 
 #: src/components/login/forgot-pass-form.tsx
-#: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
 msgstr "تعليمات سطر الأوامر"
 
 #: src/components/routes/dashboard/charts.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Compliant"
 msgstr ""
@@ -301,7 +282,6 @@ msgstr ""
 msgid "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
 msgstr ""
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Confirm password"
 msgstr "تأكيد كلمة المرور"
@@ -326,7 +306,6 @@ msgstr ""
 msgid "Containers"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/lib/utils.ts
 msgid "Copied to clipboard"
@@ -386,7 +365,6 @@ msgid "Create account"
 msgstr "إنشاء حساب"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/containers-table.tsx
 msgid "Created"
 msgstr ""
 
@@ -403,11 +381,9 @@ msgid "Current latency"
 msgstr ""
 
 #: src/components/routes/home.tsx
-#: src/components/routes/home.tsx
 msgid "Dashboard"
 msgstr ""
 
-#: src/components/routes/settings/purge.tsx
 #: src/components/routes/settings/purge.tsx
 msgid "Days to keep"
 msgstr ""
@@ -425,8 +401,6 @@ msgid "Define when and where notifications are sent."
 msgstr ""
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Delete"
 msgstr ""
@@ -484,7 +458,6 @@ msgid "Detail"
 msgstr ""
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Details"
 msgstr ""
 
@@ -497,7 +470,6 @@ msgid "DNS server (optional)"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Docker"
 msgstr ""
 
@@ -505,7 +477,6 @@ msgstr ""
 msgid "down"
 msgstr ""
 
-#: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 msgid "Down"
@@ -521,7 +492,6 @@ msgstr ""
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Edit"
 msgstr ""
 
@@ -529,7 +499,6 @@ msgstr ""
 msgid "Edit channel"
 msgstr ""
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Edit group"
 msgstr ""
@@ -556,9 +525,6 @@ msgstr ""
 msgid "Enable the enrollment token to generate ready-to-use install commands."
 msgstr ""
 
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Enabled"
 msgstr ""
@@ -588,24 +554,15 @@ msgstr "مؤقت"
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/agents.tsx
-#: src/components/routes/settings/agents.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Error"
 msgstr "خطأ"
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Event"
 msgstr ""
 
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Events"
 msgstr ""
@@ -740,7 +697,6 @@ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 msgid "Hostname"
 msgstr ""
 
@@ -805,7 +761,6 @@ msgstr ""
 msgid "Keyword in response body (optional)"
 msgstr ""
 
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Kind"
 msgstr ""
@@ -898,7 +853,6 @@ msgid "Local image id"
 msgstr ""
 
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
 msgid "Log Out"
 msgstr "تسجيل الخروج"
 
@@ -974,9 +928,7 @@ msgstr ""
 
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Monitors"
 msgstr ""
@@ -990,16 +942,10 @@ msgid "My Slack alerts"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Name"
 msgstr ""
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Name is required"
 msgstr ""
@@ -1033,7 +979,6 @@ msgid "No containers match the current filter."
 msgstr ""
 
 #: src/components/routes/dashboard/charts.tsx
-#: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "No data"
 msgstr ""
@@ -1042,9 +987,6 @@ msgstr ""
 msgid "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
 msgstr ""
 
-#: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "No group"
 msgstr ""
@@ -1138,11 +1080,9 @@ msgstr ""
 
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Open menu"
 msgstr "فتح القائمة"
 
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Optional"
 msgstr ""
@@ -1155,7 +1095,6 @@ msgstr "أو المتابعة باستخدام"
 msgid "OS Distribution"
 msgstr ""
 
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Out of SLA"
 msgstr ""
@@ -1190,7 +1129,6 @@ msgid "Pages / Settings"
 msgstr "الصفحات / الإعدادات"
 
 #: src/components/login/auth-form.tsx
-#: src/components/login/auth-form.tsx
 msgid "Password"
 msgstr "كلمة المرور"
 
@@ -1214,7 +1152,6 @@ msgstr ""
 msgid "Patch Status"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Paused"
 msgstr ""
@@ -1347,7 +1284,6 @@ msgid "RAM"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Reboot req."
 msgstr ""
 
@@ -1389,7 +1325,6 @@ msgid "Reset Password"
 msgstr "إعادة تعيين كلمة المرور"
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Resource"
 msgstr ""
 
@@ -1397,7 +1332,6 @@ msgstr ""
 msgid "Resources"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Restarting"
 msgstr ""
@@ -1429,8 +1363,6 @@ msgid "Rows"
 msgstr ""
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Rule"
 msgstr ""
 
@@ -1447,14 +1379,11 @@ msgid "Run Now"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Running"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Save"
 msgstr ""
@@ -1471,7 +1400,6 @@ msgstr "حفظ الإعدادات"
 msgid "Saved in the database and does not expire until you disable it."
 msgstr "محفوظ في قاعدة البيانات ولا ينتهي حتى تقوم بتعطيله."
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Saving…"
 msgstr ""
@@ -1496,7 +1424,6 @@ msgstr ""
 msgid "Search pages and settings..."
 msgstr ""
 
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Security"
 msgstr ""
@@ -1527,10 +1454,7 @@ msgid "Set up agents"
 msgstr ""
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/layout.tsx
 msgid "Settings"
 msgstr "الإعدادات"
@@ -1550,7 +1474,6 @@ msgstr "إعدادات SMTP"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "State"
 msgstr ""
 
@@ -1560,8 +1483,6 @@ msgstr ""
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/jobs.tsx
-#: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Status"
 msgstr ""
@@ -1574,7 +1495,6 @@ msgstr ""
 msgid "Swap"
 msgstr ""
 
-#: src/components/mode-toggle.tsx
 #: src/components/mode-toggle.tsx
 msgid "Switch theme"
 msgstr ""
@@ -1645,7 +1565,6 @@ msgid "Throttle (seconds, 0 = no throttle)"
 msgstr ""
 
 #: src/components/routes/settings/general.tsx
-#: src/components/routes/settings/general.tsx
 msgid "Time format"
 msgstr "تنسيق الوقت"
 
@@ -1678,7 +1597,6 @@ msgid "Topic URL"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 msgid "total"
 msgstr ""
 
@@ -1696,19 +1614,15 @@ msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 msgid "Type"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "unknown"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Unknown"
 msgstr ""
@@ -1721,7 +1635,6 @@ msgstr ""
 msgid "Unsupported"
 msgstr ""
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "up"
 msgstr ""

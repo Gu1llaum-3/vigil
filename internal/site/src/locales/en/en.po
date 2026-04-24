@@ -58,7 +58,6 @@ msgstr "A unique push URL will be generated automatically. Use it in a cron job 
 
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Actions"
 msgstr "Actions"
 
@@ -67,14 +66,10 @@ msgid "Active"
 msgstr "Active"
 
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Add"
 msgstr "Add"
 
 #: src/components/add-agent.tsx
-#: src/components/navbar.tsx
 #: src/components/navbar.tsx
 msgid "Add agent"
 msgstr "Add agent"
@@ -84,11 +79,9 @@ msgid "Add channel"
 msgstr "Add channel"
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 msgid "Add group"
 msgstr "Add group"
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Add monitor"
 msgstr "Add monitor"
@@ -106,7 +99,6 @@ msgid "Adjust the width of the main layout"
 msgstr "Adjust the width of the main layout"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 msgid "Admin"
 msgstr "Admin"
@@ -115,7 +107,6 @@ msgstr "Admin"
 msgid "Agent"
 msgstr "Agent"
 
-#: src/components/command-palette.tsx
 #: src/components/command-palette.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/layout.tsx
@@ -151,7 +142,6 @@ msgstr "App Token"
 msgid "Arch"
 msgstr "Arch"
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Auto"
 msgstr "Auto"
@@ -204,9 +194,6 @@ msgid "Blue line for successful checks, red background for down periods."
 msgstr "Blue line for successful checks, red background for down periods."
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
 msgid "Cancel"
@@ -221,7 +208,6 @@ msgid "Change general application options."
 msgstr "Change general application options."
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Channel"
 msgstr "Channel"
 
@@ -229,8 +215,6 @@ msgstr "Channel"
 msgid "Channel (optional)"
 msgstr "Channel (optional)"
 
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Channels"
 msgstr "Channels"
@@ -260,7 +244,6 @@ msgid "Click \"Add monitor\" to start monitoring your services."
 msgstr "Click \"Add monitor\" to start monitoring your services."
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
 msgstr "Click to copy"
@@ -270,12 +253,10 @@ msgid "Collapse all"
 msgstr "Collapse all"
 
 #: src/components/login/forgot-pass-form.tsx
-#: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
 msgstr "Command line instructions"
 
 #: src/components/routes/dashboard/charts.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Compliant"
 msgstr "Compliant"
@@ -296,7 +277,6 @@ msgstr "Configure automatic retention for monitoring and notification history, t
 msgid "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
 msgstr "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
 
-#: src/components/login/auth-form.tsx
 #: src/components/login/auth-form.tsx
 msgid "Confirm password"
 msgstr "Confirm password"
@@ -321,7 +301,6 @@ msgstr "Container fleet"
 msgid "Containers"
 msgstr "Containers"
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/lib/utils.ts
 msgid "Copied to clipboard"
@@ -381,7 +360,6 @@ msgid "Create account"
 msgstr "Create account"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/containers-table.tsx
 msgid "Created"
 msgstr "Created"
 
@@ -398,11 +376,9 @@ msgid "Current latency"
 msgstr "Current latency"
 
 #: src/components/routes/home.tsx
-#: src/components/routes/home.tsx
 msgid "Dashboard"
 msgstr "Dashboard"
 
-#: src/components/routes/settings/purge.tsx
 #: src/components/routes/settings/purge.tsx
 msgid "Days to keep"
 msgstr "Days to keep"
@@ -420,8 +396,6 @@ msgid "Define when and where notifications are sent."
 msgstr "Define when and where notifications are sent."
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Delete"
 msgstr "Delete"
@@ -479,7 +453,6 @@ msgid "Detail"
 msgstr "Detail"
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Details"
 msgstr "Details"
 
@@ -492,7 +465,6 @@ msgid "DNS server (optional)"
 msgstr "DNS server (optional)"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Docker"
 msgstr "Docker"
 
@@ -500,7 +472,6 @@ msgstr "Docker"
 msgid "down"
 msgstr "down"
 
-#: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 msgid "Down"
@@ -516,7 +487,6 @@ msgstr "Each agent authenticates with a token and establishes a stable fingerpri
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Edit"
 msgstr "Edit"
 
@@ -524,7 +494,6 @@ msgstr "Edit"
 msgid "Edit channel"
 msgstr "Edit channel"
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Edit group"
 msgstr "Edit group"
@@ -551,9 +520,6 @@ msgstr "Enable enrollment token"
 msgid "Enable the enrollment token to generate ready-to-use install commands."
 msgstr "Enable the enrollment token to generate ready-to-use install commands."
 
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Enabled"
 msgstr "Enabled"
@@ -583,24 +549,15 @@ msgstr "Ephemeral"
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/agents.tsx
-#: src/components/routes/settings/agents.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Error"
 msgstr "Error"
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Event"
 msgstr "Event"
 
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Events"
 msgstr "Events"
@@ -735,7 +692,6 @@ msgstr "Host offline"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 msgid "Hostname"
 msgstr "Hostname"
 
@@ -800,7 +756,6 @@ msgstr "Jobs"
 msgid "Keyword in response body (optional)"
 msgstr "Keyword in response body (optional)"
 
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Kind"
 msgstr "Kind"
@@ -893,7 +848,6 @@ msgid "Local image id"
 msgstr "Local image id"
 
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
 msgid "Log Out"
 msgstr "Log Out"
 
@@ -969,9 +923,7 @@ msgstr "Monitor updated"
 
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Monitors"
 msgstr "Monitors"
@@ -985,16 +937,10 @@ msgid "My Slack alerts"
 msgstr "My Slack alerts"
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Name"
 msgstr "Name"
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Name is required"
 msgstr "Name is required"
@@ -1028,7 +974,6 @@ msgid "No containers match the current filter."
 msgstr "No containers match the current filter."
 
 #: src/components/routes/dashboard/charts.tsx
-#: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "No data"
 msgstr "No data"
@@ -1037,9 +982,6 @@ msgstr "No data"
 msgid "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
 msgstr "No external configuration is required. Matching events will appear as in-app toasts for the rule owner."
 
-#: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "No group"
 msgstr "No group"
@@ -1133,11 +1075,9 @@ msgstr "Online"
 
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
-#: src/components/routes/settings/notifications.tsx
 msgid "Open menu"
 msgstr "Open menu"
 
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Optional"
 msgstr "Optional"
@@ -1150,7 +1090,6 @@ msgstr "Or continue with"
 msgid "OS Distribution"
 msgstr "OS Distribution"
 
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Out of SLA"
 msgstr "Out of SLA"
@@ -1185,7 +1124,6 @@ msgid "Pages / Settings"
 msgstr "Pages / Settings"
 
 #: src/components/login/auth-form.tsx
-#: src/components/login/auth-form.tsx
 msgid "Password"
 msgstr "Password"
 
@@ -1209,7 +1147,6 @@ msgstr "Patch available"
 msgid "Patch Status"
 msgstr "Patch Status"
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Paused"
 msgstr "Paused"
@@ -1342,7 +1279,6 @@ msgid "RAM"
 msgstr "RAM"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Reboot req."
 msgstr "Reboot req."
 
@@ -1384,7 +1320,6 @@ msgid "Reset Password"
 msgstr "Reset Password"
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Resource"
 msgstr "Resource"
 
@@ -1392,7 +1327,6 @@ msgstr "Resource"
 msgid "Resources"
 msgstr "Resources"
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Restarting"
 msgstr "Restarting"
@@ -1424,8 +1358,6 @@ msgid "Rows"
 msgstr "Rows"
 
 #: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 msgid "Rule"
 msgstr "Rule"
 
@@ -1442,14 +1374,11 @@ msgid "Run Now"
 msgstr "Run Now"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Running"
 msgstr "Running"
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
-#: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Save"
 msgstr "Save"
@@ -1466,7 +1395,6 @@ msgstr "Save Settings"
 msgid "Saved in the database and does not expire until you disable it."
 msgstr "Saved in the database and does not expire until you disable it."
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "Saving…"
 msgstr "Saving…"
@@ -1491,7 +1419,6 @@ msgstr "Search host, IP, OS, kernel…"
 msgid "Search pages and settings..."
 msgstr "Search pages and settings..."
 
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Security"
 msgstr "Security"
@@ -1522,10 +1449,7 @@ msgid "Set up agents"
 msgstr "Set up agents"
 
 #: src/components/command-palette.tsx
-#: src/components/command-palette.tsx
 #: src/components/navbar.tsx
-#: src/components/navbar.tsx
-#: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/layout.tsx
 msgid "Settings"
 msgstr "Settings"
@@ -1545,7 +1469,6 @@ msgstr "SMTP settings"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "State"
 msgstr "State"
 
@@ -1555,8 +1478,6 @@ msgstr "State"
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/jobs.tsx
-#: src/components/routes/settings/notifications/history.tsx
-#: src/components/routes/settings/notifications/history.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Status"
 msgstr "Status"
@@ -1569,7 +1490,6 @@ msgstr "Stopped"
 msgid "Swap"
 msgstr "Swap"
 
-#: src/components/mode-toggle.tsx
 #: src/components/mode-toggle.tsx
 msgid "Switch theme"
 msgstr "Switch theme"
@@ -1640,7 +1560,6 @@ msgid "Throttle (seconds, 0 = no throttle)"
 msgstr "Throttle (seconds, 0 = no throttle)"
 
 #: src/components/routes/settings/general.tsx
-#: src/components/routes/settings/general.tsx
 msgid "Time format"
 msgstr "Time format"
 
@@ -1673,7 +1592,6 @@ msgid "Topic URL"
 msgstr "Topic URL"
 
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 msgid "total"
 msgstr "total"
 
@@ -1691,19 +1609,15 @@ msgstr "Translations are managed from the project's locale catalogs."
 
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
-#: src/components/routes/monitors.tsx
 msgid "Type"
 msgstr "Type"
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "unknown"
 msgstr "unknown"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Unknown"
 msgstr "Unknown"
@@ -1716,7 +1630,6 @@ msgstr "Unknown / Pending"
 msgid "Unsupported"
 msgstr "Unsupported"
 
-#: src/components/routes/monitors.tsx
 #: src/components/routes/monitors.tsx
 msgid "up"
 msgstr "up"
