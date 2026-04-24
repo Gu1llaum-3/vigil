@@ -122,6 +122,10 @@ func enrichContainers(ctx context.Context, containers []common.ContainerInfo) er
 		ID     string `json:"Id"`
 		Name   string `json:"Name"`
 		Image  string `json:"Image"`
+		State  struct {
+			Status   string `json:"Status"`
+			ExitCode int    `json:"ExitCode"`
+		} `json:"State"`
 		Config struct {
 			Image string `json:"Image"`
 		} `json:"Config"`
@@ -142,6 +146,13 @@ func enrichContainers(ctx context.Context, containers []common.ContainerInfo) er
 		container.ImageID = inspectedContainer.Image
 		if inspectedContainer.Config.Image != "" {
 			container.ImageRef = inspectedContainer.Config.Image
+		}
+		// Expose ExitCode only for terminal states so "ExitCode: 0" on a
+		// running container isn't misread as a successful exit downstream.
+		switch strings.ToLower(inspectedContainer.State.Status) {
+		case "exited", "dead":
+			code := inspectedContainer.State.ExitCode
+			container.ExitCode = &code
 		}
 		if _, exists := imageIDSet[inspectedContainer.Image]; inspectedContainer.Image != "" && !exists {
 			imageIDSet[inspectedContainer.Image] = struct{}{}

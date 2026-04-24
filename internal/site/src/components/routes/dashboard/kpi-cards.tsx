@@ -21,6 +21,7 @@ interface KpiCardsProps {
 	onFilterChange: (filter: string | null) => void
 	hasContainersSection: boolean
 	hasContainerWarnings: boolean
+	hasContainerErrors: boolean
 	onContainersClick: () => void
 }
 
@@ -39,8 +40,14 @@ export const KpiCards = memo(function KpiCards({
 	onFilterChange,
 	hasContainersSection,
 	hasContainerWarnings,
+	hasContainerErrors,
 	onContainersClick,
 }: KpiCardsProps) {
+	const containersVariant: KpiCardDef["variant"] = hasContainerErrors
+		? "danger"
+		: hasContainerWarnings
+			? "warning"
+			: "success"
 	const cards: KpiCardDef[] = [
 		{
 			key: "hosts",
@@ -80,7 +87,7 @@ export const KpiCards = memo(function KpiCards({
 			label: <Trans>Containers</Trans>,
 			value: `${summary.running_containers}/${summary.total_containers}`,
 			icon: <BoxIcon className="size-4" />,
-			variant: hasContainerWarnings ? "warning" : "success",
+			variant: containersVariant,
 		},
 		{
 			key: "monitors",
@@ -119,6 +126,13 @@ export const KpiCards = memo(function KpiCards({
 				const isClickable = isInteractive || isNavigable || (isRunningContainersCard && hasContainersSection)
 				const isActive = isInteractive && activeFilter === item.filterKey
 				const showContainerUpdates = isRunningContainersCard && summary.containers_with_image_updates > 0
+				const errorCount = isRunningContainersCard ? (summary.containers_in_error ?? 0) : 0
+				const warningCount = isRunningContainersCard ? (summary.containers_in_warning ?? 0) : 0
+				const showContainerIssues = isRunningContainersCard && (errorCount > 0 || warningCount > 0)
+				const issueBadgeCls =
+					errorCount > 0
+						? "border-red-500/30 bg-red-500/10 text-red-400"
+						: "border-amber-500/30 bg-amber-500/10 text-amber-400"
 				const cardContent = (
 					<Card
 						className={`${isClickable ? "cursor-pointer" : "cursor-default"} transition-all ${variantClasses[item.variant]} ${
@@ -134,7 +148,29 @@ export const KpiCards = memo(function KpiCards({
 						}}
 					>
 						<CardContent className="relative p-4">
-							{showContainerUpdates ? (
+							{showContainerIssues ? (
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<div
+											className={`absolute top-3 right-3 inline-flex h-6 min-w-6 items-center justify-center gap-1 rounded-full border px-1.5 text-[10px] font-semibold tabular-nums ${issueBadgeCls}`}
+										>
+											<AlertTriangleIcon className="size-3" />
+											{errorCount + warningCount}
+										</div>
+									</TooltipTrigger>
+									<TooltipContent side="top">
+										{errorCount > 0 && warningCount > 0 ? (
+											<Trans>
+												{errorCount} error(s), {warningCount} warning(s)
+											</Trans>
+										) : errorCount > 0 ? (
+											<Trans>{errorCount} container(s) in error</Trans>
+										) : (
+											<Trans>{warningCount} container(s) in warning</Trans>
+										)}
+									</TooltipContent>
+								</Tooltip>
+							) : showContainerUpdates ? (
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<div className="absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400">

@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react"
 import Spinner from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { pb, isReadOnlyUser } from "@/lib/api"
-import { isWarningContainerStatus } from "@/lib/container-status"
+import { isErrorContainer, isWarningContainer } from "@/lib/container-status"
 import { HourFormat } from "@/lib/enums"
 import { $userSettings } from "@/lib/stores"
 import { currentHour12 } from "@/lib/utils"
@@ -161,9 +161,8 @@ export default memo(function Home() {
 	}
 
 	const hasContainers = (dashboard.containers ?? []).length > 0
-	const hasContainerWarnings = (dashboard.containers ?? []).some((container) =>
-		isWarningContainerStatus(container.status)
-	)
+	const hasContainerErrors = (dashboard.containers ?? []).some(isErrorContainer)
+	const hasContainerWarnings = (dashboard.containers ?? []).some(isWarningContainer)
 	const hour12 = userSettings.hourFormat ? userSettings.hourFormat === HourFormat["12h"] : currentHour12()
 	const lastRefreshAt = dashboard.hosts.reduce<string | null>((latest, host) => {
 		if (!host.collected_at) {
@@ -179,7 +178,8 @@ export default memo(function Home() {
 
 	function handleContainersClick() {
 		if (!hasContainers) return
-		setContainerFilter(hasContainerWarnings ? "warning" : "running")
+		const target = hasContainerErrors ? "error" : hasContainerWarnings ? "warning" : "running"
+		setContainerFilter(target)
 		containersSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
 	}
 
@@ -216,6 +216,7 @@ export default memo(function Home() {
 				onFilterChange={setActiveFilter}
 				hasContainersSection={hasContainers}
 				hasContainerWarnings={hasContainerWarnings}
+				hasContainerErrors={hasContainerErrors}
 				onContainersClick={handleContainersClick}
 			/>
 

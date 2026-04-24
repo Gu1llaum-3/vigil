@@ -69,6 +69,7 @@ export interface ContainerInfo {
 	status: string
 	status_text: string
 	ports: string
+	exit_code?: number | null
 }
 
 export interface DockerInfo {
@@ -141,6 +142,8 @@ export interface DashboardSummary {
 	total_security_updates: number
 	total_containers: number
 	running_containers: number
+	containers_in_warning: number
+	containers_in_error: number
 	containers_with_image_updates: number
 	insecure_repositories: number
 	os_distribution: DistributionEntry[]

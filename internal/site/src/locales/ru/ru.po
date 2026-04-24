@@ -33,6 +33,14 @@ msgstr ""
 msgid "{0} updates available"
 msgstr ""
 
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{errorCount} container(s) in error"
+msgstr ""
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{errorCount} error(s), {warningCount} warning(s)"
+msgstr ""
+
 #: src/components/notification-log-toasts.tsx
 msgid "{name} is back online."
 msgstr ""
@@ -47,6 +55,10 @@ msgstr ""
 
 #: src/components/notification-log-toasts.tsx
 msgid "{name} just went offline."
+msgstr ""
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{warningCount} container(s) in warning"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -559,12 +571,20 @@ msgstr "Эфемерный"
 msgid "Error"
 msgstr "Ошибка"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Errors"
+msgstr ""
+
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Event"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Events"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Exit code"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx

@@ -153,4 +153,8 @@ type ContainerInfo struct {
 	Status                string   `cbor:"status"                 json:"status"`
 	StatusText            string   `cbor:"status_text"            json:"status_text"`
 	Ports                 string   `cbor:"ports"                  json:"ports"`
+	// ExitCode is the container's last exit code, set only when the container
+	// is in a terminal state (exited/dead). nil means "not applicable"
+	// (e.g. running, restarting, paused, created) or "not reported by the agent".
+	ExitCode *int `cbor:"exit_code,omitempty"           json:"exit_code,omitempty"`
 }

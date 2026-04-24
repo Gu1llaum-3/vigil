@@ -33,6 +33,14 @@ msgstr "{0} enregistrement(s) supprimé(s)."
 msgid "{0} updates available"
 msgstr "{0} mises à jour disponibles"
 
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{errorCount} container(s) in error"
+msgstr "{errorCount} conteneur(s) en erreur"
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{errorCount} error(s), {warningCount} warning(s)"
+msgstr "{errorCount} erreur(s), {warningCount} avertissement(s)"
+
 #: src/components/notification-log-toasts.tsx
 msgid "{name} is back online."
 msgstr "{name} est de nouveau en ligne."
@@ -48,6 +56,10 @@ msgstr "{name} vient de passer hors service."
 #: src/components/notification-log-toasts.tsx
 msgid "{name} just went offline."
 msgstr "{name} vient de passer hors ligne."
+
+#: src/components/routes/dashboard/kpi-cards.tsx
+msgid "{warningCount} container(s) in warning"
+msgstr "{warningCount} conteneur(s) en avertissement"
 
 #: src/components/routes/monitors.tsx
 msgid "0 means instant down. Default is 3."
@@ -559,6 +571,10 @@ msgstr "Éphémère"
 msgid "Error"
 msgstr "Erreur"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Errors"
+msgstr "Erreurs"
+
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Event"
 msgstr "Événement"
@@ -566,6 +582,10 @@ msgstr "Événement"
 #: src/components/routes/settings/notifications.tsx
 msgid "Events"
 msgstr "Événements"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Exit code"
+msgstr "Code de sortie"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Exited"

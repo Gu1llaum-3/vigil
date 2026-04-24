@@ -220,7 +220,16 @@ The `Unknown / Pending` state is used when update data exists but the agent coul
 
 Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`, including the optional per-container `image_audit` block merged from the backend `container_image_audits` collection.
 
-The containers table remains on the dashboard route. It exposes `Warnings` and `Updates` chips plus an `Image audit` column so operators can focus either on unhealthy container states (`restarting` / `dead`) or on containers that are behind in their current update line without leaving the main fleet view.
+The containers table remains on the dashboard route. It exposes `Errors`, `Warnings`, and `Updates` chips plus an `Image audit` column so operators can focus either on unhealthy container states or on containers that are behind in their current update line without leaving the main fleet view.
+
+Container severity is classified by a single helper in `internal/site/src/lib/container-status.ts` (`containerSeverity`), kept in sync with `containerSeverity()` in `internal/hub/dashboard.go`:
+
+- **ok** — `running`
+- **warning** — `restarting`
+- **error** — `dead`, or `exited` with a non-zero exit code
+- **neutral** — `exited (0)` (a one-shot job that finished cleanly), `paused`, `created`, unknown
+
+The `Containers` KPI card on the dashboard reflects this: its border tint follows the highest severity present (red > amber > green) and a badge in the top-right corner shows the total count of problematic containers when `summary.containers_in_error + summary.containers_in_warning > 0`. The badge tooltip breaks down the counts and takes precedence over the image-updates indicator when both would otherwise be shown.
 
 The image-audit cell now distinguishes:
 

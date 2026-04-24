@@ -30,6 +30,8 @@ type DashboardSummary struct {
 	TotalSecurityUpdates       int                 `json:"total_security_updates"`
 	TotalContainers            int                 `json:"total_containers"`
 	RunningContainers          int                 `json:"running_containers"`
+	ContainersInWarning        int                 `json:"containers_in_warning"`
+	ContainersInError          int                 `json:"containers_in_error"`
 	ContainersWithImageUpdates int                 `json:"containers_with_image_updates"`
 	InsecureRepositories       int                 `json:"insecure_repositories"`
 	OSDistribution             []DistributionEntry `json:"os_distribution"`
@@ -171,6 +173,12 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 				if audit != nil && audit.Status == imageAuditStatusUpdateAvailable {
 					summary.ContainersWithImageUpdates++
 				}
+				switch containerSeverity(c) {
+				case severityWarning:
+					summary.ContainersInWarning++
+				case severityError:
+					summary.ContainersInError++
+				}
 				containers = append(containers, ContainerFleetEntry{
 					HostID:        agentId,
 					HostName:      agent.name,
@@ -271,6 +279,37 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 		"repositories": repositories,
 		"containers":   containers,
 	})
+}
+
+// containerSeverityLevel classifies a single container for dashboard counters.
+// Must stay in sync with containerSeverity() in
+// internal/site/src/lib/container-status.ts.
+type containerSeverityLevel int
+
+const (
+	severityNeutral containerSeverityLevel = iota
+	severityOK
+	severityWarning
+	severityError
+)
+
+func containerSeverity(c common.ContainerInfo) containerSeverityLevel {
+	switch c.Status {
+	case "running":
+		return severityOK
+	case "restarting":
+		return severityWarning
+	case "dead":
+		return severityError
+	case "exited":
+		if c.ExitCode != nil && *c.ExitCode != 0 {
+			return severityError
+		}
+		// nil (unknown) or 0 → treated as a clean stop, not a problem.
+		return severityNeutral
+	default:
+		return severityNeutral
+	}
 }
 
 func classifyPatchStatus(snapshot common.HostSnapshotResponse) string {

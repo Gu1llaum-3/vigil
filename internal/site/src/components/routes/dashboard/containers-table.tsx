@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { isStoppedContainerStatus, isWarningContainerStatus } from "@/lib/container-status"
+import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
 import { cn, copyToClipboard } from "@/lib/utils"
 import type { ContainerFleetEntry } from "@/lib/dashboard-types"
 
@@ -62,8 +62,9 @@ function displayImageRef(container: ContainerFleetEntry): string {
 
 // ── sub-components ────────────────────────────────────────────────────────────
 
-function ContainerStatusBadge({ status }: { status: string }) {
+function ContainerStatusBadge({ container }: { container: Pick<ContainerFleetEntry, "status" | "exit_code"> }) {
 	const { t } = useLingui()
+	const { status } = container
 	const label =
 		status === "running"
 			? t`Running`
@@ -79,12 +80,13 @@ function ContainerStatusBadge({ status }: { status: string }) {
 								? t`Dead`
 								: t`Unknown`
 
+	const severity = containerSeverity(container)
 	const cls =
-		status === "running"
+		severity === "ok"
 			? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-			: status === "restarting"
+			: severity === "warning"
 				? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-				: isStoppedContainerStatus(status)
+				: severity === "error"
 					? "border-red-500/30 bg-red-500/10 text-red-400"
 					: "border-border/50 text-muted-foreground"
 
@@ -100,13 +102,16 @@ function StatusCell({ container }: { container: ContainerFleetEntry }) {
 	const uptime = containerUptime(container.status, container.status_text)
 	const isRunning = container.status === "running"
 
-	const badge = <ContainerStatusBadge status={container.status} />
+	const badge = <ContainerStatusBadge container={container} />
 
 	if (isRunning) return badge
 
 	const popoverRows: Array<{ label: string; value: string }> = [{ label: t`State`, value: container.status }]
 	if (isStoppedContainerStatus(container.status)) {
 		popoverRows.push({ label: t`Exited since`, value: uptime !== "—" ? uptime : t`unknown` })
+		if (container.exit_code !== null && container.exit_code !== undefined) {
+			popoverRows.push({ label: t`Exit code`, value: String(container.exit_code) })
+		}
 	} else if (container.status === "restarting") {
 		popoverRows.push({ label: t`Restarting for`, value: uptime !== "—" ? uptime : t`unknown` })
 	}
@@ -357,6 +362,7 @@ export const ContainersTable = memo(function ContainersTable({
 		() => [
 			{ key: "all", label: t`All` },
 			{ key: "running", label: t`Running` },
+			{ key: "error", label: t`Errors` },
 			{ key: "warning", label: t`Warnings` },
 			{ key: "stopped", label: t`Stopped` },
 			{ key: "restarting", label: t`Restarting` },
@@ -381,8 +387,11 @@ export const ContainersTable = memo(function ContainersTable({
 			case "running":
 				result = containers.filter((c) => c.status === "running")
 				break
+			case "error":
+				result = containers.filter((c) => containerSeverity(c) === "error")
+				break
 			case "warning":
-				result = containers.filter((c) => isWarningContainerStatus(c.status))
+				result = containers.filter((c) => containerSeverity(c) === "warning")
 				break
 			case "stopped":
 				result = containers.filter((c) => isStoppedContainerStatus(c.status))
