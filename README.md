@@ -1,4 +1,10 @@
+<div align="center">
+
+<img src="internal/site/public/static/icon.png" alt="Vigil icon" width="128" />
+
 # Vigil
+
+</div>
 
 Vigil is a hub/agent patch audit application built on [PocketBase](https://pocketbase.io/), with a WebSocket architecture, React frontend, and multi-language support.
 
@@ -75,6 +81,7 @@ make dev
 │   ├── migrations/           # PocketBase database migrations
 │   ├── site/                 # Frontend application (Vite + React)
 │   │   ├── public/           # Static assets (icons, manifest)
+│   │   │   └── static/icon.png # App icon
 │   │   └── src/
 │   │       ├── components/   # React components (login, routes, UI primitives)
 │   │       └── lib/          # Shared utilities, nanostores, API client
