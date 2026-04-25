@@ -506,7 +506,12 @@ export const ContainersTable = memo(function ContainersTable({
 					onChange={(e) => handleSearch(e.target.value)}
 					className="sm:max-w-[280px]"
 				/>
-				<ContainersFilterSheet filters={filters} onFiltersChange={onFiltersChange} />
+				<ContainersFilterSheet
+					filters={filters}
+					onFiltersChange={onFiltersChange}
+					search={search}
+					onSearchChange={handleSearch}
+				/>
 				<div className="ml-auto flex shrink-0 items-center gap-2">
 					<span className="text-xs text-muted-foreground">
 						<Trans>Rows</Trans>

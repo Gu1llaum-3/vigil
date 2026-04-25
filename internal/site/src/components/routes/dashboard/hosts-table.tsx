@@ -408,7 +408,12 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					onChange={(e) => handleSearch(e.target.value)}
 					className="sm:max-w-[260px]"
 				/>
-				<HostsFilterSheet filters={filters} onFiltersChange={onFiltersChange} />
+				<HostsFilterSheet
+					filters={filters}
+					onFiltersChange={onFiltersChange}
+					search={search}
+					onSearchChange={handleSearch}
+				/>
 				<div className="ml-auto flex shrink-0 items-center gap-2">
 					<span className="text-xs text-muted-foreground">
 						<Trans>Rows</Trans>

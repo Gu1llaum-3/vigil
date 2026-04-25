@@ -1,8 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro"
-import { SlidersHorizontalIcon } from "lucide-react"
+import { SearchIcon, SlidersHorizontalIcon } from "lucide-react"
 import { useId } from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -82,9 +83,16 @@ export function applyContainersFilters(
 interface ContainersFilterSheetProps {
 	filters: ContainersFilters
 	onFiltersChange: (next: ContainersFilters) => void
+	search: string
+	onSearchChange: (value: string) => void
 }
 
-export function ContainersFilterSheet({ filters, onFiltersChange }: ContainersFilterSheetProps) {
+export function ContainersFilterSheet({
+	filters,
+	onFiltersChange,
+	search,
+	onSearchChange,
+}: ContainersFilterSheetProps) {
 	const { t } = useLingui()
 	const groupId = useId()
 	const activeCount = countContainersFilters(filters)
@@ -109,6 +117,7 @@ export function ContainersFilterSheet({ filters, onFiltersChange }: ContainersFi
 
 	function reset() {
 		onFiltersChange(defaultContainersFilters)
+		onSearchChange("")
 	}
 
 	const severityOptions: Array<{ value: ContainersSeverity; label: string }> = [
@@ -140,6 +149,22 @@ export function ContainersFilterSheet({ filters, onFiltersChange }: ContainersFi
 				</SheetHeader>
 
 				<div className="flex-1 space-y-6 overflow-y-auto p-4">
+					<div className="space-y-2">
+						<Label htmlFor={`${groupId}-search`}>
+							<Trans>Search</Trans>
+						</Label>
+						<div className="relative">
+							<SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								id={`${groupId}-search`}
+								value={search}
+								onChange={(e) => onSearchChange(e.target.value)}
+								placeholder={t`Container, image, host, ports…`}
+								className="pl-9"
+							/>
+						</div>
+					</div>
+
 					<div className="space-y-2">
 						<Label htmlFor={`${groupId}-status`}>
 							<Trans>Status</Trans>
@@ -214,7 +239,7 @@ export function ContainersFilterSheet({ filters, onFiltersChange }: ContainersFi
 				</div>
 
 				<SheetFooter className="flex-row gap-2 border-t border-border/60 p-4">
-					<Button variant="outline" className="flex-1" onClick={reset} disabled={activeCount === 0}>
+					<Button variant="outline" className="flex-1" onClick={reset} disabled={activeCount === 0 && !search}>
 						<Trans>Reset</Trans>
 					</Button>
 					<SheetClose asChild>

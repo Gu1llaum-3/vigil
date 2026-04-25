@@ -1,8 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro"
-import { SlidersHorizontalIcon } from "lucide-react"
+import { SearchIcon, SlidersHorizontalIcon } from "lucide-react"
 import { useId } from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -84,9 +85,11 @@ export function applyHostsFilters(hosts: DashboardHost[], filters: HostsFilters)
 interface HostsFilterSheetProps {
 	filters: HostsFilters
 	onFiltersChange: (next: HostsFilters) => void
+	search: string
+	onSearchChange: (value: string) => void
 }
 
-export function HostsFilterSheet({ filters, onFiltersChange }: HostsFilterSheetProps) {
+export function HostsFilterSheet({ filters, onFiltersChange, search, onSearchChange }: HostsFilterSheetProps) {
 	const { t } = useLingui()
 	const groupId = useId()
 	const activeCount = countHostsFilters(filters)
@@ -111,6 +114,7 @@ export function HostsFilterSheet({ filters, onFiltersChange }: HostsFilterSheetP
 
 	function reset() {
 		onFiltersChange(defaultHostsFilters)
+		onSearchChange("")
 	}
 
 	const complianceOptions: Array<{ value: HostsCompliance; label: string }> = [
@@ -145,6 +149,22 @@ export function HostsFilterSheet({ filters, onFiltersChange }: HostsFilterSheetP
 				</SheetHeader>
 
 				<div className="flex-1 space-y-6 overflow-y-auto p-4">
+					<div className="space-y-2">
+						<Label htmlFor={`${groupId}-search`}>
+							<Trans>Search</Trans>
+						</Label>
+						<div className="relative">
+							<SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								id={`${groupId}-search`}
+								value={search}
+								onChange={(e) => onSearchChange(e.target.value)}
+								placeholder={t`Host, IP, OS, kernel…`}
+								className="pl-9"
+							/>
+						</div>
+					</div>
+
 					<div className="space-y-2">
 						<Label htmlFor={`${groupId}-connection`}>
 							<Trans>Connection</Trans>
@@ -216,7 +236,7 @@ export function HostsFilterSheet({ filters, onFiltersChange }: HostsFilterSheetP
 				</div>
 
 				<SheetFooter className="flex-row gap-2 border-t border-border/60 p-4">
-					<Button variant="outline" className="flex-1" onClick={reset} disabled={activeCount === 0}>
+					<Button variant="outline" className="flex-1" onClick={reset} disabled={activeCount === 0 && !search}>
 						<Trans>Reset</Trans>
 					</Button>
 					<SheetClose asChild>

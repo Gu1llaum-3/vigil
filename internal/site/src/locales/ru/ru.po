@@ -333,6 +333,10 @@ msgstr ""
 msgid "Container fleet"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+msgid "Container, image, host, ports…"
+msgstr ""
+
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Containers"
 msgstr ""
@@ -751,6 +755,10 @@ msgstr ""
 
 #: src/components/notification-log-toasts.tsx
 msgid "Host offline"
+msgstr ""
+
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Host, IP, OS, kernel…"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -1478,6 +1486,8 @@ msgid "Schedule"
 msgstr ""
 
 #: src/components/navbar.tsx
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "Search"
 msgstr "Поиск"
 

@@ -328,6 +328,10 @@ msgstr "Container"
 msgid "Container fleet"
 msgstr "Container fleet"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+msgid "Container, image, host, ports…"
+msgstr "Container, image, host, ports…"
+
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Containers"
 msgstr "Containers"
@@ -747,6 +751,10 @@ msgstr "Host back online"
 #: src/components/notification-log-toasts.tsx
 msgid "Host offline"
 msgstr "Host offline"
+
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Host, IP, OS, kernel…"
+msgstr "Host, IP, OS, kernel…"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/monitors.tsx
@@ -1473,6 +1481,8 @@ msgid "Schedule"
 msgstr "Schedule"
 
 #: src/components/navbar.tsx
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "Search"
 msgstr "Search"
 
