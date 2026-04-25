@@ -93,6 +93,7 @@ export function HostsFilterSheet({ filters, onFiltersChange, search, onSearchCha
 	const { t } = useLingui()
 	const groupId = useId()
 	const activeCount = countHostsFilters(filters)
+	const totalCount = activeCount + (search ? 1 : 0)
 
 	function setConnection(value: HostsConnection) {
 		onFiltersChange({ ...filters, connection: value })
@@ -131,9 +132,9 @@ export function HostsFilterSheet({ filters, onFiltersChange, search, onSearchCha
 				<Button variant="outline" size="sm" className="gap-2">
 					<SlidersHorizontalIcon className="size-4" />
 					<Trans>Filters</Trans>
-					{activeCount > 0 && (
+					{totalCount > 0 && (
 						<span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-							{activeCount}
+							{totalCount}
 						</span>
 					)}
 				</Button>
@@ -236,7 +237,7 @@ export function HostsFilterSheet({ filters, onFiltersChange, search, onSearchCha
 				</div>
 
 				<SheetFooter className="flex-row gap-2 border-t border-border/60 p-4">
-					<Button variant="outline" className="flex-1" onClick={reset} disabled={activeCount === 0 && !search}>
+					<Button variant="outline" className="flex-1" onClick={reset} disabled={totalCount === 0}>
 						<Trans>Reset</Trans>
 					</Button>
 					<SheetClose asChild>

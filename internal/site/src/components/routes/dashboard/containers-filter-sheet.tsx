@@ -20,7 +20,7 @@ import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-sta
 import { cn } from "@/lib/utils"
 import type { ContainerFleetEntry } from "@/lib/dashboard-types"
 
-export type ContainersStatus = "all" | "running" | "stopped" | "restarting" | "paused" | "created"
+export type ContainersStatus = "all" | "running" | "stopped" | "restarting" | "paused" | "created" | "dead"
 export type ContainersSeverity = "error" | "warning"
 export type ContainersImageAudit = "updates"
 
@@ -66,6 +66,9 @@ export function applyContainersFilters(
 			case "created":
 				if (c.status !== "created") return false
 				break
+			case "dead":
+				if (c.status !== "dead") return false
+				break
 		}
 
 		if (filters.severity.size > 0) {
@@ -96,6 +99,7 @@ export function ContainersFilterSheet({
 	const { t } = useLingui()
 	const groupId = useId()
 	const activeCount = countContainersFilters(filters)
+	const totalCount = activeCount + (search ? 1 : 0)
 
 	function setStatus(value: ContainersStatus) {
 		onFiltersChange({ ...filters, status: value })
@@ -131,9 +135,9 @@ export function ContainersFilterSheet({
 				<Button variant="outline" size="sm" className="gap-2">
 					<SlidersHorizontalIcon className="size-4" />
 					<Trans>Filters</Trans>
-					{activeCount > 0 && (
+					{totalCount > 0 && (
 						<span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-							{activeCount}
+							{totalCount}
 						</span>
 					)}
 				</Button>
@@ -180,6 +184,7 @@ export function ContainersFilterSheet({
 								<SelectItem value="restarting">{t`Restarting`}</SelectItem>
 								<SelectItem value="paused">{t`Paused`}</SelectItem>
 								<SelectItem value="created">{t`Created`}</SelectItem>
+								<SelectItem value="dead">{t`Dead`}</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -239,7 +244,7 @@ export function ContainersFilterSheet({
 				</div>
 
 				<SheetFooter className="flex-row gap-2 border-t border-border/60 p-4">
-					<Button variant="outline" className="flex-1" onClick={reset} disabled={activeCount === 0 && !search}>
+					<Button variant="outline" className="flex-1" onClick={reset} disabled={totalCount === 0}>
 						<Trans>Reset</Trans>
 					</Button>
 					<SheetClose asChild>

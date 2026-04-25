@@ -18,6 +18,16 @@ msgstr ""
 "X-Crowdin-File: /main/internal/site/src/locales/en/en.po\n"
 "X-Crowdin-File-ID: 32\n"
 
+#. placeholder {0}: filteredContainers.length
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "{0, plural, one {# container} other {# containers}}"
+msgstr ""
+
+#. placeholder {0}: filteredHosts.length
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "{0, plural, one {# host} other {# hosts}}"
+msgstr ""
+
 #. placeholder {0}: result.items.length
 #: src/components/routes/settings/notifications/history.tsx
 msgid "{0} entries on this page"
@@ -135,6 +145,7 @@ msgid "Agents connect to the hub via WebSocket."
 msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "All"
 msgstr ""
@@ -428,6 +439,7 @@ msgstr ""
 msgid "Days To Keep"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
 msgstr ""
@@ -597,6 +609,7 @@ msgid "Error"
 msgstr "Hata"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Errors"
 msgstr ""
 
@@ -1126,6 +1139,7 @@ msgid "OAuth 2 / OIDC support"
 msgstr "OAuth 2 / OIDC desteği"
 
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Offline"
 msgstr ""
 
@@ -1142,6 +1156,7 @@ msgid "One-time password"
 msgstr "Tek kullanımlık şifre"
 
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Online"
 msgstr ""
 
@@ -1370,6 +1385,11 @@ msgstr ""
 msgid "Refresh"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Remove"
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Repos"
 msgstr ""
@@ -1387,6 +1407,8 @@ msgstr "OTP iste"
 msgid "Reset"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Reset filters"
 msgstr ""
@@ -1573,6 +1595,7 @@ msgid "Status"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Stopped"
 msgstr ""
 
@@ -1743,6 +1766,7 @@ msgstr ""
 #~ msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Updates available"
 msgstr ""
 
@@ -1775,6 +1799,7 @@ msgid "Users"
 msgstr "Kullanıcılar"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Warnings"
 msgstr ""
 

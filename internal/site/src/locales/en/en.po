@@ -13,6 +13,16 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. placeholder {0}: filteredContainers.length
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "{0, plural, one {# container} other {# containers}}"
+msgstr "{0, plural, one {# container} other {# containers}}"
+
+#. placeholder {0}: filteredHosts.length
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "{0, plural, one {# host} other {# hosts}}"
+msgstr "{0, plural, one {# host} other {# hosts}}"
+
 #. placeholder {0}: result.items.length
 #: src/components/routes/settings/notifications/history.tsx
 msgid "{0} entries on this page"
@@ -130,6 +140,7 @@ msgid "Agents connect to the hub via WebSocket."
 msgstr "Agents connect to the hub via WebSocket."
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "All"
 msgstr "All"
@@ -423,6 +434,7 @@ msgstr "Days to keep"
 msgid "Days To Keep"
 msgstr "Days To Keep"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
 msgstr "Dead"
@@ -592,6 +604,7 @@ msgid "Error"
 msgstr "Error"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Errors"
 msgstr "Errors"
 
@@ -1121,6 +1134,7 @@ msgid "OAuth 2 / OIDC support"
 msgstr "OAuth 2 / OIDC support"
 
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Offline"
 msgstr "Offline"
 
@@ -1137,6 +1151,7 @@ msgid "One-time password"
 msgstr "One-time password"
 
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Online"
 msgstr "Online"
 
@@ -1365,6 +1380,11 @@ msgstr "Record type"
 msgid "Refresh"
 msgstr "Refresh"
 
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Remove"
+msgstr "Remove"
+
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Repos"
 msgstr "Repos"
@@ -1382,6 +1402,8 @@ msgstr "Request OTP"
 msgid "Reset"
 msgstr "Reset"
 
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Reset filters"
 msgstr "Reset filters"
@@ -1568,6 +1590,7 @@ msgid "Status"
 msgstr "Status"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Stopped"
 msgstr "Stopped"
 
@@ -1738,6 +1761,7 @@ msgstr "Update available"
 #~ msgstr "Updates"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Updates available"
 msgstr "Updates available"
 
@@ -1770,6 +1794,7 @@ msgid "Users"
 msgstr "Users"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Warnings"
 msgstr "Warnings"
 

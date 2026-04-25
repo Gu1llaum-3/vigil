@@ -1,4 +1,4 @@
-import { Trans, useLingui } from "@lingui/react/macro"
+import { Plural, Trans, useLingui } from "@lingui/react/macro"
 import {
 	type Column,
 	type ColumnDef,
@@ -10,7 +10,7 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table"
-import { ChevronDownIcon } from "lucide-react"
+import { ChevronDownIcon, XIcon } from "lucide-react"
 import { memo, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { DashboardHost } from "@/lib/dashboard-types"
-import { applyHostsFilters, HostsFilterSheet, type HostsFilters } from "./hosts-filter-sheet"
+import {
+	applyHostsFilters,
+	defaultHostsFilters,
+	HostsFilterSheet,
+	type HostsCompliance,
+	type HostsFilters,
+} from "./hosts-filter-sheet"
+
+function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+	return (
+		<span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-foreground">
+			{label}
+			<button
+				type="button"
+				onClick={onRemove}
+				className="ml-0.5 rounded-full text-muted-foreground transition-colors hover:text-foreground"
+			>
+				<XIcon className="size-3" />
+				<span className="sr-only">
+					<Trans>Remove</Trans>
+				</span>
+			</button>
+		</span>
+	)
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +157,22 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 		setSearch(value)
 		setPagination((p) => ({ ...p, pageIndex: 0 }))
 	}
+
+	function resetAll() {
+		onFiltersChange(defaultHostsFilters)
+		handleSearch("")
+	}
+
+	const complianceLabelMap = useMemo<Record<HostsCompliance, string>>(
+		() => ({
+			security: t`Security`,
+			reboot: t`Reboot req.`,
+			stale: t`Out of SLA`,
+			unknown: t`Unknown`,
+			clean: t`Compliant`,
+		}),
+		[t]
+	)
 
 	const columns: ColumnDef<DashboardHost>[] = useMemo(
 		() => [
@@ -436,6 +476,42 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 				</div>
 			</div>
 
+			{(search || filters.connection !== "all" || filters.compliance.size > 0 || filters.features.size > 0) && (
+				<div className="flex flex-wrap gap-1.5">
+					{search && (
+						<FilterPill label={`"${search}"`} onRemove={() => handleSearch("")} />
+					)}
+					{filters.connection !== "all" && (
+						<FilterPill
+							label={filters.connection === "connected" ? t`Online` : t`Offline`}
+							onRemove={() => onFiltersChange({ ...filters, connection: "all" })}
+						/>
+					)}
+					{[...filters.compliance].map((flag) => (
+						<FilterPill
+							key={flag}
+							label={complianceLabelMap[flag]}
+							onRemove={() => {
+								const next = new Set(filters.compliance)
+								next.delete(flag)
+								onFiltersChange({ ...filters, compliance: next })
+							}}
+						/>
+					))}
+					{[...filters.features].map((flag) => (
+						<FilterPill
+							key={flag}
+							label={flag === "docker" ? t`Docker` : flag}
+							onRemove={() => {
+								const next = new Set(filters.features)
+								next.delete(flag)
+								onFiltersChange({ ...filters, features: next })
+							}}
+						/>
+					))}
+				</div>
+			)}
+
 			<div className="overflow-x-auto rounded-md border border-border/60">
 				<Table>
 					<TableHeader>
@@ -452,8 +528,13 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					<TableBody>
 						{table.getRowModel().rows.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={columns.length} className="h-20 text-center text-sm text-muted-foreground">
-									<Trans>No hosts match the current filter.</Trans>
+								<TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
+									<div className="flex flex-col items-center gap-2">
+										<Trans>No hosts match the current filter.</Trans>
+										<Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={resetAll}>
+											<Trans>Reset filters</Trans>
+										</Button>
+									</div>
 								</TableCell>
 							</TableRow>
 						) : (
@@ -471,7 +552,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 
 			<div className="flex items-center justify-between text-xs text-muted-foreground">
 				<span>
-					{filteredHosts.length} host{filteredHosts.length !== 1 ? "s" : ""}
+					<Plural value={filteredHosts.length} one="# host" other="# hosts" />
 				</span>
 				<div className="flex items-center gap-2">
 					<Button

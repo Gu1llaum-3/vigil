@@ -1,4 +1,4 @@
-import { Trans, useLingui } from "@lingui/react/macro"
+import { Plural, Trans, useLingui } from "@lingui/react/macro"
 import {
 	type Column,
 	type ColumnDef,
@@ -10,7 +10,7 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table"
-import { CheckIcon, ChevronDownIcon, CopyIcon, PartyPopperIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon, CopyIcon, PartyPopperIcon, XIcon } from "lucide-react"
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,7 +21,33 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
 import { cn, copyToClipboard } from "@/lib/utils"
 import type { ContainerFleetEntry } from "@/lib/dashboard-types"
-import { applyContainersFilters, ContainersFilterSheet, type ContainersFilters } from "./containers-filter-sheet"
+import {
+	applyContainersFilters,
+	ContainersFilterSheet,
+	defaultContainersFilters,
+	type ContainersFilters,
+	type ContainersImageAudit,
+	type ContainersSeverity,
+	type ContainersStatus,
+} from "./containers-filter-sheet"
+
+function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+	return (
+		<span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-foreground">
+			{label}
+			<button
+				type="button"
+				onClick={onRemove}
+				className="ml-0.5 rounded-full text-muted-foreground transition-colors hover:text-foreground"
+			>
+				<XIcon className="size-3" />
+				<span className="sr-only">
+					<Trans>Remove</Trans>
+				</span>
+			</button>
+		</span>
+	)
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -392,6 +418,34 @@ export const ContainersTable = memo(function ContainersTable({
 		setPagination((p) => ({ ...p, pageIndex: 0 }))
 	}
 
+	function resetAll() {
+		onFiltersChange(defaultContainersFilters)
+		handleSearch("")
+	}
+
+	const statusLabelMap = useMemo<Record<ContainersStatus, string>>(
+		() => ({
+			all: t`All`,
+			running: t`Running`,
+			stopped: t`Stopped`,
+			restarting: t`Restarting`,
+			paused: t`Paused`,
+			created: t`Created`,
+			dead: t`Dead`,
+		}),
+		[t]
+	)
+
+	const severityLabelMap = useMemo<Record<ContainersSeverity, string>>(
+		() => ({ error: t`Errors`, warning: t`Warnings` }),
+		[t]
+	)
+
+	const imageAuditLabelMap = useMemo<Record<ContainersImageAudit, string>>(
+		() => ({ updates: t`Updates available` }),
+		[t]
+	)
+
 	const columns: ColumnDef<ContainerFleetEntry>[] = useMemo(
 		() => [
 			{
@@ -534,6 +588,40 @@ export const ContainersTable = memo(function ContainersTable({
 				</div>
 			</div>
 
+			{(search || filters.status !== "all" || filters.severity.size > 0 || filters.imageAudit.size > 0) && (
+				<div className="flex flex-wrap gap-1.5">
+					{search && <FilterPill label={`"${search}"`} onRemove={() => handleSearch("")} />}
+					{filters.status !== "all" && (
+						<FilterPill
+							label={statusLabelMap[filters.status]}
+							onRemove={() => onFiltersChange({ ...filters, status: "all" })}
+						/>
+					)}
+					{[...filters.severity].map((flag) => (
+						<FilterPill
+							key={flag}
+							label={severityLabelMap[flag]}
+							onRemove={() => {
+								const next = new Set(filters.severity)
+								next.delete(flag)
+								onFiltersChange({ ...filters, severity: next })
+							}}
+						/>
+					))}
+					{[...filters.imageAudit].map((flag) => (
+						<FilterPill
+							key={flag}
+							label={imageAuditLabelMap[flag]}
+							onRemove={() => {
+								const next = new Set(filters.imageAudit)
+								next.delete(flag)
+								onFiltersChange({ ...filters, imageAudit: next })
+							}}
+						/>
+					))}
+				</div>
+			)}
+
 			<div className="overflow-x-auto rounded-md border border-border/60">
 				<Table>
 					<TableHeader>
@@ -550,8 +638,13 @@ export const ContainersTable = memo(function ContainersTable({
 					<TableBody>
 						{table.getRowModel().rows.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={columns.length} className="h-16 text-center text-sm text-muted-foreground">
-									<Trans>No containers match the current filter.</Trans>
+								<TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
+									<div className="flex flex-col items-center gap-2">
+										<Trans>No containers match the current filter.</Trans>
+										<Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={resetAll}>
+											<Trans>Reset filters</Trans>
+										</Button>
+									</div>
 								</TableCell>
 							</TableRow>
 						) : (
@@ -569,7 +662,7 @@ export const ContainersTable = memo(function ContainersTable({
 
 			<div className="flex items-center justify-between text-xs text-muted-foreground">
 				<span>
-					{filteredContainers.length} container{filteredContainers.length !== 1 ? "s" : ""}
+					<Plural value={filteredContainers.length} one="# container" other="# containers" />
 				</span>
 				<div className="flex items-center gap-2">
 					<Button
