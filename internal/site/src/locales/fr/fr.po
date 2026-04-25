@@ -134,8 +134,8 @@ msgstr "Agents"
 msgid "Agents connect to the hub via WebSocket."
 msgstr "Les agents se connectent au hub via WebSocket."
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "All"
 msgstr "Tout"
 
@@ -154,6 +154,11 @@ msgstr "Tous les statuts"
 #: src/components/routes/settings/notifications.tsx
 msgid "App Token"
 msgstr "Jeton d'application"
+
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Apply"
+msgstr "Appliquer"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Arch"
@@ -269,11 +274,21 @@ msgstr "Cliquez pour copier"
 msgid "Collapse all"
 msgstr "Tout replier"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Combine multiple criteria to narrow down the table."
+msgstr "Combinez plusieurs critères pour affiner le tableau."
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "Command line instructions"
 msgstr "Instructions en ligne de commande"
 
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Compliance"
+msgstr "Conformité"
+
 #: src/components/routes/dashboard/charts.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Compliant"
 msgstr "Conforme"
@@ -305,6 +320,10 @@ msgstr "Confirmer la purge"
 #: src/components/routes/dashboard/empty-state.tsx
 msgid "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
 msgstr "Connectez votre premier agent pour commencer à collecter les données d'audit de patchs. Le tableau de bord apparaîtra dès que des instantanés seront disponibles."
+
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Connection"
+msgstr "Connexion"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Container"
@@ -376,6 +395,7 @@ msgstr "CPU"
 msgid "Create account"
 msgstr "Créer un compte"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Created"
 msgstr "Créé"
@@ -481,6 +501,7 @@ msgstr "DNS"
 msgid "DNS server (optional)"
 msgstr "Serveur DNS (optionnel)"
 
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Docker"
 msgstr "Docker"
@@ -571,7 +592,7 @@ msgstr "Éphémère"
 msgid "Error"
 msgstr "Erreur"
 
-#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 msgid "Errors"
 msgstr "Erreurs"
 
@@ -650,6 +671,23 @@ msgstr "Échec de l'enregistrement des paramètres"
 #: src/components/routes/monitors.tsx
 msgid "Failures before down"
 msgstr "Échecs avant mise hors service"
+
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Features"
+msgstr "Fonctionnalités"
+
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+msgid "Filter containers"
+msgstr "Filtrer les conteneurs"
+
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Filter hosts"
+msgstr "Filtrer les hôtes"
+
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Filters"
+msgstr "Filtres"
 
 #: src/components/routes/settings/agents.tsx
 msgid "Fingerprint"
@@ -748,6 +786,7 @@ msgstr "Si vous avez perdu le mot de passe de votre compte administrateur, vous 
 msgid "Image"
 msgstr "Image"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Image audit"
 msgstr "Audit d'image"
@@ -1078,7 +1117,7 @@ msgstr "Notifications"
 msgid "OAuth 2 / OIDC support"
 msgstr "Support OAuth 2 / OIDC"
 
-#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "Offline"
 msgstr "Hors ligne"
 
@@ -1094,7 +1133,7 @@ msgstr "Hôtes hors ligne"
 msgid "One-time password"
 msgstr "Mot de passe à usage unique"
 
-#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "Online"
 msgstr "En ligne"
 
@@ -1115,9 +1154,10 @@ msgstr "Ou continuer avec"
 msgid "OS Distribution"
 msgstr "Distribution des OS"
 
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Out of SLA"
-msgstr ""
+msgstr "Hors SLA"
 
 #: src/components/routes/dashboard/charts.tsx
 msgid "Out of SLA (>30d)"
@@ -1172,6 +1212,7 @@ msgstr "Correctif disponible"
 msgid "Patch Status"
 msgstr "Statut des patchs"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Paused"
 msgstr "En pause"
@@ -1303,6 +1344,7 @@ msgstr "Purger les anciens enregistrements"
 msgid "RAM"
 msgstr "RAM"
 
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Reboot req."
 msgstr "Redém. req."
@@ -1332,6 +1374,11 @@ msgstr "Demander un mot de passe à usage unique"
 msgid "Request OTP"
 msgstr "Demander OTP"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+msgid "Reset"
+msgstr "Réinitialiser"
+
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Reset filters"
 msgstr "Réinitialiser les filtres"
@@ -1352,6 +1399,7 @@ msgstr "Ressource"
 msgid "Resources"
 msgstr "Ressources"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Restarting"
 msgstr "En redémarrage"
@@ -1398,6 +1446,7 @@ msgstr "Lancez des nettoyages manuels pour les anciens historiques ou supprimez 
 msgid "Run Now"
 msgstr "Exécuter maintenant"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Running"
@@ -1444,6 +1493,7 @@ msgstr "Rechercher hôte, IP, OS, noyau…"
 msgid "Search pages and settings..."
 msgstr "Rechercher des pages et des paramètres..."
 
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Security"
 msgstr "Sécurité"
@@ -1484,6 +1534,10 @@ msgstr "Paramètres"
 msgid "Settings saved"
 msgstr "Paramètres enregistrés"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+msgid "Severity"
+msgstr "Sévérité"
+
 #: src/components/login/auth-form.tsx
 msgid "Sign in"
 msgstr "Se connecter"
@@ -1497,6 +1551,7 @@ msgstr "Paramètres SMTP"
 msgid "State"
 msgstr "État"
 
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/monitor-detail.tsx
@@ -1507,7 +1562,7 @@ msgstr "État"
 msgid "Status"
 msgstr "Statut"
 
-#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 msgid "Stopped"
 msgstr "Arrêté"
 
@@ -1643,6 +1698,7 @@ msgid "unknown"
 msgstr "inconnu"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Unknown"
 msgstr "Inconnu"
@@ -1673,8 +1729,12 @@ msgid "Update available"
 msgstr "Mise à jour disponible"
 
 #: src/components/routes/dashboard/containers-table.tsx
-msgid "Updates"
-msgstr "Mises à jour"
+#~ msgid "Updates"
+#~ msgstr "Mises à jour"
+
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
+msgid "Updates available"
+msgstr "Mises à jour disponibles"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -1704,7 +1764,7 @@ msgstr "Nom d'utilisateur (optionnel)"
 msgid "Users"
 msgstr "Utilisateurs"
 
-#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/containers-filter-sheet.tsx
 msgid "Warnings"
 msgstr "Avertissements"
 

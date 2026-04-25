@@ -11,7 +11,7 @@ import {
 	useReactTable,
 } from "@tanstack/react-table"
 import { ChevronDownIcon } from "lucide-react"
-import { memo, useMemo, useState } from "react"
+import { memo, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { DashboardHost } from "@/lib/dashboard-types"
+import { applyHostsFilters, HostsFilterSheet, type HostsFilters } from "./hosts-filter-sheet"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -100,72 +101,25 @@ function SortBtn({ column, children }: { column: Column<DashboardHost, unknown>;
 
 interface HostsTableProps {
 	hosts: DashboardHost[]
-	activeFilter: string | null
-	onFilterChange: (filter: string | null) => void
+	filters: HostsFilters
+	onFiltersChange: (next: HostsFilters) => void
 }
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilterChange }: HostsTableProps) {
+export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersChange }: HostsTableProps) {
 	const { t } = useLingui()
-
-	const chips = useMemo(
-		() => [
-			{ key: "all", label: t`All` },
-			{ key: "connected", label: t`Online` },
-			{ key: "offline", label: t`Offline` },
-			{ key: "docker", label: t`Docker` },
-			{ key: "reboot", label: t`Reboot req.` },
-			{ key: "security", label: t`Security` },
-			{ key: "stale", label: t`Out of SLA` },
-			{ key: "unknown", label: t`Unknown` },
-			{ key: "clean", label: t`Compliant` },
-		],
-		[t]
-	)
 
 	const [sorting, setSorting] = useState<SortingState>([{ id: "connection", desc: true }])
 	const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
 	const [search, setSearch] = useState("")
 
-	const activeChip = activeFilter || "all"
+	useEffect(() => {
+		setPagination((p) => ({ ...p, pageIndex: 0 }))
+	}, [filters])
 
 	const filteredHosts = useMemo(() => {
-		let result = hosts
-		switch (activeChip) {
-			case "connected":
-				result = hosts.filter((h) => h.status === "connected")
-				break
-			case "offline":
-				result = hosts.filter((h) => h.status !== "connected")
-				break
-			case "security":
-				result = hosts.filter((h) => (h.packages?.security_count ?? 0) > 0)
-				break
-			case "stale":
-				result = hosts.filter(
-					(h) => (h.packages?.outdated_count ?? 0) > 0 && (h.packages?.last_upgrade_age_days ?? 0) > 30
-				)
-				break
-			case "unknown":
-				result = hosts.filter((h) => (h.packages?.outdated_count ?? 0) > 0 && !h.packages?.last_upgrade_known)
-				break
-			case "reboot":
-				result = hosts.filter((h) => h.reboot?.required)
-				break
-			case "docker":
-				result = hosts.filter((h) => h.docker?.state === "available")
-				break
-			case "clean":
-				result = hosts.filter(
-					(h) =>
-						!h.reboot?.required &&
-						!(h.packages?.security_count ?? 0) &&
-						!((h.packages?.outdated_count ?? 0) > 0 && (h.packages?.last_upgrade_age_days ?? 0) > 30) &&
-						!((h.packages?.outdated_count ?? 0) > 0 && !h.packages?.last_upgrade_known)
-				)
-				break
-		}
+		const result = applyHostsFilters(hosts, filters)
 		if (!search) return result
 		const q = search.toLowerCase()
 		return result.filter((h) =>
@@ -173,12 +127,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 				v?.toLowerCase().includes(q)
 			)
 		)
-	}, [hosts, activeChip, search])
-
-	function handleFilterChange(key: string) {
-		setPagination((p) => ({ ...p, pageIndex: 0 }))
-		onFilterChange(key === "all" ? null : key)
-	}
+	}, [hosts, filters, search])
 
 	function handleSearch(value: string) {
 		setSearch(value)
@@ -459,23 +408,7 @@ export const HostsTable = memo(function HostsTable({ hosts, activeFilter, onFilt
 					onChange={(e) => handleSearch(e.target.value)}
 					className="sm:max-w-[260px]"
 				/>
-				<div className="flex flex-wrap gap-1.5">
-					{chips.map((chip) => (
-						<button
-							key={chip.key}
-							type="button"
-							onClick={() => handleFilterChange(chip.key)}
-							className={cn(
-								"rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-								activeChip === chip.key
-									? "border-primary/60 bg-primary/10 text-foreground"
-									: "border-border/60 bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground"
-							)}
-						>
-							{chip.label}
-						</button>
-					))}
-				</div>
+				<HostsFilterSheet filters={filters} onFiltersChange={onFiltersChange} />
 				<div className="ml-auto flex shrink-0 items-center gap-2">
 					<span className="text-xs text-muted-foreground">
 						<Trans>Rows</Trans>

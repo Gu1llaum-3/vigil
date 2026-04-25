@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
 import { cn, copyToClipboard } from "@/lib/utils"
 import type { ContainerFleetEntry } from "@/lib/dashboard-types"
+import { applyContainersFilters, ContainersFilterSheet, type ContainersFilters } from "./containers-filter-sheet"
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -345,33 +346,18 @@ function SortBtn({ column, children }: { column: Column<ContainerFleetEntry, unk
 
 interface ContainersTableProps {
 	containers: ContainerFleetEntry[]
-	chipFilter: string
-	onChipFilterChange: (filter: string) => void
+	filters: ContainersFilters
+	onFiltersChange: (next: ContainersFilters) => void
 }
 
 // ── main component ────────────────────────────────────────────────────────────
 
 export const ContainersTable = memo(function ContainersTable({
 	containers,
-	chipFilter,
-	onChipFilterChange,
+	filters,
+	onFiltersChange,
 }: ContainersTableProps) {
 	const { t } = useLingui()
-
-	const chips = useMemo(
-		() => [
-			{ key: "all", label: t`All` },
-			{ key: "running", label: t`Running` },
-			{ key: "error", label: t`Errors` },
-			{ key: "warning", label: t`Warnings` },
-			{ key: "stopped", label: t`Stopped` },
-			{ key: "restarting", label: t`Restarting` },
-			{ key: "paused", label: t`Paused` },
-			{ key: "created", label: t`Created` },
-			{ key: "updates", label: t`Updates` },
-		],
-		[t]
-	)
 
 	const [sorting, setSorting] = useState<SortingState>([{ id: "status_rank", desc: true }])
 	const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
@@ -379,41 +365,10 @@ export const ContainersTable = memo(function ContainersTable({
 
 	useEffect(() => {
 		setPagination((p) => ({ ...p, pageIndex: 0 }))
-	}, [chipFilter])
+	}, [filters])
 
 	const filteredContainers = useMemo(() => {
-		let result = containers
-		switch (chipFilter) {
-			case "running":
-				result = containers.filter((c) => c.status === "running")
-				break
-			case "error":
-				result = containers.filter((c) => containerSeverity(c) === "error")
-				break
-			case "warning":
-				result = containers.filter((c) => containerSeverity(c) === "warning")
-				break
-			case "stopped":
-				result = containers.filter((c) => isStoppedContainerStatus(c.status))
-				break
-			case "restarting":
-				result = containers.filter((c) => c.status === "restarting")
-				break
-			case "paused":
-				result = containers.filter((c) => c.status === "paused")
-				break
-			case "created":
-				result = containers.filter((c) => c.status === "created")
-				break
-			case "updates":
-				result = containers.filter((c) => {
-					const lineStatus = c.image_audit?.line_status || c.image_audit?.status
-					return (
-						lineStatus === "patch_available" || lineStatus === "minor_available" || lineStatus === "update_available"
-					)
-				})
-				break
-		}
+		const result = applyContainersFilters(containers, filters)
 		if (!search) return result
 		const q = search.toLowerCase()
 		return result.filter((c) =>
@@ -430,12 +385,7 @@ export const ContainersTable = memo(function ContainersTable({
 				c.image_audit?.status,
 			].some((v) => v?.toLowerCase().includes(q))
 		)
-	}, [containers, chipFilter, search])
-
-	function handleChip(key: string) {
-		onChipFilterChange(key)
-		setPagination((p) => ({ ...p, pageIndex: 0 }))
-	}
+	}, [containers, filters, search])
 
 	function handleSearch(value: string) {
 		setSearch(value)
@@ -556,23 +506,7 @@ export const ContainersTable = memo(function ContainersTable({
 					onChange={(e) => handleSearch(e.target.value)}
 					className="sm:max-w-[280px]"
 				/>
-				<div className="flex flex-wrap gap-1.5">
-					{chips.map((chip) => (
-						<button
-							key={chip.key}
-							type="button"
-							onClick={() => handleChip(chip.key)}
-							className={cn(
-								"rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-								chipFilter === chip.key
-									? "border-primary/60 bg-primary/10 text-foreground"
-									: "border-border/60 bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground"
-							)}
-						>
-							{chip.label}
-						</button>
-					))}
-				</div>
+				<ContainersFilterSheet filters={filters} onFiltersChange={onFiltersChange} />
 				<div className="ml-auto flex shrink-0 items-center gap-2">
 					<span className="text-xs text-muted-foreground">
 						<Trans>Rows</Trans>

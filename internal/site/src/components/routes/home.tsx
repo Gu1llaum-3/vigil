@@ -11,10 +11,42 @@ import { $userSettings } from "@/lib/stores"
 import { currentHour12 } from "@/lib/utils"
 import type { DashboardResponse } from "@/lib/dashboard-types"
 import { Charts } from "./dashboard/charts"
+import { type ContainersFilters, defaultContainersFilters } from "./dashboard/containers-filter-sheet"
 import { ContainersTable } from "./dashboard/containers-table"
 import { EmptyState } from "./dashboard/empty-state"
+import { type HostsCompliance, type HostsFilters, defaultHostsFilters } from "./dashboard/hosts-filter-sheet"
 import { HostsTable } from "./dashboard/hosts-table"
 import { KpiCards } from "./dashboard/kpi-cards"
+
+// KPI cards toggle a single Hosts facet preset. We keep their string-based contract
+// (activeFilter / onFilterChange) and adapt to/from the multi-facet HostsFilters
+// here so the cards stay decoupled from the filter shape.
+//
+// Note: the "outdated" KPI key has no equivalent in the existing filter model
+// (the legacy chip switch didn't handle it either), so we preserve that no-op.
+function kpiKeyToHostsFilters(key: string | null): HostsFilters {
+	if (!key || key === "all") return defaultHostsFilters
+	if (key === "security" || key === "reboot") {
+		return { ...defaultHostsFilters, compliance: new Set<HostsCompliance>([key]) }
+	}
+	if (key === "docker") {
+		return { ...defaultHostsFilters, features: new Set(["docker"]) }
+	}
+	return defaultHostsFilters
+}
+
+function deriveKpiKey(f: HostsFilters): string | null {
+	if (f.connection !== "all") return null
+	const complianceSize = f.compliance.size
+	const featuresSize = f.features.size
+	if (complianceSize === 0 && featuresSize === 0) return null
+	if (complianceSize === 1 && featuresSize === 0) {
+		if (f.compliance.has("security")) return "security"
+		if (f.compliance.has("reboot")) return "reboot"
+	}
+	if (complianceSize === 0 && featuresSize === 1 && f.features.has("docker")) return "docker"
+	return null
+}
 
 function formatRefreshDateTime(value: string, hour12: boolean) {
 	const parsed = new Date(value)
@@ -35,8 +67,8 @@ export default memo(function Home() {
 	const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [refreshing, setRefreshing] = useState(false)
-	const [activeFilter, setActiveFilter] = useState<string | null>(null)
-	const [containerFilter, setContainerFilter] = useState("all")
+	const [hostsFilters, setHostsFilters] = useState<HostsFilters>(defaultHostsFilters)
+	const [containersFilters, setContainersFilters] = useState<ContainersFilters>(defaultContainersFilters)
 	const snapshotDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const monitorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const containersSectionRef = useRef<HTMLElement | null>(null)
@@ -178,8 +210,13 @@ export default memo(function Home() {
 
 	function handleContainersClick() {
 		if (!hasContainers) return
-		const target = hasContainerErrors ? "error" : hasContainerWarnings ? "warning" : "running"
-		setContainerFilter(target)
+		setContainersFilters(
+			hasContainerErrors
+				? { ...defaultContainersFilters, severity: new Set(["error"]) }
+				: hasContainerWarnings
+					? { ...defaultContainersFilters, severity: new Set(["warning"]) }
+					: { ...defaultContainersFilters, status: "running" }
+		)
 		containersSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
 	}
 
@@ -212,8 +249,8 @@ export default memo(function Home() {
 
 			<KpiCards
 				summary={dashboard.summary}
-				activeFilter={activeFilter}
-				onFilterChange={setActiveFilter}
+				activeFilter={deriveKpiKey(hostsFilters)}
+				onFilterChange={(key) => setHostsFilters(kpiKeyToHostsFilters(key))}
 				hasContainersSection={hasContainers}
 				hasContainerWarnings={hasContainerWarnings}
 				hasContainerErrors={hasContainerErrors}
@@ -226,7 +263,7 @@ export default memo(function Home() {
 				<h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
 					<Trans>Hosts</Trans>
 				</h2>
-				<HostsTable hosts={dashboard.hosts} activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+				<HostsTable hosts={dashboard.hosts} filters={hostsFilters} onFiltersChange={setHostsFilters} />
 			</section>
 
 			{hasContainers && (
@@ -236,8 +273,8 @@ export default memo(function Home() {
 					</h2>
 					<ContainersTable
 						containers={dashboard.containers}
-						chipFilter={containerFilter}
-						onChipFilterChange={setContainerFilter}
+						filters={containersFilters}
+						onFiltersChange={setContainersFilters}
 					/>
 				</section>
 			)}

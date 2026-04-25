@@ -211,7 +211,9 @@ Components:
 
 - `kpi-cards.tsx` — summary metric cards (host connectivity ratio, monitor up/total ratio, pending updates, etc.)
 - `hosts-table.tsx` — per-host patch state table
+- `hosts-filter-sheet.tsx` — Radix `Sheet`-based multi-facet filter panel for the hosts table (exports `HostsFilters`, `defaultHostsFilters`, `applyHostsFilters`, `countHostsFilters`, and the `HostsFilterSheet` component)
 - `containers-table.tsx` — running Docker container inventory plus read-only image audit badges, with a clipboard shortcut on the image reference
+- `containers-filter-sheet.tsx` — equivalent multi-facet filter panel for the containers table
 - `charts.tsx` — bar/doughnut charts using `chart.js` and `react-chartjs-2`
 - `empty-state.tsx` — shown when no snapshot data is available yet
 
@@ -220,7 +222,7 @@ The `Unknown / Pending` state is used when update data exists but the agent coul
 
 Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`, including the optional per-container `image_audit` block merged from the backend `container_image_audits` collection.
 
-The containers table remains on the dashboard route. It exposes `Errors`, `Warnings`, and `Updates` chips plus an `Image audit` column so operators can focus either on unhealthy container states or on containers that are behind in their current update line without leaving the main fleet view.
+Both tables filter via a side `Sheet` panel rather than chips. Each table exposes a `Filters` button (with an active-count badge) next to its search input; the panel combines a single-select facet (Connection / Status) with multi-select checkbox groups (Compliance + Features for hosts, Severity + Image audit for containers). Combination semantics are intersection between groups (AND) and union within a group (OR); an empty multi-select group means "no constraint". The whole filter state (`HostsFilters`, `ContainersFilters`) is lifted into `home.tsx` so KPI cards stay wired to the hosts filter via small adapters (`deriveKpiKey` / `kpiKeyToHostsFilters`) without forcing the cards to know the facet shape, and so that the `Containers` KPI card can preset the containers filter (Errors / Warnings / Running) when clicked.
 
 Container severity is classified by a single helper in `internal/site/src/lib/container-status.ts` (`containerSeverity`), kept in sync with `containerSeverity()` in `internal/hub/dashboard.go`:
 
