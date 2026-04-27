@@ -83,8 +83,10 @@ msgstr "Une tâche de fond s'exécute chaque jour et supprime les événements d
 msgid "A unique push URL will be generated automatically. Use it in a cron job or script to send heartbeats."
 msgstr "Une URL de push unique sera générée automatiquement. Utilisez-la dans une tâche cron ou un script pour envoyer des battements de vie."
 
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/registry-credentials.tsx
 msgid "Actions"
 msgstr "Actions"
 
@@ -104,6 +106,10 @@ msgstr "Ajouter un agent"
 #: src/components/routes/settings/notifications.tsx
 msgid "Add channel"
 msgstr "Ajouter un canal"
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Add credential"
+msgstr "Ajouter un identifiant"
 
 #: src/components/routes/monitors.tsx
 msgid "Add group"
@@ -175,9 +181,30 @@ msgstr "Appliquer"
 msgid "Arch"
 msgstr "Arch"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Audit disabled"
+msgstr "Audit désactivé"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Audit policy"
+msgstr "Politique d'audit"
+
+#. placeholder {0}: entry.name
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Audit policy for {0}"
+msgstr "Politique d'audit pour {0}"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Audit policy updated"
+msgstr "Politique d'audit mise à jour"
+
 #: src/components/routes/monitors.tsx
 msgid "Auto"
 msgstr "Auto"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Auto (default)"
+msgstr "Auto (défaut)"
 
 #: src/components/copy-to-clipboard.tsx
 msgid "Automatic copy requires a secure context."
@@ -227,8 +254,10 @@ msgid "Blue line for successful checks, red background for down periods."
 msgstr "La ligne bleue représente les vérifications réussies, l'arrière-plan rouge les périodes d'indisponibilité."
 
 #: src/components/routes/monitors.tsx
+#: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
+#: src/components/routes/settings/registry-credentials.tsx
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -259,6 +288,10 @@ msgstr "Vérifiez {email} pour un lien de réinitialisation."
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Check failed"
 msgstr "Vérification échouée"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Check images now"
+msgstr "Vérifier les images maintenant"
 
 #: src/components/routes/settings/layout.tsx
 msgid "Check logs for more details."
@@ -415,9 +448,29 @@ msgstr "Créer un compte"
 msgid "Created"
 msgstr "Créé"
 
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Credential added"
+msgstr "Identifiant ajouté"
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Credential deleted"
+msgstr "Identifiant supprimé"
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Credential updated"
+msgstr "Identifiant mis à jour"
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Credentials used by the hub to authenticate against private container registries during image audits. Passwords are encrypted at rest with a key stored in the data directory. The hub falls back to the host's <0>~/.docker/config.json</0> for registries not listed here."
+msgstr "Identifiants utilisés par le hub pour s'authentifier auprès des registres de conteneurs privés lors des audits d'images. Les mots de passe sont chiffrés au repos avec une clé stockée dans le répertoire de données. Le hub se rabat sur le <0>~/.docker/config.json</0> de l'hôte pour les registres non listés ici."
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Critical alerts"
 msgstr "Alertes critiques"
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Cron expression evaluated in UTC. Examples: <0>0 */6 * * *</0> (every 6 hours), <1>*/15 * * * *</1> (every 15 minutes)."
+msgstr "Expression cron évaluée en UTC. Exemples : <0>0 */6 * * *</0> (toutes les 6 heures), <1>*/15 * * * *</1> (toutes les 15 minutes)."
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Current"
@@ -477,6 +530,11 @@ msgstr "Supprimer tous les hôtes hors ligne ?"
 msgid "Delete all probe history?"
 msgstr "Supprimer tout l'historique des sondes ?"
 
+#. placeholder {0}: cred.registry
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Delete credential for {0}?"
+msgstr "Supprimer l'identifiant pour {0} ?"
+
 #: src/components/routes/monitors.tsx
 msgid "Delete group"
 msgstr "Supprimer le dossier"
@@ -508,6 +566,14 @@ msgstr "Détail"
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Details"
 msgstr "Détails"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Digest only"
+msgstr "Digest uniquement"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Disabled"
+msgstr "Désactivé"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "DNS"
@@ -548,6 +614,10 @@ msgstr "Modifier"
 msgid "Edit channel"
 msgstr "Modifier le canal"
 
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Edit credential"
+msgstr "Modifier l'identifiant"
+
 #: src/components/routes/monitors.tsx
 msgid "Edit group"
 msgstr "Modifier le dossier"
@@ -559,6 +629,10 @@ msgstr "Modifier la sonde"
 #: src/components/routes/settings/notifications.tsx
 msgid "Edit rule"
 msgstr "Modifier la règle"
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Edit Schedule"
+msgstr "Modifier la planification"
 
 #: src/components/login/auth-form.tsx
 #: src/components/login/forgot-pass-form.tsx
@@ -645,6 +719,10 @@ msgstr "Expire après une heure ou au redémarrage du hub."
 msgid "Failed to authenticate"
 msgstr "Échec de l'authentification"
 
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Failed to delete credential"
+msgstr "Échec de la suppression de l'identifiant"
+
 #: src/components/routes/monitors.tsx
 msgid "Failed to delete group"
 msgstr "Échec de la suppression du dossier"
@@ -652,6 +730,10 @@ msgstr "Échec de la suppression du dossier"
 #: src/components/routes/monitors.tsx
 msgid "Failed to delete monitor"
 msgstr "Échec de la suppression de la sonde"
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Failed to load credentials"
+msgstr "Échec du chargement des identifiants"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Failed to load jobs"
@@ -665,9 +747,17 @@ msgstr "Impossible de charger les paramètres de purge"
 msgid "Failed to move monitor"
 msgstr "Échec du déplacement de la sonde"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Failed to run image audit"
+msgstr "Échec du lancement de l'audit d'images"
+
 #: src/components/routes/settings/jobs.tsx
 msgid "Failed to run job"
 msgstr "Impossible d'exécuter la tâche"
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Failed to save credential"
+msgstr "Échec de l'enregistrement de l'identifiant"
 
 #: src/components/routes/monitors.tsx
 msgid "Failed to save group"
@@ -684,6 +774,14 @@ msgstr "Impossible d'enregistrer les paramètres de purge"
 #: src/components/routes/settings/layout.tsx
 msgid "Failed to save settings"
 msgstr "Échec de l'enregistrement des paramètres"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Failed to update audit policy"
+msgstr "Échec de la mise à jour de la politique d'audit"
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Failed to update schedule"
+msgstr "Échec de la mise à jour de la planification"
 
 #: src/components/routes/monitors.tsx
 msgid "Failures before down"
@@ -812,6 +910,10 @@ msgstr "Image"
 msgid "Image audit"
 msgstr "Audit d'image"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Image audit completed"
+msgstr "Audit des images terminé"
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Interval"
 msgstr "Intervalle"
@@ -911,6 +1013,14 @@ msgstr "Largeur de la mise en page"
 #: src/components/routes/settings/notifications.tsx
 msgid "Leave as-is to keep the existing value."
 msgstr "Laisser tel quel pour conserver la valeur existante."
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Leave blank to keep current"
+msgstr "Laisser vide pour conserver l'actuel"
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Loading credentials…"
+msgstr "Chargement des identifiants…"
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Loading history…"
@@ -1023,6 +1133,7 @@ msgstr "Mes alertes Slack"
 
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/registry-credentials.tsx
 msgid "Name"
 msgstr "Nom"
 
@@ -1057,6 +1168,10 @@ msgstr "Aucun canal configuré. Ajoutez-en un pour commencer à envoyer des noti
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "No containers match the current filter."
 msgstr "Aucun conteneur ne correspond au filtre actuel."
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "No credentials configured. Add one to authenticate against a private registry."
+msgstr "Aucun identifiant configuré. Ajoutez-en un pour vous authentifier auprès d'un registre privé."
 
 #: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -1223,6 +1338,10 @@ msgstr "Le mot de passe doit contenir au moins 8 caractères."
 msgid "Password must be less than 72 bytes."
 msgstr "Le mot de passe doit être inférieur à 72 Octets."
 
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Password or token"
+msgstr "Mot de passe ou jeton"
+
 #: src/components/login/forgot-pass-form.tsx
 msgid "Password reset request received"
 msgstr "Demande de réinitialisation du mot de passe reçue"
@@ -1230,6 +1349,10 @@ msgstr "Demande de réinitialisation du mot de passe reçue"
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Patch available"
 msgstr "Correctif disponible"
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Patch line"
+msgstr "Ligne de patch"
 
 #: src/components/routes/dashboard/charts.tsx
 msgid "Patch Status"
@@ -1385,6 +1508,15 @@ msgstr "Type d'enregistrement"
 msgid "Refresh"
 msgstr "Actualiser"
 
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Registry"
+msgstr ""
+
+#: src/components/routes/settings/layout.tsx
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Registry credentials"
+msgstr "Identifiants registres"
+
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Remove"
@@ -1482,8 +1614,14 @@ msgstr "Exécuter maintenant"
 msgid "Running"
 msgstr "En cours"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Same major"
+msgstr "Même majeur"
+
 #: src/components/routes/monitors.tsx
+#: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/notifications.tsx
+#: src/components/routes/settings/registry-credentials.tsx
 msgid "Save"
 msgstr "Enregistrer"
 
@@ -1506,6 +1644,10 @@ msgstr "Enregistrement…"
 #: src/components/routes/settings/jobs.tsx
 msgid "Schedule"
 msgstr "Planification"
+
+#: src/components/routes/settings/jobs.tsx
+msgid "Schedule updated"
+msgstr "Planification mise à jour"
 
 #: src/components/navbar.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
@@ -1788,6 +1930,14 @@ msgstr "Disponibilité 30j"
 #: src/components/routes/monitors.tsx
 msgid "URL"
 msgstr "URL"
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Use the registry hostname (e.g. <0>ghcr.io</0>, <1>harbor.example.com</1>, <2>docker.io</2>). One credential per registry."
+msgstr "Utilisez le nom d'hôte du registre (par ex. <0>ghcr.io</0>, <1>harbor.example.com</1>, <2>docker.io</2>). Un identifiant par registre."
+
+#: src/components/routes/settings/registry-credentials.tsx
+msgid "Username"
+msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Username (optional)"

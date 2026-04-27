@@ -6,16 +6,17 @@ import (
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/cron"
 )
 
 const scheduledJobsCollection = "scheduled_jobs"
 
 type ScheduledJobDefinition struct {
-	Key         string
-	Label       string
-	Description string
-	Schedule    string
-	Run         func() (map[string]any, error)
+	Key             string
+	Label           string
+	Description     string
+	DefaultSchedule string
+	Run             func() (map[string]any, error)
 }
 
 type ScheduledJobRecord struct {
@@ -34,10 +35,10 @@ type ScheduledJobRecord struct {
 func (h *Hub) scheduledJobs() []ScheduledJobDefinition {
 	return []ScheduledJobDefinition{
 		{
-			Key:         autoRetentionCronJobID,
-			Label:       "Automatic Retention",
-			Description: "Deletes old probe and notification history based on retention settings.",
-			Schedule:    autoRetentionCronExpr,
+			Key:             autoRetentionCronJobID,
+			Label:           "Automatic Retention",
+			Description:     "Deletes old probe and notification history based on retention settings.",
+			DefaultSchedule: autoRetentionCronExpr,
 			Run: func() (map[string]any, error) {
 				result := h.runAutomaticRetentionPurge()
 				payload := map[string]any{
@@ -54,10 +55,10 @@ func (h *Hub) scheduledJobs() []ScheduledJobDefinition {
 			},
 		},
 		{
-			Key:         containerImageAuditCronJobID,
-			Label:       "Container Image Audit",
-			Description: "Checks public container image tags for newer compatible versions.",
-			Schedule:    containerImageAuditCronExpr,
+			Key:             containerImageAuditCronJobID,
+			Label:           "Container Image Audit",
+			Description:     "Checks container image tags for newer compatible versions.",
+			DefaultSchedule: containerImageAuditCronExpr,
 			Run: func() (map[string]any, error) {
 				return h.runContainerImageAudit()
 			},
@@ -77,12 +78,8 @@ func (h *Hub) scheduledJobByKey(key string) (ScheduledJobDefinition, bool) {
 func (h *Hub) getOrCreateScheduledJobRecord(job ScheduledJobDefinition) (*core.Record, error) {
 	rec, err := h.FindFirstRecordByFilter(scheduledJobsCollection, "key = {:key}", dbx.Params{"key": job.Key})
 	if err == nil {
-		updated := false
-		if rec.GetString("schedule") != job.Schedule {
-			rec.Set("schedule", job.Schedule)
-			updated = true
-		}
-		if updated {
+		if rec.GetString("schedule") == "" {
+			rec.Set("schedule", job.DefaultSchedule)
 			if saveErr := h.Save(rec); saveErr != nil {
 				return nil, saveErr
 			}
@@ -96,7 +93,7 @@ func (h *Hub) getOrCreateScheduledJobRecord(job ScheduledJobDefinition) (*core.R
 	}
 	rec = core.NewRecord(col)
 	rec.Set("key", job.Key)
-	rec.Set("schedule", job.Schedule)
+	rec.Set("schedule", job.DefaultSchedule)
 	rec.Set("last_status", "idle")
 	rec.Set("last_error", "")
 	rec.Set("last_result", map[string]any{})
@@ -105,6 +102,17 @@ func (h *Hub) getOrCreateScheduledJobRecord(job ScheduledJobDefinition) (*core.R
 		return nil, saveErr
 	}
 	return rec, nil
+}
+
+func (h *Hub) effectiveJobSchedule(job ScheduledJobDefinition) string {
+	rec, err := h.FindFirstRecordByFilter(scheduledJobsCollection, "key = {:key}", dbx.Params{"key": job.Key})
+	if err != nil {
+		return job.DefaultSchedule
+	}
+	if schedule := rec.GetString("schedule"); schedule != "" {
+		return schedule
+	}
+	return job.DefaultSchedule
 }
 
 func (h *Hub) syncScheduledJobRecords() error {
@@ -121,11 +129,15 @@ func scheduledJobRecordToResponse(job ScheduledJobDefinition, rec *core.Record) 
 	if result == nil {
 		result = map[string]any{}
 	}
+	schedule := rec.GetString("schedule")
+	if schedule == "" {
+		schedule = job.DefaultSchedule
+	}
 	return ScheduledJobRecord{
 		Key:            job.Key,
 		Label:          job.Label,
 		Description:    job.Description,
-		Schedule:       job.Schedule,
+		Schedule:       schedule,
 		LastRunAt:      rec.GetString("last_run_at"),
 		LastSuccessAt:  rec.GetString("last_success_at"),
 		LastStatus:     rec.GetString("last_status"),
@@ -153,7 +165,6 @@ func (h *Hub) persistScheduledJobRun(job ScheduledJobDefinition, startedAt time.
 	if err != nil {
 		return err
 	}
-	rec.Set("schedule", job.Schedule)
 	rec.Set("last_run_at", startedAt.UTC().Format(time.RFC3339))
 	rec.Set("last_duration_ms", duration.Milliseconds())
 	rec.Set("last_result", payload)
@@ -191,11 +202,29 @@ func (h *Hub) registerScheduledJobs() error {
 	}
 	for _, job := range h.scheduledJobs() {
 		job := job
-		if err := h.Cron().Add(job.Key, job.Schedule, func() {
+		schedule := h.effectiveJobSchedule(job)
+		if err := h.Cron().Add(job.Key, schedule, func() {
 			_, _ = h.runScheduledJob(job)
 		}); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (h *Hub) updateJobSchedule(job ScheduledJobDefinition, schedule string) error {
+	if _, err := cron.NewSchedule(schedule); err != nil {
+		return fmt.Errorf("invalid schedule %q: %w", schedule, err)
+	}
+	rec, err := h.getOrCreateScheduledJobRecord(job)
+	if err != nil {
+		return err
+	}
+	rec.Set("schedule", schedule)
+	if err := h.Save(rec); err != nil {
+		return err
+	}
+	return h.Cron().Add(job.Key, schedule, func() {
+		_, _ = h.runScheduledJob(job)
+	})
 }

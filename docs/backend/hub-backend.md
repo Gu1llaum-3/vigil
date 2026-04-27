@@ -561,10 +561,18 @@ Global scheduled job state is stored in the `scheduled_jobs` collection. Each jo
 The currently registered jobs are:
 
 - `vigilAutoRetention` — deletes old monitor and notification history according to retention settings
-- `vigilContainerImageAudit` — audits public Docker / GHCR image tags used by the current Docker container inventory and persists the result in `container_image_audits`
+- `vigilContainerImageAudit` — audits Docker image tags used by the current Docker container inventory and persists the result in `container_image_audits`
 
 The image-audit job is read-only: it does not ask agents to start, stop, or restart containers, and it does not mutate workloads on remote hosts.
 It now runs twice per day at `03:00` and `15:00` UTC (`0 3,15 * * *`).
+
+Registry coverage: any Docker Registry v2 endpoint reachable from the hub (Docker Hub, GHCR, Quay, GitLab, self-hosted Harbor, etc.).
+
+Authentication is resolved through a multi-keychain in this order:
+
+1. `registry_credentials` collection (managed in Settings → Registry credentials, admin only). Passwords are encrypted at rest with AES-256-GCM using a per-install key stored at `<datadir>/credentials.key` (mode 0600, generated on first hub start). The API never returns the cleartext password — it is replaced by `**REDACTED**` on every read; sending `**REDACTED**` (or omitting the field) on update preserves the stored secret. Uniqueness is enforced on the registry hostname.
+2. `authn.DefaultKeychain`, which reads `$DOCKER_CONFIG/config.json` (or `~/.docker/config.json`) of the hub process. To pull from a private registry without the in-app store, run `docker login <registry>` on the hub host. If the hub runs in a container, mount the config file read-only or set `DOCKER_CONFIG` to a mounted directory.
+3. Anonymous, when neither of the above has a match.
 
 Tag selection rules are intentionally simple:
 
@@ -572,6 +580,16 @@ Tag selection rules are intentionally simple:
 - one-part numeric tags such as `15` use `semver_major` and track the newest `15.x.x`
 - two-part numeric tags such as `15.2` use `semver_minor` and track the newest `15.2.x`
 - three-part numeric tags such as `15.2.3` also use `semver_minor` and track the newest `15.2.x`
+- numeric tags with a variant suffix (`15-alpine`, `1.25-bookworm`, `20.11.1-alpine3.19`) follow the same major/minor rules but only match candidates that share the same suffix — `1.2.3-alpine` is never proposed as an update of `1.2.3-bullseye`
+
+Per-container overrides: an admin can override the auto-deduced policy for any container via the dropdown menu in the dashboard's container table or by writing to `container_audit_overrides`. Supported overrides:
+
+- `digest` — force `digest_latest`, only watches the digest of the current ref. Useful for rolling tags such as `:stable`, `:nightly`, or to opt out of semver candidate selection on a pinned tag.
+- `patch` — force `semver_minor` (track only the same `major.minor` line).
+- `minor` — force `semver_major` (track patches and minors within the same major).
+- `disabled` — skip the audit entirely for that container; the record is upserted with `status: disabled` and no notification signature is set, so re-enabling later will trigger a fresh notification on the first detected update.
+
+Overrides are loaded once per audit cycle and applied during `collectContainerImageAuditResults` before the registry call, so a `disabled` override never reaches the registry.
 
 For semver-like tags, the backend now separates two concepts:
 

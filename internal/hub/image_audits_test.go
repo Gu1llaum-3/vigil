@@ -54,8 +54,13 @@ func TestNormalizeImageAuditRef(t *testing.T) {
 		{name: "docker hub major", input: "postgres:15", registry: "docker.io", repository: "library/postgres", tag: "15", policy: imageAuditPolicySemverMajor},
 		{name: "docker hub three-part tag stays within patch line", input: "postgres:15.2.3", registry: "docker.io", repository: "library/postgres", tag: "15.2.3", policy: imageAuditPolicySemverMinor},
 		{name: "ghcr public", input: "ghcr.io/example/app:1.4", registry: "ghcr.io", repository: "example/app", tag: "1.4", policy: imageAuditPolicySemverMinor},
-		{name: "unsupported registry", input: "quay.io/example/app:1.0.0", registry: "quay.io", repository: "example/app", tag: "1.0.0", policy: imageAuditPolicyUnsupported},
-		{name: "unsupported tag", input: "nginx:stable-alpine", registry: "docker.io", repository: "library/nginx", tag: "stable-alpine", policy: imageAuditPolicyUnsupported},
+		{name: "third-party registry quay", input: "quay.io/example/app:1.0.0", registry: "quay.io", repository: "example/app", tag: "1.0.0", policy: imageAuditPolicySemverMinor},
+		{name: "third-party registry gitlab", input: "registry.gitlab.com/group/project:2.4", registry: "registry.gitlab.com", repository: "group/project", tag: "2.4", policy: imageAuditPolicySemverMinor},
+		{name: "self-hosted harbor latest", input: "harbor.example.com/team/svc:latest", registry: "harbor.example.com", repository: "team/svc", tag: "latest", policy: imageAuditPolicyDigestLatest},
+		{name: "tag with variant suffix major", input: "postgres:15-alpine", registry: "docker.io", repository: "library/postgres", tag: "15-alpine", policy: imageAuditPolicySemverMajor},
+		{name: "tag with variant suffix minor", input: "nginx:1.25-bookworm", registry: "docker.io", repository: "library/nginx", tag: "1.25-bookworm", policy: imageAuditPolicySemverMinor},
+		{name: "tag with full semver and variant", input: "node:20.11.1-alpine3.19", registry: "docker.io", repository: "library/node", tag: "20.11.1-alpine3.19", policy: imageAuditPolicySemverMinor},
+		{name: "non numeric tag stays unsupported", input: "nginx:stable-alpine", registry: "docker.io", repository: "library/nginx", tag: "stable-alpine", policy: imageAuditPolicyUnsupported},
 	}
 
 	for _, tc := range tests {
@@ -82,6 +87,113 @@ func TestSelectAuditTag(t *testing.T) {
 	tag, found = selectAuditTag([]string{"15.1.0", "15.3.2", "16.0.0"}, "15", current, imageAuditPolicySemverMajor)
 	require.True(t, found)
 	require.Equal(t, "15.3.2", tag)
+}
+
+func TestSelectAuditTagRespectsVariantSuffix(t *testing.T) {
+	current, ok := parseNumericVersion("1.2.3-alpine")
+	require.True(t, ok)
+	require.Equal(t, "alpine", current.Variant)
+
+	tag, found := selectAuditTag(
+		[]string{"1.2.4", "1.2.4-bullseye", "1.2.5-alpine", "1.3.0-alpine", "1.2.6-alpine3.19"},
+		"1.2.3-alpine",
+		current,
+		imageAuditPolicySemverMinor,
+	)
+	require.True(t, found)
+	require.Equal(t, "1.2.5-alpine", tag, "must only consider candidates with the same -alpine suffix")
+}
+
+func TestSelectAuditTagPlainTagIgnoresVariants(t *testing.T) {
+	current, ok := parseNumericVersion("1.2.3")
+	require.True(t, ok)
+	require.Equal(t, "", current.Variant)
+
+	tag, found := selectAuditTag(
+		[]string{"1.2.3-alpine", "1.2.4-alpine", "1.2.5", "1.3.0-bullseye"},
+		"1.2.3",
+		current,
+		imageAuditPolicySemverMinor,
+	)
+	require.True(t, found)
+	require.Equal(t, "1.2.5", tag)
+}
+
+func TestParseNumericVersionRejectsNonNumeric(t *testing.T) {
+	for _, tag := range []string{"stable", "stable-alpine", "nightly", "edge", "latest-alpine"} {
+		_, ok := parseNumericVersion(tag)
+		require.Falsef(t, ok, "tag %q should not parse", tag)
+	}
+}
+
+func TestParseNumericVersionAcceptsVariants(t *testing.T) {
+	cases := []struct {
+		tag     string
+		major   int
+		minor   int
+		patch   int
+		parts   int
+		variant string
+	}{
+		{tag: "8-jdk-slim", major: 8, parts: 1, variant: "jdk-slim"},
+		{tag: "16-bullseye", major: 16, parts: 1, variant: "bullseye"},
+		{tag: "1.25-alpine", major: 1, minor: 25, parts: 2, variant: "alpine"},
+		{tag: "20.11.1-alpine3.19", major: 20, minor: 11, patch: 1, parts: 3, variant: "alpine3.19"},
+		{tag: "v3.12.4-rc1", major: 3, minor: 12, patch: 4, parts: 3, variant: "rc1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.tag, func(t *testing.T) {
+			v, ok := parseNumericVersion(tc.tag)
+			require.True(t, ok)
+			require.Equal(t, tc.major, v.Major)
+			require.Equal(t, tc.minor, v.Minor)
+			require.Equal(t, tc.patch, v.Patch)
+			require.Equal(t, tc.parts, v.Parts)
+			require.Equal(t, tc.variant, v.Variant)
+		})
+	}
+}
+
+func TestResolveImageAuditSemverMinorWithVariantSuffix(t *testing.T) {
+	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
+		tags: map[string][]string{"docker.io/library/postgres": {
+			"15.2.3", "15.2.4", "15.3.0",
+			"15.2.3-alpine", "15.2.4-alpine", "15.2.5-alpine", "15.3.0-alpine", "16.0.0-alpine",
+		}},
+		headDigests: map[string]string{"docker.io/library/postgres:15.2.5-alpine": "sha256:new-alpine"},
+	}, imageAuditTarget{
+		CurrentRef: "docker.io/library/postgres:15.2.3-alpine",
+		Registry:   "docker.io",
+		Repository: "library/postgres",
+		Tag:        "15.2.3-alpine",
+		Policy:     imageAuditPolicySemverMinor,
+	})
+	require.Equal(t, imageAuditStatusUpdateAvailable, result.Status)
+	require.Equal(t, imageAuditLineStatusPatchAvailable, result.LineStatus)
+	require.Equal(t, "15.2.5-alpine", result.LatestTag)
+	require.Equal(t, "15.2.5-alpine", result.LineLatestTag)
+	require.Equal(t, "15.3.0-alpine", result.SameMajorTag)
+	require.Equal(t, "16.0.0-alpine", result.OverallTag)
+	require.True(t, result.HasMajorUpdate)
+	require.Equal(t, "16.0.0-alpine", result.NewMajorTag)
+}
+
+func TestResolveImageAuditThirdPartyRegistry(t *testing.T) {
+	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
+		tags:        map[string][]string{"quay.io/prometheus/prometheus": {"v2.50.0", "v2.50.1", "v2.51.0", "v3.0.0"}},
+		headDigests: map[string]string{"quay.io/prometheus/prometheus:v2.50.1": "sha256:new"},
+	}, imageAuditTarget{
+		CurrentRef: "quay.io/prometheus/prometheus:v2.50.0",
+		Registry:   "quay.io",
+		Repository: "prometheus/prometheus",
+		Tag:        "v2.50.0",
+		Policy:     imageAuditPolicySemverMinor,
+	})
+	require.Equal(t, imageAuditStatusUpdateAvailable, result.Status)
+	require.Equal(t, "v2.50.1", result.LineLatestTag)
+	require.Equal(t, "v2.51.0", result.SameMajorTag)
+	require.Equal(t, "v3.0.0", result.OverallTag)
+	require.True(t, result.HasMajorUpdate)
 }
 
 func TestResolveImageAuditDigestLatest(t *testing.T) {

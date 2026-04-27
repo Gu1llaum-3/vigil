@@ -33,10 +33,17 @@ const (
 	imageAuditStatusUnknown         = "unknown"
 	imageAuditStatusUnsupported     = "unsupported"
 	imageAuditStatusCheckFailed     = "check_failed"
+	imageAuditStatusDisabled        = "disabled"
 
 	imageAuditLineStatusPatchAvailable = "patch_available"
 	imageAuditLineStatusMinorAvailable = "minor_available"
 	imageAuditLineStatusTagRebuilt     = "tag_rebuilt"
+
+	containerAuditOverridesCollection = "container_audit_overrides"
+	auditOverrideDigest               = "digest"
+	auditOverridePatch                = "patch"
+	auditOverrideMinor                = "minor"
+	auditOverrideDisabled             = "disabled"
 )
 
 type ContainerImageAudit struct {
@@ -99,16 +106,23 @@ type imageNotificationTarget struct {
 }
 
 type numericVersion struct {
-	Major int
-	Minor int
-	Patch int
-	Parts int
+	Major   int
+	Minor   int
+	Patch   int
+	Parts   int
+	Variant string
 }
 
 func (h *Hub) collectContainerImageAuditResults(ctx context.Context, registryClient imageRegistryClient) ([]imageAuditResult, int, error) {
 	snapshotRecords, err := h.FindAllRecords("host_snapshots")
 	if err != nil {
 		return nil, 0, err
+	}
+
+	overrides, err := h.loadContainerAuditOverrides()
+	if err != nil {
+		slog.Warn("container image audits: failed to load overrides", "err", err)
+		overrides = nil
 	}
 
 	results := make([]imageAuditResult, 0)
@@ -128,9 +142,25 @@ func (h *Hub) collectContainerImageAuditResults(ctx context.Context, registryCli
 		for _, container := range snapshot.Docker.Containers {
 			seenContainers[auditContainerKey(agentID, container.ID)] = struct{}{}
 
-			target, result := buildImageAuditTarget(agentID, snapshot.Architecture, container)
-			if result != nil {
-				results = append(results, *result)
+			target, earlyResult := buildImageAuditTarget(agentID, snapshot.Architecture, container)
+
+			if override, ok := overrides[auditOverrideKey(agentID, container.Name)]; ok {
+				if override == auditOverrideDisabled {
+					results = append(results, imageAuditResult{
+						Target:    target,
+						Status:    imageAuditStatusDisabled,
+						CheckedAt: time.Now().UTC(),
+					})
+					continue
+				}
+				if mapped := mapOverrideToInternalPolicy(override); mapped != "" {
+					target.Policy = mapped
+					earlyResult = nil
+				}
+			}
+
+			if earlyResult != nil {
+				results = append(results, *earlyResult)
 				continue
 			}
 
@@ -142,6 +172,39 @@ func (h *Hub) collectContainerImageAuditResults(ctx context.Context, registryCli
 	}
 
 	return results, len(seenContainers), nil
+}
+
+func auditOverrideKey(agentID, containerName string) string {
+	return agentID + "|" + containerName
+}
+
+func mapOverrideToInternalPolicy(override string) string {
+	switch override {
+	case auditOverrideDigest:
+		return imageAuditPolicyDigestLatest
+	case auditOverridePatch:
+		return imageAuditPolicySemverMinor
+	case auditOverrideMinor:
+		return imageAuditPolicySemverMajor
+	default:
+		return ""
+	}
+}
+
+func (h *Hub) loadContainerAuditOverrides() (map[string]string, error) {
+	records, err := h.FindAllRecords(containerAuditOverridesCollection)
+	if err != nil {
+		// Collection may not exist on legacy installs; treat as empty.
+		if strings.Contains(strings.ToLower(err.Error()), containerAuditOverridesCollection) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	overrides := make(map[string]string, len(records))
+	for _, rec := range records {
+		overrides[auditOverrideKey(rec.GetString("agent"), rec.GetString("container_name"))] = rec.GetString("policy")
+	}
+	return overrides, nil
 }
 
 func buildImageAuditTarget(agentID, architecture string, container common.ContainerInfo) (imageAuditTarget, *imageAuditResult) {
@@ -230,7 +293,7 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 		}
 		lineTag, foundLine := selectAuditTag(tags, target.Tag, currentVersion, target.Policy)
 		sameMajorTag, _ := selectAuditTag(tags, target.Tag, currentVersion, imageAuditPolicySemverMajor)
-		overallTag, overallVersion, foundOverall := selectLatestSemverTag(tags)
+		overallTag, overallVersion, foundOverall := selectLatestSemverTag(tags, currentVersion.Variant)
 		if !foundOverall {
 			overallTag = target.Tag
 		}
@@ -307,7 +370,8 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 }
 
 func (h *Hub) runContainerImageAudit() (map[string]any, error) {
-	results, seenCount, err := h.collectContainerImageAuditResults(context.Background(), remoteImageRegistryClient{})
+	client := remoteImageRegistryClient{keychain: h.registryKeychain()}
+	results, seenCount, err := h.collectContainerImageAuditResults(context.Background(), client)
 	if err != nil {
 		return nil, err
 	}
@@ -590,10 +654,6 @@ func normalizeImageAuditRef(raw string) (registry, repository, tag, policy strin
 		tag = "latest"
 	}
 
-	if registry != "docker.io" && registry != "ghcr.io" {
-		return registry, repository, tag, imageAuditPolicyUnsupported, nil
-	}
-
 	if tag == "latest" {
 		return registry, repository, tag, imageAuditPolicyDigestLatest, nil
 	}
@@ -636,6 +696,11 @@ func normalizePlatformArchitecture(arch string) string {
 
 func parseNumericVersion(tag string) (numericVersion, bool) {
 	trimmed := strings.TrimPrefix(tag, "v")
+	variant := ""
+	if dash := strings.Index(trimmed, "-"); dash > 0 {
+		variant = trimmed[dash+1:]
+		trimmed = trimmed[:dash]
+	}
 	parts := strings.Split(trimmed, ".")
 	if len(parts) == 0 || len(parts) > 3 {
 		return numericVersion{}, false
@@ -651,7 +716,7 @@ func parseNumericVersion(tag string) (numericVersion, bool) {
 		}
 		values[i] = value
 	}
-	return numericVersion{Major: values[0], Minor: values[1], Patch: values[2], Parts: len(parts)}, true
+	return numericVersion{Major: values[0], Minor: values[1], Patch: values[2], Parts: len(parts), Variant: variant}, true
 }
 
 func selectAuditTag(tags []string, currentTag string, current numericVersion, policy string) (string, bool) {
@@ -661,6 +726,9 @@ func selectAuditTag(tags []string, currentTag string, current numericVersion, po
 	for _, tag := range tags {
 		candidate, ok := parseNumericVersion(tag)
 		if !ok {
+			continue
+		}
+		if candidate.Variant != current.Variant {
 			continue
 		}
 		switch policy {
@@ -684,13 +752,16 @@ func selectAuditTag(tags []string, currentTag string, current numericVersion, po
 	return bestTag, found
 }
 
-func selectLatestSemverTag(tags []string) (string, numericVersion, bool) {
+func selectLatestSemverTag(tags []string, variant string) (string, numericVersion, bool) {
 	var best numericVersion
 	bestTag := ""
 	found := false
 	for _, tag := range tags {
 		candidate, ok := parseNumericVersion(tag)
 		if !ok {
+			continue
+		}
+		if candidate.Variant != variant {
 			continue
 		}
 		if !found || compareNumericVersions(candidate, best) > 0 {
@@ -724,7 +795,11 @@ func versionToTag(version numericVersion) string {
 	if version.Parts >= 3 {
 		values = append(values, strconv.Itoa(version.Patch))
 	}
-	return strings.Join(values, ".")
+	tag := strings.Join(values, ".")
+	if version.Variant != "" {
+		tag += "-" + version.Variant
+	}
+	return tag
 }
 
 func containerImageAuditFromRecord(rec *core.Record) *ContainerImageAudit {

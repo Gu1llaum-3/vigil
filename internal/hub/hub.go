@@ -34,6 +34,7 @@ type Hub struct {
 	agentConns       sync.Map // agentID (string) → *ws.WsConn
 	monitorScheduler *MonitorScheduler
 	notifier         *notifications.Dispatcher
+	credentialsKey   []byte
 }
 
 // NewHub creates a new Hub instance with default configuration.
@@ -150,6 +151,11 @@ func (h *Hub) initialize(app core.App) error {
 	if _, err := h.GetSSHKey(app.DataDir()); err != nil {
 		return fmt.Errorf("failed to initialize SSH key: %w", err)
 	}
+	key, err := loadOrCreateCredentialsKey(app.DataDir())
+	if err != nil {
+		return fmt.Errorf("failed to initialize credentials key: %w", err)
+	}
+	h.credentialsKey = key
 	return setCollectionAuthSettings(app)
 }
 

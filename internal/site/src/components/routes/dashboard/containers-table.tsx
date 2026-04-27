@@ -10,14 +10,33 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table"
-import { CheckIcon, ChevronDownIcon, CopyIcon, PartyPopperIcon, XIcon } from "lucide-react"
-import { memo, useEffect, useMemo, useRef, useState } from "react"
+import {
+	CheckIcon,
+	ChevronDownIcon,
+	CopyIcon,
+	Loader2Icon,
+	MoreHorizontalIcon,
+	PartyPopperIcon,
+	RefreshCwIcon,
+	XIcon,
+} from "lucide-react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { toast } from "@/components/ui/use-toast"
+import { isAdmin, pb } from "@/lib/api"
 import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
 import { cn, copyToClipboard } from "@/lib/utils"
 import type { ContainerFleetEntry } from "@/lib/dashboard-types"
@@ -182,6 +201,13 @@ function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 		return (
 			<Badge variant="outline" className="border-border/50 text-[10px] text-muted-foreground">
 				{t`Not checked`}
+			</Badge>
+		)
+	}
+	if (audit.status === "disabled") {
+		return (
+			<Badge variant="outline" className="border-border/40 text-[10px] text-muted-foreground">
+				{t`Audit disabled`}
 			</Badge>
 		)
 	}
@@ -368,6 +394,56 @@ function SortBtn({ column, children }: { column: Column<ContainerFleetEntry, unk
 	)
 }
 
+function OverrideMenu({
+	entry,
+	current,
+	onChange,
+}: {
+	entry: ContainerFleetEntry
+	current: string
+	onChange: (policy: string) => void
+}) {
+	const { t } = useLingui()
+	const options: Array<{ value: string; label: string }> = [
+		{ value: "auto", label: t`Auto (default)` },
+		{ value: "digest", label: t`Digest only` },
+		{ value: "patch", label: t`Patch line` },
+		{ value: "minor", label: t`Same major` },
+		{ value: "disabled", label: t`Disabled` },
+	]
+	const overridden = current !== "auto"
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="ghost"
+					size="icon"
+					className={cn("size-7", overridden && "text-foreground")}
+					aria-label={t`Audit policy for ${entry.name}`}
+				>
+					<MoreHorizontalIcon className="size-4" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				<DropdownMenuLabel className="text-xs font-medium">
+					<Trans>Audit policy</Trans>
+				</DropdownMenuLabel>
+				<DropdownMenuSeparator />
+				{options.map((option) => (
+					<DropdownMenuItem
+						key={option.value}
+						onSelect={() => onChange(option.value)}
+						className={cn(option.value === current && "font-semibold")}
+					>
+						{option.value === current ? <CheckIcon className="mr-2 size-4" /> : <span className="mr-2 size-4" />}
+						{option.label}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	)
+}
+
 // ── props ─────────────────────────────────────────────────────────────────────
 
 interface ContainersTableProps {
@@ -388,6 +464,71 @@ export const ContainersTable = memo(function ContainersTable({
 	const [sorting, setSorting] = useState<SortingState>([{ id: "status_rank", desc: true }])
 	const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
 	const [search, setSearch] = useState("")
+	const [auditing, setAuditing] = useState(false)
+	const [overrides, setOverrides] = useState<Record<string, string>>({})
+	const admin = isAdmin()
+
+	useEffect(() => {
+		if (!admin) return
+		pb.send("/api/app/container-audit-overrides", { method: "GET" })
+			.then((items: Array<{ agent: string; container_name: string; policy: string }>) => {
+				const next: Record<string, string> = {}
+				for (const item of items) {
+					next[`${item.agent}|${item.container_name}`] = item.policy
+				}
+				setOverrides(next)
+			})
+			.catch(() => {
+				/* non-fatal */
+			})
+	}, [admin])
+
+	const setOverridePolicy = useCallback(
+		async (entry: ContainerFleetEntry, policy: string) => {
+			const key = `${entry.host_id}|${entry.name}`
+			try {
+				await pb.send("/api/app/container-audit-overrides", {
+					method: "PUT",
+					body: JSON.stringify({
+						agent: entry.host_id,
+						container_name: entry.name,
+						policy,
+					}),
+					headers: { "Content-Type": "application/json" },
+				})
+				setOverrides((current) => {
+					const next = { ...current }
+					if (policy === "auto") delete next[key]
+					else next[key] = policy
+					return next
+				})
+				toast({ title: t`Audit policy updated` })
+			} catch (error: unknown) {
+				toast({
+					title: t`Failed to update audit policy`,
+					description: (error as Error).message,
+					variant: "destructive",
+				})
+			}
+		},
+		[t]
+	)
+
+	async function runImageAuditNow() {
+		setAuditing(true)
+		try {
+			await pb.send("/api/app/jobs/vigilContainerImageAudit/run", { method: "POST" })
+			toast({ title: t`Image audit completed` })
+		} catch (error: unknown) {
+			toast({
+				title: t`Failed to run image audit`,
+				description: (error as Error).message,
+				variant: "destructive",
+			})
+		} finally {
+			setAuditing(false)
+		}
+	}
 
 	useEffect(() => {
 		setPagination((p) => ({ ...p, pageIndex: 0 }))
@@ -534,8 +675,28 @@ export const ContainersTable = memo(function ContainersTable({
 					<span className="font-mono text-xs text-muted-foreground">{c.ports || "—"}</span>
 				),
 			},
+			...(admin
+				? [
+						{
+							id: "actions",
+							enableSorting: false,
+							header: () => (
+								<span className="sr-only">
+									<Trans>Actions</Trans>
+								</span>
+							),
+							cell: ({ row: { original: c } }: { row: { original: ContainerFleetEntry } }) => (
+								<OverrideMenu
+									entry={c}
+									current={overrides[`${c.host_id}|${c.name}`] ?? "auto"}
+									onChange={(policy) => setOverridePolicy(c, policy)}
+								/>
+							),
+						} as ColumnDef<ContainerFleetEntry>,
+					]
+				: []),
 		],
-		[t]
+		[admin, overrides, setOverridePolicy, t]
 	)
 
 	const table = useReactTable({
@@ -566,6 +727,16 @@ export const ContainersTable = memo(function ContainersTable({
 					search={search}
 					onSearchChange={handleSearch}
 				/>
+				{admin && (
+					<Button variant="outline" disabled={auditing} onClick={runImageAuditNow} className="shrink-0">
+						{auditing ? (
+							<Loader2Icon className="mr-2 size-4 animate-spin" />
+						) : (
+							<RefreshCwIcon className="mr-2 size-4" />
+						)}
+						<Trans>Check images now</Trans>
+					</Button>
+				)}
 				<div className="ml-auto flex shrink-0 items-center gap-2">
 					<span className="text-xs text-muted-foreground">
 						<Trans>Rows</Trans>

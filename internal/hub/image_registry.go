@@ -15,21 +15,30 @@ type imageRegistryClient interface {
 	ListTags(ctx context.Context, repository string) ([]string, error)
 }
 
-type remoteImageRegistryClient struct{}
+type remoteImageRegistryClient struct {
+	keychain authn.Keychain
+}
 
-func (remoteImageRegistryClient) HeadDigest(ctx context.Context, imageRef string) (string, error) {
+func (c remoteImageRegistryClient) keychainOrDefault() authn.Keychain {
+	if c.keychain != nil {
+		return c.keychain
+	}
+	return authn.DefaultKeychain
+}
+
+func (c remoteImageRegistryClient) HeadDigest(ctx context.Context, imageRef string) (string, error) {
 	ref, err := name.ParseReference(imageRef, name.WeakValidation)
 	if err != nil {
 		return "", err
 	}
-	desc, err := remote.Head(ref, remote.WithContext(ctx), remote.WithAuth(authn.Anonymous))
+	desc, err := remote.Head(ref, remote.WithContext(ctx), remote.WithAuthFromKeychain(c.keychainOrDefault()))
 	if err != nil {
 		return "", err
 	}
 	return desc.Digest.String(), nil
 }
 
-func (remoteImageRegistryClient) ResolvedDigest(ctx context.Context, imageRef, architecture string) (string, error) {
+func (c remoteImageRegistryClient) ResolvedDigest(ctx context.Context, imageRef, architecture string) (string, error) {
 	ref, err := name.ParseReference(imageRef, name.WeakValidation)
 	if err != nil {
 		return "", err
@@ -37,7 +46,7 @@ func (remoteImageRegistryClient) ResolvedDigest(ctx context.Context, imageRef, a
 	desc, err := remote.Get(
 		ref,
 		remote.WithContext(ctx),
-		remote.WithAuth(authn.Anonymous),
+		remote.WithAuthFromKeychain(c.keychainOrDefault()),
 		remote.WithPlatform(v1.Platform{OS: "linux", Architecture: normalizePlatformArchitecture(architecture)}),
 	)
 	if err != nil {
@@ -46,10 +55,10 @@ func (remoteImageRegistryClient) ResolvedDigest(ctx context.Context, imageRef, a
 	return desc.Digest.String(), nil
 }
 
-func (remoteImageRegistryClient) ListTags(ctx context.Context, repository string) ([]string, error) {
+func (c remoteImageRegistryClient) ListTags(ctx context.Context, repository string) ([]string, error) {
 	repo, err := name.NewRepository(repository, name.WeakValidation)
 	if err != nil {
 		return nil, err
 	}
-	return remote.List(repo, remote.WithContext(ctx), remote.WithAuth(authn.Anonymous))
+	return remote.List(repo, remote.WithContext(ctx), remote.WithAuthFromKeychain(c.keychainOrDefault()))
 }

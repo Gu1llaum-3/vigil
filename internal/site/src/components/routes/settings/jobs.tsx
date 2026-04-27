@@ -1,10 +1,20 @@
 import { Trans, useLingui } from "@lingui/react/macro"
 import { redirectPage } from "@nanostores/router"
-import { Loader2Icon, PlayIcon } from "lucide-react"
-import { memo, useEffect, useState } from "react"
+import { Loader2Icon, PencilIcon, PlayIcon } from "lucide-react"
+import { type FormEvent, memo, useEffect, useState } from "react"
 import { $router } from "@/components/router"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/components/ui/use-toast"
 import { isAdmin, pb } from "@/lib/api"
@@ -18,12 +28,17 @@ function apiPost<T>(path: string): Promise<T> {
 	return pb.send(path, { method: "POST" }) as Promise<T>
 }
 
+function apiPatch<T>(path: string, body: unknown): Promise<T> {
+	return pb.send(path, { method: "PATCH", body: JSON.stringify(body) }) as Promise<T>
+}
+
 const JobsSettingsPage = memo(() => {
 	const { t } = useLingui()
 	const admin = isAdmin()
 	const [jobs, setJobs] = useState<ScheduledJobRecord[]>([])
 	const [loading, setLoading] = useState(true)
 	const [runningKey, setRunningKey] = useState<string | null>(null)
+	const [editing, setEditing] = useState<ScheduledJobRecord | null>(null)
 
 	useEffect(() => {
 		if (!admin) {
@@ -65,6 +80,11 @@ const JobsSettingsPage = memo(() => {
 		}
 	}
 
+	const saveSchedule = async (jobKey: string, schedule: string) => {
+		const updated = await apiPatch<ScheduledJobRecord>(`/api/app/jobs/${jobKey}`, { schedule })
+		setJobs((current) => current.map((job) => (job.key === jobKey ? updated : job)))
+	}
+
 	return (
 		<>
 			<div>
@@ -99,14 +119,20 @@ const JobsSettingsPage = memo(() => {
 												: job.description || job.key}
 										</CardDescription>
 									</div>
-									<Button variant="outline" disabled={runningKey === job.key} onClick={() => runNow(job.key)}>
-										{runningKey === job.key ? (
-											<Loader2Icon className="mr-2 size-4 animate-spin" />
-										) : (
-											<PlayIcon className="mr-2 size-4" />
-										)}
-										<Trans>Run Now</Trans>
-									</Button>
+									<div className="flex flex-col gap-2 sm:flex-row">
+										<Button variant="outline" onClick={() => setEditing(job)}>
+											<PencilIcon className="mr-2 size-4" />
+											<Trans>Edit Schedule</Trans>
+										</Button>
+										<Button variant="outline" disabled={runningKey === job.key} onClick={() => runNow(job.key)}>
+											{runningKey === job.key ? (
+												<Loader2Icon className="mr-2 size-4 animate-spin" />
+											) : (
+												<PlayIcon className="mr-2 size-4" />
+											)}
+											<Trans>Run Now</Trans>
+										</Button>
+									</div>
 								</div>
 							</CardHeader>
 							<CardContent className="space-y-3">
@@ -136,9 +162,96 @@ const JobsSettingsPage = memo(() => {
 					))}
 				</div>
 			)}
+			<EditScheduleDialog
+				job={editing}
+				onClose={() => setEditing(null)}
+				onSave={async (schedule) => {
+					if (!editing) return
+					await saveSchedule(editing.key, schedule)
+				}}
+			/>
 		</>
 	)
 })
+
+function EditScheduleDialog({
+	job,
+	onClose,
+	onSave,
+}: {
+	job: ScheduledJobRecord | null
+	onClose: () => void
+	onSave: (schedule: string) => Promise<void>
+}) {
+	const { t } = useLingui()
+	const [value, setValue] = useState("")
+	const [saving, setSaving] = useState(false)
+
+	useEffect(() => {
+		if (job) setValue(job.schedule)
+	}, [job])
+
+	const handleSubmit = async (e: FormEvent) => {
+		e.preventDefault()
+		const trimmed = value.trim()
+		if (!trimmed || !job) return
+		setSaving(true)
+		try {
+			await onSave(trimmed)
+			toast({ title: t`Schedule updated` })
+			onClose()
+		} catch (error: unknown) {
+			toast({
+				title: t`Failed to update schedule`,
+				description: (error as Error).message,
+				variant: "destructive",
+			})
+		} finally {
+			setSaving(false)
+		}
+	}
+
+	return (
+		<Dialog open={!!job} onOpenChange={(open) => !open && onClose()}>
+			<DialogContent className="w-[90%] sm:max-w-[28rem] rounded-lg">
+				<DialogHeader>
+					<DialogTitle>
+						<Trans>Edit Schedule</Trans>
+					</DialogTitle>
+					<DialogDescription>
+						<Trans>
+							Cron expression evaluated in UTC. Examples: <code>0 */6 * * *</code> (every 6 hours),{" "}
+							<code>*/15 * * * *</code> (every 15 minutes).
+						</Trans>
+					</DialogDescription>
+				</DialogHeader>
+				<form onSubmit={handleSubmit} className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="schedule-input">
+							<Trans>Schedule</Trans>
+						</Label>
+						<Input
+							id="schedule-input"
+							value={value}
+							onChange={(e) => setValue(e.target.value)}
+							placeholder="0 */6 * * *"
+							autoFocus
+						/>
+					</div>
+					<DialogFooter>
+						<Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+							<Trans>Cancel</Trans>
+						</Button>
+						<Button type="submit" disabled={saving || !value.trim()}>
+							{saving ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : null}
+							<Trans>Save</Trans>
+						</Button>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
+	)
+}
 
 function StatusItem({ label, value }: { label: string; value: string }) {
 	return (
