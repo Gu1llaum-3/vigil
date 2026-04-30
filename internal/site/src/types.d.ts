@@ -85,13 +85,7 @@ export interface NotificationLog {
 	status: "sent" | "failed" | "throttled"
 	error?: string
 	payload_preview?: string
-	read_at?: string
 	sent_at: string
-}
-
-export interface NotificationUnreadResponse {
-	count: number
-	items: NotificationLog[]
 }
 
 export interface NotificationLogsPage {

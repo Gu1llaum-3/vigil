@@ -38,7 +38,6 @@ Current settings include values such as:
 - preferred language
 - layout width
 - hour format
-- notification center last-read timestamp for the navbar bell
 
 ### `agents`
 
@@ -110,7 +109,6 @@ The collection is tied to the user that created the enrollment token.
 - fields: `rule` (relation→notification_rules, cascadeDelete=true), `channel` (relation→notification_channels, cascadeDelete=true), `created_by` (relation→users), `channel_kind` (text), `event_kind` (text), `resource_id`, `resource_name`, `resource_type`, `status` (select: `sent`/`failed`/`throttled`), `error` (text), `payload_preview` (text), `sent_at`
 - indexed on `(rule, sent_at)`, `(resource_id, sent_at)`, and `(created_by, sent_at)`
 - the extra `created_by` and `channel_kind` fields exist so the frontend can subscribe in realtime only to the current user's relevant notification logs and distinguish virtual `in-app` deliveries from external providers
-- the navbar notification center tracks acknowledgement state in `user_settings.settings.notification_last_read_at`
 - list/view rules: admin only; create/update/delete forbidden from the API (written only by backend)
 
 ### `data_retention_settings`

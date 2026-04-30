@@ -136,8 +136,6 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.DELETE("/notifications/rules/{id}", h.deleteNotificationRule).BindFunc(requireAdminRole)
 	// notification logs (admin only)
 	apiAuth.GET("/notifications/logs", h.getNotificationLogs).BindFunc(requireAdminRole)
-	apiAuth.GET("/notifications/unread", h.getUnreadNotificationLogs).BindFunc(requireAdminRole)
-	apiAuth.POST("/notifications/read-all", h.markAllNotificationLogsRead).BindFunc(requireAdminRole)
 	// scheduled jobs (admin only)
 	apiAuth.GET("/jobs", h.getScheduledJobs).BindFunc(requireAdminRole)
 	apiAuth.PATCH("/jobs/{key}", h.updateScheduledJob).BindFunc(requireAdminRole)

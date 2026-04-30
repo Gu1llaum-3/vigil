@@ -27,15 +27,14 @@ import (
 // Hub is the application. It embeds the PocketBase app and keeps references to subcomponents.
 type Hub struct {
 	core.App
-	um                 *users.UserManager
-	pubKey             string
-	signer             ssh.Signer
-	appURL             string
-	agentConns         sync.Map // agentID (string) → *ws.WsConn
-	notificationReadAt sync.Map // userID (string) → time.Time
-	monitorScheduler   *MonitorScheduler
-	notifier           *notifications.Dispatcher
-	credentialsKey     []byte
+	um               *users.UserManager
+	pubKey           string
+	signer           ssh.Signer
+	appURL           string
+	agentConns       sync.Map // agentID (string) → *ws.WsConn
+	monitorScheduler *MonitorScheduler
+	notifier         *notifications.Dispatcher
+	credentialsKey   []byte
 }
 
 // NewHub creates a new Hub instance with default configuration.

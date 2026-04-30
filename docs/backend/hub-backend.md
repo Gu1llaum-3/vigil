@@ -508,11 +508,7 @@ PATCH  /api/app/notifications/rules/{id}
 DELETE /api/app/notifications/rules/{id}
 
 GET    /api/app/notifications/logs?rule_id=&resource_id=&status=&event_kind=&since=&until=&page=&limit=
-GET    /api/app/notifications/unread?limit=
-POST   /api/app/notifications/read-all
 ```
-
-The unread endpoint uses the current admin's `user_settings.settings.notification_last_read_at` value as its cutoff. The "mark all as read" action updates that timestamp, so the bell clears without mutating every notification log row.
 
 ## Data Retention And Manual Purge
 
@@ -659,8 +655,6 @@ This means:
 - successful deliveries on the virtual `in-app` channel surface as normal in-app toasts
 - successful `monitor.down` and `agent.offline` deliveries also surface as immediate red UI toasts, even when the actual notification is sent through an external provider such as webhook or email
 - successful `monitor.up` and `agent.online` deliveries surface as green recovery toasts in the UI
-
-The navbar notification bell uses the same `notification_logs` source but adds `container_image.update_available` and tracks acknowledgement state via the current admin's `user_settings` record. The bell count is backed by `GET /api/app/notifications/unread`, and the clear action calls `POST /api/app/notifications/read-all`.
 
 ## High-Signal Files For Backend Work
 
