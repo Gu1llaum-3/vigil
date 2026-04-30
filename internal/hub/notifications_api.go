@@ -403,6 +403,13 @@ func ruleRecordToResponse(rec *core.Record) notificationRuleResponse {
 	}
 }
 
+func formatRecordDateTime(rec *core.Record, field string) string {
+	if rec.GetDateTime(field).IsZero() {
+		return ""
+	}
+	return rec.GetDateTime(field).Time().UTC().Format("2006-01-02T15:04:05Z")
+}
+
 func validateChannelInput(input *notificationChannelInput) error {
 	if input.Name == "" {
 		return fmt.Errorf("name is required")

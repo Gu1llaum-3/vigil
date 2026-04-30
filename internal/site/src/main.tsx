@@ -17,6 +17,7 @@ import { $authenticated, $copyContent, $direction, $userSettings, defaultLayoutW
 
 const LoginPage = lazy(() => import("@/components/login/login.tsx"))
 const Home = lazy(() => import("@/components/routes/home.tsx"))
+const NotificationsPage = lazy(() => import("@/components/routes/notifications.tsx"))
 const MonitorsPage = lazy(() => import("@/components/routes/monitors.tsx"))
 const MonitorDetailPage = lazy(() => import("@/components/routes/monitor-detail.tsx"))
 const CopyToClipboardDialog = lazy(() => import("@/components/copy-to-clipboard.tsx"))
@@ -40,6 +41,8 @@ const App = memo(() => {
 		return <h1 className="text-3xl text-center my-14">404</h1>
 	} else if (page.route === "home") {
 		return <Home />
+	} else if (page.route === "notifications") {
+		return <NotificationsPage />
 	} else if (page.route === "monitors") {
 		return <MonitorsPage />
 	} else if (page.route === "monitor") {

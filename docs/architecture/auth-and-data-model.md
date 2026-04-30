@@ -38,6 +38,7 @@ Current settings include values such as:
 - preferred language
 - layout width
 - hour format
+- system notification preferences (`system_notifications_enabled_categories`) and per-category read cursors (`system_notifications_last_read_at_by_category`)
 
 ### `agents`
 
@@ -110,6 +111,14 @@ The collection is tied to the user that created the enrollment token.
 - indexed on `(rule, sent_at)`, `(resource_id, sent_at)`, and `(created_by, sent_at)`
 - the extra `created_by` and `channel_kind` fields exist so the frontend can subscribe in realtime only to the current user's relevant notification logs and distinguish virtual `in-app` deliveries from external providers
 - list/view rules: admin only; create/update/delete forbidden from the API (written only by backend)
+
+### `system_notifications`
+
+- created by migration `19_create_system_notifications.go`
+- append-only internal event feed for the navbar bell and `/notifications` page; independent from external notification delivery rules/channels
+- fields: `event_kind`, `category` (`monitors`/`agents`/`container_images`), `severity`, `resource_type`, `resource_id`, `resource_name`, `title`, `message`, `payload`, `occurred_at`
+- list/view rules: authenticated users; create/update/delete forbidden from the API (written only by backend)
+- read state is per-user and stored in `user_settings.settings.system_notifications_last_read_at_by_category`
 
 ### `data_retention_settings`
 

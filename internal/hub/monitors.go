@@ -206,7 +206,7 @@ func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latency
 
 	// Emit notification on status transition (skip unknown initial state)
 	if effectiveStatus != previousStatus && previousStatus != monitorStatusUnknown {
-		ms.hub.notifier.Dispatch(notifications.Event{
+		evt := notifications.Event{
 			Kind:       notifications.KindForMonitor(effectiveStatus),
 			OccurredAt: time.Now(),
 			Resource: notifications.ResourceRef{
@@ -217,7 +217,11 @@ func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latency
 			Previous: monitorStatusName(previousStatus),
 			Current:  monitorStatusName(effectiveStatus),
 			Details:  map[string]any{"last_msg": msg, "latency_ms": latencyMs},
-		})
+		}
+		if err := ms.hub.createSystemNotification(evt); err != nil {
+			slog.Warn("Failed to create system notification", "monitor", monitorID, "err", err)
+		}
+		ms.hub.notifier.Dispatch(evt)
 	}
 }
 

@@ -244,7 +244,7 @@ func (h *Hub) UpdateAgent(record *AgentRecord, fingerprint, status, version stri
 	}
 
 	if previous == "offline" && status != "offline" {
-		h.notifier.Dispatch(notifications.Event{
+		evt := notifications.Event{
 			Kind:       notifications.KindForAgent(status),
 			OccurredAt: time.Now(),
 			Resource: notifications.ResourceRef{
@@ -254,7 +254,11 @@ func (h *Hub) UpdateAgent(record *AgentRecord, fingerprint, status, version stri
 			},
 			Previous: previous,
 			Current:  status,
-		})
+		}
+		if err := h.createSystemNotification(evt); err != nil {
+			slog.Warn("Failed to create system notification", "agent", rec.Id, "err", err)
+		}
+		h.notifier.Dispatch(evt)
 	}
 
 	return nil
@@ -337,7 +341,7 @@ func (h *Hub) setAgentStatus(agentId, status string) {
 	if err := h.SaveNoValidate(rec); err != nil {
 		return
 	}
-	h.notifier.Dispatch(notifications.Event{
+	evt := notifications.Event{
 		Kind:       notifications.KindForAgent(status),
 		OccurredAt: time.Now(),
 		Resource: notifications.ResourceRef{
@@ -347,7 +351,11 @@ func (h *Hub) setAgentStatus(agentId, status string) {
 		},
 		Previous: previous,
 		Current:  status,
-	})
+	}
+	if err := h.createSystemNotification(evt); err != nil {
+		slog.Warn("Failed to create system notification", "agent", agentId, "err", err)
+	}
+	h.notifier.Dispatch(evt)
 }
 
 // updateAgentInfo persists capabilities and metadata returned by GetAgentInfo.

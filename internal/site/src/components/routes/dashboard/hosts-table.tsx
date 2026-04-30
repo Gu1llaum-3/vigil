@@ -478,9 +478,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 
 			{(search || filters.connection !== "all" || filters.compliance.size > 0 || filters.features.size > 0) && (
 				<div className="flex flex-wrap gap-1.5">
-					{search && (
-						<FilterPill label={`"${search}"`} onRemove={() => handleSearch("")} />
-					)}
+					{search && <FilterPill label={`"${search}"`} onRemove={() => handleSearch("")} />}
 					{filters.connection !== "all" && (
 						<FilterPill
 							label={filters.connection === "connected" ? t`Online` : t`Offline`}

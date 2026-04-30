@@ -455,9 +455,9 @@ Notifications are sent by a `*notifications.Dispatcher` (`internal/hub/notificat
 
 ### Dispatch points
 
-- **Monitor state transition** (`internal/hub/monitors.go` `saveResult`): after writing the new status with `SaveNoValidate`, if `effectiveStatus != previousStatus && previousStatus != monitorStatusUnknown`, calls `h.notifier.Dispatch(...)`.
-- **Agent status transition** (`internal/hub/agent_connect.go` `setAgentStatus`): reads the previous status before overwriting; if changed, calls `h.notifier.Dispatch(...)` after `SaveNoValidate`.
-- **Container image update discovery** (`internal/hub/image_audits.go` `upsertContainerImageAudit`): after each scheduled audit result is merged into `container_image_audits`, the hub computes a persisted notification signature from the newer compatible tags currently available for that container. It dispatches only when that signature changes, so the same discovered version set is not re-notified on every run.
+- **Monitor state transition** (`internal/hub/monitors.go` `saveResult`): after writing the new status with `SaveNoValidate`, if `effectiveStatus != previousStatus && previousStatus != monitorStatusUnknown`, writes a `system_notifications` entry and calls `h.notifier.Dispatch(...)`.
+- **Agent status transition** (`internal/hub/agent_connect.go` `setAgentStatus`): reads the previous status before overwriting; if changed, writes a `system_notifications` entry and calls `h.notifier.Dispatch(...)` after `SaveNoValidate`.
+- **Container image update discovery** (`internal/hub/image_audits.go` `upsertContainerImageAudit`): after each scheduled audit result is merged into `container_image_audits`, the hub computes a persisted notification signature from the newer compatible tags currently available for that container. It dispatches externally only when that signature changes, so the same discovered version set is not re-notified on every run. The navbar/page system notification is aggregated once per audit run to avoid one bell entry per container.
 
 **No `OnRecordAfterUpdate` hooks are used for notifications** — doing so on `monitors` creates an infinite save loop (see conventions doc).
 
@@ -509,6 +509,22 @@ DELETE /api/app/notifications/rules/{id}
 
 GET    /api/app/notifications/logs?rule_id=&resource_id=&status=&event_kind=&since=&until=&page=&limit=
 ```
+
+### System notification center
+
+The navbar bell and `/notifications` page use `system_notifications`, not `notification_logs`. This feed is written directly by the hub for monitor transitions, agent transitions, and aggregated container image audit results. It does not require any notification channel or rule to be configured.
+
+Routes require an authenticated user but are not admin-only:
+
+```
+GET   /api/app/system-notifications?category=&severity=&event_kind=&status=&q=&page=&limit=
+GET   /api/app/system-notifications/unread?limit=
+POST  /api/app/system-notifications/read-all?category=
+GET   /api/app/system-notifications/preferences
+PATCH /api/app/system-notifications/preferences
+```
+
+Read state is per-user and per-category in `user_settings.settings.system_notifications_last_read_at_by_category`. Category visibility is stored in `user_settings.settings.system_notifications_enabled_categories`. Re-enabling a disabled category sets its read cursor to the current time so old events do not flood the bell.
 
 ## Data Retention And Manual Purge
 
@@ -655,6 +671,8 @@ This means:
 - successful deliveries on the virtual `in-app` channel surface as normal in-app toasts
 - successful `monitor.down` and `agent.offline` deliveries also surface as immediate red UI toasts, even when the actual notification is sent through an external provider such as webhook or email
 - successful `monitor.up` and `agent.online` deliveries surface as green recovery toasts in the UI
+
+The navbar notification bell uses `system_notifications` instead of `notification_logs`, so it is available to every authenticated user and remains independent from configured external notification channels.
 
 ## High-Signal Files For Backend Work
 

@@ -141,6 +141,7 @@ msgid "Agent"
 msgstr ""
 
 #: src/components/command-palette.tsx
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/layout.tsx
 msgid "Agents"
@@ -153,6 +154,7 @@ msgstr ""
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
+#: src/components/routes/notifications.tsx
 msgid "All"
 msgstr ""
 
@@ -261,6 +263,10 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
+#: src/components/routes/notifications.tsx
+msgid "Category"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "CC"
 msgstr ""
@@ -303,6 +309,10 @@ msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Checks loaded"
+msgstr ""
+
+#: src/components/routes/notifications.tsx
+msgid "Choose which categories appear in the navbar bell."
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -375,6 +385,10 @@ msgstr ""
 
 #: src/components/routes/home.tsx
 msgid "Container fleet"
+msgstr ""
+
+#: src/components/routes/notifications.tsx
+msgid "Container images"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
@@ -1034,6 +1048,10 @@ msgstr ""
 msgid "Loading jobs…"
 msgstr ""
 
+#: src/components/routes/notifications.tsx
+msgid "Loading notifications…"
+msgstr ""
+
 #: src/components/routes/settings/purge.tsx
 msgid "Loading purge settings…"
 msgstr ""
@@ -1066,6 +1084,11 @@ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Manual Purge"
+msgstr ""
+
+#: src/components/navbar.tsx
+#: src/components/routes/notifications.tsx
+msgid "Mark all as read"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -1120,6 +1143,7 @@ msgstr ""
 #: src/components/navbar.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/notifications.tsx
 msgid "Monitors"
 msgstr ""
 
@@ -1149,6 +1173,7 @@ msgstr ""
 msgid "Never"
 msgstr ""
 
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Next"
 msgstr ""
@@ -1210,12 +1235,20 @@ msgstr ""
 msgid "No notification logs match the current filters."
 msgstr ""
 
+#: src/components/routes/notifications.tsx
+msgid "No notifications match the current filters."
+msgstr ""
+
 #: src/components/command-palette.tsx
 msgid "No results found."
 msgstr "결과가 없습니다."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "No rules configured. Add a rule to start routing notifications."
+msgstr ""
+
+#: src/components/navbar.tsx
+msgid "No unread notifications"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1242,7 +1275,13 @@ msgstr ""
 msgid "Notification History Retention (days)"
 msgstr ""
 
+#: src/components/routes/notifications.tsx
+msgid "Notification preferences"
+msgstr ""
+
 #: src/components/command-palette.tsx
+#: src/components/navbar.tsx
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
@@ -1318,6 +1357,7 @@ msgid "Page"
 msgstr "페이지"
 
 #. placeholder {0}: result.page
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Page {0}"
 msgstr ""
@@ -1428,6 +1468,7 @@ msgstr ""
 msgid "Preferred Language"
 msgstr "선호 언어"
 
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Previous"
 msgstr ""
@@ -1541,6 +1582,7 @@ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Reset filters"
 msgstr ""
@@ -1576,6 +1618,10 @@ msgstr ""
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Review recent notification deliveries and inspect provider errors."
+msgstr ""
+
+#: src/components/routes/notifications.tsx
+msgid "Review system events from monitors, agents, and container image audits."
 msgstr ""
 
 #: src/components/routes/settings/agents.tsx
@@ -1709,6 +1755,7 @@ msgid "Settings saved"
 msgstr "설정이 저장되었습니다."
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
+#: src/components/routes/notifications.tsx
 msgid "Severity"
 msgstr ""
 
@@ -1730,6 +1777,7 @@ msgstr ""
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/notifications/history.tsx
@@ -1882,6 +1930,10 @@ msgstr ""
 msgid "Unknown / Pending"
 msgstr ""
 
+#: src/components/routes/notifications.tsx
+msgid "Unread"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Unsupported"
 msgstr ""
@@ -1902,10 +1954,6 @@ msgstr ""
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Update available"
 msgstr ""
-
-#: src/components/routes/dashboard/containers-table.tsx
-#~ msgid "Updates"
-#~ msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1947,6 +1995,10 @@ msgstr ""
 #: src/components/navbar.tsx
 msgid "Users"
 msgstr "사용자"
+
+#: src/components/navbar.tsx
+msgid "View all notifications"
+msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx

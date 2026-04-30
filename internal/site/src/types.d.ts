@@ -88,6 +88,39 @@ export interface NotificationLog {
 	sent_at: string
 }
 
+export type SystemNotificationCategory = "monitors" | "agents" | "container_images"
+
+export interface SystemNotification {
+	id: string
+	event_kind: string
+	category: SystemNotificationCategory
+	severity: "info" | "warning" | "critical"
+	resource_type: string
+	resource_id: string
+	resource_name?: string
+	title: string
+	message?: string
+	payload?: Record<string, unknown>
+	occurred_at: string
+	read: boolean
+}
+
+export interface SystemNotificationsPage {
+	items: SystemNotification[]
+	page: number
+	limit: number
+	has_more: boolean
+}
+
+export interface SystemNotificationUnreadResponse {
+	count: number
+	items: SystemNotification[]
+}
+
+export interface SystemNotificationPreferences {
+	enabled_categories: Record<SystemNotificationCategory, boolean>
+}
+
 export interface NotificationLogsPage {
 	items: NotificationLog[]
 	page: number

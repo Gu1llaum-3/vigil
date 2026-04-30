@@ -1,12 +1,15 @@
 import { Trans } from "@lingui/react/macro"
 import { getPagePath } from "@nanostores/router"
 import {
+	BellIcon,
 	PlusIcon,
 	ActivityIcon,
 	DatabaseBackupIcon,
+	CheckCheckIcon,
 	LogOutIcon,
 	LogsIcon,
 	MenuIcon,
+	Clock3Icon,
 	SearchIcon,
 	SettingsIcon,
 	UserIcon,
@@ -34,6 +37,8 @@ import { LangToggle } from "./lang-toggle"
 import { Logo } from "./logo"
 import { ModeToggle } from "./mode-toggle"
 import { $router, basePath, Link, navigate, prependBasePath } from "./router"
+import { Badge } from "./ui/badge"
+import type { SystemNotification, SystemNotificationUnreadResponse } from "@/types"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 
 const CommandPalette = lazy(() => import("./command-palette"))
@@ -73,6 +78,176 @@ function useDownMonitorCount() {
 	return downCount
 }
 
+function formatNotificationTime(sentAt: string) {
+	if (!sentAt) return ""
+	const parsed = new Date(sentAt)
+	if (Number.isNaN(parsed.getTime())) return sentAt
+	return parsed.toLocaleString()
+}
+
+function useNotificationCenter() {
+	const currentUserId = pb.authStore.record?.id
+	const [items, setItems] = useState<SystemNotification[]>([])
+	const [count, setCount] = useState(0)
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	const fetchUnread = useCallback(async () => {
+		try {
+			if (!currentUserId) {
+				setItems([])
+				setCount(0)
+				return
+			}
+			const res = await pb.send<SystemNotificationUnreadResponse>("/api/app/system-notifications/unread", {
+				method: "GET",
+				query: { limit: 8 },
+			})
+			setItems(res.items ?? [])
+			setCount(res.count ?? 0)
+		} catch {
+			// ignore transient navbar fetch failures
+		}
+	}, [currentUserId])
+
+	useEffect(() => {
+		if (!currentUserId) {
+			setItems([])
+			setCount(0)
+			return
+		}
+
+		let unsubscribe: (() => void) | undefined
+		fetchUnread()
+		;(async () => {
+			unsubscribe = await pb.collection("system_notifications").subscribe(
+				"*",
+				() => {
+					if (debounceRef.current) clearTimeout(debounceRef.current)
+					debounceRef.current = setTimeout(fetchUnread, 500)
+				},
+				{
+					fields:
+						"id,event_kind,category,severity,resource_id,resource_name,resource_type,title,message,payload,occurred_at",
+				}
+			)
+		})()
+
+		return () => {
+			unsubscribe?.()
+			if (debounceRef.current) clearTimeout(debounceRef.current)
+		}
+	}, [currentUserId, fetchUnread])
+
+	const markAllAsRead = useCallback(async () => {
+		if (!currentUserId) return
+		try {
+			await pb.send("/api/app/system-notifications/read-all", { method: "POST" })
+			await fetchUnread()
+		} catch {
+			// ignore transient navbar action failures
+		}
+	}, [currentUserId, fetchUnread])
+
+	return { items, count, markAllAsRead }
+}
+
+function NotificationBellIcon({ count }: { count: number }) {
+	return (
+		<span className="relative inline-flex">
+			<BellIcon className="h-[1.2rem] w-[1.2rem]" />
+			{count > 0 ? (
+				<span className="absolute -right-2 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white">
+					{count > 9 ? "9+" : count}
+				</span>
+			) : null}
+		</span>
+	)
+}
+
+function notificationSeverityVariant(severity: string) {
+	switch (severity) {
+		case "critical":
+			return "danger" as const
+		case "warning":
+			return "warning" as const
+		default:
+			return "secondary" as const
+	}
+}
+
+function notificationSummary(log: SystemNotification) {
+	if (log.message) return log.message
+	return log.event_kind
+}
+
+function NotificationCenterMenu({
+	count,
+	items,
+	onClear,
+}: {
+	count: number
+	items: SystemNotification[]
+	onClear: () => void
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<button aria-label="Notifications" className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}>
+					<NotificationBellIcon count={count} />
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-96 max-w-[calc(100vw-2rem)] p-0">
+				<div className="flex items-center justify-between gap-3 px-3 py-2">
+					<DropdownMenuLabel className="p-0 text-sm font-semibold">
+						<Trans>Notifications</Trans>
+					</DropdownMenuLabel>
+					{count > 0 ? (
+						<Badge variant="secondary" className="shrink-0">
+							{count}
+						</Badge>
+					) : null}
+				</div>
+				<DropdownMenuSeparator />
+				<div className="max-h-80 overflow-y-auto p-1">
+					{items.length === 0 ? (
+						<div className="px-3 py-6 text-sm text-muted-foreground">
+							<Trans>No unread notifications</Trans>
+						</div>
+					) : (
+						items.map((log) => (
+							<div key={log.id} className="rounded-md px-3 py-2 hover:bg-accent/50">
+								<div className="flex items-start gap-2">
+									<div className="min-w-0 flex-1">
+										<p className="truncate text-sm font-medium text-foreground">
+											{log.resource_name || log.resource_id}
+										</p>
+										<p className="truncate text-xs text-muted-foreground">{notificationSummary(log)}</p>
+									</div>
+									<Badge variant={notificationSeverityVariant(log.severity)} className="shrink-0 uppercase">
+										{log.severity}
+									</Badge>
+								</div>
+								<div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+									<Clock3Icon className="size-3.5 shrink-0" />
+									<span>{formatNotificationTime(log.occurred_at)}</span>
+								</div>
+							</div>
+						))
+					)}
+				</div>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem onSelect={() => navigate(getPagePath($router, "notifications"))}>
+					<Trans>View all notifications</Trans>
+				</DropdownMenuItem>
+				<DropdownMenuItem onSelect={onClear} disabled={count === 0} className="flex items-center gap-2">
+					<CheckCheckIcon className="size-4" />
+					<Trans>Mark all as read</Trans>
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	)
+}
+
 function MonitorNavIcon({ downCount }: { downCount: number }) {
 	return (
 		<span className="relative inline-flex">
@@ -90,6 +265,7 @@ export default function Navbar() {
 	const [addAgentDialogOpen, setAddAgentDialogOpen] = useState(false)
 	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
 	const downMonitorCount = useDownMonitorCount()
+	const notificationCenter = useNotificationCenter()
 
 	const AdminLinks = AdminDropdownGroup()
 
@@ -138,6 +314,11 @@ export default function Navbar() {
 				<Button variant="ghost" size="icon" onClick={() => setCommandPaletteOpen(true)}>
 					<SearchIcon className="h-[1.2rem] w-[1.2rem]" />
 				</Button>
+				<NotificationCenterMenu
+					count={notificationCenter.count}
+					items={notificationCenter.items}
+					onClear={notificationCenter.markAllAsRead}
+				/>
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						onMouseEnter={() => import("@/components/routes/settings/general")}
@@ -206,6 +387,13 @@ export default function Navbar() {
 			>
 				<LangToggle />
 				<ModeToggle />
+				<div className="me-1">
+					<NotificationCenterMenu
+						count={notificationCenter.count}
+						items={notificationCenter.items}
+						onClear={notificationCenter.markAllAsRead}
+					/>
+				</div>
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Link

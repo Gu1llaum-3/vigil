@@ -47,25 +47,25 @@ const (
 )
 
 type ContainerImageAudit struct {
-	Status        string `json:"status"`
-	Policy        string `json:"policy"`
-	Registry      string `json:"registry"`
-	Repository    string `json:"repository"`
-	Tag           string `json:"tag"`
-	CurrentRef    string `json:"current_ref"`
-	LocalImageID  string `json:"local_image_id"`
-	LocalDigest   string `json:"local_digest"`
-	LatestImageID string `json:"latest_image_id"`
-	LatestTag     string `json:"latest_tag"`
-	LatestDigest  string `json:"latest_digest"`
-	LineStatus    string `json:"line_status,omitempty"`
-	LineLatestTag string `json:"line_latest_tag,omitempty"`
-	SameMajorTag  string `json:"same_major_latest_tag,omitempty"`
-	OverallTag    string `json:"overall_latest_tag,omitempty"`
-	NewMajorTag   string `json:"new_major_tag,omitempty"`
-	HasMajorUpdate bool `json:"major_update_available,omitempty"`
-	CheckedAt     string `json:"checked_at"`
-	Error         string `json:"error,omitempty"`
+	Status         string `json:"status"`
+	Policy         string `json:"policy"`
+	Registry       string `json:"registry"`
+	Repository     string `json:"repository"`
+	Tag            string `json:"tag"`
+	CurrentRef     string `json:"current_ref"`
+	LocalImageID   string `json:"local_image_id"`
+	LocalDigest    string `json:"local_digest"`
+	LatestImageID  string `json:"latest_image_id"`
+	LatestTag      string `json:"latest_tag"`
+	LatestDigest   string `json:"latest_digest"`
+	LineStatus     string `json:"line_status,omitempty"`
+	LineLatestTag  string `json:"line_latest_tag,omitempty"`
+	SameMajorTag   string `json:"same_major_latest_tag,omitempty"`
+	OverallTag     string `json:"overall_latest_tag,omitempty"`
+	NewMajorTag    string `json:"new_major_tag,omitempty"`
+	HasMajorUpdate bool   `json:"major_update_available,omitempty"`
+	CheckedAt      string `json:"checked_at"`
+	Error          string `json:"error,omitempty"`
 }
 
 type imageAuditTarget struct {
@@ -85,19 +85,19 @@ type imageAuditTarget struct {
 }
 
 type imageAuditResult struct {
-	Target        imageAuditTarget
-	Status        string
-	LineStatus    string
-	LatestImageID string
-	LatestTag     string
-	LatestDigest  string
-	LineLatestTag string
-	SameMajorTag  string
-	OverallTag    string
-	NewMajorTag   string
+	Target         imageAuditTarget
+	Status         string
+	LineStatus     string
+	LatestImageID  string
+	LatestTag      string
+	LatestDigest   string
+	LineLatestTag  string
+	SameMajorTag   string
+	OverallTag     string
+	NewMajorTag    string
 	HasMajorUpdate bool
-	CheckedAt     time.Time
-	Error         string
+	CheckedAt      time.Time
+	Error          string
 }
 
 type imageNotificationTarget struct {
@@ -378,6 +378,8 @@ func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 
 	counts := map[string]int{}
 	notificationsEmitted := 0
+	notificationExamples := make([]map[string]any, 0, 5)
+	notificationOccurredAt := time.Now().UTC()
 	for _, result := range results {
 		counts[result.Status]++
 		notified, err := h.upsertContainerImageAudit(result)
@@ -386,7 +388,20 @@ func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 		}
 		if notified {
 			notificationsEmitted++
+			notificationOccurredAt = result.CheckedAt.UTC()
+			if len(notificationExamples) < 5 {
+				notificationExamples = append(notificationExamples, map[string]any{
+					"agent_id":       result.Target.AgentID,
+					"container_id":   result.Target.ContainerID,
+					"container_name": result.Target.ContainerName,
+					"image_ref":      result.Target.CurrentRef,
+					"latest_tag":     firstNonEmpty(result.LineLatestTag, result.SameMajorTag, result.NewMajorTag),
+				})
+			}
 		}
+	}
+	if err := h.createContainerImageSystemNotification(notificationsEmitted, notificationOccurredAt, notificationExamples); err != nil {
+		slog.Warn("container image audits: failed to create system notification", "err", err)
 	}
 
 	removed, err := h.deleteStaleContainerImageAudits(results)
@@ -395,11 +410,11 @@ func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 	}
 
 	payload := map[string]any{
-		"checked_containers": seenCount,
-		"audited_records":    len(results),
-		"removed_records":    removed,
+		"checked_containers":    seenCount,
+		"audited_records":       len(results),
+		"removed_records":       removed,
 		"notifications_emitted": notificationsEmitted,
-		"status_counts":      counts,
+		"status_counts":         counts,
 	}
 	return payload, nil
 }
@@ -809,25 +824,25 @@ func containerImageAuditFromRecord(rec *core.Record) *ContainerImageAudit {
 	}
 	details := auditDetailsMap(rec.Get("details"))
 	return &ContainerImageAudit{
-		Status:        status,
-		Policy:        rec.GetString("policy"),
-		Registry:      rec.GetString("registry"),
-		Repository:    rec.GetString("repository"),
-		Tag:           rec.GetString("tag"),
-		CurrentRef:    rec.GetString("image_ref"),
-		LocalImageID:  rec.GetString("local_image_id"),
-		LocalDigest:   rec.GetString("local_digest"),
-		LatestImageID: rec.GetString("latest_image_id"),
-		LatestTag:     rec.GetString("latest_tag"),
-		LatestDigest:  rec.GetString("latest_digest"),
-		LineStatus:    stringDetail(details, "line_status"),
-		LineLatestTag: firstNonEmpty(stringDetail(details, "line_latest_tag"), rec.GetString("latest_tag")),
-		SameMajorTag:  stringDetail(details, "same_major_latest_tag"),
-		OverallTag:    stringDetail(details, "overall_latest_tag"),
-		NewMajorTag:   stringDetail(details, "new_major_tag"),
+		Status:         status,
+		Policy:         rec.GetString("policy"),
+		Registry:       rec.GetString("registry"),
+		Repository:     rec.GetString("repository"),
+		Tag:            rec.GetString("tag"),
+		CurrentRef:     rec.GetString("image_ref"),
+		LocalImageID:   rec.GetString("local_image_id"),
+		LocalDigest:    rec.GetString("local_digest"),
+		LatestImageID:  rec.GetString("latest_image_id"),
+		LatestTag:      rec.GetString("latest_tag"),
+		LatestDigest:   rec.GetString("latest_digest"),
+		LineStatus:     stringDetail(details, "line_status"),
+		LineLatestTag:  firstNonEmpty(stringDetail(details, "line_latest_tag"), rec.GetString("latest_tag")),
+		SameMajorTag:   stringDetail(details, "same_major_latest_tag"),
+		OverallTag:     stringDetail(details, "overall_latest_tag"),
+		NewMajorTag:    stringDetail(details, "new_major_tag"),
 		HasMajorUpdate: boolDetail(details, "major_update_available"),
-		CheckedAt:     rec.GetString("checked_at"),
-		Error:         rec.GetString("error"),
+		CheckedAt:      rec.GetString("checked_at"),
+		Error:          rec.GetString("error"),
 	}
 }
 
