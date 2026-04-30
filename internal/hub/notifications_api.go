@@ -67,6 +67,7 @@ type notificationLogResponse struct {
 	Status         string `json:"status"`
 	Error          string `json:"error,omitempty"`
 	PayloadPreview string `json:"payload_preview,omitempty"`
+	ReadAt         string `json:"read_at,omitempty"`
 	SentAt         string `json:"sent_at"`
 }
 
@@ -75,6 +76,19 @@ type notificationLogsPageResponse struct {
 	Page    int                       `json:"page"`
 	Limit   int                       `json:"limit"`
 	HasMore bool                      `json:"has_more"`
+}
+
+type notificationUnreadResponse struct {
+	Count int                       `json:"count"`
+	Items []notificationLogResponse `json:"items"`
+}
+
+var notificationCenterEventKinds = []string{
+	"monitor.down",
+	"monitor.up",
+	"agent.offline",
+	"agent.online",
+	"container_image.update_available",
 }
 
 // --- Channel handlers ---
@@ -360,6 +374,95 @@ func (h *Hub) getNotificationLogs(e *core.RequestEvent) error {
 	})
 }
 
+func (h *Hub) getUnreadNotificationLogs(e *core.RequestEvent) error {
+	limit := 10
+	if l := e.Request.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= 100 {
+			limit = n
+		} else {
+			return e.BadRequestError("Invalid limit", err)
+		}
+	}
+
+	cutoff, err := h.getNotificationCenterLastReadAt(e.Auth.Id)
+	if err != nil {
+		return err
+	}
+
+	params := dbx.Params{"created_by": e.Auth.Id}
+	records, err := h.FindRecordsByFilter("notification_logs", "created_by = {:created_by}", "-sent_at", 0, 0, params)
+	if err != nil {
+		return err
+	}
+
+	capLimit := limit
+	if len(records) < capLimit {
+		capLimit = len(records)
+	}
+	items := make([]notificationLogResponse, 0, capLimit)
+	count := 0
+	for _, rec := range records {
+		if !isNotificationCenterLog(rec) {
+			continue
+		}
+		sentAt := rec.GetDateTime("sent_at").Time().UTC()
+		if !cutoff.IsZero() && !sentAt.After(cutoff) {
+			continue
+		}
+		count++
+		if len(items) < limit {
+			items = append(items, notificationLogResponse{
+				ID:             rec.Id,
+				Rule:           rec.GetString("rule"),
+				Channel:        rec.GetString("channel"),
+				ChannelKind:    rec.GetString("channel_kind"),
+				CreatedBy:      rec.GetString("created_by"),
+				EventKind:      rec.GetString("event_kind"),
+				ResourceID:     rec.GetString("resource_id"),
+				ResourceName:   rec.GetString("resource_name"),
+				ResourceType:   rec.GetString("resource_type"),
+				Status:         rec.GetString("status"),
+				Error:          rec.GetString("error"),
+				PayloadPreview: rec.GetString("payload_preview"),
+				SentAt:         formatRecordDateTime(rec, "sent_at"),
+			})
+		}
+	}
+
+	return e.JSON(http.StatusOK, notificationUnreadResponse{Count: count, Items: items})
+}
+
+func (h *Hub) markAllNotificationLogsRead(e *core.RequestEvent) error {
+	cutoff, err := h.getNotificationCenterLastReadAt(e.Auth.Id)
+	if err != nil {
+		return err
+	}
+
+	params := dbx.Params{"created_by": e.Auth.Id}
+	records, err := h.FindRecordsByFilter("notification_logs", "created_by = {:created_by}", "-sent_at", 0, 0, params)
+	if err != nil {
+		return err
+	}
+
+	updated := 0
+	for _, rec := range records {
+		if !isNotificationCenterLog(rec) {
+			continue
+		}
+		sentAt := rec.GetDateTime("sent_at").Time().UTC()
+		if !cutoff.IsZero() && !sentAt.After(cutoff) {
+			continue
+		}
+		updated++
+	}
+
+	if err := h.setNotificationCenterLastReadAt(e.Auth.Id, time.Now().UTC()); err != nil {
+		return err
+	}
+
+	return e.JSON(http.StatusOK, map[string]any{"ok": true, "updated": updated})
+}
+
 // --- Helper functions ---
 
 func channelRecordToResponse(rec *core.Record) notificationChannelResponse {
@@ -401,6 +504,74 @@ func ruleRecordToResponse(rec *core.Record) notificationRuleResponse {
 		Created:         rec.GetDateTime("created").String(),
 		Updated:         rec.GetDateTime("updated").String(),
 	}
+}
+
+func formatRecordDateTime(rec *core.Record, field string) string {
+	if rec.GetDateTime(field).IsZero() {
+		return ""
+	}
+	return rec.GetDateTime(field).Time().UTC().Format("2006-01-02T15:04:05Z")
+}
+
+func isNotificationCenterLog(rec *core.Record) bool {
+	switch rec.GetString("event_kind") {
+	case "monitor.down", "monitor.up", "agent.offline", "agent.online", "container_image.update_available":
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *Hub) getNotificationCenterLastReadAt(userID string) (time.Time, error) {
+	if v, ok := h.notificationReadAt.Load(userID); ok {
+		if at, ok := v.(time.Time); ok {
+			return at.UTC(), nil
+		}
+	}
+
+	rec, err := h.FindFirstRecordByFilter("user_settings", "user = {:user}", dbx.Params{"user": userID})
+	if err != nil {
+		return time.Time{}, nil
+	}
+
+	var settings map[string]any
+	if err := rec.UnmarshalJSONField("settings", &settings); err != nil {
+		return time.Time{}, err
+	}
+	lastRead, _ := settings["notification_last_read_at"].(string)
+	if lastRead == "" {
+		return time.Time{}, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, lastRead)
+	if err != nil {
+		return time.Time{}, nil
+	}
+	return parsed.UTC(), nil
+}
+
+func (h *Hub) setNotificationCenterLastReadAt(userID string, at time.Time) error {
+	rec, err := h.FindFirstRecordByFilter("user_settings", "user = {:user}", dbx.Params{"user": userID})
+	if err != nil {
+		collection, colErr := h.FindCachedCollectionByNameOrId("user_settings")
+		if colErr != nil {
+			return colErr
+		}
+		rec = core.NewRecord(collection)
+		rec.Set("user", userID)
+	}
+
+	var settings map[string]any
+	_ = rec.UnmarshalJSONField("settings", &settings)
+	if settings == nil {
+		settings = map[string]any{}
+	}
+	settings["notification_last_read_at"] = at.UTC().Format(time.RFC3339)
+	rec.Set("settings", settings)
+	if err := h.SaveNoValidate(rec); err != nil {
+		return err
+	}
+	h.notificationReadAt.Store(userID, at.UTC())
+	return nil
 }
 
 func validateChannelInput(input *notificationChannelInput) error {

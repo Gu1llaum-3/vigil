@@ -1068,6 +1068,10 @@ msgstr ""
 msgid "Manual Purge"
 msgstr ""
 
+#: src/components/navbar.tsx
+msgid "Mark all as read"
+msgstr ""
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Message delivered"
 msgstr ""
@@ -1218,6 +1222,10 @@ msgstr "결과가 없습니다."
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr ""
 
+#: src/components/navbar.tsx
+msgid "No unread notifications"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Not checked"
 msgstr ""
@@ -1243,6 +1251,7 @@ msgid "Notification History Retention (days)"
 msgstr ""
 
 #: src/components/command-palette.tsx
+#: src/components/navbar.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
@@ -1881,6 +1890,10 @@ msgstr ""
 #: src/components/routes/dashboard/charts.tsx
 msgid "Unknown / Pending"
 msgstr ""
+
+#: src/components/navbar.tsx
+#~ msgid "Unread notifications"
+#~ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Unsupported"

@@ -398,6 +398,8 @@ During development, the hub proxies to the Vite dev server. This is why frontend
 
 The notifications settings page lives at `/settings/notifications` and is admin-only (the nav item uses `admin: true` so only admins see it).
 
+The main navbar also includes an admin-only bell icon that shows the unread count for recent monitor, agent, and container image notifications. Its dropdown lists the latest unread entries and includes a one-click "mark all as read" action backed by the current admin's `user_settings` record.
+
 The implementation lives in `internal/site/src/components/routes/settings/notifications.tsx`.
 
 The page is split into two tabs:
@@ -478,6 +480,8 @@ This component:
 - also surfaces `sent` logs for `monitor.up` and `agent.online` as green recovery alerts
 
 Container image update notifications do not currently get a dedicated incident-style toast treatment. They follow the standard delivery flow: normal toast for `in-app`, otherwise only the admin history view and external channel delivery.
+
+The navbar bell provides the missing always-visible surface for those notifications, including `container_image.update_available`, plus a badge count and a clear action.
 
 The component deduplicates these alert toasts for a short window so a single event does not produce one toast per configured channel, and keeps the alert toasts visible longer than the default informational toast.
 

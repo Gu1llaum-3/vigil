@@ -1068,6 +1068,10 @@ msgstr "Gérer les préférences d'affichage."
 msgid "Manual Purge"
 msgstr "Purge manuelle"
 
+#: src/components/navbar.tsx
+msgid "Mark all as read"
+msgstr "Tout marquer comme lu"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Message delivered"
 msgstr "Message envoyé"
@@ -1218,6 +1222,10 @@ msgstr "Aucun résultat trouvé."
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr "Aucune règle configurée. Ajoutez une règle pour commencer à router les notifications."
 
+#: src/components/navbar.tsx
+msgid "No unread notifications"
+msgstr "Aucune notification non lue"
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Not checked"
 msgstr "Non vérifié"
@@ -1243,6 +1251,7 @@ msgid "Notification History Retention (days)"
 msgstr "Rétention de l'historique des notifications (jours)"
 
 #: src/components/command-palette.tsx
+#: src/components/navbar.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
@@ -1881,6 +1890,10 @@ msgstr "Inconnu"
 #: src/components/routes/dashboard/charts.tsx
 msgid "Unknown / Pending"
 msgstr ""
+
+#: src/components/navbar.tsx
+#~ msgid "Unread notifications"
+#~ msgstr "Notifications non lues"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Unsupported"
