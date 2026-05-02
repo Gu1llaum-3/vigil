@@ -378,8 +378,6 @@ func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 
 	counts := map[string]int{}
 	notificationsEmitted := 0
-	notificationExamples := make([]map[string]any, 0, 5)
-	notificationOccurredAt := time.Now().UTC()
 	for _, result := range results {
 		counts[result.Status]++
 		notified, err := h.upsertContainerImageAudit(result)
@@ -388,20 +386,7 @@ func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 		}
 		if notified {
 			notificationsEmitted++
-			notificationOccurredAt = result.CheckedAt.UTC()
-			if len(notificationExamples) < 5 {
-				notificationExamples = append(notificationExamples, map[string]any{
-					"agent_id":       result.Target.AgentID,
-					"container_id":   result.Target.ContainerID,
-					"container_name": result.Target.ContainerName,
-					"image_ref":      result.Target.CurrentRef,
-					"latest_tag":     firstNonEmpty(result.LineLatestTag, result.SameMajorTag, result.NewMajorTag),
-				})
-			}
 		}
-	}
-	if err := h.createContainerImageSystemNotification(notificationsEmitted, notificationOccurredAt, notificationExamples); err != nil {
-		slog.Warn("container image audits: failed to create system notification", "err", err)
 	}
 
 	removed, err := h.deleteStaleContainerImageAudits(results)
@@ -475,7 +460,7 @@ func (h *Hub) upsertContainerImageAudit(result imageAuditResult) (bool, error) {
 		rec.Set("last_notified_signature", "")
 		rec.Set("last_notified_at", "")
 	} else if signature != prevSignature {
-		h.dispatchContainerImageAuditNotification(rec, result, targets)
+		h.emitContainerImageAuditNotification(rec, result, targets)
 		notified = true
 		rec.Set("last_notified_signature", signature)
 		rec.Set("last_notified_at", result.CheckedAt.UTC().Format(time.RFC3339))
@@ -531,10 +516,20 @@ func buildImageNotificationSignature(targets []imageNotificationTarget) string {
 	return strings.Join(parts, "|")
 }
 
-func (h *Hub) dispatchContainerImageAuditNotification(rec *core.Record, result imageAuditResult, targets []imageNotificationTarget) {
-	if len(targets) == 0 || h.notifier == nil {
+func (h *Hub) emitContainerImageAuditNotification(rec *core.Record, result imageAuditResult, targets []imageNotificationTarget) {
+	if len(targets) == 0 {
 		return
 	}
+	evt := h.containerImageAuditNotificationEvent(rec, result, targets)
+	if err := h.createSystemNotification(evt); err != nil {
+		slog.Warn("container image audits: failed to create system notification", "err", err)
+	}
+	if h.notifier != nil {
+		h.notifier.Dispatch(evt)
+	}
+}
+
+func (h *Hub) containerImageAuditNotificationEvent(rec *core.Record, result imageAuditResult, targets []imageNotificationTarget) notifications.Event {
 	agentName := result.Target.AgentID
 	if agentID := rec.GetString("agent"); agentID != "" {
 		if agent, err := h.FindRecordById("agents", agentID); err == nil {
@@ -553,7 +548,7 @@ func (h *Hub) dispatchContainerImageAuditNotification(rec *core.Record, result i
 		}
 	}
 
-	h.notifier.Dispatch(notifications.Event{
+	return notifications.Event{
 		Kind:       notifications.EventContainerImageUpdateAvailable,
 		OccurredAt: result.CheckedAt.UTC(),
 		Resource: notifications.ResourceRef{
@@ -575,7 +570,7 @@ func (h *Hub) dispatchContainerImageAuditNotification(rec *core.Record, result i
 			"same_major_tag":  result.SameMajorTag,
 			"new_major_tag":   result.NewMajorTag,
 		},
-	})
+	}
 }
 
 func (h *Hub) deleteStaleContainerImageAudits(results []imageAuditResult) (int, error) {

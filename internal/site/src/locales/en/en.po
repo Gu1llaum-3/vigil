@@ -135,6 +135,14 @@ msgstr "Admin"
 msgid "Agent"
 msgstr "Agent"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Agent back online"
+msgstr "Agent back online"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Agent offline"
+msgstr "Agent offline"
+
 #: src/components/command-palette.tsx
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/agents.tsx
@@ -149,9 +157,12 @@ msgstr "Agents connect to the hub via WebSocket."
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
-#: src/components/routes/notifications.tsx
 msgid "All"
 msgstr "All"
+
+#: src/components/routes/notifications.tsx
+msgid "All categories"
+msgstr "All categories"
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "All events"
@@ -161,6 +172,11 @@ msgstr "All events"
 msgid "All rules"
 msgstr "All rules"
 
+#: src/components/routes/notifications.tsx
+msgid "All severities"
+msgstr "All severities"
+
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "All statuses"
 msgstr "All statuses"
@@ -306,9 +322,9 @@ msgstr "Checked"
 msgid "Checks loaded"
 msgstr "Checks loaded"
 
-#: src/components/routes/notifications.tsx
-msgid "Choose which categories appear in the navbar bell."
-msgstr "Choose which categories appear in the navbar bell."
+#: src/components/routes/settings/notifications.tsx
+msgid "Choose which system events appear in the navbar bell and unread counter."
+msgstr "Choose which system events appear in the navbar bell and unread counter."
 
 #: src/components/routes/monitors.tsx
 msgid "Click \"Add monitor\" to start monitoring your services."
@@ -381,6 +397,10 @@ msgstr "Container"
 #: src/components/routes/home.tsx
 msgid "Container fleet"
 msgstr "Container fleet"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Container image update"
+msgstr "Container image update"
 
 #: src/components/routes/notifications.tsx
 msgid "Container images"
@@ -492,6 +512,10 @@ msgstr "Current latency"
 #: src/components/routes/home.tsx
 msgid "Dashboard"
 msgstr "Dashboard"
+
+#: src/components/routes/notifications.tsx
+msgid "Date"
+msgstr "Date"
 
 #: src/components/routes/settings/purge.tsx
 msgid "Days to keep"
@@ -1043,6 +1067,10 @@ msgstr "Loading installation details..."
 msgid "Loading jobs…"
 msgstr "Loading jobs…"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Loading notification preferences…"
+msgstr "Loading notification preferences…"
+
 #: src/components/routes/notifications.tsx
 msgid "Loading notifications…"
 msgstr "Loading notifications…"
@@ -1119,6 +1147,7 @@ msgid "Monitor details"
 msgstr "Monitor details"
 
 #: src/components/notification-log-toasts.tsx
+#: src/components/routes/settings/notifications.tsx
 msgid "Monitor down"
 msgstr "Monitor down"
 
@@ -1127,6 +1156,7 @@ msgid "Monitor moved"
 msgstr "Monitor moved"
 
 #: src/components/notification-log-toasts.tsx
+#: src/components/routes/settings/notifications.tsx
 msgid "Monitor recovered"
 msgstr "Monitor recovered"
 
@@ -1251,8 +1281,13 @@ msgid "Not checked"
 msgstr "Not checked"
 
 #: src/components/notification-log-toasts.tsx
+#: src/components/routes/notifications.tsx
 msgid "Notification"
 msgstr "Notification"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Notification bell"
+msgstr "Notification bell"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Notification delivery destinations (email, webhooks, chat services)."
@@ -1269,10 +1304,6 @@ msgstr "Notification details"
 #: src/components/routes/settings/purge.tsx
 msgid "Notification History Retention (days)"
 msgstr "Notification History Retention (days)"
-
-#: src/components/routes/notifications.tsx
-msgid "Notification preferences"
-msgstr "Notification preferences"
 
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
@@ -1526,6 +1557,10 @@ msgstr "Purge Older Records"
 msgid "RAM"
 msgstr "RAM"
 
+#: src/components/routes/notifications.tsx
+msgid "Read"
+msgstr "Read"
+
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Reboot req."
@@ -1555,6 +1590,7 @@ msgstr "Registry credentials"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/notifications.tsx
 msgid "Remove"
 msgstr "Remove"
 
@@ -1590,6 +1626,7 @@ msgstr "Reset fingerprint"
 msgid "Reset Password"
 msgstr "Reset Password"
 
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Resource"
 msgstr "Resource"
@@ -1703,6 +1740,10 @@ msgstr "Search container, image, host, ports…"
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Search host, IP, OS, kernel…"
 msgstr "Search host, IP, OS, kernel…"
+
+#: src/components/routes/notifications.tsx
+msgid "Search notifications…"
+msgstr "Search notifications…"
 
 #: src/components/command-palette.tsx
 msgid "Search pages and settings..."

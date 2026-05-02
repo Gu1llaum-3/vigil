@@ -140,6 +140,14 @@ msgstr ""
 msgid "Agent"
 msgstr ""
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Agent back online"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Agent offline"
+msgstr ""
+
 #: src/components/command-palette.tsx
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/agents.tsx
@@ -154,8 +162,11 @@ msgstr ""
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
-#: src/components/routes/notifications.tsx
 msgid "All"
+msgstr ""
+
+#: src/components/routes/notifications.tsx
+msgid "All categories"
 msgstr ""
 
 #: src/components/routes/settings/notifications/history.tsx
@@ -166,6 +177,11 @@ msgstr ""
 msgid "All rules"
 msgstr ""
 
+#: src/components/routes/notifications.tsx
+msgid "All severities"
+msgstr ""
+
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "All statuses"
 msgstr ""
@@ -311,8 +327,8 @@ msgstr ""
 msgid "Checks loaded"
 msgstr ""
 
-#: src/components/routes/notifications.tsx
-msgid "Choose which categories appear in the navbar bell."
+#: src/components/routes/settings/notifications.tsx
+msgid "Choose which system events appear in the navbar bell and unread counter."
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -385,6 +401,10 @@ msgstr ""
 
 #: src/components/routes/home.tsx
 msgid "Container fleet"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Container image update"
 msgstr ""
 
 #: src/components/routes/notifications.tsx
@@ -496,6 +516,10 @@ msgstr ""
 
 #: src/components/routes/home.tsx
 msgid "Dashboard"
+msgstr ""
+
+#: src/components/routes/notifications.tsx
+msgid "Date"
 msgstr ""
 
 #: src/components/routes/settings/purge.tsx
@@ -1048,6 +1072,10 @@ msgstr ""
 msgid "Loading jobs…"
 msgstr ""
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Loading notification preferences…"
+msgstr ""
+
 #: src/components/routes/notifications.tsx
 msgid "Loading notifications…"
 msgstr ""
@@ -1124,6 +1152,7 @@ msgid "Monitor details"
 msgstr ""
 
 #: src/components/notification-log-toasts.tsx
+#: src/components/routes/settings/notifications.tsx
 msgid "Monitor down"
 msgstr ""
 
@@ -1132,6 +1161,7 @@ msgid "Monitor moved"
 msgstr ""
 
 #: src/components/notification-log-toasts.tsx
+#: src/components/routes/settings/notifications.tsx
 msgid "Monitor recovered"
 msgstr ""
 
@@ -1256,7 +1286,12 @@ msgid "Not checked"
 msgstr ""
 
 #: src/components/notification-log-toasts.tsx
+#: src/components/routes/notifications.tsx
 msgid "Notification"
+msgstr ""
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Notification bell"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -1273,10 +1308,6 @@ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Notification History Retention (days)"
-msgstr ""
-
-#: src/components/routes/notifications.tsx
-msgid "Notification preferences"
 msgstr ""
 
 #: src/components/command-palette.tsx
@@ -1531,6 +1562,10 @@ msgstr ""
 msgid "RAM"
 msgstr ""
 
+#: src/components/routes/notifications.tsx
+msgid "Read"
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Reboot req."
@@ -1560,6 +1595,7 @@ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/notifications.tsx
 msgid "Remove"
 msgstr ""
 
@@ -1595,6 +1631,7 @@ msgstr ""
 msgid "Reset Password"
 msgstr "Nullstill Passord"
 
+#: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Resource"
 msgstr ""
@@ -1707,6 +1744,10 @@ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Search host, IP, OS, kernel…"
+msgstr ""
+
+#: src/components/routes/notifications.tsx
+msgid "Search notifications…"
 msgstr ""
 
 #: src/components/command-palette.tsx

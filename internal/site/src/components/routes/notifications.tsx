@@ -1,22 +1,35 @@
 import { Trans, useLingui } from "@lingui/react/macro"
-import { BellIcon, CheckCheckIcon, Loader2Icon } from "lucide-react"
+import { BellIcon, CheckCheckIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { pb } from "@/lib/api"
-import type {
-	SystemNotification,
-	SystemNotificationCategory,
-	SystemNotificationPreferences,
-	SystemNotificationsPage,
-} from "@/types"
+import type { SystemNotification, SystemNotificationCategory, SystemNotificationsPage } from "@/types"
 
 const ALL_FILTERS = "__all__"
 const CATEGORIES: SystemNotificationCategory[] = ["monitors", "agents", "container_images"]
 const SEVERITIES = ["info", "warning", "critical"] as const
+
+function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+	return (
+		<span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-foreground">
+			{label}
+			<button
+				type="button"
+				onClick={onRemove}
+				className="ml-0.5 rounded-full text-muted-foreground transition-colors hover:text-foreground"
+			>
+				<XIcon className="size-3" />
+				<span className="sr-only">
+					<Trans>Remove</Trans>
+				</span>
+			</button>
+		</span>
+	)
+}
 
 function formatDate(value: string) {
 	if (!value) return "-"
@@ -36,16 +49,20 @@ function severityVariant(severity: SystemNotification["severity"]) {
 	}
 }
 
+function notificationDescription(item: SystemNotification) {
+	if (!item.message) return ""
+	if (item.message.trim() === item.title.trim()) return ""
+	return item.message
+}
+
 export default function NotificationsPage() {
 	const { t } = useLingui()
 	const [category, setCategory] = useState(ALL_FILTERS)
 	const [severity, setSeverity] = useState(ALL_FILTERS)
 	const [status, setStatus] = useState("unread")
+	const [search, setSearch] = useState("")
 	const [page, setPage] = useState(1)
 	const [result, setResult] = useState<SystemNotificationsPage>({ items: [], page: 1, limit: 25, has_more: false })
-	const [preferences, setPreferences] = useState<SystemNotificationPreferences>({
-		enabled_categories: { monitors: true, agents: true, container_images: true },
-	})
 	const [loading, setLoading] = useState(true)
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState("")
@@ -58,6 +75,7 @@ export default function NotificationsPage() {
 			if (category !== ALL_FILTERS) query.category = category
 			if (severity !== ALL_FILTERS) query.severity = severity
 			if (status !== ALL_FILTERS) query.status = status
+			if (search.trim()) query.q = search.trim()
 			const data = await pb.send<SystemNotificationsPage>("/api/app/system-notifications", { method: "GET", query })
 			setResult(data)
 		} catch (e) {
@@ -67,24 +85,9 @@ export default function NotificationsPage() {
 		}
 	}
 
-	async function fetchPreferences() {
-		try {
-			const data = await pb.send<SystemNotificationPreferences>("/api/app/system-notifications/preferences", {
-				method: "GET",
-			})
-			setPreferences(data)
-		} catch {
-			// keep defaults
-		}
-	}
-
-	useEffect(() => {
-		fetchPreferences()
-	}, [])
-
 	useEffect(() => {
 		fetchNotifications()
-	}, [category, severity, status, page])
+	}, [category, severity, status, search, page])
 
 	async function markAllRead() {
 		setSaving(true)
@@ -97,32 +100,12 @@ export default function NotificationsPage() {
 		}
 	}
 
-	async function toggleCategory(category: SystemNotificationCategory, enabled: boolean) {
-		const next = {
-			enabled_categories: {
-				...preferences.enabled_categories,
-				[category]: enabled,
-			},
-		}
-		setPreferences(next)
-		try {
-			const saved = await pb.send<SystemNotificationPreferences>("/api/app/system-notifications/preferences", {
-				method: "PATCH",
-				body: JSON.stringify(next),
-				headers: { "Content-Type": "application/json" },
-			})
-			setPreferences(saved)
-			await fetchNotifications()
-		} catch {
-			await fetchPreferences()
-		}
-	}
-
 	function resetFilters() {
 		setPage(1)
 		setCategory(ALL_FILTERS)
 		setSeverity(ALL_FILTERS)
 		setStatus("unread")
+		setSearch("")
 	}
 
 	function categoryLabel(category: SystemNotificationCategory) {
@@ -136,53 +119,41 @@ export default function NotificationsPage() {
 		}
 	}
 
+	function statusLabel(value: string) {
+		return value === "unread" ? t`Unread` : t`All statuses`
+	}
+
+	const hasActiveFilters = Boolean(
+		search.trim() || category !== ALL_FILTERS || severity !== ALL_FILTERS || status !== "unread"
+	)
+
 	return (
 		<div className="space-y-5">
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-				<div>
-					<h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-						<BellIcon className="size-5" />
-						<Trans>Notifications</Trans>
-					</h1>
-					<p className="mt-1 text-sm text-muted-foreground">
-						<Trans>Review system events from monitors, agents, and container image audits.</Trans>
-					</p>
-				</div>
-				<Button onClick={markAllRead} disabled={saving}>
-					{saving ? <Loader2Icon className="me-2 size-4 animate-spin" /> : <CheckCheckIcon className="me-2 size-4" />}
-					<Trans>Mark all as read</Trans>
-				</Button>
-			</div>
-
-			<div className="rounded-md border p-4">
-				<h2 className="text-lg font-medium">
-					<Trans>Notification preferences</Trans>
-				</h2>
+			<div>
+				<h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+					<BellIcon className="size-5" />
+					<Trans>Notifications</Trans>
+				</h1>
 				<p className="mt-1 text-sm text-muted-foreground">
-					<Trans>Choose which categories appear in the navbar bell.</Trans>
+					<Trans>Review system events from monitors, agents, and container image audits.</Trans>
 				</p>
-				<div className="mt-4 grid gap-3 sm:grid-cols-3">
-					{CATEGORIES.map((item) => {
-						const id = `system-notification-category-${item}`
-						return (
-							<div key={item} className="flex items-center gap-2 rounded-md border px-3 py-2">
-								<Checkbox
-									id={id}
-									checked={preferences.enabled_categories[item]}
-									onCheckedChange={(checked) => toggleCategory(item, checked === true)}
-								/>
-								<Label htmlFor={id} className="text-sm">
-									{categoryLabel(item)}
-								</Label>
-							</div>
-						)
-					})}
-				</div>
 			</div>
 
-			<div className="grid gap-3 rounded-md border p-4 md:grid-cols-4">
-				<div className="space-y-1">
-					<Label>{t`Category`}</Label>
+			<div className="space-y-3">
+				<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+					<div className="relative sm:w-[280px]">
+						<SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							value={search}
+							onChange={(event) => {
+								setPage(1)
+								setSearch(event.target.value)
+							}}
+							placeholder={t`Search notifications…`}
+							className="pl-8"
+						/>
+					</div>
+
 					<Select
 						value={category}
 						onValueChange={(value) => {
@@ -190,11 +161,11 @@ export default function NotificationsPage() {
 							setCategory(value)
 						}}
 					>
-						<SelectTrigger>
+						<SelectTrigger className="sm:w-[180px]">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value={ALL_FILTERS}>{t`All`}</SelectItem>
+							<SelectItem value={ALL_FILTERS}>{t`All categories`}</SelectItem>
 							{CATEGORIES.map((item) => (
 								<SelectItem key={item} value={item}>
 									{categoryLabel(item)}
@@ -202,9 +173,7 @@ export default function NotificationsPage() {
 							))}
 						</SelectContent>
 					</Select>
-				</div>
-				<div className="space-y-1">
-					<Label>{t`Status`}</Label>
+
 					<Select
 						value={status}
 						onValueChange={(value) => {
@@ -212,17 +181,15 @@ export default function NotificationsPage() {
 							setStatus(value)
 						}}
 					>
-						<SelectTrigger>
+						<SelectTrigger className="sm:w-[150px]">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="unread">{t`Unread`}</SelectItem>
-							<SelectItem value={ALL_FILTERS}>{t`All`}</SelectItem>
+							<SelectItem value={ALL_FILTERS}>{t`All statuses`}</SelectItem>
 						</SelectContent>
 					</Select>
-				</div>
-				<div className="space-y-1">
-					<Label>{t`Severity`}</Label>
+
 					<Select
 						value={severity}
 						onValueChange={(value) => {
@@ -230,11 +197,11 @@ export default function NotificationsPage() {
 							setSeverity(value)
 						}}
 					>
-						<SelectTrigger>
+						<SelectTrigger className="sm:w-[160px]">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value={ALL_FILTERS}>{t`All`}</SelectItem>
+							<SelectItem value={ALL_FILTERS}>{t`All severities`}</SelectItem>
 							{SEVERITIES.map((item) => (
 								<SelectItem key={item} value={item}>
 									{item}
@@ -242,49 +209,148 @@ export default function NotificationsPage() {
 							))}
 						</SelectContent>
 					</Select>
-				</div>
-				<div className="flex items-end">
-					<Button variant="outline" onClick={resetFilters}>
+
+					<Button variant="outline" onClick={resetFilters} disabled={!hasActiveFilters}>
 						<Trans>Reset filters</Trans>
 					</Button>
+
+					<Button onClick={markAllRead} disabled={saving} className="sm:ml-auto">
+						{saving ? <Loader2Icon className="me-2 size-4 animate-spin" /> : <CheckCheckIcon className="me-2 size-4" />}
+						<Trans>Mark all as read</Trans>
+					</Button>
 				</div>
+
+				{hasActiveFilters ? (
+					<div className="flex flex-wrap gap-1.5">
+						{search.trim() ? (
+							<FilterPill
+								label={`"${search.trim()}"`}
+								onRemove={() => {
+									setPage(1)
+									setSearch("")
+								}}
+							/>
+						) : null}
+						{category !== ALL_FILTERS ? (
+							<FilterPill
+								label={categoryLabel(category as SystemNotificationCategory)}
+								onRemove={() => {
+									setPage(1)
+									setCategory(ALL_FILTERS)
+								}}
+							/>
+						) : null}
+						{status !== "unread" ? (
+							<FilterPill
+								label={statusLabel(status)}
+								onRemove={() => {
+									setPage(1)
+									setStatus("unread")
+								}}
+							/>
+						) : null}
+						{severity !== ALL_FILTERS ? (
+							<FilterPill
+								label={severity}
+								onRemove={() => {
+									setPage(1)
+									setSeverity(ALL_FILTERS)
+								}}
+							/>
+						) : null}
+					</div>
+				) : null}
 			</div>
 
 			{error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-			<div className="rounded-md border">
+			<div className="overflow-x-auto rounded-md border border-border/60">
 				{loading ? (
 					<div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
 						<Loader2Icon className="me-2 size-4 animate-spin" />
 						<Trans>Loading notifications…</Trans>
 					</div>
-				) : result.items.length === 0 ? (
-					<div className="h-32 p-6 text-sm text-muted-foreground">
-						<Trans>No notifications match the current filters.</Trans>
-					</div>
 				) : (
-					<div className="divide-y">
-						{result.items.map((item) => (
-							<div key={item.id} className="p-4">
-								<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-									<div className="min-w-0">
-										<div className="flex flex-wrap items-center gap-2">
-											<h2 className="font-medium">{item.title}</h2>
-											{item.read ? null : <Badge variant="default">{t`Unread`}</Badge>}
+					<Table className="min-w-[880px]">
+						<TableHeader>
+							<TableRow>
+								<TableHead>
+									<Trans>Notification</Trans>
+								</TableHead>
+								<TableHead>
+									<Trans>Resource</Trans>
+								</TableHead>
+								<TableHead>
+									<Trans>Category</Trans>
+								</TableHead>
+								<TableHead>
+									<Trans>Status</Trans>
+								</TableHead>
+								<TableHead>
+									<Trans>Severity</Trans>
+								</TableHead>
+								<TableHead className="text-right">
+									<Trans>Date</Trans>
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{result.items.length === 0 ? (
+								<TableRow>
+									<TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+										<div className="flex flex-col items-center gap-2">
+											<Trans>No notifications match the current filters.</Trans>
+											<Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={resetFilters}>
+												<Trans>Reset filters</Trans>
+											</Button>
 										</div>
-										<p className="mt-1 text-sm text-muted-foreground">{item.message}</p>
-										<p className="mt-2 text-xs text-muted-foreground">
-											{categoryLabel(item.category)} · {item.resource_name || item.resource_id || item.resource_type} ·{" "}
-											{formatDate(item.occurred_at)}
-										</p>
-									</div>
-									<Badge variant={severityVariant(item.severity)} className="shrink-0 uppercase">
-										{item.severity}
-									</Badge>
-								</div>
-							</div>
-						))}
-					</div>
+									</TableCell>
+								</TableRow>
+							) : (
+								result.items.map((item) => {
+									const description = notificationDescription(item)
+									return (
+										<TableRow key={item.id}>
+											<TableCell className="max-w-[34rem]">
+												<div className="font-medium">{item.title}</div>
+												{description ? (
+													<div className="mt-1 truncate text-xs text-muted-foreground">{description}</div>
+												) : null}
+											</TableCell>
+											<TableCell>
+												<div className="font-mono text-xs">{item.resource_name || item.resource_id || "-"}</div>
+												{item.resource_type ? (
+													<div className="text-xs text-muted-foreground">{item.resource_type}</div>
+												) : null}
+											</TableCell>
+											<TableCell>
+												<Badge variant="outline" className="border-border/50 text-[10px]">
+													{categoryLabel(item.category)}
+												</Badge>
+											</TableCell>
+											<TableCell>
+												{item.read ? (
+													<span className="text-xs text-muted-foreground">{t`Read`}</span>
+												) : (
+													<Badge variant="default" className="text-[10px]">
+														{t`Unread`}
+													</Badge>
+												)}
+											</TableCell>
+											<TableCell>
+												<Badge variant={severityVariant(item.severity)} className="text-[10px] uppercase">
+													{item.severity}
+												</Badge>
+											</TableCell>
+											<TableCell className="text-right text-xs text-muted-foreground">
+												{formatDate(item.occurred_at)}
+											</TableCell>
+										</TableRow>
+									)
+								})
+							)}
+						</TableBody>
+					</Table>
 				)}
 			</div>
 

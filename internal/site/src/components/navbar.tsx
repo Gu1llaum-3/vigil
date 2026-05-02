@@ -176,7 +176,8 @@ function notificationSeverityVariant(severity: string) {
 }
 
 function notificationSummary(log: SystemNotification) {
-	if (log.message) return log.message
+	if (log.message && log.message.trim() !== log.title.trim()) return log.message
+	if (log.resource_name || log.resource_id) return log.resource_name || log.resource_id
 	return log.event_kind
 }
 
@@ -218,9 +219,7 @@ function NotificationCenterMenu({
 							<div key={log.id} className="rounded-md px-3 py-2 hover:bg-accent/50">
 								<div className="flex items-start gap-2">
 									<div className="min-w-0 flex-1">
-										<p className="truncate text-sm font-medium text-foreground">
-											{log.resource_name || log.resource_id}
-										</p>
+										<p className="truncate text-sm font-medium text-foreground">{log.title}</p>
 										<p className="truncate text-xs text-muted-foreground">{notificationSummary(log)}</p>
 									</div>
 									<Badge variant={notificationSeverityVariant(log.severity)} className="shrink-0 uppercase">

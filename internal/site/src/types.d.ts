@@ -119,6 +119,7 @@ export interface SystemNotificationUnreadResponse {
 
 export interface SystemNotificationPreferences {
 	enabled_categories: Record<SystemNotificationCategory, boolean>
+	enabled_events: Record<string, boolean>
 }
 
 export interface NotificationLogsPage {

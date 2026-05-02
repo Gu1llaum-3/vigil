@@ -31,11 +31,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { isAdmin, pb } from "@/lib/api"
-import type { NotificationChannel, NotificationKind, NotificationRule } from "@/types"
+import type { NotificationChannel, NotificationKind, NotificationRule, SystemNotificationPreferences } from "@/types"
 import NotificationHistory from "./notifications/history.tsx"
 
 const ALL_KINDS: NotificationKind[] = ["email", "webhook", "slack", "teams", "gchat", "ntfy", "gotify", "in-app"]
 const ALL_EVENTS = ["monitor.down", "monitor.up", "agent.offline", "agent.online", "container_image.update_available"]
+const BELL_EVENTS = ["monitor.down", "monitor.up", "agent.offline", "agent.online", "container_image.update_available"]
+
+function defaultBellPreferences(): SystemNotificationPreferences {
+	return {
+		enabled_categories: { monitors: true, agents: true, container_images: true },
+		enabled_events: Object.fromEntries(BELL_EVENTS.map((event) => [event, true])),
+	}
+}
+
 // --- API helpers ---
 
 function apiGet<T>(path: string): Promise<T> {
@@ -631,6 +640,89 @@ const RuleDialog = memo(
 
 // --- Channels section ---
 
+function BellEventLabel({ event }: { event: string }) {
+	switch (event) {
+		case "monitor.down":
+			return <Trans>Monitor down</Trans>
+		case "monitor.up":
+			return <Trans>Monitor recovered</Trans>
+		case "agent.offline":
+			return <Trans>Agent offline</Trans>
+		case "agent.online":
+			return <Trans>Agent back online</Trans>
+		case "container_image.update_available":
+			return <Trans>Container image update</Trans>
+		default:
+			return <>{event}</>
+	}
+}
+
+const SectionBellPreferences = memo(() => {
+	const { t } = useLingui()
+	const [preferences, setPreferences] = useState<SystemNotificationPreferences>(defaultBellPreferences)
+	const [loading, setLoading] = useState(true)
+
+	useEffect(() => {
+		apiGet<SystemNotificationPreferences>("/api/app/system-notifications/preferences")
+			.then((data) => setPreferences({ ...defaultBellPreferences(), ...data }))
+			.catch(() => {})
+			.finally(() => setLoading(false))
+	}, [])
+
+	async function toggleEvent(event: string, enabled: boolean) {
+		const next: SystemNotificationPreferences = {
+			enabled_categories: preferences.enabled_categories,
+			enabled_events: { ...preferences.enabled_events, [event]: enabled },
+		}
+		setPreferences(next)
+		try {
+			const saved = await apiPatch<SystemNotificationPreferences>("/api/app/system-notifications/preferences", next)
+			setPreferences({ ...defaultBellPreferences(), ...saved })
+		} catch (e: unknown) {
+			toast({ title: t`Error`, description: (e as Error).message, variant: "destructive" })
+		}
+	}
+
+	return (
+		<div>
+			<div className="mb-3">
+				<h3 className="text-xl font-medium">
+					<Trans>Notification bell</Trans>
+				</h3>
+				<p className="mt-0.5 text-sm text-muted-foreground">
+					<Trans>Choose which system events appear in the navbar bell and unread counter.</Trans>
+				</p>
+			</div>
+			<div className="rounded-md border p-3">
+				{loading ? (
+					<div className="flex h-20 items-center justify-center text-sm text-muted-foreground">
+						<Loader2Icon className="me-2 size-4 animate-spin" />
+						<Trans>Loading notification preferences…</Trans>
+					</div>
+				) : (
+					<div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+						{BELL_EVENTS.map((event) => {
+							const id = `bell-event-${event}`
+							return (
+								<div key={event} className="flex items-center gap-2 rounded-md border border-border/50 px-3 py-2">
+									<Checkbox
+										id={id}
+										checked={preferences.enabled_events[event] ?? true}
+										onCheckedChange={(checked) => toggleEvent(event, checked === true)}
+									/>
+									<Label htmlFor={id} className="cursor-pointer text-sm">
+										<BellEventLabel event={event} />
+									</Label>
+								</div>
+							)
+						})}
+					</div>
+				)}
+			</div>
+		</div>
+	)
+})
+
 const SectionChannels = memo(
 	({
 		channels,
@@ -1012,6 +1104,8 @@ const NotificationsSettings = memo(() => {
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="config" className="space-y-6">
+					<SectionBellPreferences />
+					<Separator className="my-6" />
 					<SectionChannels channels={channels} onChannelsChange={setChannels} />
 					<Separator className="my-6" />
 					<SectionRules rules={rules} channels={channels} onRulesChange={setRules} />

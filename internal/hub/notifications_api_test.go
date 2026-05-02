@@ -103,7 +103,17 @@ func TestSystemNotificationsUnreadPreferencesAndMarkRead(t *testing.T) {
 	require.Contains(t, res.Body.String(), `"event_kind":"monitor.down"`)
 	require.Contains(t, res.Body.String(), `"event_kind":"container_image.update_available"`)
 
-	res = performNotificationRequest(t, testApp, hub, http.MethodPatch, "/api/app/system-notifications/preferences", userToken, `{"enabled_categories":{"container_images":false}}`)
+	res = performNotificationRequest(t, testApp, hub, http.MethodPatch, "/api/app/system-notifications/preferences", userToken, `{"enabled_events":{"monitor.down":false}}`)
+	require.Equal(t, http.StatusOK, res.Code)
+	require.Contains(t, res.Body.String(), `"monitor.down":false`)
+	require.Contains(t, res.Body.String(), `"enabled_events"`)
+
+	res = performNotificationRequest(t, testApp, hub, http.MethodGet, "/api/app/system-notifications/unread?limit=10", userToken)
+	require.Equal(t, http.StatusOK, res.Code)
+	require.Contains(t, res.Body.String(), `"count":1`)
+	require.NotContains(t, res.Body.String(), `"event_kind":"monitor.down"`)
+
+	res = performNotificationRequest(t, testApp, hub, http.MethodPatch, "/api/app/system-notifications/preferences", userToken, `{"enabled_categories":{"container_images":false},"enabled_events":{"monitor.down":true}}`)
 	require.Equal(t, http.StatusOK, res.Code)
 	require.Contains(t, res.Body.String(), `"container_images":false`)
 

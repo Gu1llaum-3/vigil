@@ -1,7 +1,6 @@
 package hub
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,6 +14,14 @@ import (
 const systemNotificationsCollection = "system_notifications"
 
 var systemNotificationCategories = []string{"monitors", "agents", "container_images"}
+
+var systemNotificationEventKinds = []string{
+	string(notifications.EventMonitorDown),
+	string(notifications.EventMonitorUp),
+	string(notifications.EventAgentOffline),
+	string(notifications.EventAgentOnline),
+	string(notifications.EventContainerImageUpdateAvailable),
+}
 
 type systemNotificationResponse struct {
 	ID           string         `json:"id"`
@@ -45,6 +52,7 @@ type systemNotificationUnreadResponse struct {
 
 type systemNotificationPreferences struct {
 	EnabledCategories map[string]bool `json:"enabled_categories"`
+	EnabledEvents     map[string]bool `json:"enabled_events"`
 }
 
 func (h *Hub) createSystemNotification(evt notifications.Event) error {
@@ -95,36 +103,6 @@ func systemNotificationCategory(evt notifications.Event) string {
 	default:
 		return "monitors"
 	}
-}
-
-func (h *Hub) createContainerImageSystemNotification(count int, occurredAt time.Time, examples []map[string]any) error {
-	if count <= 0 {
-		return nil
-	}
-	name := fmt.Sprintf("%d container image update", count)
-	if count > 1 {
-		name = fmt.Sprintf("%d container image updates", count)
-	}
-	message := fmt.Sprintf("%d Docker image update is available.", count)
-	if count > 1 {
-		message = fmt.Sprintf("%d Docker image updates are available.", count)
-	}
-	return h.createSystemNotification(notifications.Event{
-		Kind:       notifications.EventContainerImageUpdateAvailable,
-		OccurredAt: occurredAt,
-		Resource: notifications.ResourceRef{
-			ID:   fmt.Sprintf("container-image-audit:%s", occurredAt.UTC().Format(time.RFC3339)),
-			Name: name,
-			Type: "container_image",
-		},
-		Details: map[string]any{
-			"count":    count,
-			"examples": examples,
-			"summary":  message,
-			"title":    name,
-			"message":  message,
-		},
-	})
 }
 
 func (h *Hub) getSystemNotifications(e *core.RequestEvent) error {
@@ -193,6 +171,9 @@ func (h *Hub) getUnreadSystemNotifications(e *core.RequestEvent) error {
 		if !prefs.EnabledCategories[category] {
 			continue
 		}
+		if !prefs.EnabledEvents[rec.GetString("event_kind")] {
+			continue
+		}
 		entry := h.systemNotificationRecordToResponse(rec, prefs)
 		if entry.Read {
 			continue
@@ -231,7 +212,7 @@ func (h *Hub) getSystemNotificationPreferences(e *core.RequestEvent) error {
 	if err != nil {
 		return err
 	}
-	return e.JSON(http.StatusOK, systemNotificationPreferences{EnabledCategories: prefs.EnabledCategories})
+	return e.JSON(http.StatusOK, systemNotificationPreferences{EnabledCategories: prefs.EnabledCategories, EnabledEvents: prefs.EnabledEvents})
 }
 
 func (h *Hub) updateSystemNotificationPreferences(e *core.RequestEvent) error {
@@ -253,14 +234,20 @@ func (h *Hub) updateSystemNotificationPreferences(e *core.RequestEvent) error {
 			}
 		}
 	}
+	for _, eventKind := range systemNotificationEventKinds {
+		if enabled, ok := input.EnabledEvents[eventKind]; ok {
+			prefs.EnabledEvents[eventKind] = enabled
+		}
+	}
 	if err := h.saveSystemNotificationPreferences(e.Auth.Id, prefs); err != nil {
 		return err
 	}
-	return e.JSON(http.StatusOK, systemNotificationPreferences{EnabledCategories: prefs.EnabledCategories})
+	return e.JSON(http.StatusOK, systemNotificationPreferences{EnabledCategories: prefs.EnabledCategories, EnabledEvents: prefs.EnabledEvents})
 }
 
 type systemNotificationUserPreferences struct {
 	EnabledCategories    map[string]bool
+	EnabledEvents        map[string]bool
 	LastReadAtByCategory map[string]string
 }
 
@@ -278,6 +265,13 @@ func (h *Hub) systemNotificationPreferencesForUser(userID string) (systemNotific
 		for _, cat := range systemNotificationCategories {
 			if enabled, ok := raw[cat].(bool); ok {
 				prefs.EnabledCategories[cat] = enabled
+			}
+		}
+	}
+	if raw, ok := settings["system_notifications_enabled_events"].(map[string]any); ok {
+		for _, eventKind := range systemNotificationEventKinds {
+			if enabled, ok := raw[eventKind].(bool); ok {
+				prefs.EnabledEvents[eventKind] = enabled
 			}
 		}
 	}
@@ -303,10 +297,14 @@ func (h *Hub) systemNotificationPreferencesForUser(userID string) (systemNotific
 func defaultSystemNotificationPreferences() systemNotificationUserPreferences {
 	prefs := systemNotificationUserPreferences{
 		EnabledCategories:    map[string]bool{},
+		EnabledEvents:        map[string]bool{},
 		LastReadAtByCategory: map[string]string{},
 	}
 	for _, cat := range systemNotificationCategories {
 		prefs.EnabledCategories[cat] = true
+	}
+	for _, eventKind := range systemNotificationEventKinds {
+		prefs.EnabledEvents[eventKind] = true
 	}
 	return prefs
 }
@@ -327,6 +325,7 @@ func (h *Hub) saveSystemNotificationPreferences(userID string, prefs systemNotif
 		settings = map[string]any{}
 	}
 	settings["system_notifications_enabled_categories"] = prefs.EnabledCategories
+	settings["system_notifications_enabled_events"] = prefs.EnabledEvents
 	settings["system_notifications_last_read_at_by_category"] = prefs.LastReadAtByCategory
 	rec.Set("settings", settings)
 	h.systemNotificationReadAt.Store(userID, prefs.LastReadAtByCategory)

@@ -285,13 +285,13 @@ The system notifications page lives at `/notifications` in `internal/site/src/co
 It is user-facing rather than admin-only and consumes these custom API routes:
 
 ```
-GET   /api/app/system-notifications?category=&severity=&status=&page=&limit=
+GET   /api/app/system-notifications?category=&severity=&status=&q=&page=&limit=
 POST  /api/app/system-notifications/read-all?category=
 GET   /api/app/system-notifications/preferences
 PATCH /api/app/system-notifications/preferences
 ```
 
-The page lets users review monitor, agent, and container-image system events; filter by category, unread state, and severity; mark visible categories as read; and choose which categories appear in the navbar bell.
+The page uses the same compact table pattern as the dashboard host/container tables. It lets users search events, filter by category, unread state, and severity, clear filters with removable pills, and mark visible categories as read.
 
 ### `jobs.tsx`
 
@@ -413,7 +413,7 @@ During development, the hub proxies to the Vite dev server. This is why frontend
 
 ## Notifications Settings Route
 
-The notifications settings page lives at `/settings/notifications` and is admin-only (the nav item uses `admin: true` so only admins see it). It configures external notification delivery through channels, routing rules, and delivery history. The user-facing navbar bell and `/notifications` page are backed by the separate `system_notifications` feed.
+The notifications settings page lives at `/settings/notifications` and is admin-only (the nav item uses `admin: true` so only admins see it). It configures the navbar bell event preferences, external notification delivery channels, routing rules, and delivery history. The user-facing navbar bell and `/notifications` page are backed by the separate `system_notifications` feed.
 
 The implementation lives in `internal/site/src/components/routes/settings/notifications.tsx`.
 
@@ -494,7 +494,7 @@ This component:
 - also surfaces `sent` logs for `monitor.down` and `agent.offline` as immediate red UI alerts, even if the underlying notification was delivered through webhook, email, Slack, etc.
 - also surfaces `sent` logs for `monitor.up` and `agent.online` as green recovery alerts
 
-Container image update notifications do not currently get a dedicated incident-style toast treatment. They follow the standard delivery flow for external notification logs, while the separate system notification feed exposes aggregated image-audit entries in the navbar bell and `/notifications` page.
+Container image update notifications do not currently get a dedicated incident-style toast treatment. They follow the standard delivery flow for external notification logs, while the separate system notification feed exposes matching image-audit event details in the navbar bell and `/notifications` page.
 
 The component deduplicates these alert toasts for a short window so a single event does not produce one toast per configured channel, and keeps the alert toasts visible longer than the default informational toast.
 
