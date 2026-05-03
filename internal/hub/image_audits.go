@@ -264,12 +264,12 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 		result.OverallTag = target.Tag
 		result.LatestDigest = remoteDigest
 		result.LatestImageID = remoteDigest
-		if target.LocalImageID == "" {
+		if target.LocalDigest == "" {
 			result.Status = imageAuditStatusUnknown
 			result.LineStatus = imageAuditStatusUnknown
 			return result
 		}
-		if target.LocalImageID == remoteDigest {
+		if target.LocalDigest == remoteDigest {
 			result.Status = imageAuditStatusUpToDate
 			result.LineStatus = imageAuditStatusUpToDate
 		} else {
@@ -312,10 +312,10 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 			}
 			result.LatestDigest = remoteDigest
 			result.LatestImageID = remoteDigest
-			if target.LocalImageID == "" {
+			if target.LocalDigest == "" {
 				result.Status = imageAuditStatusUnknown
 				result.LineStatus = imageAuditStatusUnknown
-			} else if target.LocalImageID == remoteDigest {
+			} else if target.LocalDigest == remoteDigest {
 				result.Status = imageAuditStatusUpToDate
 				result.LineStatus = imageAuditStatusUpToDate
 			} else {
@@ -339,10 +339,10 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 			}
 			result.LatestDigest = remoteDigest
 			result.LatestImageID = remoteDigest
-			if target.LocalImageID == "" {
+			if target.LocalDigest == "" {
 				result.Status = imageAuditStatusUnknown
 				result.LineStatus = imageAuditStatusUnknown
-			} else if target.LocalImageID == remoteDigest {
+			} else if target.LocalDigest == remoteDigest {
 				result.Status = imageAuditStatusUpToDate
 				result.LineStatus = imageAuditStatusUpToDate
 			} else {

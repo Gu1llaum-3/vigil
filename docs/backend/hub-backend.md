@@ -592,7 +592,7 @@ Authentication is resolved through a multi-keychain in this order:
 
 Tag selection rules are intentionally simple:
 
-- `latest` uses `digest_latest` and compares the container's current local image ID with the remote digest resolved for the same tag and platform
+- `latest` uses `digest_latest` and compares the container's current local manifest digest (extracted from `RepoDigests`, the same value `docker pull` reports) with the remote manifest digest resolved for the same tag and platform — note that the local image ID (`docker image inspect .Id`) is the image config digest, which is never equal to a manifest digest and must not be used for this comparison
 - one-part numeric tags such as `15` use `semver_major` and track the newest `15.x.x`
 - two-part numeric tags such as `15.2` use `semver_minor` and track the newest `15.2.x`
 - three-part numeric tags such as `15.2.3` also use `semver_minor` and track the newest `15.2.x`

@@ -202,7 +202,7 @@ func TestResolveImageAuditDigestLatest(t *testing.T) {
 	}, imageAuditTarget{
 		CurrentRef:   "docker.io/library/nginx:latest",
 		Architecture: "amd64",
-		LocalImageID: "sha256:old-image",
+		LocalDigest:  "sha256:old-manifest",
 		Tag:          "latest",
 		Policy:       imageAuditPolicyDigestLatest,
 	})
@@ -217,32 +217,51 @@ func TestResolveImageAuditDigestLatestChecksResolvedRemoteDigestForPlatform(t *t
 	}, imageAuditTarget{
 		CurrentRef:   "docker.io/library/nginx:latest",
 		Architecture: "arm64",
-		LocalImageID: "sha256:old-image",
+		LocalDigest:  "sha256:old-manifest",
 		Tag:          "latest",
 		Policy:       imageAuditPolicyDigestLatest,
 	})
 	require.Equal(t, imageAuditStatusUpdateAvailable, result.Status)
 }
 
-func TestResolveImageAuditDigestLatestUsesRemoteImageIDForPlatform(t *testing.T) {
+func TestResolveImageAuditDigestLatestUpToDateMatchesManifestDigest(t *testing.T) {
 	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
-		resolvedDigests: map[string]string{"docker.io/library/nginx:latest|arm64": "sha256:local-image"},
+		resolvedDigests: map[string]string{"docker.io/library/nginx:latest|arm64": "sha256:current-manifest"},
 	}, imageAuditTarget{
 		CurrentRef:   "docker.io/library/nginx:latest",
 		Architecture: "arm64",
-		LocalImageID: "sha256:local-image",
+		LocalImageID: "sha256:local-config",
+		LocalDigest:  "sha256:current-manifest",
 		Tag:          "latest",
 		Policy:       imageAuditPolicyDigestLatest,
 	})
 	require.Equal(t, imageAuditStatusUpToDate, result.Status)
 }
 
-func TestResolveImageAuditDigestLatestUnknownWithoutLocalImageID(t *testing.T) {
+func TestResolveImageAuditDigestLatestNotFooledByConfigDigest(t *testing.T) {
+	// Regression: the local config digest (docker image inspect .Id) must not be
+	// compared against the registry manifest digest — they are different things
+	// and would never match for an up-to-date image.
+	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
+		resolvedDigests: map[string]string{"docker.io/library/nginx:latest|amd64": "sha256:remote-manifest"},
+	}, imageAuditTarget{
+		CurrentRef:   "docker.io/library/nginx:latest",
+		Architecture: "amd64",
+		LocalImageID: "sha256:local-config",
+		LocalDigest:  "sha256:remote-manifest",
+		Tag:          "latest",
+		Policy:       imageAuditPolicyDigestLatest,
+	})
+	require.Equal(t, imageAuditStatusUpToDate, result.Status)
+}
+
+func TestResolveImageAuditDigestLatestUnknownWithoutLocalDigest(t *testing.T) {
 	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
 		resolvedDigests: map[string]string{"docker.io/library/nginx:latest|arm64": "sha256:remote-image"},
 	}, imageAuditTarget{
 		CurrentRef:   "docker.io/library/nginx:latest",
 		Architecture: "arm64",
+		LocalImageID: "sha256:local-config-only",
 		Tag:          "latest",
 		Policy:       imageAuditPolicyDigestLatest,
 	})
@@ -299,7 +318,7 @@ func TestResolveImageAuditUpToDatePatchLineStillShowsNewMajor(t *testing.T) {
 		Registry:   "ghcr.io",
 		Repository: "mealie-recipes/mealie",
 		Tag:        "v2.2.5",
-		LocalImageID: "sha256:current",
+		LocalDigest:  "sha256:current",
 		Architecture: "amd64",
 		Policy:     imageAuditPolicySemverMinor,
 	})
@@ -322,7 +341,7 @@ func TestResolveImageAuditFloatingMinorTagUsesResolvedDigestForUpToDate(t *testi
 		Registry:     "docker.io",
 		Repository:   "library/nginx",
 		Tag:          "1.29",
-		LocalImageID: "sha256:current",
+		LocalDigest:  "sha256:current",
 		Architecture: "amd64",
 		Policy:       imageAuditPolicySemverMinor,
 	})
@@ -344,7 +363,7 @@ func TestResolveImageAuditPinnedTagDetectsRebuiltDigest(t *testing.T) {
 		Registry:     "docker.io",
 		Repository:   "library/nginx",
 		Tag:          "1.2.5",
-		LocalImageID: "sha256:local-old",
+		LocalDigest:  "sha256:local-old",
 		Architecture: "amd64",
 		Policy:       imageAuditPolicySemverMinor,
 	})
