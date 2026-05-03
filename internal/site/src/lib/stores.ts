@@ -16,3 +16,12 @@ export const $copyContent = atom("")
 
 /** Direction for localization */
 export const $direction = atom<"ltr" | "rtl">("ltr")
+
+/**
+ * Bumped whenever a surface marks system notifications as read. Both the
+ * navbar bell and the /notifications page watch this stamp and re-fetch on
+ * change so the read state stays in sync across surfaces (the read cursor is
+ * stored on user_settings, which has no per-record realtime event).
+ */
+export const $systemNotificationsReadStamp = atom(0)
+export const bumpSystemNotificationsReadStamp = () => $systemNotificationsReadStamp.set(Date.now())

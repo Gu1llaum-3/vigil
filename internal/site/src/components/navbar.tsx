@@ -1,4 +1,5 @@
 import { Trans } from "@lingui/react/macro"
+import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
 import {
 	BellIcon,
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { isAdmin, isReadOnlyUser, logOut, pb } from "@/lib/api"
 import type { MonitorGroupResponse } from "@/lib/monitor-types"
+import { $systemNotificationsReadStamp, bumpSystemNotificationsReadStamp } from "@/lib/stores"
 import { cn, runOnce } from "@/lib/utils"
 import { AddAgentDialog } from "./add-agent"
 import { LangToggle } from "./lang-toggle"
@@ -90,6 +92,7 @@ function useNotificationCenter() {
 	const [items, setItems] = useState<SystemNotification[]>([])
 	const [count, setCount] = useState(0)
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const readStamp = useStore($systemNotificationsReadStamp)
 
 	const fetchUnread = useCallback(async () => {
 		try {
@@ -138,10 +141,17 @@ function useNotificationCenter() {
 		}
 	}, [currentUserId, fetchUnread])
 
+	useEffect(() => {
+		if (!currentUserId) return
+		if (readStamp === 0) return
+		fetchUnread()
+	}, [currentUserId, readStamp, fetchUnread])
+
 	const markAllAsRead = useCallback(async () => {
 		if (!currentUserId) return
 		try {
 			await pb.send("/api/app/system-notifications/read-all", { method: "POST" })
+			bumpSystemNotificationsReadStamp()
 			await fetchUnread()
 		} catch {
 			// ignore transient navbar action failures

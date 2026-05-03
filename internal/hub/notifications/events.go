@@ -52,8 +52,6 @@ func (k EventKind) Severity() string {
 	switch k {
 	case EventMonitorDown, EventAgentOffline:
 		return "critical"
-	case EventContainerImageUpdateAvailable:
-		return "warning"
 	default:
 		return "info"
 	}

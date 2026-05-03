@@ -1,4 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro"
+import { useStore } from "@nanostores/react"
 import { BellIcon, CheckCheckIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -7,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { pb } from "@/lib/api"
+import { $systemNotificationsReadStamp, bumpSystemNotificationsReadStamp } from "@/lib/stores"
 import type { SystemNotification, SystemNotificationCategory, SystemNotificationsPage } from "@/types"
 
 const ALL_FILTERS = "__all__"
@@ -66,6 +68,7 @@ export default function NotificationsPage() {
 	const [loading, setLoading] = useState(true)
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState("")
+	const readStamp = useStore($systemNotificationsReadStamp)
 
 	async function fetchNotifications() {
 		setLoading(true)
@@ -87,13 +90,14 @@ export default function NotificationsPage() {
 
 	useEffect(() => {
 		fetchNotifications()
-	}, [category, severity, status, search, page])
+	}, [category, severity, status, search, page, readStamp])
 
 	async function markAllRead() {
 		setSaving(true)
 		try {
 			const query = category !== ALL_FILTERS ? { category } : undefined
 			await pb.send("/api/app/system-notifications/read-all", { method: "POST", query })
+			bumpSystemNotificationsReadStamp()
 			await fetchNotifications()
 		} finally {
 			setSaving(false)
