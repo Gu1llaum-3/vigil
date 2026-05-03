@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -79,6 +80,7 @@ func (h *Hub) upsertContainerAuditOverride(e *core.RequestEvent) error {
 				return err
 			}
 		}
+		h.applyOverrideToAuditRecords(body.Agent, body.ContainerName, "")
 		return e.JSON(http.StatusOK, containerAuditOverridePayload{
 			Agent:         body.Agent,
 			ContainerName: body.ContainerName,
@@ -105,6 +107,7 @@ func (h *Hub) upsertContainerAuditOverride(e *core.RequestEvent) error {
 	if err := h.Save(existing); err != nil {
 		return e.BadRequestError("Failed to save override", err)
 	}
+	h.applyOverrideToAuditRecords(body.Agent, body.ContainerName, body.Policy)
 	return e.JSON(http.StatusOK, containerAuditOverrideResponse(existing))
 }
 
@@ -114,8 +117,59 @@ func (h *Hub) deleteContainerAuditOverride(e *core.RequestEvent) error {
 	if err != nil {
 		return e.NotFoundError("Override not found", err)
 	}
+	agent := rec.GetString("agent")
+	containerName := rec.GetString("container_name")
 	if err := h.Delete(rec); err != nil {
 		return err
 	}
+	h.applyOverrideToAuditRecords(agent, containerName, "")
 	return e.JSON(http.StatusOK, map[string]any{"ok": true})
+}
+
+// applyOverrideToAuditRecords reflects an override change into the matching
+// container_image_audits records so the dashboard updates immediately, without
+// waiting for the next audit cycle. Only the visible status field is touched:
+//
+//   - newPolicy == "disabled": stamp status=disabled.
+//   - newPolicy == "" (auto) or any other policy: if the current status is
+//     "disabled", reset to "unknown" so the next audit run re-evaluates it.
+//     Other statuses are left alone — the freshly-changed override will be
+//     applied on the next cycle (or on "Check images now").
+func (h *Hub) applyOverrideToAuditRecords(agentID, containerName, newPolicy string) {
+	if agentID == "" || containerName == "" {
+		return
+	}
+	records, err := h.FindRecordsByFilter(
+		containerImageAuditsCollection,
+		"agent = {:agent} && container_name = {:name}",
+		"-checked_at",
+		0,
+		0,
+		dbx.Params{"agent": agentID, "name": containerName},
+	)
+	if err != nil || len(records) == 0 {
+		return
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	for _, rec := range records {
+		current := rec.GetString("status")
+		switch newPolicy {
+		case auditOverrideDisabled:
+			if current == imageAuditStatusDisabled {
+				continue
+			}
+			rec.Set("status", imageAuditStatusDisabled)
+			rec.Set("error", "")
+			rec.Set("checked_at", now)
+			rec.Set("last_notified_signature", "")
+			rec.Set("last_notified_at", "")
+		default:
+			if current != imageAuditStatusDisabled {
+				continue
+			}
+			rec.Set("status", imageAuditStatusUnknown)
+			rec.Set("checked_at", now)
+		}
+		_ = h.SaveNoValidate(rec)
+	}
 }

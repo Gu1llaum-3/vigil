@@ -607,6 +607,8 @@ Per-container overrides: an admin can override the auto-deduced policy for any c
 
 Overrides are loaded once per audit cycle and applied during `collectContainerImageAuditResults` before the registry call, so a `disabled` override never reaches the registry.
 
+Override changes also reflect immediately into the matching `container_image_audits` records (without waiting for the next cycle), via `applyOverrideToAuditRecords` invoked from the override API handlers. Setting `disabled` stamps `status=disabled` on the matching audit rows; reverting away from `disabled` resets `status=unknown` so the next cycle re-evaluates. Other policy switches leave the existing status alone — the cached result still reflects the *previous* policy until the next cycle (or "Check images now"). The frontend dashboard subscribes to the `container_image_audits` collection (debounced 1.5s) so these writes propagate without a manual refresh.
+
 For semver-like tags, the backend now separates two concepts:
 
 - the primary line status answers whether the container is current within its own line (`15` -> latest `15.x.x`, `15.2` or `15.2.3` -> latest `15.2.x`)

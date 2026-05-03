@@ -390,12 +390,14 @@ Build and sync commands are defined in `internal/site/package.json`.
 
 The frontend uses a combination of HTTP fetches and PocketBase realtime subscriptions.
 
-The dashboard home page (`components/routes/home.tsx`) uses two subscriptions:
+The dashboard home page (`components/routes/home.tsx`) subscribes to four collections:
 
 - `agents` collection — updates `host.status` and recalculates `summary.connected_hosts` / `summary.offline_hosts` in real time when an agent connects or disconnects
 - `host_snapshots` collection — triggers a debounced `fetchDashboard()` (1 s delay) whenever any snapshot is written; this is what delivers the periodic auto-refresh driven by the backend ticker
+- `monitors` collection — debounced 1 s; keeps the monitor KPI card fresh
+- `container_image_audits` collection — debounced 1.5 s; keeps the container table's image audit column fresh after "Check images now" or an audit-override change (the override API handlers stamp `status=disabled`/`unknown` directly so this subscription fires without waiting for the next audit cycle)
 
-The debounce on `host_snapshots` is intentional: the backend ticker updates all agents roughly simultaneously, so without it a fleet of N agents would fire N re-fetches in quick succession.
+The debounces are intentional: the backend ticker updates all agents roughly simultaneously, and the audit job rewrites every audit record on each run — without debouncing, a fleet of N agents/audits would fire N re-fetches in quick succession.
 
 The manual Refresh button (`POST /api/app/refresh-snapshots` + `GET /api/app/dashboard`) remains available for on-demand collection outside the ticker cycle.
 

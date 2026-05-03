@@ -71,6 +71,7 @@ export default memo(function Home() {
 	const [containersFilters, setContainersFilters] = useState<ContainersFilters>(defaultContainersFilters)
 	const snapshotDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const monitorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const auditDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const containersSectionRef = useRef<HTMLElement | null>(null)
 
 	const fetchDashboard = useCallback(async () => {
@@ -157,6 +158,29 @@ export default memo(function Home() {
 			unsubscribe?.()
 			if (monitorDebounceRef.current) {
 				clearTimeout(monitorDebounceRef.current)
+			}
+		}
+	}, [fetchDashboard])
+
+	// Realtime image audit updates — re-fetch dashboard so the container table
+	// reflects new audit results (after "Check images now" or an override
+	// change). Heavily debounced because the audit job rewrites every record.
+	useEffect(() => {
+		let unsubscribe: (() => void) | undefined
+		;(async () => {
+			unsubscribe = await pb.collection("container_image_audits").subscribe("*", () => {
+				if (auditDebounceRef.current) {
+					clearTimeout(auditDebounceRef.current)
+				}
+				auditDebounceRef.current = setTimeout(() => {
+					fetchDashboard()
+				}, 1500)
+			})
+		})()
+		return () => {
+			unsubscribe?.()
+			if (auditDebounceRef.current) {
+				clearTimeout(auditDebounceRef.current)
 			}
 		}
 	}, [fetchDashboard])

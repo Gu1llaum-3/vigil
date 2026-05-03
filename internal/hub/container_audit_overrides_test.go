@@ -134,3 +134,64 @@ func TestCollectAuditResultsWithoutOverridePreservesAutoPolicy(t *testing.T) {
 	require.Len(t, results, 1)
 	require.Equal(t, imageAuditPolicySemverMinor, results[0].Target.Policy)
 }
+
+func TestApplyOverrideToAuditRecordsStampsDisabled(t *testing.T) {
+	hub, agentID := setupContainerAuditFixture(t, "web", "docker.io/library/nginx:1.2.3")
+
+	rec, err := createTestRecord(hub.App, containerImageAuditsCollection, map[string]any{
+		"agent":          agentID,
+		"container_id":   "c1",
+		"container_name": "web",
+		"image_ref":      "docker.io/library/nginx:1.2.3",
+		"status":         imageAuditStatusUpdateAvailable,
+	})
+	require.NoError(t, err)
+
+	hub.applyOverrideToAuditRecords(agentID, "web", auditOverrideDisabled)
+
+	updated, err := hub.FindRecordById(containerImageAuditsCollection, rec.Id)
+	require.NoError(t, err)
+	require.Equal(t, imageAuditStatusDisabled, updated.GetString("status"))
+}
+
+func TestApplyOverrideToAuditRecordsResetsDisabledOnRevert(t *testing.T) {
+	hub, agentID := setupContainerAuditFixture(t, "web", "docker.io/library/nginx:1.2.3")
+
+	rec, err := createTestRecord(hub.App, containerImageAuditsCollection, map[string]any{
+		"agent":          agentID,
+		"container_id":   "c1",
+		"container_name": "web",
+		"image_ref":      "docker.io/library/nginx:1.2.3",
+		"status":         imageAuditStatusDisabled,
+	})
+	require.NoError(t, err)
+
+	// Reverting to auto: status flips back to unknown so the next audit cycle
+	// re-evaluates the container.
+	hub.applyOverrideToAuditRecords(agentID, "web", "")
+
+	updated, err := hub.FindRecordById(containerImageAuditsCollection, rec.Id)
+	require.NoError(t, err)
+	require.Equal(t, imageAuditStatusUnknown, updated.GetString("status"))
+}
+
+func TestApplyOverrideToAuditRecordsLeavesNonDisabledAlone(t *testing.T) {
+	hub, agentID := setupContainerAuditFixture(t, "web", "docker.io/library/nginx:1.2.3")
+
+	rec, err := createTestRecord(hub.App, containerImageAuditsCollection, map[string]any{
+		"agent":          agentID,
+		"container_id":   "c1",
+		"container_name": "web",
+		"image_ref":      "docker.io/library/nginx:1.2.3",
+		"status":         imageAuditStatusUpdateAvailable,
+	})
+	require.NoError(t, err)
+
+	// Switching to a non-disabled policy leaves the existing audit untouched —
+	// the next cycle (or "Check images now") will refresh it with the new policy.
+	hub.applyOverrideToAuditRecords(agentID, "web", auditOverrideDigest)
+
+	updated, err := hub.FindRecordById(containerImageAuditsCollection, rec.Id)
+	require.NoError(t, err)
+	require.Equal(t, imageAuditStatusUpdateAvailable, updated.GetString("status"))
+}
