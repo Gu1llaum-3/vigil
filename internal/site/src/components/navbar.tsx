@@ -151,12 +151,13 @@ function useNotificationCenter() {
 		if (!currentUserId) return
 		try {
 			await pb.send("/api/app/system-notifications/read-all", { method: "POST" })
+			// fetchUnread is re-run by the readStamp-bumped useEffect; awaiting it here
+			// would race the same URL and the PocketBase SDK auto-cancels the older one.
 			bumpSystemNotificationsReadStamp()
-			await fetchUnread()
 		} catch {
 			// ignore transient navbar action failures
 		}
-	}, [currentUserId, fetchUnread])
+	}, [currentUserId])
 
 	return { items, count, markAllAsRead }
 }

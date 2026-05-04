@@ -97,8 +97,10 @@ export default function NotificationsPage() {
 		try {
 			const query = category !== ALL_FILTERS ? { category } : undefined
 			await pb.send("/api/app/system-notifications/read-all", { method: "POST", query })
+			// The fetchNotifications re-run is driven by the readStamp-bumped useEffect
+			// below; awaiting it here as well races the same URL and the PocketBase SDK
+			// auto-cancels the older request.
 			bumpSystemNotificationsReadStamp()
-			await fetchNotifications()
 		} finally {
 			setSaving(false)
 		}
