@@ -477,6 +477,7 @@ If no documentation changes are needed, make that a conscious scope-based decisi
 
 When a task adds or changes user-facing text, always check whether locale catalogs need updates.
 
+- Run `npm run sync` from `internal/site/` to extract messages and update `.po` files. The `npm run build` script does *not* re-extract — it only compiles existing catalogs (extraction in `build` would dirty the working tree and break CI release tooling).
 - Update translations in the same task when new strings are introduced.
 - Prioritize the main shipped languages, especially French (`fr`), for new or changed UI text.
 - Do not assume the generated catalogs are complete just because the build succeeds.

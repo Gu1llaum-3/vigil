@@ -8,7 +8,7 @@
 	},
 	"scripts": {
 		"dev": "vite --host",
-		"build": "lingui extract --overwrite && lingui compile && vite build",
+		"build": "lingui compile && vite build",
 		"preview": "vite preview",
 		"sync": "lingui extract --overwrite && lingui compile",
 		"sync_no_compile": "lingui extract --overwrite --clean",

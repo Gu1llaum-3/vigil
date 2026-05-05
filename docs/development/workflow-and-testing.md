@@ -82,7 +82,7 @@ Important commands:
 - `npm run check`
 - `npm run check:fix`
 
-The build command also performs Lingui extraction and compilation.
+The build command compiles Lingui catalogs and runs Vite. It does **not** re-extract messages from sources — extraction would rewrite `.po` files, which is fine in dev but breaks CI release tooling that asserts a clean working tree (e.g. goreleaser). Run `npm run sync` after adding or changing user-facing strings to refresh catalogs, then commit the diff alongside the source change.
 
 The frontend `npm run check` command intentionally excludes two categories of files from Biome:
 
