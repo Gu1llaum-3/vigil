@@ -145,12 +145,12 @@ The collection is tied to the user that created the enrollment token.
 - created by migration `13_create_container_image_audits.go`
 - latest-only audit result per `(agent, container_id)` for public container images discovered in Docker snapshots
 - fields: `agent` (relation→agents, cascadeDelete=true), `container_id`, `container_name`, `image_ref`, `registry`, `repository`, `tag`, `local_image_id`, `local_digest`, `policy`, `status`, `latest_tag`, `latest_digest`, `checked_at`, `error`, `details` (json)
-- `status` is one of `up_to_date`, `update_available`, `unknown`, `unsupported`, `check_failed`
+- `status` is one of `up_to_date`, `update_available`, `unknown`, `unsupported`, `check_failed`, `disabled`
 - `policy` is one of `digest_latest`, `semver_major`, `semver_minor`, `unsupported`
-- tag selection currently works like this: `latest` -> `digest_latest`; one-part numeric tags like `15` -> latest `15.x.x`; two-part tags like `15.2` -> latest `15.2.x`; three-part tags like `15.2.3` -> latest `15.2.x`
-- `details` stores the richer audit view used by the dashboard UI, including the primary `line_status`, `line_latest_tag`, `same_major_latest_tag`, `overall_latest_tag`, and whether a newer major exists
+- tag selection currently works like this: `latest` -> `digest_latest`; one-part numeric tags like `15` -> latest `15.x.x`; two-part tags like `15.2` -> latest `15.2.x`; three-part tags like `15.2.3` -> latest `15.2.x`. Tags are parsed via Masterminds/semver in `internal/hub/image_tag_parser.go`, with a whitelisted variant suffix list (`-alpine`, `-bookworm`, `-jdk-slim`, `-fpm-alpine`, etc.) and a regex for prerelease detection (`rc`/`alpha`/`beta`/`dev`/`pre`/`snapshot`/`milestone`). Prereleases are excluded from candidates unless the current tag is itself a prerelease, and pure numeric tags without dots are filtered as build IDs when the current tag has dots.
+- `details` stores the richer audit view used by the dashboard UI, including the primary `line_status`, `line_latest_tag`, `same_major_latest_tag`, `overall_latest_tag`, whether a newer major exists, and `error_kind` when the check failed (`auth_failed`, `not_found`, `timeout`, `network`, `registry_error`, `unknown`)
 - `last_notified_signature` and `last_notified_at` persist which newer version set has already been announced for this container so update notifications are not re-sent on every audit run
-- the hub writes this collection from the scheduled image-audit job; agents never write it directly
+- the hub writes this collection from the scheduled image-audit job; agents never write it directly. The audit cycle uses a bounded worker pool and a per-cycle `cachingRegistryClient` that memoizes `ListTags` per repository and retries transient failures.
 
 ## First-Run User Flow
 

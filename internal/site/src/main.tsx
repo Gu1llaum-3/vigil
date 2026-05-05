@@ -20,6 +20,7 @@ const Home = lazy(() => import("@/components/routes/home.tsx"))
 const NotificationsPage = lazy(() => import("@/components/routes/notifications.tsx"))
 const MonitorsPage = lazy(() => import("@/components/routes/monitors.tsx"))
 const MonitorDetailPage = lazy(() => import("@/components/routes/monitor-detail.tsx"))
+const ImagesPage = lazy(() => import("@/components/routes/images.tsx"))
 const CopyToClipboardDialog = lazy(() => import("@/components/copy-to-clipboard.tsx"))
 
 const App = memo(() => {
@@ -47,6 +48,8 @@ const App = memo(() => {
 		return <MonitorsPage />
 	} else if (page.route === "monitor") {
 		return <MonitorDetailPage />
+	} else if (page.route === "images") {
+		return <ImagesPage />
 	} else if (page.route === "settings") {
 		return <Settings />
 	}

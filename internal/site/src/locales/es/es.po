@@ -18,6 +18,11 @@ msgstr ""
 "X-Crowdin-File: /main/internal/site/src/locales/en/en.po\n"
 "X-Crowdin-File-ID: 32\n"
 
+#. placeholder {0}: containers.length
+#: src/components/routes/images.tsx
+msgid "{0, plural, one {# audited container} other {# audited containers}}"
+msgstr ""
+
 #. placeholder {0}: filteredContainers.length
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "{0, plural, one {# container} other {# containers}}"
@@ -136,6 +141,10 @@ msgstr "Ajustar el ancho del diseño principal"
 msgid "Admin"
 msgstr "Administrador"
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Advanced…"
+msgstr ""
+
 #: src/components/routes/settings/agents.tsx
 msgid "Agent"
 msgstr ""
@@ -213,6 +222,7 @@ msgid "Audit policy for {0}"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Audit policy updated"
 msgstr ""
 
@@ -271,6 +281,7 @@ msgstr ""
 msgid "Blue line for successful checks, red background for down periods."
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -312,6 +323,7 @@ msgid "Check failed"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Check images now"
 msgstr ""
 
@@ -407,6 +419,8 @@ msgstr ""
 msgid "Container image update"
 msgstr ""
 
+#: src/components/navbar.tsx
+#: src/components/routes/images.tsx
 #: src/components/routes/notifications.tsx
 msgid "Container images"
 msgstr ""
@@ -507,6 +521,7 @@ msgid "Cron expression evaluated in UTC. Examples: <0>0 */6 * * *</0> (every 6 h
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Current"
 msgstr ""
 
@@ -607,6 +622,14 @@ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Digest only"
+msgstr ""
+
+#: src/components/routes/images.tsx
+msgid "Digests"
+msgstr ""
+
+#: src/components/routes/images.tsx
+msgid "Disable audit"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -714,6 +737,7 @@ msgstr "Efímero"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/images.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
@@ -786,6 +810,7 @@ msgid "Failed to move monitor"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Failed to run image audit"
 msgstr ""
 
@@ -814,6 +839,7 @@ msgid "Failed to save settings"
 msgstr "Error al guardar la configuración"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Failed to update audit policy"
 msgstr ""
 
@@ -840,6 +866,11 @@ msgstr ""
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "Filters"
+msgstr ""
+
+#. placeholder {0}: entry.name
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Fine-grained audit configuration for <0>{0}</0>. Tag filters narrow which registry tags are considered as candidates."
 msgstr ""
 
 #: src/components/routes/settings/agents.tsx
@@ -949,7 +980,16 @@ msgid "Image audit"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Image audit completed"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Image audit override"
+msgstr ""
+
+#: src/components/routes/images.tsx
+msgid "Image ref"
 msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
@@ -1028,19 +1068,26 @@ msgstr ""
 msgid "Latency history"
 msgstr ""
 
+#: src/components/routes/images.tsx
+msgid "Latest"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Latest image id"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Latest in line"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Latest overall"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Latest same major"
 msgstr ""
 
@@ -1082,6 +1129,10 @@ msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Loading purge settings…"
+msgstr ""
+
+#: src/components/routes/images.tsx
+msgid "Local"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1203,6 +1254,14 @@ msgstr ""
 msgid "Never"
 msgstr ""
 
+#: src/components/routes/images.tsx
+msgid "new major"
+msgstr ""
+
+#: src/components/routes/images.tsx
+msgid "New major available"
+msgstr ""
+
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Next"
@@ -1249,6 +1308,10 @@ msgstr ""
 msgid "No hosts match the current filter."
 msgstr ""
 
+#: src/components/routes/images.tsx
+msgid "No image audit data yet. Run a check to populate this view."
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "No latency"
 msgstr ""
@@ -1283,6 +1346,10 @@ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Not checked"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Notes"
 msgstr ""
 
 #: src/components/notification-log-toasts.tsx
@@ -1336,6 +1403,10 @@ msgstr ""
 msgid "Offline Hosts"
 msgstr ""
 
+#: src/components/routes/images.tsx
+msgid "on"
+msgstr ""
+
 #: src/components/login/auth-form.tsx
 msgid "One-time password"
 msgstr "Contraseña de un solo uso"
@@ -1345,6 +1416,10 @@ msgstr "Contraseña de un solo uso"
 msgid "Online"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Only tags matching this Go-flavored regex are considered candidates."
+msgstr ""
+
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Open menu"
@@ -1352,6 +1427,10 @@ msgstr "Abrir menú"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Optional"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Optional context for other admins"
 msgstr ""
 
 #: src/components/login/auth-form.tsx
@@ -1421,6 +1500,10 @@ msgstr "Solicitud de restablecimiento de contraseña recibida"
 msgid "Patch available"
 msgstr ""
 
+#: src/components/routes/images.tsx
+msgid "patch line"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Patch line"
 msgstr ""
@@ -1453,6 +1536,10 @@ msgstr "Permanente"
 #: src/components/routes/settings/agents.tsx
 msgid "Persistence"
 msgstr "Persistencia"
+
+#: src/components/routes/images.tsx
+msgid "Pin to current tag"
+msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Platform"
@@ -1584,6 +1671,11 @@ msgstr ""
 msgid "Refresh"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "regex"
+msgstr ""
+
+#: src/components/routes/images.tsx
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Registry"
 msgstr ""
@@ -1601,6 +1693,10 @@ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Repos"
+msgstr ""
+
+#: src/components/routes/images.tsx
+msgid "Repository"
 msgstr ""
 
 #: src/components/login/login.tsx
@@ -1697,10 +1793,15 @@ msgstr ""
 msgid "Running"
 msgstr ""
 
+#: src/components/routes/images.tsx
+msgid "same major"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Same major"
 msgstr ""
 
+#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -1737,6 +1838,10 @@ msgstr ""
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "Search"
 msgstr "Buscar"
+
+#: src/components/routes/images.tsx
+msgid "Search container, host, image…"
+msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Search container, image, host, ports…"
@@ -1808,6 +1913,10 @@ msgstr "Iniciar sesión"
 msgid "SMTP settings"
 msgstr "Configuración SMTP"
 
+#: src/components/routes/images.tsx
+msgid "Source"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "State"
@@ -1816,6 +1925,7 @@ msgstr ""
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/images.tsx
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/notifications.tsx
@@ -1839,7 +1949,19 @@ msgid "Switch theme"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+msgid "Tag exclude (regex)"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Tag include (regex)"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
 msgid "Tag rebuilt"
+msgstr ""
+
+#: src/components/routes/dashboard/containers-table.tsx
+msgid "Tags matching this regex are skipped (applied after include)."
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -2036,6 +2158,10 @@ msgstr ""
 #: src/components/navbar.tsx
 msgid "Users"
 msgstr "Usuarios"
+
+#: src/components/routes/images.tsx
+msgid "Versions"
+msgstr ""
 
 #: src/components/navbar.tsx
 msgid "View all notifications"

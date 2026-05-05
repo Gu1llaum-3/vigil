@@ -24,6 +24,14 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog"
+import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -32,6 +40,8 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -394,14 +404,23 @@ function SortBtn({ column, children }: { column: Column<ContainerFleetEntry, unk
 	)
 }
 
+type OverrideEntry = {
+	policy: string
+	tag_include?: string
+	tag_exclude?: string
+	notes?: string
+}
+
 function OverrideMenu({
 	entry,
 	current,
 	onChange,
+	onOpenAdvanced,
 }: {
 	entry: ContainerFleetEntry
-	current: string
+	current: OverrideEntry
 	onChange: (policy: string) => void
+	onOpenAdvanced: () => void
 }) {
 	const { t } = useLingui()
 	const options: Array<{ value: string; label: string }> = [
@@ -411,7 +430,8 @@ function OverrideMenu({
 		{ value: "minor", label: t`Same major` },
 		{ value: "disabled", label: t`Disabled` },
 	]
-	const overridden = current !== "auto"
+	const hasFilters = !!(current.tag_include || current.tag_exclude)
+	const overridden = current.policy !== "auto" || hasFilters
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
@@ -433,14 +453,199 @@ function OverrideMenu({
 					<DropdownMenuItem
 						key={option.value}
 						onSelect={() => onChange(option.value)}
-						className={cn(option.value === current && "font-semibold")}
+						className={cn(option.value === current.policy && "font-semibold")}
 					>
-						{option.value === current ? <CheckIcon className="mr-2 size-4" /> : <span className="mr-2 size-4" />}
+						{option.value === current.policy ? (
+							<CheckIcon className="mr-2 size-4" />
+						) : (
+							<span className="mr-2 size-4" />
+						)}
 						{option.label}
 					</DropdownMenuItem>
 				))}
+				<DropdownMenuSeparator />
+				<DropdownMenuItem onSelect={onOpenAdvanced}>
+					<span className="mr-2 size-4" />
+					<Trans>Advanced…</Trans>
+					{hasFilters && (
+						<Badge variant="outline" className="ms-auto px-1.5 py-0 text-[10px]">
+							<Trans>regex</Trans>
+						</Badge>
+					)}
+				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
+	)
+}
+
+function AdvancedOverrideDialog({
+	entry,
+	current,
+	open,
+	onOpenChange,
+	onSubmit,
+}: {
+	entry: ContainerFleetEntry
+	current: OverrideEntry
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	onSubmit: (next: OverrideEntry) => Promise<void>
+}) {
+	const { t } = useLingui()
+	const [policy, setPolicy] = useState(current.policy)
+	const [tagInclude, setTagInclude] = useState(current.tag_include ?? "")
+	const [tagExclude, setTagExclude] = useState(current.tag_exclude ?? "")
+	const [notes, setNotes] = useState(current.notes ?? "")
+	const [saving, setSaving] = useState(false)
+
+	useEffect(() => {
+		if (open) {
+			setPolicy(current.policy)
+			setTagInclude(current.tag_include ?? "")
+			setTagExclude(current.tag_exclude ?? "")
+			setNotes(current.notes ?? "")
+		}
+	}, [open, current])
+
+	const includeError = useMemo(() => {
+		if (!tagInclude) return null
+		try {
+			new RegExp(tagInclude)
+			return null
+		} catch (e) {
+			return (e as Error).message
+		}
+	}, [tagInclude])
+
+	const excludeError = useMemo(() => {
+		if (!tagExclude) return null
+		try {
+			new RegExp(tagExclude)
+			return null
+		} catch (e) {
+			return (e as Error).message
+		}
+	}, [tagExclude])
+
+	const canSave = !includeError && !excludeError && !saving
+
+	async function save() {
+		setSaving(true)
+		try {
+			await onSubmit({
+				policy,
+				tag_include: tagInclude.trim() || undefined,
+				tag_exclude: tagExclude.trim() || undefined,
+				notes: notes.trim() || undefined,
+			})
+			onOpenChange(false)
+		} finally {
+			setSaving(false)
+		}
+	}
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>
+						<Trans>Image audit override</Trans>
+					</DialogTitle>
+					<DialogDescription>
+						<Trans>
+							Fine-grained audit configuration for{" "}
+							<span className="font-mono">{entry.name}</span>. Tag filters narrow which registry tags
+							are considered as candidates.
+						</Trans>
+					</DialogDescription>
+				</DialogHeader>
+				<div className="space-y-4">
+					<div className="space-y-1.5">
+						<Label>
+							<Trans>Policy</Trans>
+						</Label>
+						<Select value={policy} onValueChange={setPolicy}>
+							<SelectTrigger>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="auto">
+									<Trans>Auto (default)</Trans>
+								</SelectItem>
+								<SelectItem value="digest">
+									<Trans>Digest only</Trans>
+								</SelectItem>
+								<SelectItem value="patch">
+									<Trans>Patch line</Trans>
+								</SelectItem>
+								<SelectItem value="minor">
+									<Trans>Same major</Trans>
+								</SelectItem>
+								<SelectItem value="disabled">
+									<Trans>Disabled</Trans>
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+					<div className="space-y-1.5">
+						<Label>
+							<Trans>Tag include (regex)</Trans>
+						</Label>
+						<Input
+							value={tagInclude}
+							onChange={(e) => setTagInclude(e.target.value)}
+							placeholder="^v3\\."
+							className="font-mono text-xs"
+						/>
+						{includeError ? (
+							<p className="text-xs text-destructive">{includeError}</p>
+						) : (
+							<p className="text-xs text-muted-foreground">
+								<Trans>Only tags matching this Go-flavored regex are considered candidates.</Trans>
+							</p>
+						)}
+					</div>
+					<div className="space-y-1.5">
+						<Label>
+							<Trans>Tag exclude (regex)</Trans>
+						</Label>
+						<Input
+							value={tagExclude}
+							onChange={(e) => setTagExclude(e.target.value)}
+							placeholder="-rc\\d*$"
+							className="font-mono text-xs"
+						/>
+						{excludeError ? (
+							<p className="text-xs text-destructive">{excludeError}</p>
+						) : (
+							<p className="text-xs text-muted-foreground">
+								<Trans>Tags matching this regex are skipped (applied after include).</Trans>
+							</p>
+						)}
+					</div>
+					<div className="space-y-1.5">
+						<Label>
+							<Trans>Notes</Trans>
+						</Label>
+						<Textarea
+							value={notes}
+							onChange={(e) => setNotes(e.target.value)}
+							placeholder={t`Optional context for other admins`}
+							rows={2}
+						/>
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						<Trans>Cancel</Trans>
+					</Button>
+					<Button onClick={save} disabled={!canSave}>
+						{saving ? <Loader2Icon className="me-2 size-4 animate-spin" /> : null}
+						<Trans>Save</Trans>
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	)
 }
 
@@ -465,26 +670,43 @@ export const ContainersTable = memo(function ContainersTable({
 	const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
 	const [search, setSearch] = useState("")
 	const [auditing, setAuditing] = useState(false)
-	const [overrides, setOverrides] = useState<Record<string, string>>({})
+	const [overrides, setOverrides] = useState<Record<string, OverrideEntry>>({})
+	const [advancedOverrideEntry, setAdvancedOverrideEntry] = useState<ContainerFleetEntry | null>(null)
 	const admin = isAdmin()
 
 	useEffect(() => {
 		if (!admin) return
 		pb.send("/api/app/container-audit-overrides", { method: "GET" })
-			.then((items: Array<{ agent: string; container_name: string; policy: string }>) => {
-				const next: Record<string, string> = {}
-				for (const item of items) {
-					next[`${item.agent}|${item.container_name}`] = item.policy
+			.then(
+				(
+					items: Array<{
+						agent: string
+						container_name: string
+						policy: string
+						tag_include?: string
+						tag_exclude?: string
+						notes?: string
+					}>
+				) => {
+					const next: Record<string, OverrideEntry> = {}
+					for (const item of items) {
+						next[`${item.agent}|${item.container_name}`] = {
+							policy: item.policy,
+							tag_include: item.tag_include,
+							tag_exclude: item.tag_exclude,
+							notes: item.notes,
+						}
+					}
+					setOverrides(next)
 				}
-				setOverrides(next)
-			})
+			)
 			.catch(() => {
 				/* non-fatal */
 			})
 	}, [admin])
 
-	const setOverridePolicy = useCallback(
-		async (entry: ContainerFleetEntry, policy: string) => {
+	const upsertOverride = useCallback(
+		async (entry: ContainerFleetEntry, payload: OverrideEntry) => {
 			const key = `${entry.host_id}|${entry.name}`
 			try {
 				await pb.send("/api/app/container-audit-overrides", {
@@ -492,14 +714,18 @@ export const ContainersTable = memo(function ContainersTable({
 					body: JSON.stringify({
 						agent: entry.host_id,
 						container_name: entry.name,
-						policy,
+						policy: payload.policy,
+						tag_include: payload.tag_include ?? "",
+						tag_exclude: payload.tag_exclude ?? "",
+						notes: payload.notes ?? "",
 					}),
 					headers: { "Content-Type": "application/json" },
 				})
 				setOverrides((current) => {
 					const next = { ...current }
-					if (policy === "auto") delete next[key]
-					else next[key] = policy
+					const hasFilters = !!(payload.tag_include || payload.tag_exclude)
+					if (payload.policy === "auto" && !hasFilters) delete next[key]
+					else next[key] = payload
 					return next
 				})
 				toast({ title: t`Audit policy updated` })
@@ -509,9 +735,26 @@ export const ContainersTable = memo(function ContainersTable({
 					description: (error as Error).message,
 					variant: "destructive",
 				})
+				throw error
 			}
 		},
 		[t]
+	)
+
+	const setOverridePolicy = useCallback(
+		(entry: ContainerFleetEntry, policy: string) => {
+			const key = `${entry.host_id}|${entry.name}`
+			const existing = overrides[key]
+			return upsertOverride(entry, {
+				policy,
+				tag_include: existing?.tag_include,
+				tag_exclude: existing?.tag_exclude,
+				notes: existing?.notes,
+			}).catch(() => {
+				/* already toasted */
+			})
+		},
+		[overrides, upsertOverride]
 	)
 
 	async function runImageAuditNow() {
@@ -688,8 +931,9 @@ export const ContainersTable = memo(function ContainersTable({
 							cell: ({ row: { original: c } }: { row: { original: ContainerFleetEntry } }) => (
 								<OverrideMenu
 									entry={c}
-									current={overrides[`${c.host_id}|${c.name}`] ?? "auto"}
+									current={overrides[`${c.host_id}|${c.name}`] ?? { policy: "auto" }}
 									onChange={(policy) => setOverridePolicy(c, policy)}
+									onOpenAdvanced={() => setAdvancedOverrideEntry(c)}
 								/>
 							),
 						} as ColumnDef<ContainerFleetEntry>,
@@ -852,6 +1096,21 @@ export const ContainersTable = memo(function ContainersTable({
 					</Button>
 				</div>
 			</div>
+			{advancedOverrideEntry && (
+				<AdvancedOverrideDialog
+					entry={advancedOverrideEntry}
+					current={
+						overrides[`${advancedOverrideEntry.host_id}|${advancedOverrideEntry.name}`] ?? {
+							policy: "auto",
+						}
+					}
+					open
+					onOpenChange={(open) => {
+						if (!open) setAdvancedOverrideEntry(null)
+					}}
+					onSubmit={(payload) => upsertOverride(advancedOverrideEntry, payload)}
+				/>
+			)}
 		</div>
 	)
 })

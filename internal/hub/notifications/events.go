@@ -28,6 +28,19 @@ type Event struct {
 	Previous   string
 	Current    string
 	Details    map[string]any
+	// Severity overrides Kind.Severity() when non-empty. Used by event sources
+	// that derive severity from the payload (e.g. image audits where a new
+	// major version is more severe than a patch update).
+	Severity string
+}
+
+// EffectiveSeverity returns the explicit Severity if set, otherwise the
+// default severity associated with the event kind.
+func (e Event) EffectiveSeverity() string {
+	if e.Severity != "" {
+		return e.Severity
+	}
+	return e.Kind.Severity()
 }
 
 // KindForMonitor maps a monitor status int to the appropriate EventKind.

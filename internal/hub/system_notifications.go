@@ -81,7 +81,7 @@ func (h *Hub) createSystemNotification(evt notifications.Event) error {
 	rec := core.NewRecord(collection)
 	rec.Set("event_kind", string(evt.Kind))
 	rec.Set("category", systemNotificationCategory(evt))
-	rec.Set("severity", evt.Kind.Severity())
+	rec.Set("severity", evt.EffectiveSeverity())
 	rec.Set("resource_type", evt.Resource.Type)
 	rec.Set("resource_id", evt.Resource.ID)
 	rec.Set("resource_name", evt.Resource.Name)

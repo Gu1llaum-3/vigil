@@ -5,6 +5,7 @@ package hub
 import (
 	"context"
 	"errors"
+	"regexp"
 	"testing"
 	"time"
 
@@ -104,6 +105,51 @@ func TestSelectAuditTagRespectsVariantSuffix(t *testing.T) {
 	require.Equal(t, "1.2.5-alpine", tag, "must only consider candidates with the same -alpine suffix")
 }
 
+func TestApplyTagRegexFilterPreservesCurrentTag(t *testing.T) {
+	include := regexp.MustCompile(`^v3\.`)
+	out := applyTagRegexFilter([]string{"v2.0.0", "v2.5.0", "v3.0.0", "v3.1.0"}, "v2.0.0", include, nil)
+	require.Contains(t, out, "v2.0.0", "current tag must always be preserved")
+	require.Contains(t, out, "v3.0.0")
+	require.Contains(t, out, "v3.1.0")
+	require.NotContains(t, out, "v2.5.0")
+}
+
+func TestApplyTagRegexFilterExcludeWins(t *testing.T) {
+	exclude := regexp.MustCompile(`-rc\d*$`)
+	out := applyTagRegexFilter([]string{"1.0.0", "1.0.1", "1.0.2-rc1"}, "1.0.0", nil, exclude)
+	require.Equal(t, []string{"1.0.0", "1.0.1"}, out)
+}
+
+func TestApplyTagRegexFilterIncludeAndExcludeCombined(t *testing.T) {
+	include := regexp.MustCompile(`^v3\.`)
+	exclude := regexp.MustCompile(`-rc\d*$`)
+	out := applyTagRegexFilter([]string{"v2.0.0", "v3.0.0", "v3.1.0-rc1", "v3.1.0"}, "v3.0.0", include, exclude)
+	require.NotContains(t, out, "v2.0.0")
+	require.NotContains(t, out, "v3.1.0-rc1")
+	require.Contains(t, out, "v3.0.0")
+	require.Contains(t, out, "v3.1.0")
+}
+
+func TestResolveImageAuditHonorsTagIncludeFilter(t *testing.T) {
+	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
+		tags: map[string][]string{"docker.io/library/traefik": {
+			"v2.10.0", "v2.11.0", "v3.0.0", "v3.1.0",
+		}},
+		headDigests: map[string]string{"docker.io/library/traefik:v2.11.0": "sha256:new"},
+	}, imageAuditTarget{
+		CurrentRef: "docker.io/library/traefik:v2.10.0",
+		Registry:   "docker.io",
+		Repository: "library/traefik",
+		Tag:        "v2.10.0",
+		Policy:     imageAuditPolicySemverMajor,
+		TagInclude: regexp.MustCompile(`^v2\.`),
+	})
+	require.Equal(t, imageAuditStatusUpdateAvailable, result.Status)
+	require.Equal(t, "v2.11.0", result.LineLatestTag, "must stay on v2.x because of tag_include")
+	// Without the include filter, v3.x would have appeared as new major.
+	require.False(t, result.HasMajorUpdate)
+}
+
 func TestSelectAuditTagPlainTagIgnoresVariants(t *testing.T) {
 	current, ok := parseNumericVersion("1.2.3")
 	require.True(t, ok)
@@ -128,18 +174,22 @@ func TestParseNumericVersionRejectsNonNumeric(t *testing.T) {
 
 func TestParseNumericVersionAcceptsVariants(t *testing.T) {
 	cases := []struct {
-		tag     string
-		major   int
-		minor   int
-		patch   int
-		parts   int
-		variant string
+		tag          string
+		major        int
+		minor        int
+		patch        int
+		parts        int
+		variant      string
+		isPrerelease bool
 	}{
 		{tag: "8-jdk-slim", major: 8, parts: 1, variant: "jdk-slim"},
 		{tag: "16-bullseye", major: 16, parts: 1, variant: "bullseye"},
 		{tag: "1.25-alpine", major: 1, minor: 25, parts: 2, variant: "alpine"},
 		{tag: "20.11.1-alpine3.19", major: 20, minor: 11, patch: 1, parts: 3, variant: "alpine3.19"},
-		{tag: "v3.12.4-rc1", major: 3, minor: 12, patch: 4, parts: 3, variant: "rc1"},
+		// rc1/alpha/beta now correctly classified as prereleases (not OS variants).
+		{tag: "v3.12.4-rc1", major: 3, minor: 12, patch: 4, parts: 3, variant: "", isPrerelease: true},
+		{tag: "v2.0.0-alpha.3", major: 2, minor: 0, patch: 0, parts: 3, variant: "", isPrerelease: true},
+		{tag: "v1.0.0-beta", major: 1, minor: 0, patch: 0, parts: 3, variant: "", isPrerelease: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.tag, func(t *testing.T) {
@@ -150,6 +200,7 @@ func TestParseNumericVersionAcceptsVariants(t *testing.T) {
 			require.Equal(t, tc.patch, v.Patch)
 			require.Equal(t, tc.parts, v.Parts)
 			require.Equal(t, tc.variant, v.Variant)
+			require.Equal(t, tc.isPrerelease, v.IsPrerelease)
 		})
 	}
 }
@@ -485,6 +536,24 @@ func TestUpsertContainerImageAuditNotifiesOnlyWhenSignatureChanges(t *testing.T)
 	require.NoError(t, err)
 	require.Empty(t, rec.GetString("last_notified_signature"))
 	require.Empty(t, rec.GetString("last_notified_at"))
+}
+
+func TestImageAuditEventSeverity(t *testing.T) {
+	cases := []struct {
+		name   string
+		result imageAuditResult
+		want   string
+	}{
+		{"major triggers warning", imageAuditResult{HasMajorUpdate: true}, "warning"},
+		{"auth failure triggers warning", imageAuditResult{ErrorKind: imageAuditErrorAuth}, "warning"},
+		{"patch only is info", imageAuditResult{LineStatus: imageAuditLineStatusPatchAvailable}, "info"},
+		{"transient registry error stays info", imageAuditResult{ErrorKind: imageAuditErrorRegistry}, "info"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, imageAuditEventSeverity(tc.result))
+		})
+	}
 }
 
 func TestRenderContainerImageUpdateNotificationMessage(t *testing.T) {

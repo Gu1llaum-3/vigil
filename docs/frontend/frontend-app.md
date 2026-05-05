@@ -124,6 +124,8 @@ This component demonstrates several frontend conventions used in the project:
 
 The monitors navbar icon also shows a live red badge when one or more monitors are currently `down`. It fetches `/api/app/monitors` and subscribes to the `monitors` PocketBase collection with the same 1-second debounce pattern used by the monitors page, so the badge updates dynamically without a full page refresh.
 
+A sibling navbar icon (`BoxesIcon`) links to the dedicated `/images` page and shows an amber badge with the count of containers whose image audit currently reports `update_available`. It uses the same realtime + debounced fetch pattern via `pb.collection("container_image_audits").subscribe`.
+
 The navbar notification bell is visible to every authenticated user. It fetches unread state from `GET /api/app/system-notifications/unread`, subscribes to the `system_notifications` collection, and clears via `POST /api/app/system-notifications/read-all`. This is separate from admin notification delivery logs and does not require email/webhook/in-app channels to be configured.
 
 That last point is important: the custom frontend does not replace every PocketBase admin view yet.
@@ -200,6 +202,30 @@ For the `ping` type, the monitors UI reuses the existing `hostname` field and le
 The phase 1 advanced options exposed in the form are `count`, per-request timeout, and IP family selection (`Auto`, `IPv4`, `IPv6`).
 
 Rolling monitor metrics render as `N/A` only when no events exist in the window. As soon as at least one event is recorded within the 24h or 30d window, the corresponding metric is shown.
+
+## Images Route
+
+A dedicated container-image-audit page lives at `/images` (`internal/site/src/components/routes/images.tsx`). It complements the inline image-audit column on the dashboard by giving the data its own surface.
+
+```ts
+images: "/images"
+```
+
+```tsx
+const ImagesPage = lazy(() => import("@/components/routes/images.tsx"))
+```
+
+What the page renders:
+
+- a header with the total audited container count and an admin-only `Check images now` button (calls `POST /api/app/jobs/vigilContainerImageAudit/run`)
+- five counter cards: `New major versions`, `Updates available`, `Check failed`, `Up to date`, `Disabled`
+- collapsible groups by bucket in priority order (major → update → failed → up_to_date → disabled → other), each row showing the container/host, current image ref, status badge, and short tag pills (line / same major / new major) with the audit timestamp
+- a right-side `Sheet` drawer per row with full version, digest, and source details, plus admin actions `Pin to current tag` and `Disable audit`. Pinning posts an override with `policy=patch` and a `tag_include` regex anchored on the current tag.
+- a free-text search input that filters across container, host, image ref, and tag fields
+
+Data source: `GET /api/app/dashboard` (filtered to entries with a non-empty `image_audit`). The page subscribes to the `container_image_audits` PocketBase collection with the standard 1-second debounce so audit state updates propagate without a manual refresh; the drawer re-resolves its selected row against the latest data each render so the open detail view stays in sync.
+
+Override edits made elsewhere (the dashboard `OverrideMenu` and its `AdvancedOverrideDialog`, the page's pin/disable buttons) all hit the same admin endpoint at `/api/app/container-audit-overrides`. The advanced dialog exposes the regex `tag_include` / `tag_exclude` fields with client-side validation (`new RegExp(...)` in a `try/catch`), in addition to the policy select and a free-form notes field.
 
 ## Settings Area
 

@@ -100,7 +100,7 @@ func (d *Dispatcher) process(ctx context.Context, evt Event) {
 	msg := providers.Message{
 		Title:        title,
 		Body:         body,
-		Severity:     evt.Kind.Severity(),
+		Severity:     evt.EffectiveSeverity(),
 		EventKind:    string(evt.Kind),
 		ResourceID:   evt.Resource.ID,
 		ResourceName: evt.Resource.Name,
@@ -134,7 +134,7 @@ func (d *Dispatcher) processRule(ctx context.Context, rule *core.Record, evt Eve
 
 	// Check min_severity
 	if minSev := rule.GetString("min_severity"); minSev != "" {
-		if severityRank(evt.Kind.Severity()) < severityRank(minSev) {
+		if severityRank(evt.EffectiveSeverity()) < severityRank(minSev) {
 			return
 		}
 	}

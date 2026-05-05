@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
 import {
 	BellIcon,
+	BoxesIcon,
 	PlusIcon,
 	ActivityIcon,
 	DatabaseBackupIcon,
@@ -271,10 +272,58 @@ function MonitorNavIcon({ downCount }: { downCount: number }) {
 	)
 }
 
+function useImageUpdatesCount() {
+	const [count, setCount] = useState(0)
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	const fetchCount = useCallback(async () => {
+		try {
+			const records = await pb.collection("container_image_audits").getFullList<{ status: string }>({
+				filter: 'status = "update_available"',
+				fields: "id,status",
+			})
+			setCount(records.length)
+		} catch {
+			// non-fatal
+		}
+	}, [])
+
+	useEffect(() => {
+		fetchCount()
+		let unsubscribe: (() => void) | undefined
+		;(async () => {
+			unsubscribe = await pb.collection("container_image_audits").subscribe("*", () => {
+				if (debounceRef.current) clearTimeout(debounceRef.current)
+				debounceRef.current = setTimeout(fetchCount, 1000)
+			})
+		})()
+		return () => {
+			unsubscribe?.()
+			if (debounceRef.current) clearTimeout(debounceRef.current)
+		}
+	}, [fetchCount])
+
+	return count
+}
+
+function ImagesNavIcon({ count }: { count: number }) {
+	return (
+		<span className="relative inline-flex">
+			<BoxesIcon className="h-[1.2rem] w-[1.2rem]" />
+			{count > 0 ? (
+				<span className="absolute -right-2 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">
+					{count > 9 ? "9+" : count}
+				</span>
+			) : null}
+		</span>
+	)
+}
+
 export default function Navbar() {
 	const [addAgentDialogOpen, setAddAgentDialogOpen] = useState(false)
 	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
 	const downMonitorCount = useDownMonitorCount()
+	const imageUpdatesCount = useImageUpdatesCount()
 	const notificationCenter = useNotificationCenter()
 
 	const AdminLinks = AdminDropdownGroup()
@@ -351,6 +400,15 @@ export default function Navbar() {
 								<Trans>Monitors</Trans>
 							</DropdownMenuItem>
 							<DropdownMenuItem
+								onClick={() => navigate(getPagePath($router, "images"))}
+								className="flex items-center"
+							>
+								<span className="me-2.5">
+									<ImagesNavIcon count={imageUpdatesCount} />
+								</span>
+								<Trans>Container images</Trans>
+							</DropdownMenuItem>
+							<DropdownMenuItem
 								onClick={() => navigate(getPagePath($router, "settings", { name: "general" }))}
 								className="flex items-center"
 							>
@@ -417,6 +475,21 @@ export default function Navbar() {
 					</TooltipTrigger>
 					<TooltipContent>
 						<Trans>Monitors</Trans>
+					</TooltipContent>
+				</Tooltip>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Link
+							href={getPagePath($router, "images")}
+							aria-label="Container images"
+							className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+							onMouseEnter={runOnce(() => import("@/components/routes/images"))}
+						>
+							<ImagesNavIcon count={imageUpdatesCount} />
+						</Link>
+					</TooltipTrigger>
+					<TooltipContent>
+						<Trans>Container images</Trans>
 					</TooltipContent>
 				</Tooltip>
 				<Tooltip>

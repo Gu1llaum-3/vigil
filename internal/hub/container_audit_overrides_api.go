@@ -3,6 +3,7 @@ package hub
 import (
 	"errors"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,6 +17,8 @@ type containerAuditOverridePayload struct {
 	ContainerName string `json:"container_name"`
 	Policy        string `json:"policy"`
 	Notes         string `json:"notes"`
+	TagInclude    string `json:"tag_include"`
+	TagExclude    string `json:"tag_exclude"`
 	Created       string `json:"created"`
 	Updated       string `json:"updated"`
 }
@@ -27,6 +30,8 @@ func containerAuditOverrideResponse(rec *core.Record) containerAuditOverridePayl
 		ContainerName: rec.GetString("container_name"),
 		Policy:        rec.GetString("policy"),
 		Notes:         rec.GetString("notes"),
+		TagInclude:    rec.GetString("tag_include"),
+		TagExclude:    rec.GetString("tag_exclude"),
 		Created:       rec.GetString("created"),
 		Updated:       rec.GetString("updated"),
 	}
@@ -63,8 +68,20 @@ func (h *Hub) upsertContainerAuditOverride(e *core.RequestEvent) error {
 	body.Agent = strings.TrimSpace(body.Agent)
 	body.ContainerName = strings.TrimSpace(body.ContainerName)
 	body.Policy = strings.TrimSpace(body.Policy)
+	body.TagInclude = strings.TrimSpace(body.TagInclude)
+	body.TagExclude = strings.TrimSpace(body.TagExclude)
 	if body.Agent == "" || body.ContainerName == "" {
 		return e.BadRequestError("agent and container_name are required", nil)
+	}
+	if body.TagInclude != "" {
+		if _, err := regexp.Compile(body.TagInclude); err != nil {
+			return e.BadRequestError("invalid tag_include regex", err)
+		}
+	}
+	if body.TagExclude != "" {
+		if _, err := regexp.Compile(body.TagExclude); err != nil {
+			return e.BadRequestError("invalid tag_exclude regex", err)
+		}
 	}
 
 	existing, findErr := h.FindFirstRecordByFilter(
@@ -103,6 +120,8 @@ func (h *Hub) upsertContainerAuditOverride(e *core.RequestEvent) error {
 	}
 	existing.Set("policy", body.Policy)
 	existing.Set("notes", body.Notes)
+	existing.Set("tag_include", body.TagInclude)
+	existing.Set("tag_exclude", body.TagExclude)
 
 	if err := h.Save(existing); err != nil {
 		return e.BadRequestError("Failed to save override", err)

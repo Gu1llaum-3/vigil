@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
+	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -82,6 +84,16 @@ type imageAuditTarget struct {
 	Repository        string
 	Tag               string
 	Policy            string
+	TagInclude        *regexp.Regexp
+	TagExclude        *regexp.Regexp
+}
+
+// containerAuditOverride is the parsed in-memory representation of a row from
+// the container_audit_overrides collection.
+type containerAuditOverride struct {
+	Policy     string
+	TagInclude *regexp.Regexp
+	TagExclude *regexp.Regexp
 }
 
 type imageAuditResult struct {
@@ -98,6 +110,7 @@ type imageAuditResult struct {
 	HasMajorUpdate bool
 	CheckedAt      time.Time
 	Error          string
+	ErrorKind      string
 }
 
 type imageNotificationTarget struct {
@@ -106,11 +119,14 @@ type imageNotificationTarget struct {
 }
 
 type numericVersion struct {
-	Major   int
-	Minor   int
-	Patch   int
-	Parts   int
-	Variant string
+	Major        int
+	Minor        int
+	Patch        int
+	Parts        int
+	Variant      string
+	IsPrerelease bool
+	HasDots      bool
+	semver       *semver.Version
 }
 
 func (h *Hub) collectContainerImageAuditResults(ctx context.Context, registryClient imageRegistryClient) ([]imageAuditResult, int, error) {
@@ -125,7 +141,8 @@ func (h *Hub) collectContainerImageAuditResults(ctx context.Context, registryCli
 		overrides = nil
 	}
 
-	results := make([]imageAuditResult, 0)
+	earlyResults := make([]imageAuditResult, 0)
+	pendingTargets := make([]imageAuditTarget, 0)
 	seenContainers := make(map[string]struct{})
 
 	for _, rec := range snapshotRecords {
@@ -145,32 +162,35 @@ func (h *Hub) collectContainerImageAuditResults(ctx context.Context, registryCli
 			target, earlyResult := buildImageAuditTarget(agentID, snapshot.Architecture, container)
 
 			if override, ok := overrides[auditOverrideKey(agentID, container.Name)]; ok {
-				if override == auditOverrideDisabled {
-					results = append(results, imageAuditResult{
+				if override.Policy == auditOverrideDisabled {
+					earlyResults = append(earlyResults, imageAuditResult{
 						Target:    target,
 						Status:    imageAuditStatusDisabled,
 						CheckedAt: time.Now().UTC(),
 					})
 					continue
 				}
-				if mapped := mapOverrideToInternalPolicy(override); mapped != "" {
+				if mapped := mapOverrideToInternalPolicy(override.Policy); mapped != "" {
 					target.Policy = mapped
 					earlyResult = nil
 				}
+				target.TagInclude = override.TagInclude
+				target.TagExclude = override.TagExclude
 			}
 
 			if earlyResult != nil {
-				results = append(results, *earlyResult)
+				earlyResults = append(earlyResults, *earlyResult)
 				continue
 			}
 
-			auditCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
-			resolved := resolveImageAudit(auditCtx, registryClient, target)
-			cancel()
-			results = append(results, resolved)
+			pendingTargets = append(pendingTargets, target)
 		}
 	}
 
+	resolved := runImageAuditPool(ctx, registryClient, pendingTargets, imageAuditParallelism)
+	results := make([]imageAuditResult, 0, len(earlyResults)+len(resolved))
+	results = append(results, earlyResults...)
+	results = append(results, resolved...)
 	return results, len(seenContainers), nil
 }
 
@@ -191,7 +211,7 @@ func mapOverrideToInternalPolicy(override string) string {
 	}
 }
 
-func (h *Hub) loadContainerAuditOverrides() (map[string]string, error) {
+func (h *Hub) loadContainerAuditOverrides() (map[string]containerAuditOverride, error) {
 	records, err := h.FindAllRecords(containerAuditOverridesCollection)
 	if err != nil {
 		// Collection may not exist on legacy installs; treat as empty.
@@ -200,9 +220,25 @@ func (h *Hub) loadContainerAuditOverrides() (map[string]string, error) {
 		}
 		return nil, err
 	}
-	overrides := make(map[string]string, len(records))
+	overrides := make(map[string]containerAuditOverride, len(records))
 	for _, rec := range records {
-		overrides[auditOverrideKey(rec.GetString("agent"), rec.GetString("container_name"))] = rec.GetString("policy")
+		key := auditOverrideKey(rec.GetString("agent"), rec.GetString("container_name"))
+		entry := containerAuditOverride{Policy: rec.GetString("policy")}
+		if expr := strings.TrimSpace(rec.GetString("tag_include")); expr != "" {
+			if re, err := regexp.Compile(expr); err == nil {
+				entry.TagInclude = re
+			} else {
+				slog.Warn("container image audits: invalid tag_include regex; ignoring", "key", key, "err", err)
+			}
+		}
+		if expr := strings.TrimSpace(rec.GetString("tag_exclude")); expr != "" {
+			if re, err := regexp.Compile(expr); err == nil {
+				entry.TagExclude = re
+			} else {
+				slog.Warn("container image audits: invalid tag_exclude regex; ignoring", "key", key, "err", err)
+			}
+		}
+		overrides[key] = entry
 	}
 	return overrides, nil
 }
@@ -256,6 +292,7 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 			result.Status = imageAuditStatusCheckFailed
 			result.LineStatus = imageAuditStatusCheckFailed
 			result.Error = err.Error()
+			result.ErrorKind = classifyRegistryError(err)
 			return result
 		}
 		result.LatestTag = target.Tag
@@ -289,8 +326,10 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 			result.Status = imageAuditStatusCheckFailed
 			result.LineStatus = imageAuditStatusCheckFailed
 			result.Error = err.Error()
+			result.ErrorKind = classifyRegistryError(err)
 			return result
 		}
+		tags = applyTagRegexFilter(tags, target.Tag, target.TagInclude, target.TagExclude)
 		lineTag, foundLine := selectAuditTag(tags, target.Tag, currentVersion, target.Policy)
 		sameMajorTag, _ := selectAuditTag(tags, target.Tag, currentVersion, imageAuditPolicySemverMajor)
 		overallTag, overallVersion, foundOverall := selectLatestSemverTag(tags, currentVersion.Variant)
@@ -370,7 +409,7 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 }
 
 func (h *Hub) runContainerImageAudit() (map[string]any, error) {
-	client := remoteImageRegistryClient{keychain: h.registryKeychain()}
+	client := newCachingRegistryClient(remoteImageRegistryClient{keychain: h.registryKeychain()})
 	results, seenCount, err := h.collectContainerImageAuditResults(context.Background(), client)
 	if err != nil {
 		return nil, err
@@ -451,6 +490,7 @@ func (h *Hub) upsertContainerImageAudit(result imageAuditResult) (bool, error) {
 		"overall_latest_tag":     result.OverallTag,
 		"new_major_tag":          result.NewMajorTag,
 		"major_update_available": result.HasMajorUpdate,
+		"error_kind":             result.ErrorKind,
 	})
 
 	targets := buildImageNotificationTargets(result)
@@ -505,6 +545,19 @@ func buildImageNotificationTargets(result imageAuditResult) []imageNotificationT
 	return targets
 }
 
+// imageAuditEventSeverity derives a notification severity from the audit
+// result: a new major version available is more actionable than a routine
+// patch update, and an auth failure during the check needs operator attention.
+func imageAuditEventSeverity(result imageAuditResult) string {
+	if result.HasMajorUpdate {
+		return "warning"
+	}
+	if result.ErrorKind == imageAuditErrorAuth {
+		return "warning"
+	}
+	return "info"
+}
+
 func buildImageNotificationSignature(targets []imageNotificationTarget) string {
 	if len(targets) == 0 {
 		return ""
@@ -551,6 +604,7 @@ func (h *Hub) containerImageAuditNotificationEvent(rec *core.Record, result imag
 	return notifications.Event{
 		Kind:       notifications.EventContainerImageUpdateAvailable,
 		OccurredAt: result.CheckedAt.UTC(),
+		Severity:   imageAuditEventSeverity(result),
 		Resource: notifications.ResourceRef{
 			ID:   auditContainerKey(result.Target.AgentID, result.Target.ContainerID),
 			Name: firstNonEmpty(result.Target.ContainerName, result.Target.ContainerID),
@@ -705,28 +759,43 @@ func normalizePlatformArchitecture(arch string) string {
 }
 
 func parseNumericVersion(tag string) (numericVersion, bool) {
-	trimmed := strings.TrimPrefix(tag, "v")
-	variant := ""
-	if dash := strings.Index(trimmed, "-"); dash > 0 {
-		variant = trimmed[dash+1:]
-		trimmed = trimmed[:dash]
-	}
-	parts := strings.Split(trimmed, ".")
-	if len(parts) == 0 || len(parts) > 3 {
+	parsed, ok := parseTag(tag)
+	if !ok {
 		return numericVersion{}, false
 	}
-	values := [3]int{}
-	for i, part := range parts {
-		if part == "" {
-			return numericVersion{}, false
-		}
-		value, err := strconv.Atoi(part)
-		if err != nil {
-			return numericVersion{}, false
-		}
-		values[i] = value
+	return numericVersion{
+		Major:        int(parsed.Version.Major()),
+		Minor:        int(parsed.Version.Minor()),
+		Patch:        int(parsed.Version.Patch()),
+		Parts:        parsed.Parts,
+		Variant:      parsed.Variant,
+		IsPrerelease: parsed.IsPrerelease,
+		HasDots:      parsed.HasDots,
+		semver:       parsed.Version,
+	}, true
+}
+
+// applyTagRegexFilter narrows a list of registry tags using user-provided
+// regexes. The current tag is always preserved so the audit baseline doesn't
+// become unreachable. Priority: include first, then exclude. A nil regex is
+// a no-op for that side.
+func applyTagRegexFilter(tags []string, currentTag string, include, exclude *regexp.Regexp) []string {
+	if include == nil && exclude == nil {
+		return tags
 	}
-	return numericVersion{Major: values[0], Minor: values[1], Patch: values[2], Parts: len(parts), Variant: variant}, true
+	out := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if tag != currentTag {
+			if include != nil && !include.MatchString(tag) {
+				continue
+			}
+			if exclude != nil && exclude.MatchString(tag) {
+				continue
+			}
+		}
+		out = append(out, tag)
+	}
+	return out
 }
 
 func selectAuditTag(tags []string, currentTag string, current numericVersion, policy string) (string, bool) {
@@ -739,6 +808,16 @@ func selectAuditTag(tags []string, currentTag string, current numericVersion, po
 			continue
 		}
 		if candidate.Variant != current.Variant {
+			continue
+		}
+		// Skip prereleases unless the user is already running one — we never
+		// want to suggest jumping from a stable tag to an rc/alpha/beta.
+		if candidate.IsPrerelease && !current.IsPrerelease {
+			continue
+		}
+		// Filter pure numeric build IDs (e.g. "608111629") when the current
+		// tag has dots — Masterminds accepts them as valid 1-part versions.
+		if current.HasDots && !candidate.HasDots {
 			continue
 		}
 		switch policy {
@@ -774,6 +853,12 @@ func selectLatestSemverTag(tags []string, variant string) (string, numericVersio
 		if candidate.Variant != variant {
 			continue
 		}
+		if candidate.IsPrerelease {
+			continue
+		}
+		if !candidate.HasDots {
+			continue
+		}
 		if !found || compareNumericVersions(candidate, best) > 0 {
 			best = candidate
 			bestTag = tag
@@ -784,6 +869,9 @@ func selectLatestSemverTag(tags []string, variant string) (string, numericVersio
 }
 
 func compareNumericVersions(left, right numericVersion) int {
+	if left.semver != nil && right.semver != nil {
+		return left.semver.Compare(right.semver)
+	}
 	leftValues := []int{left.Major, left.Minor, left.Patch}
 	rightValues := []int{right.Major, right.Minor, right.Patch}
 	for i := range leftValues {

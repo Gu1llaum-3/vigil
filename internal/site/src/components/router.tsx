@@ -5,6 +5,7 @@ const routes = {
 	notifications: "/notifications",
 	monitors: "/monitors",
 	monitor: "/monitors/:id",
+	images: "/images",
 	settings: `/settings/:name?`,
 	forgot_password: `/forgot-password`,
 	request_otp: `/request-otp`,

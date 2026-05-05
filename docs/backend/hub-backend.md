@@ -596,7 +596,9 @@ Tag selection rules are intentionally simple:
 - one-part numeric tags such as `15` use `semver_major` and track the newest `15.x.x`
 - two-part numeric tags such as `15.2` use `semver_minor` and track the newest `15.2.x`
 - three-part numeric tags such as `15.2.3` also use `semver_minor` and track the newest `15.2.x`
-- numeric tags with a variant suffix (`15-alpine`, `1.25-bookworm`, `20.11.1-alpine3.19`) follow the same major/minor rules but only match candidates that share the same suffix — `1.2.3-alpine` is never proposed as an update of `1.2.3-bullseye`
+- tags are parsed via Masterminds/semver (`internal/hub/image_tag_parser.go`) so prefixed forms (`v1.2.3`) and full semver with prereleases parse correctly; prereleases (`-rc1`, `-alpha.1`, `-beta-2`, etc.) are excluded from candidates unless the current tag is itself a prerelease
+- numeric tags with a variant suffix (`15-alpine`, `1.25-bookworm`, `20.11.1-alpine3.19`, `8-jdk-slim`, `8.2-fpm-alpine`) follow the same major/minor rules but only match candidates that share the same whitelisted suffix (`knownVariantSuffixes`) — `1.2.3-alpine` is never proposed as an update of `1.2.3-bullseye`
+- pure numeric tags without dots (e.g. `608111629`) are filtered out as build IDs when the current tag has dots, even though Masterminds technically accepts them as one-part versions
 
 Per-container overrides: an admin can override the auto-deduced policy for any container via the dropdown menu in the dashboard's container table or by writing to `container_audit_overrides`. Supported overrides:
 
@@ -605,7 +607,11 @@ Per-container overrides: an admin can override the auto-deduced policy for any c
 - `minor` — force `semver_major` (track patches and minors within the same major).
 - `disabled` — skip the audit entirely for that container; the record is upserted with `status: disabled` and no notification signature is set, so re-enabling later will trigger a fresh notification on the first detected update.
 
+Each override row also carries optional `tag_include` and `tag_exclude` Go-flavored regexes (migration `20_add_tag_filters_to_container_audit_overrides.go`). When set, they narrow the candidate tag list returned by the registry (`applyTagRegexFilter`) before the semver comparison: priority is include first, then exclude. The container's current tag is always preserved so the audit baseline never becomes unreachable. Both regexes are validated server-side at write time. Use `tag_include="^v3\\."` to lock a `traefik` container to its v3 series even when v4 ships, or `tag_exclude="-rc\\d*$"` to drop release candidates if the upstream uses them outside semver prerelease syntax.
+
 Overrides are loaded once per audit cycle and applied during `collectContainerImageAuditResults` before the registry call, so a `disabled` override never reaches the registry.
+
+Audit cycles run with a bounded worker pool (`runImageAuditPool`, default `imageAuditParallelism = 4`), and each container has its own 20s context. The registry client used during a cycle is a `cachingRegistryClient` that memoizes `ListTags` per repository (so 50 containers all using `nginx` issue a single `/v2/library/nginx/tags/list`) and applies a fixed-backoff retry on transient registry errors (network, 5xx, timeout — not on 401/403/404). Errors surfaced to the frontend keep the human message on `error` and add a stable kind on `details.error_kind` (`auth_failed`, `not_found`, `timeout`, `network`, `registry_error`, `unknown`) so the UI can suggest the right remediation (e.g. "add registry credentials" vs. "image was deleted").
 
 Override changes also reflect immediately into the matching `container_image_audits` records (without waiting for the next cycle), via `applyOverrideToAuditRecords` invoked from the override API handlers. Setting `disabled` stamps `status=disabled` on the matching audit rows; reverting away from `disabled` resets `status=unknown` so the next cycle re-evaluates. Other policy switches leave the existing status alone — the cached result still reflects the *previous* policy until the next cycle (or "Check images now"). The frontend dashboard subscribes to the `container_image_audits` collection (debounced 1.5s) so these writes propagate without a manual refresh.
 
@@ -617,6 +623,8 @@ For semver-like tags, the backend now separates two concepts:
 Example: `ghcr.io/mealie-recipes/mealie:v2.2.5` can be `up_to_date` in its `v2.2.x` line while still surfacing `v3.15.2` as a newer major to plan for.
 
 Notification dispatch for image updates intentionally follows a different rule than the raw audit `status` field. The hub notifies on newer compatible tags becoming available, even if the current tag is still up to date in its own line. For example, `1.2.5` may stay `up_to_date` in `1.2.x` while still notifying when `1.3.0` or `2.0.0` first appear.
+
+The dispatched notification carries an event-specific severity (`imageAuditEventSeverity`): `warning` when a new major is detected or when the audit failed with `error_kind=auth_failed`, otherwise `info`. The `notifications.Event` struct now exposes a `Severity` override that takes precedence over `Kind.Severity()`; `dispatcher.go` and `system_notifications.go` both consume it through `Event.EffectiveSeverity()`.
 
 The per-container notification state is stored directly on `container_image_audits`:
 
