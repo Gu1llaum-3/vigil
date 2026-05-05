@@ -38,20 +38,15 @@ function classifyBucket(audit: ContainerImageAudit): Bucket {
 	return "other"
 }
 
-function bucketLabel(bucket: Bucket, t: ReturnType<typeof useLingui>["t"]) {
-	switch (bucket) {
-		case "major":
-			return t`New major versions`
-		case "update":
-			return t`Updates available`
-		case "up_to_date":
-			return t`Up to date`
-		case "failed":
-			return t`Check failed`
-		case "disabled":
-			return t`Disabled`
-		default:
-			return t`Unsupported`
+function useBucketLabels(): Record<Bucket, string> {
+	const { t } = useLingui()
+	return {
+		major: t`New major versions`,
+		update: t`Updates available`,
+		up_to_date: t`Up to date`,
+		failed: t`Check failed`,
+		disabled: t`Disabled`,
+		other: t`Unsupported`,
 	}
 }
 
@@ -74,17 +69,20 @@ function bucketIcon(bucket: Bucket) {
 
 const bucketOrder: Bucket[] = ["major", "update", "failed", "up_to_date", "disabled", "other"]
 
-function lineStatusLabel(audit: ContainerImageAudit, t: ReturnType<typeof useLingui>["t"]): string {
-	const ls = audit.line_status || audit.status
-	if (ls === "patch_available") return t`Patch available`
-	if (ls === "minor_available") return t`Minor available`
-	if (ls === "tag_rebuilt") return t`Tag rebuilt`
-	if (audit.status === "update_available") return t`Update available`
-	if (audit.status === "up_to_date" || ls === "up_to_date") return t`Up to date`
-	if (audit.status === "check_failed") return t`Check failed`
-	if (audit.status === "unsupported") return t`Unsupported`
-	if (audit.status === "disabled") return t`Disabled`
-	return t`Unknown`
+function useLineStatusLabel(): (audit: ContainerImageAudit) => string {
+	const { t } = useLingui()
+	return (audit: ContainerImageAudit) => {
+		const ls = audit.line_status || audit.status
+		if (ls === "patch_available") return t`Patch available`
+		if (ls === "minor_available") return t`Minor available`
+		if (ls === "tag_rebuilt") return t`Tag rebuilt`
+		if (audit.status === "update_available") return t`Update available`
+		if (audit.status === "up_to_date" || ls === "up_to_date") return t`Up to date`
+		if (audit.status === "check_failed") return t`Check failed`
+		if (audit.status === "unsupported") return t`Unsupported`
+		if (audit.status === "disabled") return t`Disabled`
+		return t`Unknown`
+	}
 }
 
 function formatRelative(iso: string): string {
@@ -147,7 +145,7 @@ function CountersStrip({ counts }: { counts: Record<Bucket, number> }) {
 		{ bucket: "up_to_date", tone: "text-emerald-400 border-emerald-500/30 bg-emerald-500/5" },
 		{ bucket: "disabled", tone: "text-muted-foreground border-border/40 bg-muted/30" },
 	]
-	const { t } = useLingui()
+	const labels = useBucketLabels()
 	return (
 		<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
 			{cards.map(({ bucket, tone }) => (
@@ -160,7 +158,7 @@ function CountersStrip({ counts }: { counts: Record<Bucket, number> }) {
 				>
 					<div className="flex items-center gap-2 text-xs uppercase tracking-wide">
 						{bucketIcon(bucket)}
-						<span>{bucketLabel(bucket, t)}</span>
+						<span>{labels[bucket]}</span>
 					</div>
 					<div className="mt-2 text-2xl font-bold tabular-nums">{counts[bucket] ?? 0}</div>
 				</div>
@@ -171,7 +169,15 @@ function CountersStrip({ counts }: { counts: Record<Bucket, number> }) {
 
 // ── row + group ──────────────────────────────────────────────────────────────
 
-function AuditRow({ entry, onSelect }: { entry: AuditedEntry; onSelect: () => void }) {
+function AuditRow({
+	entry,
+	onSelect,
+	statusLabel,
+}: {
+	entry: AuditedEntry
+	onSelect: () => void
+	statusLabel: string
+}) {
 	const { t } = useLingui()
 	const audit = entry.image_audit
 	const bucket = classifyBucket(audit)
@@ -216,9 +222,9 @@ function AuditRow({ entry, onSelect }: { entry: AuditedEntry; onSelect: () => vo
 				</div>
 			</div>
 			<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-				{bucket !== "up_to_date" && bucket !== "disabled" && (
+				{bucket !== "up_to_date" && bucket !== "disabled" && statusLabel && (
 					<Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-						{lineStatusLabel(audit, t)}
+						{statusLabel}
 					</Badge>
 				)}
 				{targets.map((tg) => (
@@ -249,7 +255,8 @@ function AuditGroup({
 	onSelect: (e: AuditedEntry) => void
 	defaultOpen: boolean
 }) {
-	const { t } = useLingui()
+	const labels = useBucketLabels()
+	const lineLabelFor = useLineStatusLabel()
 	const [open, setOpen] = useState(defaultOpen)
 	if (entries.length === 0) return null
 	return (
@@ -261,7 +268,7 @@ function AuditGroup({
 			>
 				<div className="flex items-center gap-2">
 					{bucketIcon(bucket)}
-					<span className="text-sm font-semibold">{bucketLabel(bucket, t)}</span>
+					<span className="text-sm font-semibold">{labels[bucket]}</span>
 					<Badge variant="secondary" className="ms-1">
 						{entries.length}
 					</Badge>
@@ -271,7 +278,12 @@ function AuditGroup({
 			{open && (
 				<div className="divide-y divide-border/40">
 					{entries.map((entry) => (
-						<AuditRow key={`${entry.host_id}|${entry.id}`} entry={entry} onSelect={() => onSelect(entry)} />
+						<AuditRow
+							key={`${entry.host_id}|${entry.id}`}
+							entry={entry}
+							onSelect={() => onSelect(entry)}
+							statusLabel={lineLabelFor(entry.image_audit)}
+						/>
 					))}
 				</div>
 			)}
@@ -293,6 +305,7 @@ function AuditDetail({
 	onDisable: (entry: AuditedEntry) => Promise<void>
 }) {
 	const { t } = useLingui()
+	const lineLabelFor = useLineStatusLabel()
 	const admin = isAdmin()
 	if (!entry) return null
 	const audit = entry.image_audit
@@ -320,7 +333,7 @@ function AuditDetail({
 						</h3>
 						<div className="flex flex-wrap items-center gap-2">
 							<Badge variant="outline" className="text-[10px] uppercase">
-								{lineStatusLabel(audit, t)}
+								{lineLabelFor(audit)}
 							</Badge>
 							<Badge variant="secondary" className="text-[10px]">
 								{audit.policy || "auto"}
