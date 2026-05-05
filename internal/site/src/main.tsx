@@ -11,7 +11,7 @@ import { $router } from "@/components/router.tsx"
 import Settings from "@/components/routes/settings/layout.tsx"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { Toaster } from "@/components/ui/toaster.tsx"
-import { pb, updateUserSettings } from "@/lib/api.ts"
+import { pb, updateUserSettings, verifyAuth } from "@/lib/api.ts"
 import { dynamicActivate, getLocale } from "@/lib/i18n"
 import { $authenticated, $copyContent, $direction, $userSettings, defaultLayoutWidth } from "@/lib/stores.ts"
 
@@ -31,6 +31,8 @@ const App = memo(() => {
 		const unsubscribeAuth = pb.authStore.onChange(() => {
 			$authenticated.set(pb.authStore.isValid)
 		})
+		// verify token is still valid server-side (catches stale tokens after DB reset)
+		verifyAuth()
 		// get user settings
 		updateUserSettings()
 		return () => {

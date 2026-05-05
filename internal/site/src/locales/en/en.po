@@ -127,6 +127,10 @@ msgstr "Add monitor here"
 msgid "Add rule"
 msgstr "Add rule"
 
+#: src/components/routes/images.tsx
+msgid "Adjust or reset the current filters to see audited container images."
+msgstr "Adjust or reset the current filters to see audited container images."
+
 #: src/components/routes/settings/general.tsx
 msgid "Adjust the width of the main layout"
 msgstr "Adjust the width of the main layout"
@@ -159,6 +163,10 @@ msgstr "Agent offline"
 msgid "Agents"
 msgstr "Agents"
 
+#: src/components/routes/images.tsx
+msgid "Agents are configured, but no Docker containers have been reported by monitored hosts."
+msgstr "Agents are configured, but no Docker containers have been reported by monitored hosts."
+
 #: src/components/routes/settings/agents.tsx
 msgid "Agents connect to the hub via WebSocket."
 msgstr "Agents connect to the hub via WebSocket."
@@ -177,6 +185,10 @@ msgstr "All categories"
 msgid "All events"
 msgstr "All events"
 
+#: src/components/routes/images.tsx
+msgid "All hosts"
+msgstr "All hosts"
+
 #: src/components/routes/settings/notifications/history.tsx
 msgid "All rules"
 msgstr "All rules"
@@ -185,6 +197,7 @@ msgstr "All rules"
 msgid "All severities"
 msgstr "All severities"
 
+#: src/components/routes/images.tsx
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "All statuses"
@@ -379,6 +392,10 @@ msgstr "Configuration"
 msgid "Configure a notification delivery destination."
 msgstr "Configure a notification delivery destination."
 
+#: src/components/routes/images.tsx
+msgid "Configure an agent to start collecting container and image audit data."
+msgstr "Configure an agent to start collecting container and image audit data."
+
 #: src/components/routes/settings/purge.tsx
 msgid "Configure automatic retention for monitoring and notification history, then run manual cleanups when needed."
 msgstr "Configure automatic retention for monitoring and notification history, then run manual cleanups when needed."
@@ -428,6 +445,10 @@ msgstr "Container, image, host, ports…"
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Containers"
 msgstr "Containers"
+
+#: src/components/routes/images.tsx
+msgid "Containers were detected, but image audit results have not been generated yet."
+msgstr "Containers were detected, but image audit results have not been generated yet."
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/lib/utils.ts
@@ -1032,6 +1053,10 @@ msgstr "Language"
 msgid "Last check"
 msgstr "Last check"
 
+#: src/components/routes/images.tsx
+msgid "Last check:"
+msgstr "Last check:"
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Last message"
 msgstr "Last message"
@@ -1269,6 +1294,10 @@ msgstr "New major versions"
 msgid "Next"
 msgstr "Next"
 
+#: src/components/routes/images.tsx
+msgid "No agents configured"
+msgstr "No agents configured"
+
 #: src/components/routes/dashboard/empty-state.tsx
 msgid "No agents connected"
 msgstr "No agents connected"
@@ -1280,6 +1309,10 @@ msgstr "No channels configured yet."
 #: src/components/routes/settings/notifications.tsx
 msgid "No channels configured. Add one to start sending notifications."
 msgstr "No channels configured. Add one to start sending notifications."
+
+#: src/components/routes/images.tsx
+msgid "No containers detected"
+msgstr "No containers detected"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "No containers match the current filter."
@@ -1311,8 +1344,16 @@ msgid "No hosts match the current filter."
 msgstr "No hosts match the current filter."
 
 #: src/components/routes/images.tsx
-msgid "No image audit data yet. Run a check to populate this view."
-msgstr "No image audit data yet. Run a check to populate this view."
+msgid "No image audit data yet"
+msgstr "No image audit data yet"
+
+#: src/components/routes/images.tsx
+#~ msgid "No image audit data yet. Run a check to populate this view."
+#~ msgstr "No image audit data yet. Run a check to populate this view."
+
+#: src/components/routes/images.tsx
+msgid "No images match these filters"
+msgstr "No images match these filters"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "No latency"
@@ -1717,6 +1758,7 @@ msgstr "Reset"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/images.tsx
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Reset filters"
@@ -1889,6 +1931,7 @@ msgid "Server URL"
 msgstr "Server URL"
 
 #: src/components/routes/dashboard/empty-state.tsx
+#: src/components/routes/images.tsx
 msgid "Set up agents"
 msgstr "Set up agents"
 

@@ -38,12 +38,20 @@ export async function updateUserSettings() {
 		const req = await pb.collection("user_settings").getFirstListItem("", { fields: "settings" })
 		$userSettings.set(req.settings)
 		return
-	} catch (e) {
-		console.error("get settings", e)
+	} catch (e: unknown) {
+		// Only create when there is genuinely no record yet (404).
+		// Any other error (expired token, deleted user, server error) should
+		// not trigger a create — it would hit the create rule and produce a
+		// confusing "sql: no rows in result set" server-side error.
+		if ((e as { status?: number })?.status !== 404) {
+			console.error("get settings", e)
+			return
+		}
 	}
-	// create user settings if error fetching existing
+	const userId = pb.authStore.record?.id
+	if (!userId) return
 	try {
-		const createdSettings = await pb.collection("user_settings").create({ user: pb.authStore.record?.id })
+		const createdSettings = await pb.collection("user_settings").create({ user: userId })
 		$userSettings.set(createdSettings.settings)
 	} catch (e) {
 		console.error("create settings", e)

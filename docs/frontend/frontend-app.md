@@ -222,6 +222,7 @@ What the page renders:
 - collapsible groups by bucket in priority order (major → update → failed → up_to_date → disabled → other), each row showing the container/host, current image ref, status badge, and short tag pills (line / same major / new major) with the audit timestamp
 - a right-side `Sheet` drawer per row with full version, digest, and source details, plus admin actions `Pin to current tag` and `Disable audit`. Pinning posts an override with `policy=patch` and a `tag_include` regex anchored on the current tag.
 - a free-text search input that filters across container, host, image ref, and tag fields
+- distinct empty states for no configured agents, no detected containers, containers without generated audit results, and active filters with no matches
 
 Data source: `GET /api/app/dashboard` (filtered to entries with a non-empty `image_audit`). The page subscribes to the `container_image_audits` PocketBase collection with the standard 1-second debounce so audit state updates propagate without a manual refresh; the drawer re-resolves its selected row against the latest data each render so the open detail view stays in sync.
 

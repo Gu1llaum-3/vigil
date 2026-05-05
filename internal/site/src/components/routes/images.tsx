@@ -1,4 +1,5 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro"
+import { getPagePath } from "@nanostores/router"
 import {
 	AlertTriangleIcon,
 	BoxesIcon,
@@ -8,16 +9,20 @@ import {
 	Loader2Icon,
 	PartyPopperIcon,
 	RefreshCwIcon,
+	SearchXIcon,
+	ServerIcon,
 	ShieldOffIcon,
 	XCircleIcon,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { $router, Link } from "@/components/router"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { toast } from "@/components/ui/use-toast"
-import { isAdmin, pb } from "@/lib/api"
+import { isAdmin, isReadOnlyUser, pb } from "@/lib/api"
 import type { ContainerFleetEntry, ContainerImageAudit, DashboardResponse } from "@/lib/dashboard-types"
 import { cn } from "@/lib/utils"
 
@@ -30,7 +35,12 @@ type Bucket = "major" | "update" | "up_to_date" | "failed" | "disabled" | "other
 function classifyBucket(audit: ContainerImageAudit): Bucket {
 	if (audit.major_update_available) return "major"
 	const ls = audit.line_status || audit.status
-	if (ls === "patch_available" || ls === "minor_available" || ls === "tag_rebuilt" || audit.status === "update_available")
+	if (
+		ls === "patch_available" ||
+		ls === "minor_available" ||
+		ls === "tag_rebuilt" ||
+		audit.status === "update_available"
+	)
 		return "update"
 	if (audit.status === "up_to_date" || ls === "up_to_date") return "up_to_date"
 	if (audit.status === "check_failed") return "failed"
@@ -68,6 +78,7 @@ function bucketIcon(bucket: Bucket) {
 }
 
 const bucketOrder: Bucket[] = ["major", "update", "failed", "up_to_date", "disabled", "other"]
+const ALL_FILTERS = "__all__"
 
 function useLineStatusLabel(): (audit: ContainerImageAudit) => string {
 	const { t } = useLingui()
@@ -99,6 +110,7 @@ function formatRelative(iso: string): string {
 // ── data hook ────────────────────────────────────────────────────────────────
 
 function useImageAudits() {
+	const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
 	const [containers, setContainers] = useState<AuditedEntry[]>([])
 	const [loading, setLoading] = useState(true)
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -106,9 +118,8 @@ function useImageAudits() {
 	const refetch = useCallback(async () => {
 		try {
 			const res = await pb.send<DashboardResponse>("/api/app/dashboard", { method: "GET" })
-			const audited = (res.containers ?? []).filter(
-				(c): c is AuditedEntry => !!c.image_audit && !!c.image_audit.status
-			)
+			const audited = (res.containers ?? []).filter((c): c is AuditedEntry => !!c.image_audit && !!c.image_audit.status)
+			setDashboard(res)
 			setContainers(audited)
 		} catch {
 			/* transient error — keep last value */
@@ -119,20 +130,23 @@ function useImageAudits() {
 
 	useEffect(() => {
 		refetch()
-		let unsubscribe: (() => void) | undefined
+		const unsubscribes: Array<() => void> = []
+		const debouncedRefetch = () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current)
+			debounceRef.current = setTimeout(refetch, 1000)
+		}
 		;(async () => {
-			unsubscribe = await pb.collection("container_image_audits").subscribe("*", () => {
-				if (debounceRef.current) clearTimeout(debounceRef.current)
-				debounceRef.current = setTimeout(refetch, 1000)
-			})
+			unsubscribes.push(await pb.collection("agents").subscribe("*", debouncedRefetch))
+			unsubscribes.push(await pb.collection("host_snapshots").subscribe("*", debouncedRefetch))
+			unsubscribes.push(await pb.collection("container_image_audits").subscribe("*", debouncedRefetch))
 		})()
 		return () => {
-			unsubscribe?.()
+			for (const unsubscribe of unsubscribes) unsubscribe()
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
 	}, [refetch])
 
-	return { containers, loading, refetch }
+	return { dashboard, containers, loading, refetch }
 }
 
 // ── counters ─────────────────────────────────────────────────────────────────
@@ -237,7 +251,6 @@ function AuditRow({
 						{tg.value}
 					</Badge>
 				))}
-				<span className="hidden text-xs text-muted-foreground sm:inline">{formatRelative(audit.checked_at)}</span>
 				<ChevronRightIcon className="size-4 text-muted-foreground" />
 			</div>
 		</button>
@@ -319,12 +332,8 @@ function AuditDetail({
 		<Sheet open onOpenChange={(o) => !o && onClose()}>
 			<SheetContent side="right" className="w-full max-w-xl overflow-y-auto px-6 py-6 sm:max-w-xl">
 				<SheetHeader className="space-y-1 px-0">
-					<SheetTitle className="text-base font-semibold">
-						{entry.name || entry.id}
-					</SheetTitle>
-					<SheetDescription className="font-mono text-xs">
-						{entry.host_name || entry.host_id}
-					</SheetDescription>
+					<SheetTitle className="text-base font-semibold">{entry.name || entry.id}</SheetTitle>
+					<SheetDescription className="font-mono text-xs">{entry.host_name || entry.host_id}</SheetDescription>
 				</SheetHeader>
 				<div className="mt-4 space-y-4">
 					<section className="space-y-1.5 rounded-md border border-border/60 p-3">
@@ -353,9 +362,10 @@ function AuditDetail({
 						</h3>
 						<Row label={t`Current`} value={audit.tag} mono />
 						<Row label={t`Latest in line`} value={audit.line_latest_tag || audit.latest_tag || ""} mono />
-						{audit.same_major_latest_tag && audit.same_major_latest_tag !== (audit.line_latest_tag || audit.latest_tag) && (
-							<Row label={t`Latest same major`} value={audit.same_major_latest_tag} mono />
-						)}
+						{audit.same_major_latest_tag &&
+							audit.same_major_latest_tag !== (audit.line_latest_tag || audit.latest_tag) && (
+								<Row label={t`Latest same major`} value={audit.same_major_latest_tag} mono />
+							)}
 						{audit.overall_latest_tag &&
 							audit.overall_latest_tag !== audit.same_major_latest_tag &&
 							audit.overall_latest_tag !== (audit.line_latest_tag || audit.latest_tag) && (
@@ -399,33 +409,146 @@ function AuditDetail({
 	)
 }
 
+function EmptyAuditState({
+	kind,
+	onResetFilters,
+	onRunAudit,
+	auditing,
+}: {
+	kind: "no_agents" | "no_containers" | "no_audits" | "no_filter_results"
+	onResetFilters: () => void
+	onRunAudit: () => void
+	auditing: boolean
+}) {
+	const canManageAgents = !isReadOnlyUser()
+	const admin = isAdmin()
+	const icon =
+		kind === "no_agents" ? (
+			<ServerIcon className="size-8 text-muted-foreground" />
+		) : (
+			<SearchXIcon className="size-8 text-muted-foreground" />
+		)
+
+	return (
+		<div className="flex flex-col items-center justify-center gap-5 rounded-lg border border-dashed border-border/60 px-6 py-12 text-center">
+			<div className="flex size-16 items-center justify-center rounded-2xl border border-border/70 bg-muted/40">
+				{icon}
+			</div>
+			{kind === "no_agents" && (
+				<div className="space-y-2">
+					<h2 className="text-lg font-semibold">
+						<Trans>No agents configured</Trans>
+					</h2>
+					<p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+						<Trans>Configure an agent to start collecting container and image audit data.</Trans>
+					</p>
+				</div>
+			)}
+			{kind === "no_containers" && (
+				<div className="space-y-2">
+					<h2 className="text-lg font-semibold">
+						<Trans>No containers detected</Trans>
+					</h2>
+					<p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+						<Trans>Agents are configured, but no Docker containers have been reported by monitored hosts.</Trans>
+					</p>
+				</div>
+			)}
+			{kind === "no_audits" && (
+				<div className="space-y-2">
+					<h2 className="text-lg font-semibold">
+						<Trans>No image audit data yet</Trans>
+					</h2>
+					<p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+						<Trans>Containers were detected, but image audit results have not been generated yet.</Trans>
+					</p>
+				</div>
+			)}
+			{kind === "no_filter_results" && (
+				<div className="space-y-2">
+					<h2 className="text-lg font-semibold">
+						<Trans>No images match these filters</Trans>
+					</h2>
+					<p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+						<Trans>Adjust or reset the current filters to see audited container images.</Trans>
+					</p>
+				</div>
+			)}
+			{kind === "no_agents" && canManageAgents && (
+				<Button asChild>
+					<Link href={getPagePath($router, "settings", { name: "agents" })}>
+						<Trans>Set up agents</Trans>
+					</Link>
+				</Button>
+			)}
+			{kind === "no_audits" && admin && (
+				<Button variant="outline" disabled={auditing} onClick={onRunAudit}>
+					{auditing ? <Loader2Icon className="me-2 size-4 animate-spin" /> : <RefreshCwIcon className="me-2 size-4" />}
+					<Trans>Check images now</Trans>
+				</Button>
+			)}
+			{kind === "no_filter_results" && (
+				<Button variant="outline" onClick={onResetFilters}>
+					<Trans>Reset filters</Trans>
+				</Button>
+			)}
+		</div>
+	)
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export default function ImagesPage() {
 	const { t } = useLingui()
-	const { containers, loading, refetch } = useImageAudits()
+	const { dashboard, containers, loading, refetch } = useImageAudits()
 	const [search, setSearch] = useState("")
+	const [hostFilter, setHostFilter] = useState("")
+	const [statusFilter, setStatusFilter] = useState<Bucket | "">("")
 	const [auditing, setAuditing] = useState(false)
 	const [selected, setSelected] = useState<AuditedEntry | null>(null)
 	const admin = isAdmin()
+	const bucketLabels = useBucketLabels()
+	const allContainers = dashboard?.containers ?? []
+	const totalAgents = dashboard?.summary.total_hosts ?? 0
+	const totalContainers = dashboard?.summary.total_containers ?? allContainers.length
+	const hasActiveFilters = Boolean(search.trim() || hostFilter || statusFilter)
+
+	const lastChecked = useMemo(() => {
+		let max = ""
+		for (const c of containers) {
+			if (c.image_audit.checked_at > max) max = c.image_audit.checked_at
+		}
+		return max
+	}, [containers])
+
+	const uniqueHosts = useMemo(() => {
+		const seen = new Map<string, string>()
+		for (const c of containers) seen.set(c.host_id, c.host_name || c.host_id)
+		return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
+	}, [containers])
 
 	// Re-resolve the selected entry against the latest data so the drawer
 	// reflects the most recent audit state without a manual refresh.
 	const selectedKey = selected ? `${selected.host_id}|${selected.id}` : null
 	const liveSelected = useMemo(
-		() => (selectedKey ? containers.find((c) => `${c.host_id}|${c.id}` === selectedKey) ?? null : null),
+		() => (selectedKey ? (containers.find((c) => `${c.host_id}|${c.id}` === selectedKey) ?? null) : null),
 		[containers, selectedKey]
 	)
 
 	const filtered = useMemo(() => {
+		let result = containers
 		const q = search.trim().toLowerCase()
-		if (!q) return containers
-		return containers.filter((c) =>
-			[c.name, c.id, c.host_name, c.host_id, c.image, c.image_audit?.tag, c.image_audit?.latest_tag]
-				.filter(Boolean)
-				.some((v) => (v as string).toLowerCase().includes(q))
-		)
-	}, [containers, search])
+		if (q) {
+			result = result.filter((c) =>
+				[c.name, c.id, c.host_name, c.host_id, c.image, c.image_audit?.tag, c.image_audit?.latest_tag]
+					.filter(Boolean)
+					.some((v) => (v as string).toLowerCase().includes(q))
+			)
+		}
+		if (hostFilter) result = result.filter((c) => c.host_id === hostFilter)
+		if (statusFilter) result = result.filter((c) => classifyBucket(c.image_audit) === statusFilter)
+		return result
+	}, [containers, search, hostFilter, statusFilter])
 
 	const grouped = useMemo(() => {
 		const out: Record<Bucket, AuditedEntry[]> = {
@@ -454,6 +577,24 @@ export default function ImagesPage() {
 		for (const entry of containers) c[classifyBucket(entry.image_audit)]++
 		return c
 	}, [containers])
+
+	const emptyKind = !loading
+		? totalAgents === 0
+			? "no_agents"
+			: totalContainers === 0
+				? "no_containers"
+				: containers.length === 0
+					? "no_audits"
+					: hasActiveFilters && filtered.length === 0
+						? "no_filter_results"
+						: null
+		: null
+
+	function resetFilters() {
+		setSearch("")
+		setHostFilter("")
+		setStatusFilter("")
+	}
 
 	async function runAuditNow() {
 		setAuditing(true)
@@ -534,42 +675,89 @@ export default function ImagesPage() {
 					)}
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
-					<Input
-						placeholder={t`Search container, host, image…`}
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-						className="sm:w-72"
-					/>
-					{admin && (
-						<Button variant="outline" disabled={auditing} onClick={runAuditNow}>
-							{auditing ? (
-								<Loader2Icon className="me-2 size-4 animate-spin" />
-							) : (
-								<RefreshCwIcon className="me-2 size-4" />
+					{containers.length > 0 && (
+						<>
+							<Input
+								placeholder={t`Search container, host, image…`}
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								className="sm:w-60"
+							/>
+							{uniqueHosts.length > 1 && (
+								<Select
+									value={hostFilter || ALL_FILTERS}
+									onValueChange={(v) => setHostFilter(v === ALL_FILTERS ? "" : v)}
+								>
+									<SelectTrigger className="w-40">
+										<SelectValue placeholder={t`All hosts`} />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value={ALL_FILTERS}>
+											<Trans>All hosts</Trans>
+										</SelectItem>
+										{uniqueHosts.map((h) => (
+											<SelectItem key={h.id} value={h.id}>
+												{h.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							)}
-							<Trans>Check images now</Trans>
-						</Button>
+							<Select
+								value={statusFilter || ALL_FILTERS}
+								onValueChange={(v) => setStatusFilter(v === ALL_FILTERS ? "" : (v as Bucket))}
+							>
+								<SelectTrigger className="w-44">
+									<SelectValue placeholder={t`All statuses`} />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={ALL_FILTERS}>
+										<Trans>All statuses</Trans>
+									</SelectItem>
+									{bucketOrder.map((b) => (
+										<SelectItem key={b} value={b}>
+											{bucketLabels[b]}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</>
+					)}
+					{admin && containers.length > 0 && (
+						<>
+							{lastChecked && (
+								<span className="text-xs text-muted-foreground">
+									<Trans>Last check:</Trans> {formatRelative(lastChecked)}
+								</span>
+							)}
+							<Button variant="outline" disabled={auditing} onClick={runAuditNow}>
+								{auditing ? (
+									<Loader2Icon className="me-2 size-4 animate-spin" />
+								) : (
+									<RefreshCwIcon className="me-2 size-4" />
+								)}
+								<Trans>Check images now</Trans>
+							</Button>
+						</>
 					)}
 				</div>
 			</div>
 
-			<CountersStrip counts={counts} />
+			{containers.length > 0 && <CountersStrip counts={counts} />}
 
-			<div className="space-y-3">
-				{bucketOrder.map((bucket) => (
-					<AuditGroup
-						key={bucket}
-						bucket={bucket}
-						entries={grouped[bucket]}
-						onSelect={setSelected}
-						defaultOpen={bucket === "major" || bucket === "update" || bucket === "failed"}
-					/>
-				))}
-			</div>
-
-			{!loading && containers.length === 0 && (
-				<div className="rounded-lg border border-dashed border-border/60 px-6 py-10 text-center text-sm text-muted-foreground">
-					<Trans>No image audit data yet. Run a check to populate this view.</Trans>
+			{emptyKind ? (
+				<EmptyAuditState kind={emptyKind} onResetFilters={resetFilters} onRunAudit={runAuditNow} auditing={auditing} />
+			) : (
+				<div className="space-y-3">
+					{bucketOrder.map((bucket) => (
+						<AuditGroup
+							key={bucket}
+							bucket={bucket}
+							entries={grouped[bucket]}
+							onSelect={setSelected}
+							defaultOpen={bucket === "major" || bucket === "update" || bucket === "failed"}
+						/>
+					))}
 				</div>
 			)}
 
