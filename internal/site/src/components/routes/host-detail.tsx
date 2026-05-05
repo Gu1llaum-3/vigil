@@ -33,7 +33,11 @@ function formatBytes(bytes: number) {
 		value /= 1024
 		unit++
 	}
-	return `${value >= 10 ? Math.round(value) : Math.round(value * 10) / 10} ${units[unit]}`
+	return `${formatStorageValue(value)} ${units[unit]}`
+}
+
+function formatStorageValue(value: number) {
+	return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function formatRam(mb: number) {
@@ -82,6 +86,21 @@ function imageAuditLabel(status: string) {
 			return <Trans>Disabled</Trans>
 		default:
 			return status || <Trans>Unknown</Trans>
+	}
+}
+
+function imageAuditBadgeClass(status: string) {
+	switch (status) {
+		case "update_available":
+			return "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+		case "up_to_date":
+			return "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+		case "check_failed":
+			return "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+		case "disabled":
+			return "border-border/50 bg-muted/40 text-muted-foreground"
+		default:
+			return "border-border/50 text-muted-foreground"
 	}
 }
 
@@ -343,7 +362,10 @@ export default function HostDetailPage() {
 															{audit?.current_ref || container.image_ref || container.image}
 														</TableCell>
 														<TableCell>
-															<Badge variant="outline" className="text-[10px]">
+															<Badge
+																variant="outline"
+																className={cn("text-[10px]", imageAuditBadgeClass(audit?.status || ""))}
+															>
 																{imageAuditLabel(audit?.status || "")}
 															</Badge>
 														</TableCell>
@@ -442,7 +464,7 @@ export default function HostDetailPage() {
 									<div key={`${mount.device}-${mount.mountpoint}`} className="rounded-md border border-border/60 p-3">
 										<div className="flex items-center justify-between gap-3">
 											<span className="font-medium">{mount.mountpoint}</span>
-											<span className="text-muted-foreground">{mount.used_percent}%</span>
+											<span className="text-muted-foreground">{formatStorageValue(mount.used_percent)}%</span>
 										</div>
 										<div className="mt-1 text-xs text-muted-foreground">
 											{mount.device} · {mount.fs_type} · {formatBytes(mount.used_bytes)} /{" "}

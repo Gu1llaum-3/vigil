@@ -148,7 +148,9 @@ This component demonstrates several frontend conventions used in the project:
 - a navbar-driven "Add agent" dialog for quick installation setup
 - direct links into PocketBase admin views for some advanced operations
 
-The monitors sidebar item shows a live red badge when one or more monitors are currently `down`. It fetches `/api/app/monitors` and subscribes to the `monitors` PocketBase collection with the same 1-second debounce pattern used by the monitors page, so the badge updates dynamically without a full page refresh.
+The hosts sidebar item shows a live red badge when one or more agents are not `connected`. It fetches the `agents` collection and subscribes to `agents` changes with a 1-second debounce, so connect/disconnect transitions update without a full page refresh.
+
+The monitors sidebar item shows a live red badge when one or more monitors are currently `down`. It fetches `/api/app/monitors` and subscribes to both `monitors` and `monitor_events` with the same 1-second debounce pattern used by the monitors page, so status badges update dynamically even when a check event is written before the derived monitor metrics are re-fetched.
 
 A sibling sidebar item links to the dedicated `/images` page, labeled as `Image updates`, and shows an amber badge with the count of containers whose image audit currently reports `update_available`. It uses the same realtime + debounced fetch pattern via `pb.collection("container_image_audits").subscribe`.
 
@@ -200,16 +202,19 @@ For a manual sanity check, run the URL once with `curl` and refresh the page.
 
 ### Realtime Updates
 
-The monitors page subscribes to the `monitors` PocketBase collection with a **1-second debounce**:
+The monitors page and monitor detail page subscribe to `monitors` and `monitor_events` with a **1-second debounce**:
 
 ```ts
-const unsubscribeMonitors = await pb.collection("monitors").subscribe("*", () => {
+const refresh = () => {
   clearTimeout(debounceRef.current)
   debounceRef.current = window.setTimeout(fetchAll, 1000)
-})
+}
+
+const unsubscribeMonitors = await pb.collection("monitors").subscribe("*", refresh)
+const unsubscribeEvents = await pb.collection("monitor_events").subscribe("*", refresh)
 ```
 
-The debounce is critical: the hub scheduler updates monitor records frequently via `SaveNoValidate`. Without debouncing, each check result would fire a re-fetch, resulting in continuous GET requests.
+The debounce is critical: the hub scheduler writes frequent monitor status and event records. Without debouncing, each check result would fire a re-fetch, resulting in continuous GET requests.
 
 The monitors page also includes `Expand all` and `Collapse all` buttons to manage long lists of groups more quickly.
 

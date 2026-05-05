@@ -26,17 +26,19 @@ function useDownMonitorCount() {
 	}, [])
 
 	useEffect(() => {
-		let unsubscribe: (() => void) | undefined
+		const unsubscribes: Array<() => void> = []
 		fetchDownCount()
 		;(async () => {
-			unsubscribe = await pb.collection("monitors").subscribe("*", () => {
+			const refresh = () => {
 				if (debounceRef.current) clearTimeout(debounceRef.current)
 				debounceRef.current = setTimeout(fetchDownCount, 1000)
-			})
+			}
+			unsubscribes.push(await pb.collection("monitors").subscribe("*", refresh))
+			unsubscribes.push(await pb.collection("monitor_events").subscribe("*", refresh))
 		})()
 
 		return () => {
-			unsubscribe?.()
+			for (const unsubscribe of unsubscribes) unsubscribe()
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
 	}, [fetchDownCount])
@@ -78,6 +80,37 @@ function useImageUpdatesCount() {
 	return count
 }
 
+function useDownHostCount() {
+	const [count, setCount] = useState(0)
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	const fetchCount = useCallback(async () => {
+		try {
+			const records = await pb.collection("agents").getFullList<{ status: string }>({ fields: "id,status" })
+			setCount(records.filter((record) => record.status !== "connected").length)
+		} catch {
+			// non-fatal
+		}
+	}, [])
+
+	useEffect(() => {
+		fetchCount()
+		let unsubscribe: (() => void) | undefined
+		;(async () => {
+			unsubscribe = await pb.collection("agents").subscribe("*", () => {
+				if (debounceRef.current) clearTimeout(debounceRef.current)
+				debounceRef.current = setTimeout(fetchCount, 1000)
+			})
+		})()
+		return () => {
+			unsubscribe?.()
+			if (debounceRef.current) clearTimeout(debounceRef.current)
+		}
+	}, [fetchCount])
+
+	return count
+}
+
 function CountBadge({ count, tone = "danger" }: { count: number; tone?: "danger" | "warning" }) {
 	if (count <= 0) return null
 	return (
@@ -94,6 +127,7 @@ function CountBadge({ count, tone = "danger" }: { count: number; tone?: "danger"
 
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
 	const page = useStore($router)
+	const downHostCount = useDownHostCount()
 	const downMonitorCount = useDownMonitorCount()
 	const imageUpdatesCount = useImageUpdatesCount()
 	const items = [
@@ -103,6 +137,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
 			href: getPagePath($router, "hosts"),
 			icon: ServerIcon,
 			activeRoutes: ["hosts", "host"],
+			count: downHostCount,
 		},
 		{
 			label: <Trans>Containers</Trans>,

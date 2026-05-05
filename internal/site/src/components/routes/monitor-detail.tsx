@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro"
 import { getPagePath } from "@nanostores/router"
 import { useStore } from "@nanostores/react"
 import { ArrowLeftIcon, CheckCircle2Icon, Clock3Icon, GaugeIcon, XCircleIcon } from "lucide-react"
-import { memo, useEffect, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Line } from "react-chartjs-2"
 import {
 	Chart as ChartJS,
@@ -182,52 +182,78 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 	const [events, setEvents] = useState<MonitorEventRecord[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const requestSeqRef = useRef(0)
 
 	useEffect(() => {
 		document.title = monitor ? `${monitor.name} / Monitors` : `${t`Monitor`} / Monitors`
 	}, [monitor, t])
 
-	useEffect(() => {
-		if (!monitorId) {
-			setLoading(false)
-			return
-		}
+	const loadData = useCallback(
+		async ({ showLoading = false }: { showLoading?: boolean } = {}) => {
+			const requestSeq = ++requestSeqRef.current
+			if (!monitorId) {
+				setLoading(false)
+				return
+			}
 
-		let cancelled = false
-		async function loadData() {
-			setLoading(true)
+			if (showLoading) setLoading(true)
 			setError(null)
 			try {
-				const groups = (await pb.send("/api/app/monitors", { method: "GET" })) as MonitorGroupResponse[]
+				const groups = await pb.send<MonitorGroupResponse[]>("/api/app/monitors", { method: "GET" })
 				const detail =
 					groups.flatMap((group) => group.monitors).find((item) => item.id === monitorId) ??
-					((await pb.send(`/api/app/monitors/${monitorId}`, { method: "GET" })) as MonitorRecord)
-				if (cancelled) return
+					(await pb.send<MonitorRecord>(`/api/app/monitors/${monitorId}`, { method: "GET" }))
+				if (requestSeq !== requestSeqRef.current) return
 				setMonitor(detail)
 
 				const selectedRange = ranges.find((item) => item.key === range) ?? ranges[0]
 				const since = new Date(Date.now() - selectedRange.hours * 60 * 60 * 1000).toISOString()
 				const intervalMs = Math.max((detail.interval || 60) * 1000, 60_000)
 				const limit = Math.min(Math.max(Math.ceil((selectedRange.hours * 60 * 60 * 1000) / intervalMs) + 50, 250), 5000)
-				const history = (await pb.send(
+				const history = await pb.send<MonitorEventRecord[]>(
 					`/api/app/monitors/${monitorId}/events?since=${encodeURIComponent(since)}&limit=${limit}`,
 					{ method: "GET" }
-				)) as MonitorEventRecord[]
-				if (cancelled) return
+				)
+				if (requestSeq !== requestSeqRef.current) return
 				setEvents(history)
 			} catch (err) {
-				if (cancelled) return
+				if (requestSeq !== requestSeqRef.current) return
 				setError(err instanceof Error ? err.message : "Failed to load monitor")
 			} finally {
-				if (!cancelled) setLoading(false)
+				if (requestSeq === requestSeqRef.current && showLoading) setLoading(false)
 			}
-		}
+		},
+		[monitorId, range]
+	)
 
-		loadData()
-		return () => {
-			cancelled = true
+	useEffect(() => {
+		if (!monitorId) {
+			setLoading(false)
+			return
 		}
-	}, [monitorId, range])
+		loadData({ showLoading: true })
+		return () => {
+			requestSeqRef.current++
+		}
+	}, [monitorId, loadData])
+
+	useEffect(() => {
+		if (!monitorId) return
+		const unsubscribes: Array<() => void> = []
+		const refresh = () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current)
+			debounceRef.current = setTimeout(() => loadData({ showLoading: false }), 1000)
+		}
+		;(async () => {
+			unsubscribes.push(await pb.collection("monitors").subscribe(monitorId, refresh))
+			unsubscribes.push(await pb.collection("monitor_events").subscribe("*", refresh))
+		})()
+		return () => {
+			for (const unsubscribe of unsubscribes) unsubscribe()
+			if (debounceRef.current) clearTimeout(debounceRef.current)
+		}
+	}, [monitorId, loadData])
 
 	const series = useMemo(() => buildSeries(events), [events])
 	const chartData = useMemo(

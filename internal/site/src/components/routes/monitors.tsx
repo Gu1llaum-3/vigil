@@ -686,15 +686,17 @@ export default memo(function MonitorsPage() {
 	// Realtime updates — debounced to avoid a cascade of fetches when
 	// the scheduler updates status every few seconds
 	useEffect(() => {
-		let unsub: (() => void) | undefined
+		const unsubscribes: Array<() => void> = []
 		;(async () => {
-			unsub = await pb.collection("monitors").subscribe("*", () => {
+			const refresh = () => {
 				if (debounceRef.current) clearTimeout(debounceRef.current)
 				debounceRef.current = setTimeout(fetchMonitors, 1000)
-			})
+			}
+			unsubscribes.push(await pb.collection("monitors").subscribe("*", refresh))
+			unsubscribes.push(await pb.collection("monitor_events").subscribe("*", refresh))
 		})()
 		return () => {
-			unsub?.()
+			for (const unsubscribe of unsubscribes) unsubscribe()
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
 	}, [fetchMonitors])
