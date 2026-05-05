@@ -319,6 +319,7 @@ msgid "Check {email} for a reset link."
 msgstr "Vérifiez {email} pour un lien de réinitialisation."
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Check failed"
 msgstr "Vérification échouée"
 
@@ -633,6 +634,7 @@ msgid "Disable audit"
 msgstr "Désactiver l'audit"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Disabled"
 msgstr "Désactivé"
 
@@ -1183,6 +1185,7 @@ msgid "Method (default POST)"
 msgstr "Méthode (POST par défaut)"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Minor available"
 msgstr "Version mineure disponible"
 
@@ -1261,6 +1264,10 @@ msgstr "nouvelle majeure"
 #: src/components/routes/images.tsx
 msgid "New major available"
 msgstr "Nouvelle version majeure disponible"
+
+#: src/components/routes/images.tsx
+msgid "New major versions"
+msgstr "Nouvelles versions majeures"
 
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
@@ -1497,6 +1504,7 @@ msgid "Password reset request received"
 msgstr "Demande de réinitialisation du mot de passe reçue"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Patch available"
 msgstr "Correctif disponible"
 
@@ -1957,6 +1965,7 @@ msgid "Tag include (regex)"
 msgstr "Tag include (regex)"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Tag rebuilt"
 msgstr "Tag reconstruit"
 
@@ -2086,6 +2095,7 @@ msgstr "inconnu"
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/images.tsx
 msgid "Unknown"
 msgstr "Inconnu"
 
@@ -2098,6 +2108,7 @@ msgid "Unread"
 msgstr "Non lue"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Unsupported"
 msgstr "Non pris en charge"
 
@@ -2111,15 +2122,18 @@ msgid "Up"
 msgstr "OK"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Up to date"
 msgstr "À jour"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Update available"
 msgstr "Mise à jour disponible"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Updates available"
 msgstr "Mises à jour disponibles"
 

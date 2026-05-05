@@ -319,6 +319,7 @@ msgid "Check {email} for a reset link."
 msgstr "Zkontrolujte {email} pro odkaz na obnovení."
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Check failed"
 msgstr ""
 
@@ -633,6 +634,7 @@ msgid "Disable audit"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Disabled"
 msgstr ""
 
@@ -1183,6 +1185,7 @@ msgid "Method (default POST)"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Minor available"
 msgstr ""
 
@@ -1260,6 +1263,10 @@ msgstr ""
 
 #: src/components/routes/images.tsx
 msgid "New major available"
+msgstr ""
+
+#: src/components/routes/images.tsx
+msgid "New major versions"
 msgstr ""
 
 #: src/components/routes/notifications.tsx
@@ -1497,6 +1504,7 @@ msgid "Password reset request received"
 msgstr "Žádost o obnovu hesla byla přijata"
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Patch available"
 msgstr ""
 
@@ -1957,6 +1965,7 @@ msgid "Tag include (regex)"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Tag rebuilt"
 msgstr ""
 
@@ -2086,6 +2095,7 @@ msgstr ""
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/images.tsx
 msgid "Unknown"
 msgstr ""
 
@@ -2098,6 +2108,7 @@ msgid "Unread"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Unsupported"
 msgstr ""
 
@@ -2111,15 +2122,18 @@ msgid "Up"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Up to date"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Update available"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/images.tsx
 msgid "Updates available"
 msgstr ""
 
