@@ -6,10 +6,13 @@ import {
 	ActivityIcon,
 	BellIcon,
 	BotIcon,
+	BoxesIcon,
 	DatabaseBackupIcon,
 	HomeIcon,
+	ImageIcon,
 	LogsIcon,
 	MailIcon,
+	ServerIcon,
 	SettingsIcon,
 	UsersIcon,
 } from "lucide-react"
@@ -71,6 +74,45 @@ export default memo(function CommandPalette({ open, setOpen }: { open: boolean; 
 							<HomeIcon className="me-2 size-4" />
 							<span>
 								<Trans>Home</Trans>
+							</span>
+							{PageShortcut}
+						</CommandItem>
+						<CommandItem
+							keywords={["servers", "agents", "fleet"]}
+							onSelect={() => {
+								navigate(getPagePath($router, "hosts"))
+								setOpen(false)
+							}}
+						>
+							<ServerIcon className="me-2 size-4" />
+							<span>
+								<Trans>Hosts</Trans>
+							</span>
+							{PageShortcut}
+						</CommandItem>
+						<CommandItem
+							keywords={["docker", "containers", "runtime"]}
+							onSelect={() => {
+								navigate(getPagePath($router, "containers"))
+								setOpen(false)
+							}}
+						>
+							<BoxesIcon className="me-2 size-4" />
+							<span>
+								<Trans>Containers</Trans>
+							</span>
+							{PageShortcut}
+						</CommandItem>
+						<CommandItem
+							keywords={["images", "audit", "updates"]}
+							onSelect={() => {
+								navigate(getPagePath($router, "images"))
+								setOpen(false)
+							}}
+						>
+							<ImageIcon className="me-2 size-4" />
+							<span>
+								<Trans>Image updates</Trans>
 							</span>
 							{PageShortcut}
 						</CommandItem>

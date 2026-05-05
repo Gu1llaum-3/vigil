@@ -15,6 +15,7 @@ import {
 	XCircleIcon,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { PageHeader } from "@/components/page-header"
 import { $router, Link } from "@/components/router"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -662,86 +663,84 @@ export default function ImagesPage() {
 
 	return (
 		<div className="space-y-4 pb-10">
-			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex items-center gap-2">
-					<BoxesIcon className="size-5 text-muted-foreground" />
-					<h1 className="text-xl font-semibold">
-						<Trans>Container images</Trans>
-					</h1>
-					{!loading && (
-						<span className="text-sm text-muted-foreground">
-							<Plural value={containers.length} one="# audited container" other="# audited containers" />
-						</span>
-					)}
-				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					{containers.length > 0 && (
-						<>
-							<Input
-								placeholder={t`Search container, host, image…`}
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-								className="sm:w-60"
-							/>
-							{uniqueHosts.length > 1 && (
+			<PageHeader
+				icon={BoxesIcon}
+				title={<Trans>Image updates</Trans>}
+				meta={
+					!loading ? (
+						<Plural value={containers.length} one="# audited container" other="# audited containers" />
+					) : undefined
+				}
+				actions={
+					<>
+						{containers.length > 0 && (
+							<>
+								<Input
+									placeholder={t`Search container, host, image…`}
+									value={search}
+									onChange={(e) => setSearch(e.target.value)}
+									className="sm:w-60"
+								/>
+								{uniqueHosts.length > 1 && (
+									<Select
+										value={hostFilter || ALL_FILTERS}
+										onValueChange={(v) => setHostFilter(v === ALL_FILTERS ? "" : v)}
+									>
+										<SelectTrigger className="w-40">
+											<SelectValue placeholder={t`All hosts`} />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value={ALL_FILTERS}>
+												<Trans>All hosts</Trans>
+											</SelectItem>
+											{uniqueHosts.map((h) => (
+												<SelectItem key={h.id} value={h.id}>
+													{h.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								)}
 								<Select
-									value={hostFilter || ALL_FILTERS}
-									onValueChange={(v) => setHostFilter(v === ALL_FILTERS ? "" : v)}
+									value={statusFilter || ALL_FILTERS}
+									onValueChange={(v) => setStatusFilter(v === ALL_FILTERS ? "" : (v as Bucket))}
 								>
-									<SelectTrigger className="w-40">
-										<SelectValue placeholder={t`All hosts`} />
+									<SelectTrigger className="w-44">
+										<SelectValue placeholder={t`All statuses`} />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value={ALL_FILTERS}>
-											<Trans>All hosts</Trans>
+											<Trans>All statuses</Trans>
 										</SelectItem>
-										{uniqueHosts.map((h) => (
-											<SelectItem key={h.id} value={h.id}>
-												{h.name}
+										{bucketOrder.map((b) => (
+											<SelectItem key={b} value={b}>
+												{bucketLabels[b]}
 											</SelectItem>
 										))}
 									</SelectContent>
 								</Select>
-							)}
-							<Select
-								value={statusFilter || ALL_FILTERS}
-								onValueChange={(v) => setStatusFilter(v === ALL_FILTERS ? "" : (v as Bucket))}
-							>
-								<SelectTrigger className="w-44">
-									<SelectValue placeholder={t`All statuses`} />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={ALL_FILTERS}>
-										<Trans>All statuses</Trans>
-									</SelectItem>
-									{bucketOrder.map((b) => (
-										<SelectItem key={b} value={b}>
-											{bucketLabels[b]}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</>
-					)}
-					{admin && containers.length > 0 && (
-						<>
-							{lastChecked && (
-								<span className="text-xs text-muted-foreground">
-									<Trans>Last check:</Trans> {formatRelative(lastChecked)}
-								</span>
-							)}
-							<Button variant="outline" disabled={auditing} onClick={runAuditNow}>
-								{auditing ? (
-									<Loader2Icon className="me-2 size-4 animate-spin" />
-								) : (
-									<RefreshCwIcon className="me-2 size-4" />
+							</>
+						)}
+						{admin && containers.length > 0 && (
+							<>
+								{lastChecked && (
+									<span className="text-xs text-muted-foreground">
+										<Trans>Last check:</Trans> {formatRelative(lastChecked)}
+									</span>
 								)}
-								<Trans>Check images now</Trans>
-							</Button>
-						</>
-					)}
-				</div>
-			</div>
+								<Button variant="outline" disabled={auditing} onClick={runAuditNow}>
+									{auditing ? (
+										<Loader2Icon className="me-2 size-4 animate-spin" />
+									) : (
+										<RefreshCwIcon className="me-2 size-4" />
+									)}
+									<Trans>Check images now</Trans>
+								</Button>
+							</>
+						)}
+					</>
+				}
+			/>
 
 			{containers.length > 0 && <CountersStrip counts={counts} />}
 

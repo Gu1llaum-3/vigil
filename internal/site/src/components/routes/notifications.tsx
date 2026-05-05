@@ -2,6 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { BellIcon, CheckCheckIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react"
 import { useEffect, useState } from "react"
+import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -135,15 +136,11 @@ export default function NotificationsPage() {
 
 	return (
 		<div className="space-y-5">
-			<div>
-				<h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-					<BellIcon className="size-5" />
-					<Trans>Notifications</Trans>
-				</h1>
-				<p className="mt-1 text-sm text-muted-foreground">
-					<Trans>Review system events from monitors, agents, and container image audits.</Trans>
-				</p>
-			</div>
+			<PageHeader
+				icon={BellIcon}
+				title={<Trans>Notifications</Trans>}
+				description={<Trans>Review system events from monitors, agents, and container image audits.</Trans>}
+			/>
 
 			<div className="space-y-3">
 				<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">

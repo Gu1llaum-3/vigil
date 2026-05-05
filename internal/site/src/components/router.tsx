@@ -3,6 +3,9 @@ import { createRouter } from "@nanostores/router"
 const routes = {
 	home: "/",
 	notifications: "/notifications",
+	hosts: "/hosts",
+	host: "/hosts/:id",
+	containers: "/containers",
 	monitors: "/monitors",
 	monitor: "/monitors/:id",
 	images: "/images",

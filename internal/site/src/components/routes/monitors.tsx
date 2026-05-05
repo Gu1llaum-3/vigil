@@ -15,6 +15,7 @@ import {
 	XCircleIcon,
 } from "lucide-react"
 import { memo, useCallback, useEffect, useRef, useState } from "react"
+import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -764,77 +765,78 @@ export default memo(function MonitorsPage() {
 
 	return (
 		<div className="pb-14">
-			{/* Header */}
-			<div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex items-center gap-3">
-					<h1 className="text-2xl font-semibold">
-						<Trans>Monitors</Trans>
-					</h1>
-					{!loading && allMonitors.length > 0 && (
-						<div className="flex items-center gap-2 text-sm">
-							<span className="text-green-600 dark:text-green-400 font-medium">
+			<PageHeader
+				className="mb-6"
+				icon={ActivityIcon}
+				title={<Trans>Monitors</Trans>}
+				meta={
+					!loading && allMonitors.length > 0 ? (
+						<span className="flex flex-wrap items-center gap-2">
+							<span className="font-medium text-green-600 dark:text-green-400">
 								{upCount} <Trans>up</Trans>
 							</span>
-							<span className="text-muted-foreground">·</span>
+							<span>·</span>
 							{downCount > 0 && (
 								<>
-									<span className="text-red-600 dark:text-red-400 font-medium">
+									<span className="font-medium text-red-600 dark:text-red-400">
 										{downCount} <Trans>down</Trans>
 									</span>
-									<span className="text-muted-foreground">·</span>
+									<span>·</span>
 								</>
 							)}
-							<span className="text-muted-foreground">
+							<span>
 								{allMonitors.length} <Trans>total</Trans>
 							</span>
-						</div>
-					)}
-				</div>
-				{!readonly && (
-					<div className="flex flex-wrap gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setAllGroupsOpen(true)}
-							disabled={orderedGroups.length === 0}
-						>
-							<ChevronDownIcon className="h-4 w-4 me-1.5" />
-							<Trans>Expand all</Trans>
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setAllGroupsOpen(false)}
-							disabled={orderedGroups.length === 0}
-						>
-							<ChevronRightIcon className="h-4 w-4 me-1.5" />
-							<Trans>Collapse all</Trans>
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => {
-								setEditGroup(null)
-								setGroupDialog(true)
-							}}
-						>
-							<FolderIcon className="h-4 w-4 me-1.5" />
-							<Trans>Add group</Trans>
-						</Button>
-						<Button
-							size="sm"
-							onClick={() => {
-								setEditMonitor(null)
-								setMonitorDefaultGroupId("")
-								setMonitorDialog(true)
-							}}
-						>
-							<PlusIcon className="h-4 w-4 me-1.5" />
-							<Trans>Add monitor</Trans>
-						</Button>
-					</div>
-				)}
-			</div>
+						</span>
+					) : undefined
+				}
+				actions={
+					!readonly ? (
+						<>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setAllGroupsOpen(true)}
+								disabled={orderedGroups.length === 0}
+							>
+								<ChevronDownIcon className="h-4 w-4 me-1.5" />
+								<Trans>Expand all</Trans>
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setAllGroupsOpen(false)}
+								disabled={orderedGroups.length === 0}
+							>
+								<ChevronRightIcon className="h-4 w-4 me-1.5" />
+								<Trans>Collapse all</Trans>
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									setEditGroup(null)
+									setGroupDialog(true)
+								}}
+							>
+								<FolderIcon className="h-4 w-4 me-1.5" />
+								<Trans>Add group</Trans>
+							</Button>
+							<Button
+								size="sm"
+								onClick={() => {
+									setEditMonitor(null)
+									setMonitorDefaultGroupId("")
+									setMonitorDialog(true)
+								}}
+							>
+								<PlusIcon className="h-4 w-4 me-1.5" />
+								<Trans>Add monitor</Trans>
+							</Button>
+						</>
+					) : undefined
+				}
+			/>
 
 			{/* Empty state */}
 			{!loading && allMonitors.length === 0 && (

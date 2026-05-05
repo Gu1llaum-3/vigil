@@ -17,32 +17,20 @@ import type { DashboardSummary } from "@/lib/dashboard-types"
 
 interface KpiCardsProps {
 	summary: DashboardSummary
-	activeFilter: string | null
-	onFilterChange: (filter: string | null) => void
-	hasContainersSection: boolean
 	hasContainerWarnings: boolean
 	hasContainerErrors: boolean
-	onContainersClick: () => void
 }
 
 interface KpiCardDef {
 	key: string
-	filterKey?: string
+	href?: string
 	label: React.ReactNode
 	value: number | string
 	icon: React.ReactNode
 	variant: "default" | "warning" | "danger" | "success"
 }
 
-export const KpiCards = memo(function KpiCards({
-	summary,
-	activeFilter,
-	onFilterChange,
-	hasContainersSection,
-	hasContainerWarnings,
-	hasContainerErrors,
-	onContainersClick,
-}: KpiCardsProps) {
+export const KpiCards = memo(function KpiCards({ summary, hasContainerWarnings, hasContainerErrors }: KpiCardsProps) {
 	const containersVariant: KpiCardDef["variant"] = hasContainerErrors
 		? "danger"
 		: hasContainerWarnings
@@ -51,7 +39,7 @@ export const KpiCards = memo(function KpiCards({
 	const cards: KpiCardDef[] = [
 		{
 			key: "hosts",
-			filterKey: "all",
+			href: getPagePath($router, "hosts"),
 			label: <Trans>Total hosts</Trans>,
 			value: `${summary.connected_hosts}/${summary.total_hosts}`,
 			icon: <ServerIcon className="size-4" />,
@@ -59,7 +47,7 @@ export const KpiCards = memo(function KpiCards({
 		},
 		{
 			key: "security",
-			filterKey: "security",
+			href: getPagePath($router, "hosts"),
 			label: <Trans>Security updates</Trans>,
 			value: summary.total_security_updates,
 			icon: <ShieldAlertIcon className="size-4" />,
@@ -67,7 +55,7 @@ export const KpiCards = memo(function KpiCards({
 		},
 		{
 			key: "outdated",
-			filterKey: "outdated",
+			href: getPagePath($router, "hosts"),
 			label: <Trans>Outdated packages</Trans>,
 			value: summary.total_outdated_packages,
 			icon: <RefreshCwIcon className="size-4" />,
@@ -75,7 +63,7 @@ export const KpiCards = memo(function KpiCards({
 		},
 		{
 			key: "reboot",
-			filterKey: "reboot",
+			href: getPagePath($router, "hosts"),
 			label: <Trans>Reboot required</Trans>,
 			value: summary.hosts_needing_reboot,
 			icon: <AlertTriangleIcon className="size-4" />,
@@ -83,7 +71,7 @@ export const KpiCards = memo(function KpiCards({
 		},
 		{
 			key: "docker",
-			filterKey: "docker",
+			href: getPagePath($router, "containers"),
 			label: <Trans>Containers</Trans>,
 			value: `${summary.running_containers}/${summary.total_containers}`,
 			icon: <BoxIcon className="size-4" />,
@@ -91,6 +79,7 @@ export const KpiCards = memo(function KpiCards({
 		},
 		{
 			key: "monitors",
+			href: getPagePath($router, "monitors"),
 			label: <Trans>Monitors</Trans>,
 			value: `${summary.up_monitors}/${summary.total_monitors}`,
 			icon: <ActivityIcon className="size-4" />,
@@ -121,10 +110,7 @@ export const KpiCards = memo(function KpiCards({
 		<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
 			{cards.map((item) => {
 				const isRunningContainersCard = item.key === "docker"
-				const isInteractive = item.filterKey !== undefined && !isRunningContainersCard
-				const isNavigable = item.key === "monitors"
-				const isClickable = isInteractive || isNavigable || (isRunningContainersCard && hasContainersSection)
-				const isActive = isInteractive && activeFilter === item.filterKey
+				const isClickable = Boolean(item.href)
 				const showContainerUpdates = isRunningContainersCard && summary.containers_with_image_updates > 0
 				const errorCount = isRunningContainersCard ? (summary.containers_in_error ?? 0) : 0
 				const warningCount = isRunningContainersCard ? (summary.containers_in_warning ?? 0) : 0
@@ -136,16 +122,8 @@ export const KpiCards = memo(function KpiCards({
 				const cardContent = (
 					<Card
 						className={`${isClickable ? "cursor-pointer" : "cursor-default"} transition-all ${variantClasses[item.variant]} ${
-							isActive ? "ring-2 ring-primary" : isClickable ? "hover:border-primary/40" : ""
+							isClickable ? "hover:border-primary/40" : ""
 						}`}
-						onClick={() => {
-							if (isRunningContainersCard) {
-								onContainersClick()
-								return
-							}
-							if (!isInteractive) return
-							onFilterChange(isActive ? null : (item.filterKey ?? null))
-						}}
 					>
 						<CardContent className="relative p-4">
 							{showContainerIssues ? (
@@ -189,9 +167,9 @@ export const KpiCards = memo(function KpiCards({
 					</Card>
 				)
 
-				if (item.key === "monitors") {
+				if (item.href) {
 					return (
-						<Link key={item.key} href={getPagePath($router, "monitors")} className="block">
+						<Link key={item.key} href={item.href} className="block">
 							{cardContent}
 						</Link>
 					)

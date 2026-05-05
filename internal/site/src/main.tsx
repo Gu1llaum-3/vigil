@@ -5,7 +5,7 @@ import { useStore } from "@nanostores/react"
 import { DirectionProvider } from "@radix-ui/react-direction"
 import { lazy, memo, Suspense, useEffect } from "react"
 import ReactDOM from "react-dom/client"
-import Navbar from "@/components/navbar.tsx"
+import { AppShell } from "@/components/app-shell.tsx"
 import NotificationLogToasts from "@/components/notification-log-toasts.tsx"
 import { $router } from "@/components/router.tsx"
 import Settings from "@/components/routes/settings/layout.tsx"
@@ -20,6 +20,9 @@ const Home = lazy(() => import("@/components/routes/home.tsx"))
 const NotificationsPage = lazy(() => import("@/components/routes/notifications.tsx"))
 const MonitorsPage = lazy(() => import("@/components/routes/monitors.tsx"))
 const MonitorDetailPage = lazy(() => import("@/components/routes/monitor-detail.tsx"))
+const HostsPage = lazy(() => import("@/components/routes/hosts.tsx"))
+const HostDetailPage = lazy(() => import("@/components/routes/host-detail.tsx"))
+const ContainersPage = lazy(() => import("@/components/routes/containers.tsx"))
 const ImagesPage = lazy(() => import("@/components/routes/images.tsx"))
 const CopyToClipboardDialog = lazy(() => import("@/components/copy-to-clipboard.tsx"))
 
@@ -46,6 +49,12 @@ const App = memo(() => {
 		return <Home />
 	} else if (page.route === "notifications") {
 		return <NotificationsPage />
+	} else if (page.route === "hosts") {
+		return <HostsPage />
+	} else if (page.route === "host") {
+		return <HostDetailPage />
+	} else if (page.route === "containers") {
+		return <ContainersPage />
 	} else if (page.route === "monitors") {
 		return <MonitorsPage />
 	} else if (page.route === "monitor") {
@@ -76,10 +85,7 @@ const Layout = () => {
 			) : (
 				<div style={{ "--container": `${layoutWidth ?? defaultLayoutWidth}px` } as React.CSSProperties}>
 					<NotificationLogToasts />
-					<div className="container">
-						<Navbar />
-					</div>
-					<div className="container relative">
+					<AppShell>
 						<Suspense>
 							<App />
 						</Suspense>
@@ -88,7 +94,7 @@ const Layout = () => {
 								<CopyToClipboardDialog content={copyContent} />
 							</Suspense>
 						)}
-					</div>
+					</AppShell>
 				</div>
 			)}
 		</DirectionProvider>

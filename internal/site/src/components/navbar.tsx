@@ -3,14 +3,14 @@ import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
 import {
 	BellIcon,
-	BoxesIcon,
 	PlusIcon,
-	ActivityIcon,
 	DatabaseBackupIcon,
 	CheckCheckIcon,
 	LogOutIcon,
 	LogsIcon,
 	MenuIcon,
+	PanelLeftCloseIcon,
+	PanelLeftOpenIcon,
 	Clock3Icon,
 	SearchIcon,
 	SettingsIcon,
@@ -32,7 +32,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { isAdmin, isReadOnlyUser, logOut, pb } from "@/lib/api"
-import type { MonitorGroupResponse } from "@/lib/monitor-types"
 import { $systemNotificationsReadStamp, bumpSystemNotificationsReadStamp } from "@/lib/stores"
 import { cn, runOnce } from "@/lib/utils"
 import { AddAgentDialog } from "./add-agent"
@@ -47,39 +46,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip"
 const CommandPalette = lazy(() => import("./command-palette"))
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
-
-function useDownMonitorCount() {
-	const [downCount, setDownCount] = useState(0)
-	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-	const fetchDownCount = useCallback(async () => {
-		try {
-			const groups = await pb.send<MonitorGroupResponse[]>("/api/app/monitors", { method: "GET" })
-			const allMonitors = (groups ?? []).flatMap((group) => group.monitors)
-			setDownCount(allMonitors.filter((monitor) => monitor.last_checked_at && monitor.status === 0).length)
-		} catch {
-			// ignore transient navbar fetch failures
-		}
-	}, [])
-
-	useEffect(() => {
-		let unsubscribe: (() => void) | undefined
-		fetchDownCount()
-		;(async () => {
-			unsubscribe = await pb.collection("monitors").subscribe("*", () => {
-				if (debounceRef.current) clearTimeout(debounceRef.current)
-				debounceRef.current = setTimeout(fetchDownCount, 1000)
-			})
-		})()
-
-		return () => {
-			unsubscribe?.()
-			if (debounceRef.current) clearTimeout(debounceRef.current)
-		}
-	}, [fetchDownCount])
-
-	return downCount
-}
 
 function formatNotificationTime(sentAt: string) {
 	if (!sentAt) return ""
@@ -259,86 +225,48 @@ function NotificationCenterMenu({
 	)
 }
 
-function MonitorNavIcon({ downCount }: { downCount: number }) {
-	return (
-		<span className="relative inline-flex">
-			<ActivityIcon className="h-[1.2rem] w-[1.2rem]" />
-			{downCount > 0 ? (
-				<span className="absolute -right-2 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white">
-					{downCount > 9 ? "9+" : downCount}
-				</span>
-			) : null}
-		</span>
-	)
-}
-
-function useImageUpdatesCount() {
-	const [count, setCount] = useState(0)
-	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-	const fetchCount = useCallback(async () => {
-		try {
-			const records = await pb.collection("container_image_audits").getFullList<{ status: string }>({
-				filter: 'status = "update_available"',
-				fields: "id,status",
-			})
-			setCount(records.length)
-		} catch {
-			// non-fatal
-		}
-	}, [])
-
-	useEffect(() => {
-		fetchCount()
-		let unsubscribe: (() => void) | undefined
-		;(async () => {
-			unsubscribe = await pb.collection("container_image_audits").subscribe("*", () => {
-				if (debounceRef.current) clearTimeout(debounceRef.current)
-				debounceRef.current = setTimeout(fetchCount, 1000)
-			})
-		})()
-		return () => {
-			unsubscribe?.()
-			if (debounceRef.current) clearTimeout(debounceRef.current)
-		}
-	}, [fetchCount])
-
-	return count
-}
-
-function ImagesNavIcon({ count }: { count: number }) {
-	return (
-		<span className="relative inline-flex">
-			<BoxesIcon className="h-[1.2rem] w-[1.2rem]" />
-			{count > 0 ? (
-				<span className="absolute -right-2 -top-2 inline-flex min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-4 text-white">
-					{count > 9 ? "9+" : count}
-				</span>
-			) : null}
-		</span>
-	)
-}
-
-export default function Navbar() {
+export default function Navbar({
+	onMenuClick,
+	sidebarCollapsed,
+	onSidebarCollapsedChange,
+}: {
+	onMenuClick?: () => void
+	sidebarCollapsed?: boolean
+	onSidebarCollapsedChange?: (collapsed: boolean) => void
+}) {
 	const [addAgentDialogOpen, setAddAgentDialogOpen] = useState(false)
 	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
-	const downMonitorCount = useDownMonitorCount()
-	const imageUpdatesCount = useImageUpdatesCount()
 	const notificationCenter = useNotificationCenter()
 
 	const AdminLinks = AdminDropdownGroup()
 
 	return (
-		<div className="flex items-center h-14 md:h-16 bg-card px-4 pe-3 sm:px-6 border border-border/60 bt-0 rounded-md my-4">
+		<div className="flex h-14 items-center gap-2">
 			<Suspense>
 				<CommandPalette open={commandPaletteOpen} setOpen={setCommandPaletteOpen} />
 			</Suspense>
 			<AddAgentDialog open={addAgentDialogOpen} setOpen={setAddAgentDialogOpen} />
 
+			<Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick} aria-label="Open navigation">
+				<MenuIcon className="h-[1.2rem] w-[1.2rem]" />
+			</Button>
+			<Button
+				variant="ghost"
+				size="icon"
+				className="hidden lg:inline-flex"
+				onClick={() => onSidebarCollapsedChange?.(!sidebarCollapsed)}
+				aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+			>
+				{sidebarCollapsed ? (
+					<PanelLeftOpenIcon className="h-[1.2rem] w-[1.2rem]" />
+				) : (
+					<PanelLeftCloseIcon className="h-[1.2rem] w-[1.2rem]" />
+				)}
+			</Button>
 			<Link
 				href={basePath}
 				aria-label="Home"
-				className="group me-4 flex items-center gap-2 p-2 ps-0"
+				className="group me-2 flex items-center gap-2 p-2 ps-0 lg:hidden"
 				onMouseEnter={runOnce(() => import("@/components/routes/home"))}
 			>
 				<span className="logo-halo">
@@ -367,7 +295,6 @@ export default function Navbar() {
 				</span>
 			</Button>
 
-			{/* mobile menu */}
 			<div className="ms-auto flex items-center text-xl md:hidden">
 				<ModeToggle />
 				<Button variant="ghost" size="icon" onClick={() => setCommandPaletteOpen(true)}>
@@ -379,39 +306,16 @@ export default function Navbar() {
 					onClear={notificationCenter.markAllAsRead}
 				/>
 				<DropdownMenu>
-					<DropdownMenuTrigger
-						onMouseEnter={() => import("@/components/routes/settings/general")}
-						className="ms-3"
-						aria-label="Open Menu"
-					>
-						<MenuIcon />
+					<DropdownMenuTrigger asChild>
+						<button aria-label="User Actions" className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}>
+							<UserIcon className="h-[1.2rem] w-[1.2rem]" />
+						</button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						<DropdownMenuLabel className="max-w-40 truncate">{pb.authStore.record?.email}</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem
-								onClick={() => navigate(getPagePath($router, "monitors"))}
-								className="flex items-center"
-							>
-								<span className="me-2.5">
-									<MonitorNavIcon downCount={downMonitorCount} />
-								</span>
-								<Trans>Monitors</Trans>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={() => navigate(getPagePath($router, "images"))}
-								className="flex items-center"
-							>
-								<span className="me-2.5">
-									<ImagesNavIcon count={imageUpdatesCount} />
-								</span>
-								<Trans>Container images</Trans>
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={() => navigate(getPagePath($router, "settings", { name: "general" }))}
-								className="flex items-center"
-							>
+							<DropdownMenuItem onClick={() => navigate(getPagePath($router, "settings", { name: "general" }))}>
 								<SettingsIcon className="h-4 w-4 me-2.5" />
 								<Trans>Settings</Trans>
 							</DropdownMenuItem>
@@ -447,7 +351,7 @@ export default function Navbar() {
 				</DropdownMenu>
 			</div>
 
-			{/* desktop nav */}
+			{/* desktop topbar actions */}
 			{/** biome-ignore lint/a11y/noStaticElementInteractions: ignore */}
 			<div
 				className="hidden md:flex items-center ms-auto"
@@ -462,36 +366,6 @@ export default function Navbar() {
 						onClear={notificationCenter.markAllAsRead}
 					/>
 				</div>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Link
-							href={getPagePath($router, "monitors")}
-							aria-label="Monitors"
-							className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-							onMouseEnter={runOnce(() => import("@/components/routes/monitors"))}
-						>
-							<MonitorNavIcon downCount={downMonitorCount} />
-						</Link>
-					</TooltipTrigger>
-					<TooltipContent>
-						<Trans>Monitors</Trans>
-					</TooltipContent>
-				</Tooltip>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Link
-							href={getPagePath($router, "images")}
-							aria-label="Container images"
-							className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
-							onMouseEnter={runOnce(() => import("@/components/routes/images"))}
-						>
-							<ImagesNavIcon count={imageUpdatesCount} />
-						</Link>
-					</TooltipTrigger>
-					<TooltipContent>
-						<Trans>Container images</Trans>
-					</TooltipContent>
-				</Tooltip>
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Link

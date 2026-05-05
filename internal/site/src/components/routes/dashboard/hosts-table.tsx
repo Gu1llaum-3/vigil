@@ -12,6 +12,8 @@ import {
 } from "@tanstack/react-table"
 import { ChevronDownIcon, XIcon } from "lucide-react"
 import { memo, useEffect, useMemo, useState } from "react"
+import { getPagePath } from "@nanostores/router"
+import { $router, Link } from "@/components/router"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -186,7 +188,9 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 				cell: ({ row: { original: h } }) => (
 					<div className="group flex items-center">
 						<div>
-							<div className="font-semibold">{h.name || h.hostname || h.id}</div>
+							<Link href={getPagePath($router, "host", { id: h.id })} className="font-semibold hover:underline">
+								{h.name || h.hostname || h.id}
+							</Link>
 							{h.hostname && h.name !== h.hostname && <div className="text-xs text-muted-foreground">{h.hostname}</div>}
 						</div>
 						<InfoBtn rows={[{ label: t`Hostname`, value: h.hostname || "—" }]} />

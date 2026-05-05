@@ -18,24 +18,35 @@ msgstr ""
 "X-Crowdin-File: /main/internal/site/src/locales/en/en.po\n"
 "X-Crowdin-File-ID: 32\n"
 
+#. placeholder {0}: auditedContainers.length
 #. placeholder {0}: containers.length
+#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "{0, plural, one {# audited container} other {# audited containers}}"
 msgstr ""
 
+#. placeholder {0}: containers.length
 #. placeholder {0}: filteredContainers.length
+#: src/components/routes/containers.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "{0, plural, one {# container} other {# containers}}"
 msgstr ""
 
 #. placeholder {0}: filteredHosts.length
+#. placeholder {0}: hosts.length
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/hosts.tsx
 msgid "{0, plural, one {# host} other {# hosts}}"
 msgstr ""
 
 #. placeholder {0}: result.items.length
 #: src/components/routes/settings/notifications/history.tsx
 msgid "{0} entries on this page"
+msgstr ""
+
+#. placeholder {0}: actionableAudits.length
+#: src/components/routes/host-detail.tsx
+msgid "{0} image update issue(s)"
 msgstr ""
 
 #. placeholder {0}: res.deleted_count
@@ -70,6 +81,10 @@ msgstr ""
 
 #: src/components/notification-log-toasts.tsx
 msgid "{name} just went offline."
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "{securityCount} security update(s)"
 msgstr ""
 
 #: src/components/routes/dashboard/kpi-cards.tsx
@@ -221,8 +236,16 @@ msgstr ""
 msgid "Arch"
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Architecture"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Audit disabled"
+msgstr ""
+
+#: src/components/routes/home.tsx
+msgid "Audit failed"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -269,6 +292,10 @@ msgstr ""
 msgid "Back"
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Back to hosts"
+msgstr ""
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Back to monitors"
 msgstr ""
@@ -303,6 +330,10 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Candidate"
+msgstr ""
+
 #: src/components/routes/notifications.tsx
 msgid "Category"
 msgstr ""
@@ -332,6 +363,7 @@ msgid "Check {email} for a reset link."
 msgstr "Sjekk {email} for en nullstillings-link."
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Check failed"
 msgstr ""
@@ -346,6 +378,7 @@ msgid "Check logs for more details."
 msgstr "Sjekk loggene for flere detaljer."
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Checked"
 msgstr ""
 
@@ -421,24 +454,27 @@ msgstr ""
 msgid "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
 msgstr ""
 
+#: src/components/routes/hosts.tsx
+msgid "connected"
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 msgid "Connection"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Container"
 msgstr ""
 
 #: src/components/routes/home.tsx
-msgid "Container fleet"
-msgstr ""
+#~ msgid "Container fleet"
+#~ msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Container image update"
 msgstr ""
 
-#: src/components/navbar.tsx
-#: src/components/routes/images.tsx
 #: src/components/routes/notifications.tsx
 msgid "Container images"
 msgstr ""
@@ -447,8 +483,16 @@ msgstr ""
 msgid "Container, image, host, ports…"
 msgstr ""
 
+#: src/components/app-sidebar.tsx
+#: src/components/command-palette.tsx
+#: src/components/routes/containers.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Containers"
+msgstr ""
+
+#: src/components/routes/home.tsx
+msgid "Containers and images"
 msgstr ""
 
 #: src/components/routes/images.tsx
@@ -551,6 +595,7 @@ msgstr ""
 msgid "Current latency"
 msgstr ""
 
+#: src/components/app-sidebar.tsx
 #: src/components/routes/home.tsx
 msgid "Dashboard"
 msgstr ""
@@ -655,11 +700,13 @@ msgid "Disable audit"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Disabled"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "DNS"
 msgstr ""
 
@@ -669,6 +716,7 @@ msgstr ""
 
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Docker"
 msgstr ""
 
@@ -760,6 +808,7 @@ msgstr "Flyktig"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/home.tsx
 #: src/components/routes/images.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
@@ -909,6 +958,7 @@ msgid "From"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Gateway"
 msgstr ""
 
@@ -949,11 +999,20 @@ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Host"
 msgstr ""
 
 #: src/components/notification-log-toasts.tsx
 msgid "Host back online"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Host is offline"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Host not found."
 msgstr ""
 
 #: src/components/notification-log-toasts.tsx
@@ -973,12 +1032,18 @@ msgstr ""
 msgid "Hostname to resolve"
 msgstr ""
 
-#: src/components/routes/home.tsx
+#: src/components/app-sidebar.tsx
+#: src/components/command-palette.tsx
+#: src/components/routes/hosts.tsx
 msgid "Hosts"
 msgstr ""
 
 #: src/components/routes/settings/purge.tsx
 msgid "Hosts are not historized. This cleanup deletes offline agent records and their current snapshots."
+msgstr ""
+
+#: src/components/routes/home.tsx
+msgid "Hosts needing attention"
 msgstr ""
 
 #: src/components/add-agent.tsx
@@ -994,6 +1059,7 @@ msgid "If you've lost the password to your admin account, you may reset it using
 msgstr "Dersom du har mistet passordet til admin-kontoen kan du nullstille det med følgende kommando."
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Image"
 msgstr ""
 
@@ -1013,6 +1079,25 @@ msgstr ""
 
 #: src/components/routes/images.tsx
 msgid "Image ref"
+msgstr ""
+
+#: src/components/routes/home.tsx
+msgid "Image update"
+msgstr ""
+
+#: src/components/app-sidebar.tsx
+#: src/components/command-palette.tsx
+#: src/components/routes/host-detail.tsx
+#: src/components/routes/images.tsx
+msgid "Image updates"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Insecure"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Installed"
 msgstr ""
 
 #: src/components/routes/monitor-detail.tsx
@@ -1038,6 +1123,10 @@ msgstr ""
 #: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/layout.tsx
 msgid "Jobs"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Kernel"
 msgstr ""
 
 #: src/components/routes/monitors.tsx
@@ -1076,6 +1165,10 @@ msgstr ""
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Last Run"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Last snapshot"
 msgstr ""
 
 #: src/components/routes/settings/jobs.tsx
@@ -1248,8 +1341,8 @@ msgstr ""
 msgid "Monitor updated"
 msgstr ""
 
+#: src/components/app-sidebar.tsx
 #: src/components/command-palette.tsx
-#: src/components/navbar.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/notifications.tsx
@@ -1274,8 +1367,20 @@ msgstr ""
 msgid "Name is required"
 msgstr ""
 
+#: src/components/app-sidebar.tsx
+msgid "Navigation"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Needs attention"
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Network"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Network and repositories"
 msgstr ""
 
 #: src/components/routes/settings/jobs.tsx
@@ -1315,6 +1420,10 @@ msgstr ""
 msgid "No channels configured. Add one to start sending notifications."
 msgstr ""
 
+#: src/components/routes/home.tsx
+msgid "No container issue detected."
+msgstr ""
+
 #: src/components/routes/images.tsx
 msgid "No containers detected"
 msgstr ""
@@ -1344,8 +1453,16 @@ msgstr ""
 msgid "No history available."
 msgstr ""
 
+#: src/components/routes/home.tsx
+msgid "No host needs attention."
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "No hosts match the current filter."
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "No image audit data for this host."
 msgstr ""
 
 #: src/components/routes/images.tsx
@@ -1380,6 +1497,14 @@ msgstr ""
 msgid "No notifications match the current filters."
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "No outdated packages."
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "No repository data."
+msgstr ""
+
 #: src/components/command-palette.tsx
 msgid "No results found."
 msgstr "Ingen resultater funnet."
@@ -1388,8 +1513,16 @@ msgstr "Ingen resultater funnet."
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "No storage data."
+msgstr ""
+
 #: src/components/navbar.tsx
 msgid "No unread notifications"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "No urgent issue detected."
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1425,6 +1558,7 @@ msgstr ""
 msgid "Notification History Retention (days)"
 msgstr ""
 
+#: src/components/app-sidebar.tsx
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 #: src/components/routes/notifications.tsx
@@ -1440,6 +1574,7 @@ msgstr "OAuth 2 / OIDC-støtte"
 
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/home.tsx
 msgid "Offline"
 msgstr ""
 
@@ -1506,7 +1641,20 @@ msgstr ""
 msgid "Outdated packages"
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Overview"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Package"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Package updates"
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Packages"
 msgstr ""
 
@@ -1557,6 +1705,10 @@ msgstr ""
 msgid "Patch line"
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Patch status"
+msgstr ""
+
 #: src/components/routes/dashboard/charts.tsx
 msgid "Patch Status"
 msgstr ""
@@ -1591,6 +1743,7 @@ msgid "Pin to current tag"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Platform"
 msgstr ""
 
@@ -1638,6 +1791,10 @@ msgstr "Foretrukket Språk"
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Previous"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Primary IP"
 msgstr ""
 
 #: src/components/routes/settings/notifications.tsx
@@ -1702,6 +1859,10 @@ msgstr ""
 msgid "Read"
 msgstr ""
 
+#: src/components/routes/home.tsx
+msgid "Reboot"
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Reboot req."
@@ -1709,6 +1870,7 @@ msgstr ""
 
 #: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Reboot required"
 msgstr ""
 
@@ -1718,6 +1880,10 @@ msgstr ""
 
 #: src/components/routes/home.tsx
 msgid "Refresh"
+msgstr ""
+
+#: src/components/routes/hosts.tsx
+msgid "Refresh snapshots"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1742,6 +1908,10 @@ msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Repos"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Repositories"
 msgstr ""
 
 #: src/components/routes/images.tsx
@@ -1783,6 +1953,7 @@ msgid "Resource"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Resources"
 msgstr ""
 
@@ -1835,6 +2006,10 @@ msgstr ""
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Run Now"
+msgstr ""
+
+#: src/components/routes/containers.tsx
+msgid "running"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
@@ -1909,8 +2084,17 @@ msgstr ""
 msgid "Search pages and settings..."
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Secure"
+msgstr ""
+
+#: src/components/routes/home.tsx
+msgid "security"
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Security"
 msgstr ""
 
@@ -1940,6 +2124,7 @@ msgstr ""
 msgid "Set up agents"
 msgstr ""
 
+#: src/components/app-sidebar.tsx
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
 #: src/components/routes/settings/layout.tsx
@@ -1976,6 +2161,7 @@ msgstr ""
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
@@ -1991,12 +2177,24 @@ msgstr ""
 msgid "Stopped"
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Storage"
+msgstr ""
+
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Swap"
 msgstr ""
 
 #: src/components/mode-toggle.tsx
 msgid "Switch theme"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "System"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "System summary"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
@@ -2125,6 +2323,7 @@ msgstr ""
 msgid "Translations are managed from the project's locale catalogs."
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 msgid "Type"
@@ -2138,6 +2337,7 @@ msgstr ""
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Unknown"
 msgstr ""
@@ -2165,11 +2365,17 @@ msgid "Up"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Up to date"
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Update"
+msgstr ""
+
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Update available"
 msgstr ""
@@ -2182,6 +2388,7 @@ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Uptime"
 msgstr ""
 
@@ -2220,8 +2427,16 @@ msgstr "Brukere"
 msgid "Versions"
 msgstr ""
 
+#: src/components/routes/home.tsx
+msgid "View all"
+msgstr ""
+
 #: src/components/navbar.tsx
 msgid "View all notifications"
+msgstr ""
+
+#: src/components/routes/home.tsx
+msgid "Warning"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx

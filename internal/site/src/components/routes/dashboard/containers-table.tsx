@@ -1,4 +1,5 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro"
+import { getPagePath } from "@nanostores/router"
 import {
 	type Column,
 	type ColumnDef,
@@ -46,6 +47,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "@/components/ui/use-toast"
+import { $router, Link } from "@/components/router"
 import { isAdmin, pb } from "@/lib/api"
 import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
 import { cn, copyToClipboard } from "@/lib/utils"
@@ -455,11 +457,7 @@ function OverrideMenu({
 						onSelect={() => onChange(option.value)}
 						className={cn(option.value === current.policy && "font-semibold")}
 					>
-						{option.value === current.policy ? (
-							<CheckIcon className="mr-2 size-4" />
-						) : (
-							<span className="mr-2 size-4" />
-						)}
+						{option.value === current.policy ? <CheckIcon className="mr-2 size-4" /> : <span className="mr-2 size-4" />}
 						{option.label}
 					</DropdownMenuItem>
 				))}
@@ -553,9 +551,8 @@ function AdvancedOverrideDialog({
 					</DialogTitle>
 					<DialogDescription>
 						<Trans>
-							Fine-grained audit configuration for{" "}
-							<span className="font-mono">{entry.name}</span>. Tag filters narrow which registry tags
-							are considered as candidates.
+							Fine-grained audit configuration for <span className="font-mono">{entry.name}</span>. Tag filters narrow
+							which registry tags are considered as candidates.
 						</Trans>
 					</DialogDescription>
 				</DialogHeader>
@@ -842,7 +839,9 @@ export const ContainersTable = memo(function ContainersTable({
 				),
 				cell: ({ row: { original: c } }) => (
 					<div>
-						<div className="font-semibold">{c.host_name || c.host_id}</div>
+						<Link href={getPagePath($router, "host", { id: c.host_id })} className="font-semibold hover:underline">
+							{c.host_name || c.host_id}
+						</Link>
 						{c.host_ip && <div className="font-mono text-xs text-muted-foreground">{c.host_ip}</div>}
 					</div>
 				),

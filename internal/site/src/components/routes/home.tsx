@@ -1,9 +1,13 @@
 import { Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
+import { getPagePath } from "@nanostores/router"
 import { RefreshCwIcon } from "lucide-react"
 import { memo, useCallback, useEffect, useRef, useState } from "react"
+import { $router, Link } from "@/components/router"
 import Spinner from "@/components/spinner"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { pb, isReadOnlyUser } from "@/lib/api"
 import { isErrorContainer, isWarningContainer } from "@/lib/container-status"
 import { HourFormat } from "@/lib/enums"
@@ -11,42 +15,8 @@ import { $userSettings } from "@/lib/stores"
 import { currentHour12 } from "@/lib/utils"
 import type { DashboardResponse } from "@/lib/dashboard-types"
 import { Charts } from "./dashboard/charts"
-import { type ContainersFilters, defaultContainersFilters } from "./dashboard/containers-filter-sheet"
-import { ContainersTable } from "./dashboard/containers-table"
 import { EmptyState } from "./dashboard/empty-state"
-import { type HostsCompliance, type HostsFilters, defaultHostsFilters } from "./dashboard/hosts-filter-sheet"
-import { HostsTable } from "./dashboard/hosts-table"
 import { KpiCards } from "./dashboard/kpi-cards"
-
-// KPI cards toggle a single Hosts facet preset. We keep their string-based contract
-// (activeFilter / onFilterChange) and adapt to/from the multi-facet HostsFilters
-// here so the cards stay decoupled from the filter shape.
-//
-// Note: the "outdated" KPI key has no equivalent in the existing filter model
-// (the legacy chip switch didn't handle it either), so we preserve that no-op.
-function kpiKeyToHostsFilters(key: string | null): HostsFilters {
-	if (!key || key === "all") return defaultHostsFilters
-	if (key === "security" || key === "reboot") {
-		return { ...defaultHostsFilters, compliance: new Set<HostsCompliance>([key]) }
-	}
-	if (key === "docker") {
-		return { ...defaultHostsFilters, features: new Set(["docker"]) }
-	}
-	return defaultHostsFilters
-}
-
-function deriveKpiKey(f: HostsFilters): string | null {
-	if (f.connection !== "all") return null
-	const complianceSize = f.compliance.size
-	const featuresSize = f.features.size
-	if (complianceSize === 0 && featuresSize === 0) return null
-	if (complianceSize === 1 && featuresSize === 0) {
-		if (f.compliance.has("security")) return "security"
-		if (f.compliance.has("reboot")) return "reboot"
-	}
-	if (complianceSize === 0 && featuresSize === 1 && f.features.has("docker")) return "docker"
-	return null
-}
 
 function formatRefreshDateTime(value: string, hour12: boolean) {
 	const parsed = new Date(value)
@@ -67,12 +37,9 @@ export default memo(function Home() {
 	const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [refreshing, setRefreshing] = useState(false)
-	const [hostsFilters, setHostsFilters] = useState<HostsFilters>(defaultHostsFilters)
-	const [containersFilters, setContainersFilters] = useState<ContainersFilters>(defaultContainersFilters)
 	const snapshotDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const monitorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const auditDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-	const containersSectionRef = useRef<HTMLElement | null>(null)
 
 	const fetchDashboard = useCallback(async () => {
 		try {
@@ -216,10 +183,27 @@ export default memo(function Home() {
 		)
 	}
 
-	const hasContainers = (dashboard.containers ?? []).length > 0
 	const hasContainerErrors = (dashboard.containers ?? []).some(isErrorContainer)
 	const hasContainerWarnings = (dashboard.containers ?? []).some(isWarningContainer)
-	const hour12 = userSettings.hourFormat ? userSettings.hourFormat === HourFormat["12h"] : currentHour12()
+	const hostRisks = dashboard.hosts
+		.filter(
+			(host) =>
+				host.status !== "connected" ||
+				host.reboot?.required ||
+				(host.packages?.security_count ?? 0) > 0 ||
+				((host.packages?.outdated_count ?? 0) > 0 && (host.packages?.last_upgrade_age_days ?? 0) > 30)
+		)
+		.slice(0, 6)
+	const containerRisks = (dashboard.containers ?? [])
+		.filter(
+			(container) =>
+				isErrorContainer(container) ||
+				isWarningContainer(container) ||
+				container.image_audit?.status === "update_available" ||
+				container.image_audit?.status === "check_failed"
+		)
+		.slice(0, 6)
+	const hour12 = userSettings.hourFormat ? userSettings.hourFormat === HourFormat["12h"] : Boolean(currentHour12())
 	const lastRefreshAt = dashboard.hosts.reduce<string | null>((latest, host) => {
 		if (!host.collected_at) {
 			return latest
@@ -232,20 +216,8 @@ export default memo(function Home() {
 		return latest
 	}, null)
 
-	function handleContainersClick() {
-		if (!hasContainers) return
-		setContainersFilters(
-			hasContainerErrors
-				? { ...defaultContainersFilters, severity: new Set(["error"]) }
-				: hasContainerWarnings
-					? { ...defaultContainersFilters, severity: new Set(["warning"]) }
-					: { ...defaultContainersFilters, status: "running" }
-		)
-		containersSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-	}
-
 	return (
-		<div className="flex flex-1 flex-col gap-6 py-6 sm:py-8">
+		<div className="flex flex-1 flex-col gap-6">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<h1 className="text-2xl font-semibold tracking-tight">
 					<Trans>Dashboard</Trans>
@@ -273,35 +245,124 @@ export default memo(function Home() {
 
 			<KpiCards
 				summary={dashboard.summary}
-				activeFilter={deriveKpiKey(hostsFilters)}
-				onFilterChange={(key) => setHostsFilters(kpiKeyToHostsFilters(key))}
-				hasContainersSection={hasContainers}
 				hasContainerWarnings={hasContainerWarnings}
 				hasContainerErrors={hasContainerErrors}
-				onContainersClick={handleContainersClick}
 			/>
 
 			<Charts summary={dashboard.summary} />
 
-			<section className="space-y-3">
-				<h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-					<Trans>Hosts</Trans>
-				</h2>
-				<HostsTable hosts={dashboard.hosts} filters={hostsFilters} onFiltersChange={setHostsFilters} />
-			</section>
+			<div className="grid gap-4 lg:grid-cols-2">
+				<AttentionCard
+					title={<Trans>Hosts needing attention</Trans>}
+					href={getPagePath($router, "hosts")}
+					empty={<Trans>No host needs attention.</Trans>}
+				>
+					{hostRisks.map((host) => (
+						<Link
+							key={host.id}
+							href={getPagePath($router, "host", { id: host.id })}
+							className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 hover:bg-accent/40"
+						>
+							<div className="min-w-0">
+								<div className="truncate text-sm font-medium">{host.name || host.hostname || host.id}</div>
+								<div className="truncate text-xs text-muted-foreground">
+									{host.primary_ip || host.hostname || host.id}
+								</div>
+							</div>
+							<div className="flex shrink-0 flex-wrap justify-end gap-1">
+								{host.status !== "connected" && (
+									<Badge variant="outline" className="text-[10px]">
+										<Trans>Offline</Trans>
+									</Badge>
+								)}
+								{host.reboot?.required && (
+									<Badge variant="danger" className="text-[10px]">
+										<Trans>Reboot</Trans>
+									</Badge>
+								)}
+								{(host.packages?.security_count ?? 0) > 0 && (
+									<Badge variant="danger" className="text-[10px]">
+										{host.packages.security_count} <Trans>security</Trans>
+									</Badge>
+								)}
+							</div>
+						</Link>
+					))}
+				</AttentionCard>
 
-			{hasContainers && (
-				<section ref={containersSectionRef} className="space-y-3">
-					<h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-						<Trans>Container fleet</Trans>
-					</h2>
-					<ContainersTable
-						containers={dashboard.containers}
-						filters={containersFilters}
-						onFiltersChange={setContainersFilters}
-					/>
-				</section>
-			)}
+				<AttentionCard
+					title={<Trans>Containers and images</Trans>}
+					href={getPagePath($router, "containers")}
+					empty={<Trans>No container issue detected.</Trans>}
+				>
+					{containerRisks.map((container) => (
+						<Link
+							key={`${container.host_id}-${container.id}`}
+							href={getPagePath($router, "host", { id: container.host_id })}
+							className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 hover:bg-accent/40"
+						>
+							<div className="min-w-0">
+								<div className="truncate text-sm font-medium">{container.name || container.id}</div>
+								<div className="truncate text-xs text-muted-foreground">{container.host_name || container.host_id}</div>
+							</div>
+							<div className="flex shrink-0 flex-wrap justify-end gap-1">
+								{isErrorContainer(container) && (
+									<Badge variant="danger" className="text-[10px]">
+										<Trans>Error</Trans>
+									</Badge>
+								)}
+								{isWarningContainer(container) && (
+									<Badge variant="warning" className="text-[10px]">
+										<Trans>Warning</Trans>
+									</Badge>
+								)}
+								{container.image_audit?.status === "update_available" && (
+									<Badge variant="warning" className="text-[10px]">
+										<Trans>Image update</Trans>
+									</Badge>
+								)}
+								{container.image_audit?.status === "check_failed" && (
+									<Badge variant="danger" className="text-[10px]">
+										<Trans>Audit failed</Trans>
+									</Badge>
+								)}
+							</div>
+						</Link>
+					))}
+				</AttentionCard>
+			</div>
 		</div>
 	)
 })
+
+function AttentionCard({
+	title,
+	href,
+	empty,
+	children,
+}: {
+	title: React.ReactNode
+	href: string
+	empty: React.ReactNode
+	children: React.ReactNode[]
+}) {
+	return (
+		<Card>
+			<CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+				<CardTitle className="text-base">{title}</CardTitle>
+				<Link href={href} className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline">
+					<Trans>View all</Trans>
+				</Link>
+			</CardHeader>
+			<CardContent className="space-y-2">
+				{children.length > 0 ? (
+					children
+				) : (
+					<div className="rounded-md border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+						{empty}
+					</div>
+				)}
+			</CardContent>
+		</Card>
+	)
+}

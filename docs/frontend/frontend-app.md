@@ -8,12 +8,13 @@ It currently covers:
 
 - login and first-run account creation
 - OAuth and OTP-related auth UX
-- a live dashboard home route (host KPIs, hosts table, containers table, charts)
+- a live dashboard home route focused on fleet KPIs, charts, and short attention lists
+- dedicated hosts, host detail, containers, image updates, monitors, notifications, and settings routes
 - a settings area
 - agent enrollment-token and agent-management UI
 - theme and language preferences
 
-It is not yet a large product surface. Treat it as the reference implementation for how a derived project should connect UI, auth, settings, and hub APIs.
+The product surface is now large enough to use a persistent app shell rather than a navbar-only layout. Treat it as the reference implementation for how a derived project should connect UI, auth, settings, navigation, and hub APIs.
 
 ## Entry Point
 
@@ -40,10 +41,15 @@ The router handles:
 - navigation helpers
 - route matching for login, home, and settings pages
 
-Current route surface is intentionally compact:
+Current route surface:
 
 - login-related screens
-- home (replaced by the live dashboard)
+- dashboard home
+- hosts list and host detail
+- containers inventory
+- image updates
+- monitors list and monitor detail
+- user-facing system notifications
 - settings routes
 
 Important route helpers are re-exported and used across the app, especially by the navbar and settings flows.
@@ -112,7 +118,27 @@ The frontend includes OTP request and entry flows that align with the hub and Po
 
 ## Layout And Navigation
 
-Primary app navigation currently lives in `internal/site/src/components/navbar.tsx`.
+The authenticated UI uses a persistent app shell:
+
+- `internal/site/src/components/app-shell.tsx` — shell frame around authenticated routes
+- `internal/site/src/components/app-sidebar.tsx` — primary product navigation, collapsible on desktop and rendered through a Radix `Sheet` on mobile
+- `internal/site/src/components/navbar.tsx` — topbar actions only: sidebar collapse control, command palette, notification bell, theme/language controls, user menu, and quick agent enrollment
+
+Primary product navigation lives in the sidebar, not in the topbar. This keeps the topbar focused on global actions and prevents route icons from crowding the header as the application grows.
+
+The sidebar routes are:
+
+- Dashboard
+- Hosts
+- Containers
+- Image updates
+- Monitors
+- Notifications
+- Settings
+
+The desktop sidebar collapse state is controlled from the topbar and stored in `localStorage` under `vigil.sidebar.collapsed`. It is intentionally local UI state, not persisted user settings.
+
+The topbar component is `internal/site/src/components/navbar.tsx`.
 
 This component demonstrates several frontend conventions used in the project:
 
@@ -122,9 +148,9 @@ This component demonstrates several frontend conventions used in the project:
 - a navbar-driven "Add agent" dialog for quick installation setup
 - direct links into PocketBase admin views for some advanced operations
 
-The monitors navbar icon also shows a live red badge when one or more monitors are currently `down`. It fetches `/api/app/monitors` and subscribes to the `monitors` PocketBase collection with the same 1-second debounce pattern used by the monitors page, so the badge updates dynamically without a full page refresh.
+The monitors sidebar item shows a live red badge when one or more monitors are currently `down`. It fetches `/api/app/monitors` and subscribes to the `monitors` PocketBase collection with the same 1-second debounce pattern used by the monitors page, so the badge updates dynamically without a full page refresh.
 
-A sibling navbar icon (`BoxesIcon`) links to the dedicated `/images` page and shows an amber badge with the count of containers whose image audit currently reports `update_available`. It uses the same realtime + debounced fetch pattern via `pb.collection("container_image_audits").subscribe`.
+A sibling sidebar item links to the dedicated `/images` page, labeled as `Image updates`, and shows an amber badge with the count of containers whose image audit currently reports `update_available`. It uses the same realtime + debounced fetch pattern via `pb.collection("container_image_audits").subscribe`.
 
 The navbar notification bell is visible to every authenticated user. It fetches unread state from `GET /api/app/system-notifications/unread`, subscribes to the `system_notifications` collection, and clears via `POST /api/app/system-notifications/read-all`. This is separate from admin notification delivery logs and does not require email/webhook/in-app channels to be configured.
 
@@ -203,9 +229,37 @@ The phase 1 advanced options exposed in the form are `count`, per-request timeou
 
 Rolling monitor metrics render as `N/A` only when no events exist in the window. As soon as at least one event is recorded within the 24h or 30d window, the corresponding metric is shown.
 
-## Images Route
+## Hosts And Containers Routes
 
-A dedicated container-image-audit page lives at `/images` (`internal/site/src/components/routes/images.tsx`). It complements the inline image-audit column on the dashboard by giving the data its own surface.
+Dedicated fleet exploration routes split detailed tables out of the dashboard:
+
+```ts
+hosts: "/hosts"
+host: "/hosts/:id"
+containers: "/containers"
+```
+
+The list routes are lazy-loaded in `main.tsx`:
+
+```tsx
+const HostsPage = lazy(() => import("@/components/routes/hosts.tsx"))
+const HostDetailPage = lazy(() => import("@/components/routes/host-detail.tsx"))
+const ContainersPage = lazy(() => import("@/components/routes/containers.tsx"))
+```
+
+Current behavior:
+
+- `/hosts` renders the full host table previously shown on the dashboard, including search, filters, sorting, pagination, and manual snapshot refresh.
+- Host names in `HostsTable` link to `/hosts/:id`.
+- `/hosts/:id` groups host-specific information into Radix `Tabs`: overview, containers, image updates, packages, and system.
+- `/containers` renders the full runtime container inventory previously shown on the dashboard.
+- Host cells in the container table link back to the host detail page.
+
+The first implementation reuses `GET /api/app/dashboard` through `internal/site/src/components/routes/dashboard/use-dashboard-data.ts`. This avoids adding backend endpoints while the information architecture is being validated. If these views become large or need server-side filtering, split them into dedicated API endpoints later.
+
+## Image Updates Route
+
+A dedicated container-image-audit page lives at `/images` (`internal/site/src/components/routes/images.tsx`). In navigation it is labeled `Image updates` to distinguish it from the runtime container inventory at `/containers`.
 
 ```ts
 images: "/images"
@@ -234,14 +288,14 @@ Override edits made elsewhere (the dashboard `OverrideMenu` and its `AdvancedOve
 
 The dashboard home page lives under `internal/site/src/components/routes/dashboard/`.
 
-The route header also includes a manual `Refresh` action for immediate snapshot collection and now shows the most recent host snapshot timestamp next to that button so operators can see when fleet data last refreshed.
+The dashboard is now a summary surface rather than the primary exploration surface. It includes fleet KPI cards, charts, a manual `Refresh` action for immediate snapshot collection, the most recent host snapshot timestamp, and short attention lists for hosts plus containers/images. Full tables live on `/hosts` and `/containers`.
 
 Components:
 
 - `kpi-cards.tsx` — summary metric cards (host connectivity ratio, monitor up/total ratio, pending updates, etc.)
-- `hosts-table.tsx` — per-host patch state table
+- `hosts-table.tsx` — per-host patch state table, reused by `/hosts`
 - `hosts-filter-sheet.tsx` — Radix `Sheet`-based multi-facet filter panel for the hosts table (exports `HostsFilters`, `defaultHostsFilters`, `applyHostsFilters`, `countHostsFilters`, and the `HostsFilterSheet` component)
-- `containers-table.tsx` — running Docker container inventory plus read-only image audit badges, with a clipboard shortcut on the image reference
+- `containers-table.tsx` — running Docker container inventory plus read-only image audit badges, reused by `/containers` and host detail pages
 - `containers-filter-sheet.tsx` — equivalent multi-facet filter panel for the containers table
 - `charts.tsx` — bar/doughnut charts using `chart.js` and `react-chartjs-2`
 - `empty-state.tsx` — shown when no snapshot data is available yet
@@ -251,7 +305,7 @@ The `Unknown / Pending` state is used when update data exists but the agent coul
 
 Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`, including the optional per-container `image_audit` block merged from the backend `container_image_audits` collection.
 
-Both tables filter via a side `Sheet` panel rather than chips. Each table exposes a `Filters` button (with an active-count badge) next to its search input; the panel combines a single-select facet (Connection / Status) with multi-select checkbox groups (Compliance + Features for hosts, Severity + Image audit for containers). Combination semantics are intersection between groups (AND) and union within a group (OR); an empty multi-select group means "no constraint". The whole filter state (`HostsFilters`, `ContainersFilters`) is lifted into `home.tsx` so KPI cards stay wired to the hosts filter via small adapters (`deriveKpiKey` / `kpiKeyToHostsFilters`) without forcing the cards to know the facet shape, and so that the `Containers` KPI card can preset the containers filter (Errors / Warnings / Running) when clicked.
+Both tables filter via a side `Sheet` panel rather than chips. Each table exposes a `Filters` button (with an active-count badge) next to its search input; the panel combines a single-select facet (Connection / Status) with multi-select checkbox groups (Compliance + Features for hosts, Severity + Image audit for containers). Combination semantics are intersection between groups (AND) and union within a group (OR); an empty multi-select group means "no constraint".
 
 Container severity is classified by a single helper in `internal/site/src/lib/container-status.ts` (`containerSeverity`), kept in sync with `containerSeverity()` in `internal/hub/dashboard.go`:
 
