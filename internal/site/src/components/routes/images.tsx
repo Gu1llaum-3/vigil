@@ -671,76 +671,70 @@ export default function ImagesPage() {
 						<Plural value={containers.length} one="# audited container" other="# audited containers" />
 					) : undefined
 				}
-				actions={
-					<>
-						{containers.length > 0 && (
-							<>
-								<Input
-									placeholder={t`Search container, host, image…`}
-									value={search}
-									onChange={(e) => setSearch(e.target.value)}
-									className="sm:w-60"
-								/>
-								{uniqueHosts.length > 1 && (
-									<Select
-										value={hostFilter || ALL_FILTERS}
-										onValueChange={(v) => setHostFilter(v === ALL_FILTERS ? "" : v)}
-									>
-										<SelectTrigger className="w-40">
-											<SelectValue placeholder={t`All hosts`} />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value={ALL_FILTERS}>
-												<Trans>All hosts</Trans>
-											</SelectItem>
-											{uniqueHosts.map((h) => (
-												<SelectItem key={h.id} value={h.id}>
-													{h.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								)}
-								<Select
-									value={statusFilter || ALL_FILTERS}
-									onValueChange={(v) => setStatusFilter(v === ALL_FILTERS ? "" : (v as Bucket))}
-								>
-									<SelectTrigger className="w-44">
-										<SelectValue placeholder={t`All statuses`} />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value={ALL_FILTERS}>
-											<Trans>All statuses</Trans>
-										</SelectItem>
-										{bucketOrder.map((b) => (
-											<SelectItem key={b} value={b}>
-												{bucketLabels[b]}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</>
-						)}
-						{admin && containers.length > 0 && (
-							<>
-								{lastChecked && (
-									<span className="text-xs text-muted-foreground">
-										<Trans>Last check:</Trans> {formatRelative(lastChecked)}
-									</span>
-								)}
-								<Button variant="outline" disabled={auditing} onClick={runAuditNow}>
-									{auditing ? (
-										<Loader2Icon className="me-2 size-4 animate-spin" />
-									) : (
-										<RefreshCwIcon className="me-2 size-4" />
-									)}
-									<Trans>Check images now</Trans>
-								</Button>
-							</>
-						)}
-					</>
-				}
 			/>
+
+			{containers.length > 0 && (
+				<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+					<Input
+						placeholder={t`Search container, host, image…`}
+						value={search}
+						onChange={(e) => setSearch(e.target.value)}
+						className="sm:max-w-[280px]"
+					/>
+					{uniqueHosts.length > 1 && (
+						<Select value={hostFilter || ALL_FILTERS} onValueChange={(v) => setHostFilter(v === ALL_FILTERS ? "" : v)}>
+							<SelectTrigger className="w-40">
+								<SelectValue placeholder={t`All hosts`} />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value={ALL_FILTERS}>
+									<Trans>All hosts</Trans>
+								</SelectItem>
+								{uniqueHosts.map((h) => (
+									<SelectItem key={h.id} value={h.id}>
+										{h.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					)}
+					<Select
+						value={statusFilter || ALL_FILTERS}
+						onValueChange={(v) => setStatusFilter(v === ALL_FILTERS ? "" : (v as Bucket))}
+					>
+						<SelectTrigger className="w-44">
+							<SelectValue placeholder={t`All statuses`} />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={ALL_FILTERS}>
+								<Trans>All statuses</Trans>
+							</SelectItem>
+							{bucketOrder.map((b) => (
+								<SelectItem key={b} value={b}>
+									{bucketLabels[b]}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					{admin && (
+						<div className="ml-auto flex shrink-0 items-center gap-2">
+							{lastChecked && (
+								<span className="text-xs text-muted-foreground">
+									<Trans>Last check:</Trans> {formatRelative(lastChecked)}
+								</span>
+							)}
+							<Button variant="outline" disabled={auditing} onClick={runAuditNow}>
+								{auditing ? (
+									<Loader2Icon className="me-2 size-4 animate-spin" />
+								) : (
+									<RefreshCwIcon className="me-2 size-4" />
+								)}
+								<Trans>Check images now</Trans>
+							</Button>
+						</div>
+					)}
+				</div>
+			)}
 
 			{containers.length > 0 && <CountersStrip counts={counts} />}
 
