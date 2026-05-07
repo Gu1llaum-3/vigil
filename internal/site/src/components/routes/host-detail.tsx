@@ -768,52 +768,63 @@ export default function HostDetailPage() {
 										<Trans>No containers on this host.</Trans>
 									</div>
 								) : (
-									<div className="space-y-3">
-										{hostContainers.map((container) => {
-											const metrics = latestContainerMetrics.get(container.id)
-											return (
-												<div key={container.id} className="rounded-md border border-border/60 p-3">
-													<div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-														<div className="min-w-0">
-															<div className="truncate font-medium">{container.name || container.id}</div>
-															<div className="truncate font-mono text-xs text-muted-foreground">
-																{container.image_ref || container.image || container.id}
-															</div>
-														</div>
-														<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 xl:items-center">
-															<div>
-																<div className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-																	<Trans>CPU</Trans>
+									<div className="overflow-x-auto rounded-md border border-border/60">
+										<Table>
+											<TableHeader>
+												<TableRow>
+													<TableHead>
+														<Trans>Container</Trans>
+													</TableHead>
+													<TableHead>
+														<Trans>CPU</Trans>
+													</TableHead>
+													<TableHead>
+														<Trans>Memory</Trans>
+													</TableHead>
+													<TableHead>
+														<Trans>Network</Trans>
+													</TableHead>
+												</TableRow>
+											</TableHeader>
+											<TableBody>
+												{hostContainers.map((container) => {
+													const metrics = latestContainerMetrics.get(container.id)
+													const memoryPercent =
+														metrics && metrics.memory_limit_bytes > 0
+															? (metrics.memory_used_bytes / metrics.memory_limit_bytes) * 100
+															: undefined
+													return (
+														<TableRow key={container.id}>
+															<TableCell>
+																<div className="min-w-[240px]">
+																	<div className="font-medium">{container.name || container.id}</div>
+																	<div className="font-mono text-xs text-muted-foreground">
+																		{container.image_ref || container.image || container.id}
+																	</div>
 																</div>
+															</TableCell>
+															<TableCell>
 																<MetricBar value={metrics?.cpu_percent} />
-															</div>
-															<div>
-																<div className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-																	<Trans>Memory</Trans>
+															</TableCell>
+															<TableCell>
+																<div className="space-y-1">
+																	<MetricBar value={memoryPercent} />
+																	<div className="text-xs text-muted-foreground tabular-nums">
+																		{metrics ? `${formatBytesCompact(metrics.memory_used_bytes)} / ${formatBytesCompact(metrics.memory_limit_bytes)}` : "—"}
+																	</div>
 																</div>
-																<MetricBar
-																	value={
-																		metrics && metrics.memory_limit_bytes > 0
-																			? (metrics.memory_used_bytes / metrics.memory_limit_bytes) * 100
-																			: undefined
-																	}
-																/>
-																<div className="mt-1 text-xs text-muted-foreground tabular-nums">
-																	{metrics ? `${formatBytesCompact(metrics.memory_used_bytes)} / ${formatBytesCompact(metrics.memory_limit_bytes)}` : "—"}
+															</TableCell>
+															<TableCell>
+																<div className="space-y-0.5 text-xs tabular-nums">
+																	<div>{formatBytesPerSecond(metrics?.network_rx_bps ?? 0)} ↓</div>
+																	<div className="text-muted-foreground">{formatBytesPerSecond(metrics?.network_tx_bps ?? 0)} ↑</div>
 																</div>
-															</div>
-															<div className="space-y-1 text-xs tabular-nums">
-																<div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-																	<Trans>Network</Trans>
-																</div>
-																<div>{formatBytesPerSecond(metrics?.network_rx_bps ?? 0)} ↓</div>
-																<div className="text-muted-foreground">{formatBytesPerSecond(metrics?.network_tx_bps ?? 0)} ↑</div>
-															</div>
-														</div>
-													</div>
-												</div>
-											)
-										})}
+															</TableCell>
+														</TableRow>
+													)
+												})}
+											</TableBody>
+										</Table>
 									</div>
 								)}
 							</CardContent>
