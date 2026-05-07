@@ -164,6 +164,7 @@ msgstr "Admin"
 msgid "Advanced…"
 msgstr "Avancé…"
 
+#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/agents.tsx
 msgid "Agent"
 msgstr "Agent"
@@ -233,8 +234,8 @@ msgid "Apply"
 msgstr "Appliquer"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Arch"
-msgstr "Arch"
+#~ msgid "Arch"
+#~ msgstr "Arch"
 
 #: src/components/routes/host-detail.tsx
 msgid "Architecture"
@@ -553,6 +554,14 @@ msgstr "Nombre"
 msgid "CPU"
 msgstr "CPU"
 
+#: src/components/routes/host-detail.tsx
+msgid "CPU now"
+msgstr "CPU actuel"
+
+#: src/components/routes/host-detail.tsx
+msgid "CPU usage"
+msgstr "Utilisation CPU"
+
 #: src/components/login/auth-form.tsx
 msgid "Create account"
 msgstr "Créer un compte"
@@ -706,6 +715,17 @@ msgid "Disabled"
 msgstr "Désactivé"
 
 #: src/components/routes/dashboard/hosts-table.tsx
+msgid "Disk"
+msgstr "Disque"
+
+#: src/components/routes/host-detail.tsx
+msgid "Disk now"
+msgstr "Disque actuel"
+
+#: src/components/routes/host-detail.tsx
+msgid "Disk usage"
+msgstr "Utilisation disque"
+
 #: src/components/routes/host-detail.tsx
 msgid "DNS"
 msgstr "DNS"
@@ -807,7 +827,6 @@ msgid "Ephemeral"
 msgstr "Éphémère"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/home.tsx
 #: src/components/routes/images.tsx
 #: src/components/routes/settings/agents.tsx
@@ -957,7 +976,6 @@ msgstr "Mot de passe oublié ?"
 msgid "From"
 msgstr "Du"
 
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Gateway"
 msgstr "Passerelle"
@@ -1023,7 +1041,6 @@ msgstr "Hôte hors ligne"
 msgid "Host, IP, OS, kernel…"
 msgstr "Hôte, IP, OS, noyau…"
 
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/monitors.tsx
 msgid "Hostname"
 msgstr "Nom d'hôte"
@@ -1045,6 +1062,10 @@ msgstr "Les hôtes ne sont pas historisés. Ce nettoyage supprime les enregistre
 #: src/components/routes/home.tsx
 msgid "Hosts needing attention"
 msgstr "Hôtes à traiter"
+
+#: src/components/routes/home.tsx
+msgid "Hosts overview"
+msgstr "Vue d'ensemble des hôtes"
 
 #: src/components/add-agent.tsx
 msgid "Hub URL"
@@ -1125,6 +1146,7 @@ msgstr "Tâche terminée"
 msgid "Jobs"
 msgstr "Tâches"
 
+#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Kernel"
 msgstr "Noyau"
@@ -1155,6 +1177,10 @@ msgstr "Dernier check :"
 msgid "Last message"
 msgstr "Dernier message"
 
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Last metrics"
+msgstr ""
+
 #: src/components/routes/home.tsx
 msgid "Last refresh"
 msgstr "Dernier rafraîchissement"
@@ -1167,6 +1193,7 @@ msgstr "Dernier résultat"
 msgid "Last Run"
 msgstr "Dernière exécution"
 
+#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Last snapshot"
 msgstr "Dernier instantané"
@@ -1176,8 +1203,8 @@ msgid "Last Success"
 msgstr "Dernier succès"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Last upgrade"
-msgstr "Dernière mise à jour"
+#~ msgid "Last upgrade"
+#~ msgstr "Dernière mise à jour"
 
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
@@ -1290,6 +1317,14 @@ msgstr "Purge manuelle"
 msgid "Mark all as read"
 msgstr "Tout marquer comme lu"
 
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Memory"
+msgstr "Mémoire"
+
+#: src/components/routes/host-detail.tsx
+msgid "Memory usage"
+msgstr "Utilisation mémoire"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Message delivered"
 msgstr "Message envoyé"
@@ -1341,6 +1376,10 @@ msgstr "Sonde rétablie"
 msgid "Monitor updated"
 msgstr "Sonde mise à jour"
 
+#: src/components/routes/host-detail.tsx
+msgid "Monitoring"
+msgstr ""
+
 #: src/components/app-sidebar.tsx
 #: src/components/command-palette.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
@@ -1376,12 +1415,24 @@ msgid "Needs attention"
 msgstr "À traiter"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Network"
+msgid "Net"
 msgstr "Réseau"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+#~ msgid "Network"
+#~ msgstr "Réseau"
 
 #: src/components/routes/host-detail.tsx
 msgid "Network and repositories"
 msgstr "Réseau et dépôts"
+
+#: src/components/routes/host-detail.tsx
+msgid "Network now"
+msgstr "Réseau actuel"
+
+#: src/components/routes/host-detail.tsx
+msgid "Network throughput"
+msgstr "Débit réseau"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Never"
@@ -1437,7 +1488,6 @@ msgid "No credentials configured. Add one to authenticate against a private regi
 msgstr "Aucun identifiant configuré. Ajoutez-en un pour vous authentifier auprès d'un registre privé."
 
 #: src/components/routes/dashboard/charts.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "No data"
 msgstr "Aucune donnée"
 
@@ -1480,6 +1530,10 @@ msgstr "Aucune image ne correspond à ces filtres"
 #: src/components/routes/monitor-detail.tsx
 msgid "No latency"
 msgstr "Aucune latence"
+
+#: src/components/routes/host-detail.tsx
+msgid "No metrics yet."
+msgstr "Aucune métrique pour le moment."
 
 #: src/components/routes/monitors.tsx
 msgid "No monitors in this group."
@@ -1634,8 +1688,8 @@ msgid "Out of SLA (>30d)"
 msgstr "Hors SLA (>30j)"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Outdated"
-msgstr "Obsolètes"
+#~ msgid "Outdated"
+#~ msgstr "Obsolètes"
 
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Outdated packages"
@@ -1653,7 +1707,6 @@ msgstr "Paquet"
 msgid "Package updates"
 msgstr "Mises à jour de paquets"
 
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Packages"
 msgstr "Paquets"
@@ -1852,8 +1905,12 @@ msgid "Purge Older Records"
 msgstr "Purger les anciens enregistrements"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "RAM"
-msgstr "RAM"
+#~ msgid "RAM"
+#~ msgstr "RAM"
+
+#: src/components/routes/host-detail.tsx
+msgid "RAM now"
+msgstr "RAM actuelle"
 
 #: src/components/routes/notifications.tsx
 msgid "Read"
@@ -1883,8 +1940,12 @@ msgid "Refresh"
 msgstr "Actualiser"
 
 #: src/components/routes/hosts.tsx
-msgid "Refresh snapshots"
-msgstr "Actualiser les instantanés"
+msgid "Refresh inventory"
+msgstr "Actualiser l'inventaire"
+
+#: src/components/routes/hosts.tsx
+#~ msgid "Refresh snapshots"
+#~ msgstr "Actualiser les instantanés"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "regex"
@@ -1907,8 +1968,8 @@ msgid "Remove"
 msgstr "Supprimer"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Repos"
-msgstr "Dépôts"
+#~ msgid "Repos"
+#~ msgstr "Dépôts"
 
 #: src/components/routes/host-detail.tsx
 msgid "Repositories"
@@ -1952,7 +2013,6 @@ msgstr "Réinitialiser le mot de passe"
 msgid "Resource"
 msgstr "Ressource"
 
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Resources"
 msgstr "Ressources"
@@ -2014,7 +2074,6 @@ msgstr "en cours"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "Running"
 msgstr "En cours"
 
@@ -2099,8 +2158,8 @@ msgid "Security"
 msgstr "Sécurité"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Security upd."
-msgstr "MAJ sécu."
+#~ msgid "Security upd."
+#~ msgstr "MAJ sécu."
 
 #: src/components/routes/dashboard/charts.tsx
 #: src/components/routes/dashboard/kpi-cards.tsx
@@ -2154,13 +2213,11 @@ msgid "Source"
 msgstr "Source"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "State"
 msgstr "État"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 #: src/components/routes/monitor-detail.tsx
@@ -2182,8 +2239,8 @@ msgid "Storage"
 msgstr "Stockage"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Swap"
-msgstr "Swap"
+#~ msgid "Swap"
+#~ msgstr "Swap"
 
 #: src/components/mode-toggle.tsx
 msgid "Switch theme"
@@ -2312,8 +2369,8 @@ msgid "total"
 msgstr "total"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Total"
-msgstr "Total"
+#~ msgid "Total"
+#~ msgstr "Total"
 
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Total hosts"
@@ -2330,7 +2387,6 @@ msgid "Type"
 msgstr "Type"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 msgid "unknown"
 msgstr "inconnu"
 
@@ -2387,7 +2443,6 @@ msgid "Updates available"
 msgstr "Mises à jour disponibles"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Uptime"
 msgstr "Disponibilité"
@@ -2430,6 +2485,10 @@ msgstr "Versions"
 #: src/components/routes/home.tsx
 msgid "View all"
 msgstr "Tout voir"
+
+#: src/components/routes/home.tsx
+msgid "View all hosts"
+msgstr "Voir tous les hôtes"
 
 #: src/components/navbar.tsx
 msgid "View all notifications"

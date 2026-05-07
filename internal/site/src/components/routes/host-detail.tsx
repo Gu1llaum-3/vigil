@@ -11,18 +11,42 @@ import {
 	ServerIcon,
 	ShieldAlertIcon,
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Line } from "react-chartjs-2"
+import {
+	Chart as ChartJS,
+	Legend,
+	LineElement,
+	LinearScale,
+	PointElement,
+	Tooltip,
+	type ChartOptions,
+} from "chart.js"
 import { $router, Link } from "@/components/router"
 import Spinner from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { pb } from "@/lib/api"
+import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import { type ContainersFilters, defaultContainersFilters } from "./dashboard/containers-filter-sheet"
 import { ContainersTable } from "./dashboard/containers-table"
 import { useDashboardData } from "./dashboard/use-dashboard-data"
+
+ChartJS.register(LineElement, LinearScale, PointElement, Tooltip, Legend)
+
+type MetricsRange = "1h" | "6h" | "24h" | "7d"
+
+const metricsRanges: { key: MetricsRange; label: string }[] = [
+	{ key: "1h", label: "1h" },
+	{ key: "6h", label: "6h" },
+	{ key: "24h", label: "24h" },
+	{ key: "7d", label: "7d" },
+]
 
 function formatBytes(bytes: number) {
 	if (!bytes || bytes <= 0) return "-"
@@ -34,6 +58,19 @@ function formatBytes(bytes: number) {
 		unit++
 	}
 	return `${formatStorageValue(value)} ${units[unit]}`
+}
+
+function formatBytesPerSecond(bytesPerSecond: number) {
+	if (!bytesPerSecond || bytesPerSecond <= 0) return "0 B/s"
+	const units = ["B/s", "KB/s", "MB/s", "GB/s"]
+	let value = bytesPerSecond
+	let unit = 0
+	while (value >= 1024 && unit < units.length - 1) {
+		value /= 1024
+		unit++
+	}
+	const digits = unit === 0 ? 0 : unit === 1 ? 1 : 2
+	return `${value.toFixed(digits)} ${units[unit]}`
 }
 
 function formatStorageValue(value: number) {
@@ -60,6 +97,15 @@ function formatDateTime(value: string) {
 	const parsed = new Date(value)
 	if (Number.isNaN(parsed.getTime())) return value
 	return parsed.toLocaleString()
+}
+
+function formatChartTime(value: number) {
+	return new Intl.DateTimeFormat(undefined, {
+		month: "short",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	}).format(new Date(value))
 }
 
 function statusBadge(status: string) {
@@ -104,6 +150,189 @@ function imageAuditBadgeClass(status: string) {
 	}
 }
 
+function buildSeries(history: HostMetrics[], selector: (point: HostMetrics) => number) {
+	return history
+		.map((point) => {
+			const x = new Date(point.collected_at).getTime()
+			if (!Number.isFinite(x)) return null
+			return { x, y: selector(point) }
+		})
+		.filter((point): point is { x: number; y: number } => Boolean(point))
+}
+
+function MetricHistoryChart({
+	title,
+	points,
+	formatter,
+	color,
+}: {
+	title: React.ReactNode
+	points: Array<{ x: number; y: number }>
+	formatter: (value: number) => string
+	color: string
+}) {
+	const chartData = {
+		datasets: [
+			{
+				label: "metric",
+				data: points,
+				borderColor: color,
+				borderWidth: 2,
+				pointRadius: 2,
+				pointHoverRadius: 4,
+				tension: 0.2,
+			},
+		],
+	}
+	const options: ChartOptions<"line"> = {
+		responsive: true,
+		maintainAspectRatio: false,
+		interaction: { mode: "index", intersect: false },
+		plugins: {
+			legend: { display: false },
+			tooltip: {
+				callbacks: {
+					title(items) {
+						const raw = items[0]?.parsed?.x
+						return typeof raw === "number" ? formatChartTime(raw) : ""
+					},
+					label(context) {
+						const raw = context.parsed?.y
+						return typeof raw === "number" ? formatter(raw) : ""
+					},
+				},
+			},
+		},
+		scales: {
+			x: {
+				type: "linear",
+				grid: { display: false },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatChartTime(value) : value
+					},
+				},
+			},
+			y: {
+				beginAtZero: true,
+				grid: { color: "rgba(148, 163, 184, 0.15)" },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatter(value) : value
+					},
+				},
+			},
+		},
+	}
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="text-base">{title}</CardTitle>
+			</CardHeader>
+			<CardContent>
+				{points.length === 0 ? (
+					<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 text-sm text-muted-foreground">
+						<Trans>No metrics yet.</Trans>
+					</div>
+				) : (
+					<div className="h-64">
+						<Line data={chartData} options={options} />
+					</div>
+				)}
+			</CardContent>
+		</Card>
+	)
+}
+
+function NetworkHistoryChart({ history }: { history: HostMetrics[] }) {
+	const data = {
+		datasets: [
+			{
+				label: "rx",
+				data: buildSeries(history, (point) => point.network_rx_bps),
+				borderColor: "rgb(59, 130, 246)",
+				backgroundColor: "rgba(59, 130, 246, 0.15)",
+				borderWidth: 2,
+				pointRadius: 2,
+				pointHoverRadius: 4,
+				tension: 0.2,
+			},
+			{
+				label: "tx",
+				data: buildSeries(history, (point) => point.network_tx_bps),
+				borderColor: "rgb(16, 185, 129)",
+				backgroundColor: "rgba(16, 185, 129, 0.15)",
+				borderWidth: 2,
+				pointRadius: 2,
+				pointHoverRadius: 4,
+				tension: 0.2,
+			},
+		],
+	}
+	const options: ChartOptions<"line"> = {
+		responsive: true,
+		maintainAspectRatio: false,
+		interaction: { mode: "index", intersect: false },
+		plugins: {
+			legend: { display: true, position: "bottom" },
+			tooltip: {
+				callbacks: {
+					title(items) {
+						const raw = items[0]?.parsed?.x
+						return typeof raw === "number" ? formatChartTime(raw) : ""
+					},
+					label(context) {
+						const raw = context.parsed?.y
+						return typeof raw === "number" ? formatBytesPerSecond(raw) : ""
+					},
+				},
+			},
+		},
+		scales: {
+			x: {
+				type: "linear",
+				grid: { display: false },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatChartTime(value) : value
+					},
+				},
+			},
+			y: {
+				beginAtZero: true,
+				grid: { color: "rgba(148, 163, 184, 0.15)" },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatBytesPerSecond(value) : value
+					},
+				},
+			},
+		},
+	}
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="text-base">
+					<Trans>Network throughput</Trans>
+				</CardTitle>
+			</CardHeader>
+			<CardContent>
+				{history.length === 0 ? (
+					<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 text-sm text-muted-foreground">
+						<Trans>No metrics yet.</Trans>
+					</div>
+				) : (
+					<div className="h-64">
+						<Line data={data} options={options} />
+					</div>
+				)}
+			</CardContent>
+		</Card>
+	)
+}
+
 function MetricCard({
 	title,
 	value,
@@ -132,8 +361,49 @@ export default function HostDetailPage() {
 	const hostId = (page?.params as { id?: string } | undefined)?.id ?? ""
 	const { dashboard, loading } = useDashboardData()
 	const [containerFilters, setContainerFilters] = useState<ContainersFilters>(defaultContainersFilters)
+	const [host, setHost] = useState<HostsOverviewRecord | null>(null)
+	const [hostLoading, setHostLoading] = useState(true)
+	const [metricsRange, setMetricsRange] = useState<MetricsRange>("24h")
+	const [metricsHistory, setMetricsHistory] = useState<HostMetrics[]>([])
+	const metricsRequestRef = useRef(0)
+	const detailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-	const host = useMemo(() => dashboard?.hosts.find((candidate) => candidate.id === hostId), [dashboard, hostId])
+	const loadHost = useCallback(async () => {
+		if (!hostId) {
+			setHost(null)
+			setHostLoading(false)
+			return
+		}
+		try {
+			const data = await pb.send<HostsOverviewRecord>(`/api/app/hosts/${hostId}`, { method: "GET" })
+			setHost(data)
+		} catch (error) {
+			console.error("host detail fetch failed", error)
+			setHost(null)
+		} finally {
+			setHostLoading(false)
+		}
+	}, [hostId])
+
+	const loadMetrics = useCallback(async () => {
+		if (!hostId) {
+			setMetricsHistory([])
+			return
+		}
+		const requestId = ++metricsRequestRef.current
+		try {
+			const data = await pb.send<HostMetrics[]>(`/api/app/hosts/${hostId}/metrics?range=${metricsRange}`, { method: "GET" })
+			if (requestId === metricsRequestRef.current) {
+				setMetricsHistory(data)
+			}
+		} catch (error) {
+			if (requestId === metricsRequestRef.current) {
+				console.error("host metrics fetch failed", error)
+				setMetricsHistory([])
+			}
+		}
+	}, [hostId, metricsRange])
+
 	const hostContainers = useMemo(
 		() => (dashboard?.containers ?? []).filter((container) => container.host_id === hostId),
 		[dashboard, hostId]
@@ -145,10 +415,40 @@ export default function HostDetailPage() {
 	})
 
 	useEffect(() => {
+		setHostLoading(true)
+		loadHost()
+	}, [loadHost])
+
+	useEffect(() => {
+		loadMetrics()
+	}, [loadMetrics])
+
+	useEffect(() => {
+		if (!hostId) return
+		const unsubscribes: Array<() => void> = []
+		const refresh = () => {
+			if (detailDebounceRef.current) clearTimeout(detailDebounceRef.current)
+			detailDebounceRef.current = setTimeout(() => {
+				loadHost()
+				loadMetrics()
+			}, 1000)
+		}
+		;(async () => {
+			unsubscribes.push(await pb.collection("agents").subscribe(hostId, refresh))
+			unsubscribes.push(await pb.collection("host_snapshots").subscribe("*", refresh))
+			unsubscribes.push(await pb.collection("host_metric_current").subscribe("*", refresh))
+		})()
+		return () => {
+			for (const unsubscribe of unsubscribes) unsubscribe()
+			if (detailDebounceRef.current) clearTimeout(detailDebounceRef.current)
+		}
+	}, [hostId, loadHost, loadMetrics])
+
+	useEffect(() => {
 		document.title = `${host?.name || t`Host`} / Vigil`
 	}, [host?.name, t])
 
-	if (loading) {
+	if (loading || hostLoading) {
 		return (
 			<div className="flex min-h-72 items-center justify-center">
 				<Spinner />
@@ -176,6 +476,9 @@ export default function HostDetailPage() {
 	const outdatedCount = host.packages?.outdated_count ?? 0
 	const rebootRequired = host.reboot?.required
 	const dockerCount = host.docker?.container_count ?? 0
+	const cpuHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.cpu_percent), [metricsHistory])
+	const memoryHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
+	const diskHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
 
 	return (
 		<div className="space-y-6 pb-10">
@@ -238,9 +541,12 @@ export default function HostDetailPage() {
 				/>
 			</div>
 
-			<Tabs defaultValue="overview" className="space-y-4">
+			<Tabs defaultValue="monitoring" className="space-y-4">
 				<div className="overflow-x-auto">
 					<TabsList>
+						<TabsTrigger value="monitoring">
+							<Trans>Monitoring</Trans>
+						</TabsTrigger>
 						<TabsTrigger value="overview">
 							<Trans>Overview</Trans>
 						</TabsTrigger>
@@ -258,6 +564,68 @@ export default function HostDetailPage() {
 						</TabsTrigger>
 					</TabsList>
 				</div>
+
+				<TabsContent value="monitoring" className="space-y-4">
+					<div className="flex justify-end">
+						<Select value={metricsRange} onValueChange={(value) => setMetricsRange(value as MetricsRange)}>
+							<SelectTrigger className="w-[110px]">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{metricsRanges.map((range) => (
+									<SelectItem key={range.key} value={range.key}>
+										{range.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+						<MetricCard
+							title={<Trans>CPU now</Trans>}
+							value={formatPercent(host.metrics?.cpu_percent)}
+							icon={<CpuIcon className="size-4" />}
+						/>
+						<MetricCard
+							title={<Trans>RAM now</Trans>}
+							value={formatPercent(host.metrics?.memory_used_percent)}
+							icon={<ServerIcon className="size-4" />}
+						/>
+						<MetricCard
+							title={<Trans>Disk now</Trans>}
+							value={formatPercent(host.metrics?.disk_used_percent)}
+							icon={<HardDriveIcon className="size-4" />}
+						/>
+						<MetricCard
+							title={<Trans>Network now</Trans>}
+							value={`${formatBytesPerSecond(host.metrics?.network_rx_bps ?? 0)} ↓`}
+							icon={<NetworkIcon className="size-4" />}
+						/>
+					</div>
+
+					<div className="grid gap-4 xl:grid-cols-2">
+						<MetricHistoryChart
+							title={<Trans>CPU usage</Trans>}
+							points={cpuHistory}
+							formatter={(value) => formatPercent(value)}
+							color="rgb(59, 130, 246)"
+						/>
+						<MetricHistoryChart
+							title={<Trans>Memory usage</Trans>}
+							points={memoryHistory}
+							formatter={(value) => formatPercent(value)}
+							color="rgb(16, 185, 129)"
+						/>
+						<MetricHistoryChart
+							title={<Trans>Disk usage</Trans>}
+							points={diskHistory}
+							formatter={(value) => formatPercent(value)}
+							color="rgb(245, 158, 11)"
+						/>
+						<NetworkHistoryChart history={metricsHistory} />
+					</div>
+				</TabsContent>
 
 				<TabsContent value="overview" className="space-y-4">
 					<div className="grid gap-4 lg:grid-cols-2">

@@ -2,8 +2,8 @@ import { Plural, Trans, useLingui } from "@lingui/react/macro"
 import {
 	type Column,
 	type ColumnDef,
-	type SortingState,
 	type PaginationState,
+	type SortingState,
 	flexRender,
 	getCoreRowModel,
 	getPaginationRowModel,
@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import type { DashboardHost } from "@/lib/dashboard-types"
+import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import {
 	applyHostsFilters,
 	defaultHostsFilters,
@@ -47,40 +47,6 @@ function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }
 		</span>
 	)
 }
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function formatUptime(s: number): string {
-	if (!s || s <= 0) return "—"
-	const d = Math.floor(s / 86400)
-	const h = Math.floor((s % 86400) / 3600)
-	const m = Math.floor((s % 3600) / 60)
-	if (d > 0) return `${d}d ${h}h`
-	if (h > 0) return `${h}h ${m}m`
-	return `${m}m`
-}
-
-function formatRam(mb: number): string {
-	if (!mb || mb <= 0) return "—"
-	return mb >= 1024 ? `${Math.round(mb / 1024)} GB` : `${Math.round(mb)} MB`
-}
-
-function formatAgeDays(days: number, known: boolean): string {
-	if (!known) return "—"
-	if (!days || days <= 0) return "today"
-	return `${days}d ago`
-}
-
-function patchStatusRank(h: DashboardHost): number {
-	if (h.status !== "connected") return -1
-	if (h.reboot?.required) return 4
-	if ((h.packages?.security_count ?? 0) > 0) return 3
-	if ((h.packages?.outdated_count ?? 0) > 0 && (h.packages?.last_upgrade_age_days ?? 0) > 30) return 2
-	if ((h.packages?.outdated_count ?? 0) > 0 && !h.packages?.last_upgrade_known) return 1
-	return 0
-}
-
-// ── sub-components ────────────────────────────────────────────────────────────
 
 function InfoBtn({ rows }: { rows: Array<{ label: string; value: string | number }> }) {
 	return (
@@ -109,7 +75,7 @@ function InfoBtn({ rows }: { rows: Array<{ label: string; value: string | number
 	)
 }
 
-function SortBtn({ column, children }: { column: Column<DashboardHost, unknown>; children: React.ReactNode }) {
+function SortBtn({ column, children }: { column: Column<HostsOverviewRecord, unknown>; children: React.ReactNode }) {
 	const sorted = column.getIsSorted()
 	return (
 		<button
@@ -123,19 +89,53 @@ function SortBtn({ column, children }: { column: Column<DashboardHost, unknown>;
 	)
 }
 
-// ── props ─────────────────────────────────────────────────────────────────────
+function formatPercent(value?: number | null): string {
+	if (value == null) return "—"
+	return `${Math.round(value * 10) / 10}%`
+}
+
+function formatBytesPerSecond(bytesPerSecond?: number): string {
+	if (!bytesPerSecond || bytesPerSecond <= 0) return "0 B/s"
+	const units = ["B/s", "KB/s", "MB/s", "GB/s"]
+	let value = bytesPerSecond
+	let unit = 0
+	while (value >= 1024 && unit < units.length - 1) {
+		value /= 1024
+		unit++
+	}
+	const digits = unit === 0 ? 0 : unit === 1 ? 1 : 2
+	return `${value.toFixed(digits)} ${units[unit]}`
+}
+
+function statusRank(host: HostsOverviewRecord): number {
+	return host.status === "connected" ? 1 : 0
+}
+
+function metricPercentValue(host: HostsOverviewRecord, selector: (metrics: HostMetrics) => number): number {
+	return host.metrics ? selector(host.metrics) : -1
+}
+
+function MetricBar({ value, tone = "emerald" }: { value?: number | null; tone?: "emerald" | "amber" }) {
+	const percent = Math.max(0, Math.min(100, value ?? 0))
+	const barClass = tone === "amber" ? "bg-amber-500/80" : "bg-emerald-500/80"
+	return (
+		<div className="flex min-w-[180px] items-center gap-3">
+			<span className="w-12 shrink-0 text-xs font-medium tabular-nums">{formatPercent(value)}</span>
+			<div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+				<div className={cn("h-full rounded-full transition-all", barClass)} style={{ width: `${percent}%` }} />
+			</div>
+		</div>
+	)
+}
 
 interface HostsTableProps {
-	hosts: DashboardHost[]
+	hosts: HostsOverviewRecord[]
 	filters: HostsFilters
 	onFiltersChange: (next: HostsFilters) => void
 }
 
-// ── main component ────────────────────────────────────────────────────────────
-
 export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersChange }: HostsTableProps) {
 	const { t } = useLingui()
-
 	const [sorting, setSorting] = useState<SortingState>([{ id: "connection", desc: true }])
 	const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
 	const [search, setSearch] = useState("")
@@ -149,9 +149,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 		if (!search) return result
 		const q = search.toLowerCase()
 		return result.filter((h) =>
-			[h.name, h.hostname, h.primary_ip, h.network?.gateway, h.os?.name, h.kernel].some((v) =>
-				v?.toLowerCase().includes(q)
-			)
+			[h.name, h.hostname, h.primary_ip, h.os?.name, h.kernel, h.version].some((v) => v?.toLowerCase().includes(q))
 		)
 	}, [hosts, filters, search])
 
@@ -176,230 +174,11 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 		[t]
 	)
 
-	const columns: ColumnDef<DashboardHost>[] = useMemo(
+	const columns: ColumnDef<HostsOverviewRecord>[] = useMemo(
 		() => [
 			{
-				accessorKey: "name",
-				header: ({ column }) => (
-					<SortBtn column={column}>
-						<Trans>Host</Trans>
-					</SortBtn>
-				),
-				cell: ({ row: { original: h } }) => (
-					<div className="group flex items-center">
-						<div>
-							<Link href={getPagePath($router, "host", { id: h.id })} className="font-semibold hover:underline">
-								{h.name || h.hostname || h.id}
-							</Link>
-							{h.hostname && h.name !== h.hostname && <div className="text-xs text-muted-foreground">{h.hostname}</div>}
-						</div>
-						<InfoBtn rows={[{ label: t`Hostname`, value: h.hostname || "—" }]} />
-					</div>
-				),
-			},
-			{
-				id: "ip",
-				accessorFn: (h) => h.primary_ip || "",
-				header: ({ column }) => (
-					<SortBtn column={column}>
-						<Trans>Network</Trans>
-					</SortBtn>
-				),
-				cell: ({ row: { original: h } }) => (
-					<div className="group flex items-center">
-						<span className="font-mono text-sm">{h.primary_ip || "—"}</span>
-						<InfoBtn
-							rows={[
-								{ label: t`Gateway`, value: h.network?.gateway || "—" },
-								{ label: t`DNS`, value: h.network?.dns_servers?.join(", ") || "—" },
-							]}
-						/>
-					</div>
-				),
-			},
-			{
-				id: "os",
-				accessorFn: (h) => h.os?.name || "",
-				header: ({ column }) => (
-					<SortBtn column={column}>
-						<Trans>Platform</Trans>
-					</SortBtn>
-				),
-				cell: ({ row: { original: h } }) => (
-					<div className="text-sm">
-						<div>{h.os ? `${h.os.name} ${h.os.version}`.trim() : "—"}</div>
-						{h.kernel && <div className="font-mono text-[11px] text-muted-foreground">{h.kernel}</div>}
-					</div>
-				),
-			},
-			{
-				id: "resources",
-				accessorFn: (h) => h.resources?.ram_mb ?? 0,
-				header: ({ column }) => (
-					<SortBtn column={column}>
-						<Trans>Resources</Trans>
-					</SortBtn>
-				),
-				cell: ({ row: { original: h } }) => {
-					const res = h.resources
-					if (!res) return <span className="text-sm text-muted-foreground">—</span>
-					return (
-						<div className="group flex items-center">
-							<span className="tabular-nums text-sm">
-								{res.cpu_cores} vCPU / {formatRam(res.ram_mb)}
-							</span>
-							<InfoBtn
-								rows={[
-									{ label: t`CPU`, value: res.cpu_model || "—" },
-									{ label: t`RAM`, value: formatRam(res.ram_mb) },
-									{ label: t`Swap`, value: formatRam(res.swap_mb) },
-									{ label: t`Arch`, value: h.architecture || "—" },
-								]}
-							/>
-						</div>
-					)
-				},
-			},
-			{
-				id: "packages",
-				accessorFn: (h) => (h.packages?.security_count ?? 0) * 10000 + (h.packages?.outdated_count ?? 0),
-				header: ({ column }) => (
-					<SortBtn column={column}>
-						<Trans>Packages</Trans>
-					</SortBtn>
-				),
-				cell: ({ row: { original: h } }) => {
-					if (h.status !== "connected") return <span className="text-xs text-muted-foreground">—</span>
-					const pkg = h.packages
-					if (!pkg) return <span className="text-xs text-muted-foreground">—</span>
-					const sec = pkg.security_count ?? 0
-					const upd = pkg.outdated_count ?? 0
-					const pillCls =
-						sec > 0
-							? "border-red-500/30 bg-red-500/10 text-red-400"
-							: upd > 0
-								? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-								: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-					return (
-						<div className="group flex items-center">
-							<Badge variant="outline" className={cn("tabular-nums text-[10px]", pillCls)}>
-								{sec} sec / {upd} upd
-							</Badge>
-							<InfoBtn
-								rows={[
-									{ label: t`Security`, value: sec },
-									{ label: t`Outdated`, value: upd },
-									{
-										label: t`Last upgrade`,
-										value: pkg.last_upgrade_known
-											? formatAgeDays(pkg.last_upgrade_age_days, pkg.last_upgrade_known)
-											: t`unknown`,
-									},
-									{ label: t`Repos`, value: h.repositories?.length ?? 0 },
-								]}
-							/>
-						</div>
-					)
-				},
-			},
-			{
-				id: "docker",
-				accessorFn: (h) => h.docker?.container_count ?? -1,
-				header: ({ column }) => (
-					<SortBtn column={column}>
-						<Trans>Docker</Trans>
-					</SortBtn>
-				),
-				cell: ({ row: { original: h } }) => {
-					const docker = h.docker
-					if (!docker || docker.state === "not_configured" || docker.state === "cli_missing")
-						return <span className="text-xs text-muted-foreground">—</span>
-					if (
-						docker.state === "daemon_unreachable" ||
-						docker.state === "permission_denied" ||
-						docker.state === "error"
-					) {
-						return (
-							<div className="group flex items-center">
-								<Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
-									{t`Error`}
-								</Badge>
-								<InfoBtn rows={[{ label: t`State`, value: docker.state.replace(/_/g, " ") }]} />
-							</div>
-						)
-					}
-					const allRunning = docker.running_count === docker.container_count && docker.container_count > 0
-					const someDown = docker.running_count < docker.container_count
-					const pillCls = allRunning
-						? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-						: someDown
-							? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-							: "border-border/50 text-muted-foreground"
-					return (
-						<div className="group flex items-center">
-							<Badge variant="outline" className={cn("tabular-nums text-[10px]", pillCls)}>
-								{docker.running_count}/{docker.container_count}
-							</Badge>
-							<InfoBtn
-								rows={[
-									{ label: t`State`, value: docker.state.replace(/_/g, " ") },
-									{ label: t`Running`, value: docker.running_count },
-									{ label: t`Total`, value: docker.container_count },
-								]}
-							/>
-						</div>
-					)
-				},
-			},
-			{
-				id: "patch_status",
-				accessorFn: patchStatusRank,
-				header: ({ column }) => (
-					<SortBtn column={column}>
-						<Trans>Status</Trans>
-					</SortBtn>
-				),
-				cell: ({ row: { original: h } }) => {
-					if (h.status !== "connected")
-						return (
-							<Badge variant="outline" className="border-border/50 text-[10px] text-muted-foreground">
-								<Trans>No data</Trans>
-							</Badge>
-						)
-					if (h.reboot?.required)
-						return (
-							<Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
-								<Trans>Reboot req.</Trans>
-							</Badge>
-						)
-					if ((h.packages?.security_count ?? 0) > 0)
-						return (
-							<Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
-								<Trans>Security upd.</Trans>
-							</Badge>
-						)
-					if ((h.packages?.outdated_count ?? 0) > 0 && (h.packages?.last_upgrade_age_days ?? 0) > 30)
-						return (
-							<Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-400">
-								<Trans>Out of SLA</Trans>
-							</Badge>
-						)
-					if ((h.packages?.outdated_count ?? 0) > 0 && !h.packages?.last_upgrade_known)
-						return (
-							<Badge variant="outline" className="border-slate-500/30 bg-slate-500/10 text-[10px] text-slate-400">
-								<Trans>Unknown</Trans>
-							</Badge>
-						)
-					return (
-						<Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-400">
-							<Trans>Compliant</Trans>
-						</Badge>
-					)
-				},
-			},
-			{
 				id: "connection",
-				accessorFn: (h) => (h.status === "connected" ? 1 : 0),
+				accessorFn: statusRank,
 				header: ({ column }) => <SortBtn column={column}>UP</SortBtn>,
 				cell: ({ row: { original: h } }) =>
 					h.status === "connected" ? (
@@ -413,17 +192,91 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					),
 			},
 			{
-				id: "uptime",
-				accessorFn: (h) => h.uptime_seconds ?? 0,
+				accessorKey: "name",
 				header: ({ column }) => (
 					<SortBtn column={column}>
-						<Trans>Uptime</Trans>
+						<Trans>Host</Trans>
 					</SortBtn>
 				),
 				cell: ({ row: { original: h } }) => (
-					<span className="tabular-nums text-sm text-muted-foreground">
-						{h.uptime_seconds ? formatUptime(h.uptime_seconds) : "—"}
-					</span>
+					<div className="group flex items-center">
+						<div>
+							<Link href={getPagePath($router, "host", { id: h.id })} className="font-semibold hover:underline">
+								{h.name || h.hostname || h.id}
+							</Link>
+							<div className="text-xs text-muted-foreground">
+								{[h.hostname && h.hostname !== h.name ? h.hostname : "", h.primary_ip].filter(Boolean).join(" · ") || "—"}
+							</div>
+						</div>
+						<InfoBtn
+							rows={[
+								{ label: t`Platform`, value: h.os ? `${h.os.name} ${h.os.version}`.trim() : "—" },
+								{ label: t`Kernel`, value: h.kernel || "—" },
+								{ label: t`CPU`, value: h.resources?.cpu_model || "—" },
+								{ label: t`Last snapshot`, value: h.collected_at || "—" },
+								{ label: t`Last metrics`, value: h.metrics?.collected_at || "—" },
+							]}
+						/>
+					</div>
+				),
+			},
+			{
+				id: "cpu",
+				accessorFn: (h) => metricPercentValue(h, (metrics) => metrics.cpu_percent),
+				header: ({ column }) => (
+					<SortBtn column={column}>
+						<Trans>CPU</Trans>
+					</SortBtn>
+				),
+				cell: ({ row: { original: h } }) => <MetricBar value={h.metrics?.cpu_percent} />,
+			},
+			{
+				id: "memory",
+				accessorFn: (h) => metricPercentValue(h, (metrics) => metrics.memory_used_percent),
+				header: ({ column }) => (
+					<SortBtn column={column}>
+						<Trans>Memory</Trans>
+					</SortBtn>
+				),
+				cell: ({ row: { original: h } }) => <MetricBar value={h.metrics?.memory_used_percent} />,
+			},
+			{
+				id: "disk",
+				accessorFn: (h) => metricPercentValue(h, (metrics) => metrics.disk_used_percent),
+				header: ({ column }) => (
+					<SortBtn column={column}>
+						<Trans>Disk</Trans>
+					</SortBtn>
+				),
+				cell: ({ row: { original: h } }) => (
+					<MetricBar value={h.metrics?.disk_used_percent} tone={h.metrics && h.metrics.disk_used_percent >= 75 ? "amber" : "emerald"} />
+				),
+			},
+			{
+				id: "network",
+				accessorFn: (h) => (h.metrics?.network_rx_bps ?? 0) + (h.metrics?.network_tx_bps ?? 0),
+				header: ({ column }) => (
+					<SortBtn column={column}>
+						<Trans>Net</Trans>
+					</SortBtn>
+				),
+				cell: ({ row: { original: h } }) => (
+					<div className="space-y-0.5 text-xs tabular-nums">
+						<div>{formatBytesPerSecond(h.metrics?.network_rx_bps)} ↓</div>
+						<div className="text-muted-foreground">{formatBytesPerSecond(h.metrics?.network_tx_bps)} ↑</div>
+					</div>
+				),
+			},
+			{
+				id: "agent",
+				accessorFn: (h) => h.version || "",
+				header: ({ column }) => (
+					<SortBtn column={column}>
+						<Trans>Agent</Trans>
+					</SortBtn>
+				),
+				cell: ({ row: { original: h } }) => (
+					<span className="font-mono text-xs text-muted-foreground">{h.version || "—"}</span>
 				),
 			},
 		],
@@ -462,10 +315,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					<span className="text-xs text-muted-foreground">
 						<Trans>Rows</Trans>
 					</span>
-					<Select
-						value={String(pagination.pageSize)}
-						onValueChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) })}
-					>
+					<Select value={String(pagination.pageSize)} onValueChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) })}>
 						<SelectTrigger className="w-[72px]">
 							<SelectValue />
 						</SelectTrigger>
@@ -557,12 +407,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					<Plural value={filteredHosts.length} one="# host" other="# hosts" />
 				</span>
 				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => table.previousPage()}
-						disabled={!table.getCanPreviousPage()}
-					>
+					<Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
 						<ChevronDownIcon className="size-3 rotate-90" />
 					</Button>
 					<span>

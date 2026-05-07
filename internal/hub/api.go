@@ -103,6 +103,10 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiNoAuth.GET("/agent-connect", h.handleAgentConnect)
 	// fleet patch audit dashboard
 	apiAuth.GET("/dashboard", h.getDashboard)
+	// lightweight host monitoring overview and detail
+	apiAuth.GET("/hosts-overview", h.getHostsOverview)
+	apiAuth.GET("/hosts/{id}", h.getHostDetail)
+	apiAuth.GET("/hosts/{id}/metrics", h.getHostMetricsHistory)
 	// trigger immediate snapshot refresh for all connected agents
 	apiAuth.POST("/refresh-snapshots", h.refreshSnapshots).BindFunc(excludeReadOnlyRole)
 

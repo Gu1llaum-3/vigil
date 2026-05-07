@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/fxamacker/cbor/v2"
 	app "github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/agent/collectors"
 	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/fxamacker/cbor/v2"
 )
 
 // HandlerContext provides context for request handlers.
@@ -42,6 +42,7 @@ func NewHandlerRegistry() *HandlerRegistry {
 	registry.Register(common.CheckFingerprint, &CheckFingerprintHandler{})
 	registry.Register(common.Ping, &PingHandler{})
 	registry.Register(common.GetHostSnapshot, &GetHostSnapshotHandler{})
+	registry.Register(common.GetHostMetrics, &GetHostMetricsHandler{})
 	return registry
 }
 
@@ -116,4 +117,15 @@ func (h *GetHostSnapshotHandler) Handle(hctx *HandlerContext) error {
 	slog.Debug("GetHostSnapshot request received")
 	snapshot := collectors.CollectSnapshot()
 	return hctx.SendResponse(snapshot, hctx.RequestID)
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+// GetHostMetricsHandler handles lightweight host metrics collection requests from the hub.
+type GetHostMetricsHandler struct{}
+
+func (h *GetHostMetricsHandler) Handle(hctx *HandlerContext) error {
+	slog.Debug("GetHostMetrics request received")
+	metrics := collectors.CollectMetrics()
+	return hctx.SendResponse(metrics, hctx.RequestID)
 }

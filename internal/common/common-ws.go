@@ -13,6 +13,8 @@ const (
 	Ping
 	// GetHostSnapshot requests a full system snapshot from the agent.
 	GetHostSnapshot // 3
+	// GetHostMetrics requests lightweight host monitoring metrics from the agent.
+	GetHostMetrics // 4
 )
 
 // HubRequest defines the structure for requests sent from hub to agent.
@@ -63,6 +65,20 @@ type HostSnapshotResponse struct {
 	Reboot        RebootInfo       `cbor:"reboot"          json:"reboot"`
 	Docker        DockerInfo       `cbor:"docker"          json:"docker"`
 	CollectedAt   string           `cbor:"collected_at"    json:"collected_at"`
+}
+
+// HostMetricsResponse is the lightweight periodic monitoring payload returned by the agent.
+type HostMetricsResponse struct {
+	CPUPercent        float64 `cbor:"cpu_percent"         json:"cpu_percent"`
+	MemoryTotalBytes  uint64  `cbor:"memory_total_bytes"  json:"memory_total_bytes"`
+	MemoryUsedBytes   uint64  `cbor:"memory_used_bytes"   json:"memory_used_bytes"`
+	MemoryUsedPercent float64 `cbor:"memory_used_percent" json:"memory_used_percent"`
+	DiskTotalBytes    uint64  `cbor:"disk_total_bytes"    json:"disk_total_bytes"`
+	DiskUsedBytes     uint64  `cbor:"disk_used_bytes"     json:"disk_used_bytes"`
+	DiskUsedPercent   float64 `cbor:"disk_used_percent"   json:"disk_used_percent"`
+	NetworkRxBps      uint64  `cbor:"network_rx_bps"      json:"network_rx_bps"`
+	NetworkTxBps      uint64  `cbor:"network_tx_bps"      json:"network_tx_bps"`
+	CollectedAt       string  `cbor:"collected_at"        json:"collected_at"`
 }
 
 // OSInfo holds operating system identification fields.

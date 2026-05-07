@@ -125,6 +125,28 @@ export interface DashboardHost extends HostSnapshot {
 	last_seen: string
 }
 
+export interface HostMetrics {
+	cpu_percent: number
+	memory_total_bytes: number
+	memory_used_bytes: number
+	memory_used_percent: number
+	disk_total_bytes: number
+	disk_used_bytes: number
+	disk_used_percent: number
+	network_rx_bps: number
+	network_tx_bps: number
+	collected_at: string
+}
+
+export interface HostsOverviewRecord extends HostSnapshot {
+	id: string
+	name: string
+	status: string
+	last_seen: string
+	version: string
+	metrics?: HostMetrics | null
+}
+
 export interface DistributionEntry {
 	label: string
 	value: number

@@ -93,6 +93,7 @@ The current built-in actions are:
 - `CheckFingerprint` (1)
 - `Ping` (2)
 - `GetHostSnapshot` (3) — requests a full system snapshot from the agent (OS, resources, storage, packages, repositories, reboot state, Docker)
+- `GetHostMetrics` (4) — requests lightweight periodic host monitoring metrics (CPU, memory, root disk usage, network throughput)
 
 ### Request Shape
 
@@ -164,6 +165,13 @@ Once identity is established, the hub requests `GetAgentInfo` and persists:
 
 Immediately after pulling agent info, the hub sends a `GetHostSnapshot` request with a 60-second timeout. The resulting snapshot is upserted into the `host_snapshots` collection via `upsertHostSnapshot()` in `internal/hub/snapshots.go`.
 
+### Step 5c: Hub Collects Initial Metrics
+
+After the initial snapshot, the hub sends a `GetHostMetrics` request with a short timeout and persists the result into:
+
+- `host_metric_samples` for append-only chart history
+- `host_metric_current` for the latest per-agent resource view used by the hosts overview UI
+
 The live `*ws.WsConn` for each connected agent is tracked in `Hub.agentConns` (a `sync.Map` keyed by agent ID). It is stored on connect and deleted on disconnect so that on-demand snapshot refresh knows which agents are reachable.
 
 ### Step 6: Lifecycle Management
@@ -222,6 +230,7 @@ Never reorder existing action constants.
 - `internal/hub/ws/ws.go`
 - `internal/hub/ws/request_manager.go`
 - `internal/hub/snapshots.go`
+- `internal/hub/host_metrics.go`
 - `internal/hub/dashboard.go`
 - `agent/client.go`
 - `agent/connection_manager.go`

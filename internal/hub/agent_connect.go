@@ -154,6 +154,15 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 		slog.Warn("Failed to fetch host snapshot", "agent", agentRec.Id, "err", snapshotErr)
 	}
 
+	// Collect initial lightweight host metrics so the monitoring views populate immediately.
+	metricsCtx, metricsCancel := context.WithTimeout(context.Background(), hostMetricsRequestTimeout)
+	defer metricsCancel()
+	if metrics, metricsErr := wsConn.GetHostMetrics(metricsCtx); metricsErr == nil {
+		acr.hub.persistHostMetrics(agentRec.Id, metrics)
+	} else {
+		slog.Warn("Failed to fetch host metrics", "agent", agentRec.Id, "err", metricsErr)
+	}
+
 	// Keep the connection alive and detect disconnection.
 	go acr.hub.manageAgentLifecycle(wsConn, agentRec.Id)
 	return nil

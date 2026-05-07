@@ -86,7 +86,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 │   ├── agent.go                    # Agent struct, Start()
 │   ├── client.go                   # WebSocket client, auth challenge handling
 │   ├── connection_manager.go       # State machine (Disconnected ↔ WebSocketConnected)
-│   ├── handlers.go                 # Handler registry + built-in handlers (incl. GetHostSnapshotHandler)
+│   ├── handlers.go                 # Handler registry + built-in handlers (incl. GetHostSnapshotHandler/GetHostMetricsHandler)
 │   ├── keys.go                     # ParseKeys() for SSH public key parsing
 │   ├── response.go                 # newAgentResponse() helper
 │   ├── fingerprint.go              # Stable agent identity (persisted to disk)
@@ -94,6 +94,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 │   │   ├── snapshot.go             # Orchestrates all collectors → HostSnapshotResponse
 │   │   ├── system.go               # OS info, CPU, memory (linux)
 │   │   ├── storage.go              # Mounted filesystems (linux)
+│   │   ├── metrics.go              # Lightweight host monitoring metrics (linux)
 │   │   ├── packages_debian.go      # APT packages and pending updates (linux)
 │   │   ├── packages_redhat.go      # DNF/YUM packages and pending updates (linux)
 │   │   ├── repositories_debian.go  # APT repo sources (linux)
@@ -117,6 +118,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 │   │   ├── api.go                  # API routes, middlewares
 │   │   ├── collections.go          # Collection auth settings
 │   │   ├── snapshots.go            # upsertHostSnapshot(), refreshSnapshots() handler
+│   │   ├── host_metrics.go         # metrics polling, persistence, hosts overview/detail APIs
 │   │   ├── dashboard.go            # getDashboard() handler
 │   │   ├── jobs.go                 # Scheduled job registry + persisted job state
 │   │   ├── jobs_api.go             # Scheduled jobs admin API handlers
@@ -148,6 +150,7 @@ Actions are defined as `uint8` constants in `internal/common/common-ws.go`.
 | 1 | `CheckFingerprint` | Hub → Agent | Hub identity challenge (SSH signature) |
 | 2 | `Ping` | Hub → Agent | Liveness check |
 | 3 | `GetHostSnapshot` | Hub → Agent | Full system snapshot (OS, resources, storage, packages, repos, reboot, Docker) |
+| 4 | `GetHostMetrics` | Hub → Agent | Lightweight host monitoring metrics (CPU, memory, root disk, network throughput) |
 
 **Adding a new action:**
 1. Add a constant in `internal/common/common-ws.go` (append only — never reorder)
@@ -217,6 +220,7 @@ Hub side (agent_connect.go):
               ├─ findOrUpsertAgent()   // upsert agents record in DB; store WsConn in Hub.agentConns
               ├─ GetAgentInfo()        // fetch version/capabilities/metadata
               ├─ GetHostSnapshot()     // collect full snapshot (60s timeout) → upsertHostSnapshot()
+              ├─ GetHostMetrics()      // collect lightweight metrics → sample + current records
               └─ manageAgentLifecycle() [goroutine]
                    ├─ Ping every 30s
                    ├─ DownChan → status=offline
@@ -239,6 +243,8 @@ Defined in `internal/migrations/0_collections_snapshot_*.go`.
 | `agents` | `pbc_4000000001` | One record per agent. Key fields: `token`, `fingerprint`, `status`, `capabilities`, `metadata` |
 | `agent_enrollment_tokens` | `pbc_4000000002` | One per user (unique index on `created_by`) |
 | `host_snapshots` | — | One record per agent (unique index). Relation to `agents`, JSON `data` field. Created by migration `2_create_host_snapshots.go` |
+| `host_metric_samples` | `pbc_7000000001` | Append-only host monitoring history. Relation to `agents`; scalar CPU/memory/disk/network fields plus `collected_at`. Indexed on `(agent, collected_at)`. Created by migration `21_create_host_metrics.go`. |
+| `host_metric_current` | `pbc_7000000002` | Latest-only host monitoring cache. Same scalar metrics fields as `host_metric_samples`, unique on `agent`. Created by migration `21_create_host_metrics.go`. |
 | `monitor_groups` | `pbc_5000000001` | Monitor grouping. Fields: `name`, `weight`. Created by migration `3_create_monitors.go` |
 | `monitors` | `pbc_5000000002` | One record per uptime monitor. Type: `http`/`tcp`/`dns`/`push`. Status written by scheduler via `SaveNoValidate`. Created by migration `3_create_monitors.go` |
 | `monitor_events` | `pbc_5000000003` | Append-only check history. Relation to `monitors` (cascadeDelete=true). Indexed on `(monitor, checked_at)`. Created by migration `3_create_monitors.go` |
@@ -300,6 +306,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `HEARTBEAT_METHOD` | HTTP method for heartbeat (`GET`, `POST`) | `POST` |
 | `CHECK_UPDATES` | Enable GitHub update check endpoint | — |
 | `SNAPSHOT_INTERVAL` | Interval between periodic snapshot collections (e.g. `5m`, `10m`, `1h`) | `15m` |
+| `METRICS_INTERVAL` | Interval between periodic lightweight host metrics collections (e.g. `30s`, `1m`) | `1m` |
 
 ---
 
@@ -390,6 +397,7 @@ func TestSomething(t *testing.T) {
 - **No `Save` for internal agent status updates** — use `SaveNoValidate` to avoid triggering validation hooks
 - **Always `context.WithTimeout`** when calling agent actions from the hub (the request manager applies a 5s default if no deadline is set, but be explicit)
 - **`CollectSnapshot` owns a 45s subprocess timeout** — the context is created inside `CollectSnapshot()` and propagated to collectors that spawn subprocesses (`apt-get`, `dnf`, `rpm`, `needs-restarting`, `docker`). File-only collectors do not receive it. The 45s sits below the hub's 60s WebSocket timeout for `GetHostSnapshot`.
+- **`GetHostMetrics` must stay lightweight** — it is the high-frequency monitoring path. Keep it limited to cheap host resource reads (CPU, memory, root disk, network throughput) and do not add package, repository, reboot, or Docker inventory work there.
 - **Append-only for WebSocket actions** — never reorder or renumber constants in `common-ws.go`; values are encoded on the wire
 - **`agent.keys` is nil when no KEY is provided** — `verifySignature` in `client.go` iterates over them; an empty slice means hub verification is skipped silently
 - **Multiple agents can share one enrollment token** — there is intentionally no unique constraint on `agents.token`

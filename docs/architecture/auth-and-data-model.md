@@ -62,6 +62,23 @@ Important fields include:
 
 The collection is tied to the user that created the enrollment token.
 
+### `host_metric_samples`
+
+- created by migration `21_create_host_metrics.go`
+- append-only host monitoring history
+- one record per collected host metrics sample
+- fields: `agent` (relation→agents, cascadeDelete=true), `cpu_percent`, `memory_total_bytes`, `memory_used_bytes`, `memory_used_percent`, `disk_total_bytes`, `disk_used_bytes`, `disk_used_percent`, `network_rx_bps`, `network_tx_bps`, `collected_at`
+- indexed on `(agent, collected_at)` for per-host chart queries
+- written only by the hub after polling connected agents over WebSocket
+
+### `host_metric_current`
+
+- created by migration `21_create_host_metrics.go`
+- latest-only per-host metrics cache for list/detail views
+- same metrics fields as `host_metric_samples`
+- unique index on `agent`
+- written only by the hub after each successful metrics poll
+
 ### `monitor_groups`
 
 - created by migration `3_create_monitors.go`

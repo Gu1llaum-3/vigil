@@ -63,6 +63,20 @@ func (h *Hub) scheduledJobs() []ScheduledJobDefinition {
 				return h.runContainerImageAudit()
 			},
 		},
+		{
+			Key:             hostMetricsRetentionCronJobID,
+			Label:           "Host Metrics Retention",
+			Description:     "Deletes old host metric samples kept only for short-term charts.",
+			DefaultSchedule: hostMetricsRetentionCronExpr,
+			Run: func() (map[string]any, error) {
+				deleted, err := h.purgeHostMetricSamplesOlderThan(hostMetricsRetentionDays)
+				payload := map[string]any{"host_metric_samples_deleted": deleted}
+				if err != nil {
+					return payload, err
+				}
+				return payload, nil
+			},
+		},
 	}
 }
 

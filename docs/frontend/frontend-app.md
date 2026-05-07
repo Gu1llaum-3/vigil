@@ -254,13 +254,19 @@ const ContainersPage = lazy(() => import("@/components/routes/containers.tsx"))
 
 Current behavior:
 
-- `/hosts` renders the full host table previously shown on the dashboard, including search, filters, sorting, pagination, and manual snapshot refresh.
+- `/hosts` renders the monitoring-first host table, including search, filters, sorting, pagination, and a manual inventory refresh action. The row layout now prioritizes `UP`, host identity, CPU, memory, disk, network throughput, and agent version.
 - Host names in `HostsTable` link to `/hosts/:id`.
-- `/hosts/:id` groups host-specific information into Radix `Tabs`: overview, containers, image updates, packages, and system.
+- `/hosts/:id` groups host-specific information into Radix `Tabs`: monitoring, overview, containers, image updates, packages, and system.
 - `/containers` renders the full runtime container inventory previously shown on the dashboard.
 - Host cells in the container table link back to the host detail page.
 
-The first implementation reuses `GET /api/app/dashboard` through `internal/site/src/components/routes/dashboard/use-dashboard-data.ts`. This avoids adding backend endpoints while the information architecture is being validated. If these views become large or need server-side filtering, split them into dedicated API endpoints later.
+The hosts overview now uses dedicated APIs instead of the dashboard aggregate:
+
+- `GET /api/app/hosts-overview`
+- `GET /api/app/hosts/:id`
+- `GET /api/app/hosts/:id/metrics?range=1h|6h|24h|7d`
+
+Realtime refresh for `/hosts` is driven by PocketBase subscriptions to `agents`, `host_snapshots`, and `host_metric_current`, with a 1-second debounce before re-fetching the overview payload.
 
 ## Image Updates Route
 
@@ -293,12 +299,12 @@ Override edits made elsewhere (the dashboard `OverrideMenu` and its `AdvancedOve
 
 The dashboard home page lives under `internal/site/src/components/routes/dashboard/`.
 
-The dashboard is now a summary surface rather than the primary exploration surface. It includes fleet KPI cards, charts, a manual `Refresh` action for immediate snapshot collection, the most recent host snapshot timestamp, and short attention lists for hosts plus containers/images. Full tables live on `/hosts` and `/containers`.
+The dashboard is now a summary surface rather than the primary exploration surface. It includes fleet KPI cards, charts, a manual `Refresh` action for immediate snapshot collection, the most recent host snapshot timestamp, a lightweight hosts overview table backed by `/api/app/hosts-overview`, and short attention lists for hosts plus containers/images. Full tables live on `/hosts` and `/containers`.
 
 Components:
 
 - `kpi-cards.tsx` — summary metric cards (host connectivity ratio, monitor up/total ratio, pending updates, etc.)
-- `hosts-table.tsx` — per-host patch state table, reused by `/hosts`
+- `hosts-table.tsx` — monitoring-first per-host overview table, reused by `/hosts` and the dashboard home route
 - `hosts-filter-sheet.tsx` — Radix `Sheet`-based multi-facet filter panel for the hosts table (exports `HostsFilters`, `defaultHostsFilters`, `applyHostsFilters`, `countHostsFilters`, and the `HostsFilterSheet` component)
 - `containers-table.tsx` — running Docker container inventory plus read-only image audit badges, reused by `/containers` and host detail pages
 - `containers-filter-sheet.tsx` — equivalent multi-facet filter panel for the containers table
@@ -308,7 +314,7 @@ Components:
 The `Patch Status` donut and the host patch badge both follow the same priority order: `Reboot required`, `Security updates`, `Out of SLA (>30d)`, `Compliant`, and `Unknown / Pending`.
 The `Unknown / Pending` state is used when update data exists but the agent could not determine the last upgrade time.
 
-Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. These types map the JSON shape returned by `GET /api/app/dashboard`, including the optional per-container `image_audit` block merged from the backend `container_image_audits` collection.
+Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. This file now contains both the `GET /api/app/dashboard` response types and the dedicated host monitoring types used by `/api/app/hosts-overview` and `/api/app/hosts/:id/metrics`.
 
 Both tables filter via a side `Sheet` panel rather than chips. Each table exposes a `Filters` button (with an active-count badge) next to its search input; the panel combines a single-select facet (Connection / Status) with multi-select checkbox groups (Compliance + Features for hosts, Severity + Image audit for containers). Combination semantics are intersection between groups (AND) and union within a group (OR); an empty multi-select group means "no constraint".
 

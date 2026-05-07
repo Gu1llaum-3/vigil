@@ -3,8 +3,8 @@ package ws
 import (
 	"context"
 
-	"github.com/fxamacker/cbor/v2"
 	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/lxzan/gws"
 	"golang.org/x/crypto/ssh"
 )
@@ -82,6 +82,34 @@ func (ws *WsConn) GetHostSnapshot(ctx context.Context) (common.HostSnapshotRespo
 	}
 	var result common.HostSnapshotResponse
 	handler := &hostSnapshotHandler{result: &result}
+	err = ws.handleAgentRequest(req, handler)
+	return result, err
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Host metrics (used to collect lightweight periodic monitoring metrics)
+////////////////////////////////////////////////////////////////////////////
+
+// hostMetricsHandler implements ResponseHandler for GetHostMetrics requests.
+type hostMetricsHandler struct {
+	result *common.HostMetricsResponse
+}
+
+func (h *hostMetricsHandler) Handle(agentResponse common.AgentResponse) error {
+	return cbor.Unmarshal(agentResponse.Data, h.result)
+}
+
+// GetHostMetrics requests lightweight host metrics from the connected agent.
+func (ws *WsConn) GetHostMetrics(ctx context.Context) (common.HostMetricsResponse, error) {
+	if !ws.IsConnected() {
+		return common.HostMetricsResponse{}, gws.ErrConnClosed
+	}
+	req, err := ws.requestManager.SendRequest(ctx, common.GetHostMetrics, nil)
+	if err != nil {
+		return common.HostMetricsResponse{}, err
+	}
+	var result common.HostMetricsResponse
+	handler := &hostMetricsHandler{result: &result}
 	err = ws.handleAgentRequest(req, handler)
 	return result, err
 }

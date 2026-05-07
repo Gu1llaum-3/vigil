@@ -17,7 +17,7 @@ import {
 	SheetTrigger,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-import type { DashboardHost } from "@/lib/dashboard-types"
+import type { HostsOverviewRecord } from "@/lib/dashboard-types"
 
 export type HostsConnection = "all" | "connected" | "offline"
 export type HostsCompliance = "security" | "reboot" | "stale" | "unknown" | "clean"
@@ -39,7 +39,7 @@ export function countHostsFilters(f: HostsFilters): number {
 	return (f.connection !== "all" ? 1 : 0) + f.compliance.size + f.features.size
 }
 
-function hostMatchesCompliance(h: DashboardHost, flag: HostsCompliance): boolean {
+function hostMatchesCompliance(h: HostsOverviewRecord, flag: HostsCompliance): boolean {
 	const security = h.packages?.security_count ?? 0
 	const outdated = h.packages?.outdated_count ?? 0
 	const lastUpgradeAge = h.packages?.last_upgrade_age_days ?? 0
@@ -60,7 +60,7 @@ function hostMatchesCompliance(h: DashboardHost, flag: HostsCompliance): boolean
 	}
 }
 
-export function applyHostsFilters(hosts: DashboardHost[], filters: HostsFilters): DashboardHost[] {
+export function applyHostsFilters(hosts: HostsOverviewRecord[], filters: HostsFilters): HostsOverviewRecord[] {
 	return hosts.filter((h) => {
 		if (filters.connection === "connected" && h.status !== "connected") return false
 		if (filters.connection === "offline" && h.status === "connected") return false

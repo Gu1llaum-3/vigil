@@ -78,9 +78,12 @@ func (h *Hub) StartHub() error {
 			return err
 		}
 		// start periodic snapshot collection
-		interval := parseSnapshotInterval()
-		slog.Info("Snapshot ticker started", "interval", interval)
-		go h.startSnapshotTicker(ctx, interval)
+		snapshotInterval := parseSnapshotInterval()
+		slog.Info("Snapshot ticker started", "interval", snapshotInterval)
+		go h.startSnapshotTicker(ctx, snapshotInterval)
+		metricsInterval := parseMetricsInterval()
+		slog.Info("Metrics ticker started", "interval", metricsInterval)
+		go h.startMetricsTicker(ctx, metricsInterval)
 		if err := h.registerScheduledJobs(); err != nil {
 			return err
 		}

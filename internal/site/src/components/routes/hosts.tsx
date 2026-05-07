@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button"
 import { isReadOnlyUser, pb } from "@/lib/api"
 import { type HostsFilters, defaultHostsFilters } from "./dashboard/hosts-filter-sheet"
 import { HostsTable } from "./dashboard/hosts-table"
-import { useDashboardData } from "./dashboard/use-dashboard-data"
+import { useHostsOverviewData } from "./dashboard/use-hosts-overview-data"
 
 export default memo(function HostsPage() {
 	const { t } = useLingui()
-	const { dashboard, loading, refetch } = useDashboardData()
+	const { hosts, loading, refetch } = useHostsOverviewData()
 	const [filters, setFilters] = useState<HostsFilters>(defaultHostsFilters)
 	const [refreshing, setRefreshing] = useState(false)
 
@@ -37,7 +37,6 @@ export default memo(function HostsPage() {
 		)
 	}
 
-	const hosts = dashboard?.hosts ?? []
 	const connected = hosts.filter((host) => host.status === "connected").length
 
 	return (
@@ -51,17 +50,17 @@ export default memo(function HostsPage() {
 						<Trans>connected</Trans>
 					</>
 				}
-				actions={
-					<Button
-						variant="outline"
-						disabled={refreshing || isReadOnlyUser()}
-						onClick={refreshSnapshots}
-						className="gap-2"
-					>
-						<RefreshCwIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
-						<Trans>Refresh snapshots</Trans>
-					</Button>
-				}
+					actions={
+						<Button
+							variant="outline"
+							disabled={refreshing || isReadOnlyUser()}
+							onClick={refreshSnapshots}
+							className="gap-2"
+						>
+							<RefreshCwIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
+							<Trans>Refresh inventory</Trans>
+						</Button>
+					}
 			/>
 
 			<HostsTable hosts={hosts} filters={filters} onFiltersChange={setFilters} />

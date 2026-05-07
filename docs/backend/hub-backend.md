@@ -98,6 +98,9 @@ Examples of route responsibilities in this file include:
 - heartbeat testing
 - update-check information
 - `GET /api/app/dashboard` — aggregated dashboard payload with host, snapshot, and monitor KPI counters (auth required); implemented in `internal/hub/dashboard.go`
+- `GET /api/app/hosts-overview` — lightweight per-host monitoring overview combining agent identity, latest snapshot, and latest host metrics; implemented in `internal/hub/host_metrics.go`
+- `GET /api/app/hosts/:id` — dedicated host detail payload for one host; implemented in `internal/hub/host_metrics.go`
+- `GET /api/app/hosts/:id/metrics` — historical host metrics for charts; implemented in `internal/hub/host_metrics.go`
 - `POST /api/app/refresh-snapshots` — triggers on-demand snapshot collection from all connected agents (auth required, non-readonly); implemented in `internal/hub/snapshots.go`
 
 ## Middleware And Role Enforcement
@@ -148,6 +151,7 @@ On a successful connection, `agent_connect.go` also:
 - stores the live `*ws.WsConn` in `Hub.agentConns` (a `sync.Map` keyed by agent ID) so refresh endpoints can reach connected agents
 - removes the entry from `agentConns` when the connection closes
 - collects an initial host snapshot with a 60-second timeout and upserts it into the `host_snapshots` collection
+- collects an initial host metrics sample with a short timeout and persists both the latest sample and the append-only history
 - restores an existing agent from `offline` back to `connected` on reconnect so recovery notifications can be emitted
 
 ## Hub WebSocket Layer
@@ -168,6 +172,26 @@ Responsibilities:
 - exposing convenience methods like `GetAgentInfo()` and `Ping()`
 
 When adding new agent-facing behavior, this package is the hub-side implementation surface.
+
+## Host Metrics Pipeline
+
+Host monitoring metrics are intentionally separate from inventory snapshots.
+
+Files:
+
+- `internal/hub/host_metrics.go` — periodic scheduler, persistence helpers, and dedicated metrics/host APIs
+- `internal/hub/ws/handlers.go` — `GetHostMetrics()` WebSocket call
+- `internal/migrations/21_create_host_metrics.go` — `host_metric_samples` and `host_metric_current` collections
+
+Current behavior:
+
+- `METRICS_INTERVAL` controls the polling cadence for lightweight host metrics
+- default interval is `1m`
+- minimum interval is `30s`
+- each successful poll inserts one `host_metric_samples` record and upserts one `host_metric_current` record
+- `host_metric_samples` retention is handled by the scheduled job `vigilHostMetricRetention`, which deletes samples older than 7 days by default
+
+This split keeps high-frequency monitoring off the heavier `GetHostSnapshot` path and avoids reusing the dashboard aggregate for charts or row-level resource status.
 
 ## Frontend Serving
 

@@ -16,7 +16,10 @@ import { currentHour12 } from "@/lib/utils"
 import type { DashboardResponse } from "@/lib/dashboard-types"
 import { Charts } from "./dashboard/charts"
 import { EmptyState } from "./dashboard/empty-state"
+import { type HostsFilters, defaultHostsFilters } from "./dashboard/hosts-filter-sheet"
+import { HostsTable } from "./dashboard/hosts-table"
 import { KpiCards } from "./dashboard/kpi-cards"
+import { useHostsOverviewData } from "./dashboard/use-hosts-overview-data"
 
 function formatRefreshDateTime(value: string, hour12: boolean) {
 	const parsed = new Date(value)
@@ -34,7 +37,9 @@ function formatRefreshDateTime(value: string, hour12: boolean) {
 export default memo(function Home() {
 	const { t } = useLingui()
 	const userSettings = useStore($userSettings)
+	const { hosts: overviewHosts, loading: overviewLoading } = useHostsOverviewData()
 	const [dashboard, setDashboard] = useState<DashboardResponse | null>(null)
+	const [overviewFilters, setOverviewFilters] = useState<HostsFilters>(defaultHostsFilters)
 	const [loading, setLoading] = useState(true)
 	const [refreshing, setRefreshing] = useState(false)
 	const snapshotDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -250,6 +255,24 @@ export default memo(function Home() {
 			/>
 
 			<Charts summary={dashboard.summary} />
+
+			<section className="space-y-3">
+				<div className="flex items-center justify-between gap-3">
+					<h2 className="text-lg font-semibold tracking-tight">
+						<Trans>Hosts overview</Trans>
+					</h2>
+					<Link href={getPagePath($router, "hosts")} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+						<Trans>View all hosts</Trans>
+					</Link>
+				</div>
+				{overviewLoading ? (
+					<div className="flex min-h-48 items-center justify-center rounded-md border border-border/60">
+						<Spinner />
+					</div>
+				) : (
+					<HostsTable hosts={overviewHosts} filters={overviewFilters} onFiltersChange={setOverviewFilters} />
+				)}
+			</section>
 
 			<div className="grid gap-4 lg:grid-cols-2">
 				<AttentionCard
