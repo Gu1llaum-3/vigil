@@ -77,6 +77,11 @@ function formatStorageValue(value: number) {
 	return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function formatPercent(value?: number | null): string {
+	if (value == null) return "—"
+	return `${Math.round(value * 10) / 10}%`
+}
+
 function formatRam(mb: number) {
 	if (!mb || mb <= 0) return "-"
 	return mb >= 1024 ? `${Math.round(mb / 1024)} GB` : `${Math.round(mb)} MB`
