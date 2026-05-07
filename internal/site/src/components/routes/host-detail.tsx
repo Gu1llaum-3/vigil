@@ -583,14 +583,21 @@ export default function HostDetailPage() {
 	const cpuHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.cpu_percent), [metricsHistory])
 	const memoryHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
 	const diskHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
-	const visibleContainerIDs = useMemo(() => new Set(hostContainers.map((container) => container.id)), [hostContainers])
+	const visibleContainerIDList = useMemo(() => hostContainers.map((container) => container.id), [hostContainers])
+	const visibleContainerIDs = useMemo(() => new Set(visibleContainerIDList), [visibleContainerIDList])
 	const filteredContainerMetricsHistory = useMemo(
 		() =>
 			containerMetricsHistory.map((entry) => ({
 				...entry,
-				containers: entry.containers.filter((container) => visibleContainerIDs.has(container.id)),
+				containers: entry.containers.filter(
+					(container) =>
+						visibleContainerIDs.has(container.id) ||
+						visibleContainerIDList.some(
+							(visibleID) => visibleID.startsWith(container.id) || container.id.startsWith(visibleID)
+						)
+				),
 			})),
-		[containerMetricsHistory, visibleContainerIDs]
+		[containerMetricsHistory, visibleContainerIDList, visibleContainerIDs]
 	)
 	const containerNames = useMemo(() => {
 		const names = new Map<string, string>()

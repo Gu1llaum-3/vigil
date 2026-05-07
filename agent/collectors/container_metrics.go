@@ -50,7 +50,7 @@ func CollectContainerMetrics() common.ContainerMetricsSnapshotResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "docker", "stats", "--no-stream", "--format", "{{json .}}")
+	cmd := exec.CommandContext(ctx, "docker", "stats", "--no-stream", "--no-trunc", "--format", "{{json .}}")
 	out, err := cmd.Output()
 	if err != nil {
 		return result
