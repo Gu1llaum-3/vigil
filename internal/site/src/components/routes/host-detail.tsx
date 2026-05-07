@@ -139,34 +139,18 @@ function statusBadge(status: string) {
 	)
 }
 
-function imageAuditLabel(status: string) {
-	switch (status) {
-		case "update_available":
-			return <Trans>Update available</Trans>
-		case "up_to_date":
-			return <Trans>Up to date</Trans>
-		case "check_failed":
-			return <Trans>Check failed</Trans>
-		case "disabled":
-			return <Trans>Disabled</Trans>
-		default:
-			return status || <Trans>Unknown</Trans>
-	}
+function isImageUpdateAvailable(status: string) {
+	return status === "patch_available" || status === "minor_available" || status === "update_available"
 }
 
-function imageAuditBadgeClass(status: string) {
-	switch (status) {
-		case "update_available":
-			return "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-		case "up_to_date":
-			return "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-		case "check_failed":
-			return "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
-		case "disabled":
-			return "border-border/50 bg-muted/40 text-muted-foreground"
-		default:
-			return "border-border/50 text-muted-foreground"
-	}
+function simplifiedImageAuditLabel(status: string) {
+	return isImageUpdateAvailable(status) ? <Trans>Update available</Trans> : <Trans>Up to date</Trans>
+}
+
+function simplifiedImageAuditBadgeClass(status: string) {
+	return isImageUpdateAvailable(status)
+		? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+		: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
 }
 
 function buildSeries(history: HostMetrics[], selector: (point: HostMetrics) => number) {
@@ -257,90 +241,6 @@ function MetricHistoryChart({
 				) : (
 					<div className="h-64">
 						<Line data={chartData} options={options} />
-					</div>
-				)}
-			</CardContent>
-		</Card>
-	)
-}
-
-function MultiSeriesHistoryChart({
-	title,
-	datasets,
-	formatter,
-}: {
-	title: React.ReactNode
-	datasets: Array<{ label: string; color: string; points: Array<{ x: number; y: number }> }>
-	formatter: (value: number) => string
-}) {
-	const visibleDatasets = datasets.filter((dataset) => dataset.points.length > 0)
-	const data = {
-		datasets: visibleDatasets.map((dataset) => ({
-			label: dataset.label,
-			data: dataset.points,
-			borderColor: dataset.color,
-			backgroundColor: `${dataset.color}33`,
-			borderWidth: 2,
-			pointRadius: 1.5,
-			pointHoverRadius: 4,
-			tension: 0.2,
-		})),
-	}
-	const options: ChartOptions<"line"> = {
-		responsive: true,
-		maintainAspectRatio: false,
-		interaction: { mode: "index", intersect: false },
-		plugins: {
-			legend: { display: true, position: "bottom" },
-			tooltip: {
-				callbacks: {
-					title(items) {
-						const raw = items[0]?.parsed?.x
-						return typeof raw === "number" ? formatChartTime(raw) : ""
-					},
-					label(context) {
-						const raw = context.parsed?.y
-						const label = context.dataset.label || ""
-						return typeof raw === "number" ? `${label}: ${formatter(raw)}` : label
-					},
-				},
-			},
-		},
-		scales: {
-			x: {
-				type: "linear",
-				grid: { display: false },
-				ticks: {
-					callback(value) {
-						return typeof value === "number" ? formatChartTime(value) : value
-					},
-				},
-			},
-			y: {
-				beginAtZero: true,
-				grid: { color: "rgba(148, 163, 184, 0.15)" },
-				ticks: {
-					callback(value) {
-						return typeof value === "number" ? formatter(value) : value
-					},
-				},
-			},
-		},
-	}
-
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="text-base">{title}</CardTitle>
-			</CardHeader>
-			<CardContent>
-				{visibleDatasets.length === 0 ? (
-					<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 text-sm text-muted-foreground">
-						<Trans>No metrics yet.</Trans>
-					</div>
-				) : (
-					<div className="h-64">
-						<Line data={data} options={options} />
 					</div>
 				)}
 			</CardContent>
@@ -456,6 +356,23 @@ function MetricCard({
 			</CardContent>
 		</Card>
 	)
+}
+
+function MetricBar({ value, tone = "emerald" }: { value?: number | null; tone?: "emerald" | "amber" }) {
+	const percent = Math.max(0, Math.min(100, value ?? 0))
+	const barClass = tone === "amber" ? "bg-amber-500/80" : "bg-emerald-500/80"
+	return (
+		<div className="flex min-w-[180px] items-center gap-3">
+			<span className="w-12 shrink-0 text-xs font-medium tabular-nums">{formatPercent(value)}</span>
+			<div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+				<div className={cn("h-full rounded-full transition-all", barClass)} style={{ width: `${percent}%` }} />
+			</div>
+		</div>
+	)
+}
+
+function matchesContainerID(metricID: string, visibleID: string) {
+	return metricID === visibleID || visibleID.startsWith(metricID) || metricID.startsWith(visibleID)
 }
 
 export default function HostDetailPage() {
@@ -592,84 +509,25 @@ export default function HostDetailPage() {
 				containers: entry.containers.filter(
 					(container) =>
 						visibleContainerIDs.has(container.id) ||
-						visibleContainerIDList.some(
-							(visibleID) => visibleID.startsWith(container.id) || container.id.startsWith(visibleID)
-						)
+						visibleContainerIDList.some((visibleID) => matchesContainerID(container.id, visibleID))
 				),
 			})),
 		[containerMetricsHistory, visibleContainerIDList, visibleContainerIDs]
 	)
-	const containerNames = useMemo(() => {
-		const names = new Map<string, string>()
-		for (const entry of filteredContainerMetricsHistory) {
-			for (const container of entry.containers) {
-				if (!names.has(container.id)) {
-					names.set(container.id, container.name || container.id)
-				}
+	const latestContainerMetrics = useMemo(() => {
+		const latestEntry = [...filteredContainerMetricsHistory].reverse().find((entry) => entry.containers.length > 0)
+		if (!latestEntry) {
+			return new Map<string, (typeof latestEntry.containers)[number]>()
+		}
+		const metricsByVisibleID = new Map<string, (typeof latestEntry.containers)[number]>()
+		for (const visibleID of visibleContainerIDList) {
+			const metric = latestEntry.containers.find((container) => matchesContainerID(container.id, visibleID))
+			if (metric) {
+				metricsByVisibleID.set(visibleID, metric)
 			}
 		}
-		return Array.from(names.entries())
-			.map(([id, name]) => ({ id, name }))
-			.sort((a, b) => a.name.localeCompare(b.name))
-	}, [filteredContainerMetricsHistory])
-	const containerPalette = [
-		"rgb(59, 130, 246)",
-		"rgb(16, 185, 129)",
-		"rgb(245, 158, 11)",
-		"rgb(236, 72, 153)",
-		"rgb(168, 85, 247)",
-		"rgb(239, 68, 68)",
-		"rgb(20, 184, 166)",
-		"rgb(99, 102, 241)",
-	]
-	const containerCpuDatasets = useMemo(
-		() =>
-			containerNames.map((container, index) => ({
-				label: container.name,
-				color: containerPalette[index % containerPalette.length],
-				points: filteredContainerMetricsHistory
-					.map((entry) => {
-						const point = entry.containers.find((item) => item.id === container.id)
-						const x = new Date(entry.collected_at).getTime()
-						if (!point || !Number.isFinite(x)) return null
-						return { x, y: point.cpu_percent }
-					})
-					.filter((point): point is { x: number; y: number } => Boolean(point)),
-			})),
-		[containerNames, filteredContainerMetricsHistory]
-	)
-	const containerMemoryDatasets = useMemo(
-		() =>
-			containerNames.map((container, index) => ({
-				label: container.name,
-				color: containerPalette[index % containerPalette.length],
-				points: filteredContainerMetricsHistory
-					.map((entry) => {
-						const point = entry.containers.find((item) => item.id === container.id)
-						const x = new Date(entry.collected_at).getTime()
-						if (!point || !Number.isFinite(x)) return null
-						return { x, y: point.memory_used_bytes }
-					})
-					.filter((point): point is { x: number; y: number } => Boolean(point)),
-			})),
-		[containerNames, filteredContainerMetricsHistory]
-	)
-	const containerNetworkDatasets = useMemo(
-		() =>
-			containerNames.map((container, index) => ({
-				label: container.name,
-				color: containerPalette[index % containerPalette.length],
-				points: filteredContainerMetricsHistory
-					.map((entry) => {
-						const point = entry.containers.find((item) => item.id === container.id)
-						const x = new Date(entry.collected_at).getTime()
-						if (!point || !Number.isFinite(x)) return null
-						return { x, y: point.network_rx_bps + point.network_tx_bps }
-					})
-					.filter((point): point is { x: number; y: number } => Boolean(point)),
-			})),
-		[containerNames, filteredContainerMetricsHistory]
-	)
+		return metricsByVisibleID
+	}, [filteredContainerMetricsHistory, visibleContainerIDList])
 
 	if (loading || hostLoading) {
 		return (
@@ -898,23 +756,68 @@ export default function HostDetailPage() {
 
 				<TabsContent value="containers">
 					<div className="space-y-4">
-						<div className="grid gap-4 xl:grid-cols-3">
-							<MultiSeriesHistoryChart
-								title={<Trans>Container CPU usage</Trans>}
-								datasets={containerCpuDatasets}
-								formatter={(value) => formatPercent(value)}
-							/>
-							<MultiSeriesHistoryChart
-								title={<Trans>Container memory usage</Trans>}
-								datasets={containerMemoryDatasets}
-								formatter={(value) => formatBytesCompact(value)}
-							/>
-							<MultiSeriesHistoryChart
-								title={<Trans>Container network throughput</Trans>}
-								datasets={containerNetworkDatasets}
-								formatter={(value) => formatBytesPerSecond(value)}
-							/>
-						</div>
+						<Card>
+							<CardHeader>
+								<CardTitle className="text-base">
+									<Trans>Container runtime usage</Trans>
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								{hostContainers.length === 0 ? (
+									<div className="rounded-md border border-dashed border-border/60 p-6 text-sm text-muted-foreground">
+										<Trans>No containers on this host.</Trans>
+									</div>
+								) : (
+									<div className="space-y-3">
+										{hostContainers.map((container) => {
+											const metrics = latestContainerMetrics.get(container.id)
+											return (
+												<div key={container.id} className="rounded-md border border-border/60 p-3">
+													<div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+														<div className="min-w-0">
+															<div className="truncate font-medium">{container.name || container.id}</div>
+															<div className="truncate font-mono text-xs text-muted-foreground">
+																{container.image_ref || container.image || container.id}
+															</div>
+														</div>
+														<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 xl:items-center">
+															<div>
+																<div className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+																	<Trans>CPU</Trans>
+																</div>
+																<MetricBar value={metrics?.cpu_percent} />
+															</div>
+															<div>
+																<div className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+																	<Trans>Memory</Trans>
+																</div>
+																<MetricBar
+																	value={
+																		metrics && metrics.memory_limit_bytes > 0
+																			? (metrics.memory_used_bytes / metrics.memory_limit_bytes) * 100
+																			: undefined
+																	}
+																/>
+																<div className="mt-1 text-xs text-muted-foreground tabular-nums">
+																	{metrics ? `${formatBytesCompact(metrics.memory_used_bytes)} / ${formatBytesCompact(metrics.memory_limit_bytes)}` : "—"}
+																</div>
+															</div>
+															<div className="space-y-1 text-xs tabular-nums">
+																<div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+																	<Trans>Network</Trans>
+																</div>
+																<div>{formatBytesPerSecond(metrics?.network_rx_bps ?? 0)} ↓</div>
+																<div className="text-muted-foreground">{formatBytesPerSecond(metrics?.network_tx_bps ?? 0)} ↑</div>
+															</div>
+														</div>
+													</div>
+												</div>
+											)
+										})}
+									</div>
+								)}
+							</CardContent>
+						</Card>
 						<ContainersTable
 							containers={hostContainers}
 							filters={containerFilters}
@@ -962,6 +865,9 @@ export default function HostDetailPage() {
 										) : (
 											auditedContainers.map((container) => {
 												const audit = container.image_audit
+												const simplifiedStatus = isImageUpdateAvailable(audit?.line_status || audit?.status || "")
+													? "update_available"
+													: "up_to_date"
 												return (
 													<TableRow key={container.id}>
 														<TableCell className="font-medium">{container.name || container.id}</TableCell>
@@ -971,13 +877,13 @@ export default function HostDetailPage() {
 														<TableCell>
 															<Badge
 																variant="outline"
-																className={cn("text-[10px]", imageAuditBadgeClass(audit?.status || ""))}
+																className={cn("text-[10px]", simplifiedImageAuditBadgeClass(simplifiedStatus))}
 															>
-																{imageAuditLabel(audit?.status || "")}
+																{simplifiedImageAuditLabel(simplifiedStatus)}
 															</Badge>
 														</TableCell>
 														<TableCell className="font-mono text-xs">
-															{audit?.line_latest_tag || audit?.latest_tag || "-"}
+															{simplifiedStatus === "update_available" ? audit?.line_latest_tag || audit?.latest_tag || "-" : "-"}
 														</TableCell>
 														<TableCell className="text-right text-xs text-muted-foreground">
 															{formatDateTime(audit?.checked_at || "")}
