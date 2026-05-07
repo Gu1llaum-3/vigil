@@ -163,6 +163,14 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 		slog.Warn("Failed to fetch host metrics", "agent", agentRec.Id, "err", metricsErr)
 	}
 
+	containerMetricsCtx, containerMetricsCancel := context.WithTimeout(context.Background(), containerMetricsRequestTimeout)
+	defer containerMetricsCancel()
+	if metrics, metricsErr := wsConn.GetContainerMetrics(containerMetricsCtx); metricsErr == nil {
+		acr.hub.insertContainerMetricSample(agentRec.Id, metrics)
+	} else {
+		slog.Warn("Failed to fetch container metrics", "agent", agentRec.Id, "err", metricsErr)
+	}
+
 	// Keep the connection alive and detect disconnection.
 	go acr.hub.manageAgentLifecycle(wsConn, agentRec.Id)
 	return nil

@@ -101,6 +101,7 @@ Examples of route responsibilities in this file include:
 - `GET /api/app/hosts-overview` — lightweight per-host monitoring overview combining agent identity, latest snapshot, and latest host metrics; implemented in `internal/hub/host_metrics.go`
 - `GET /api/app/hosts/:id` — dedicated host detail payload for one host; implemented in `internal/hub/host_metrics.go`
 - `GET /api/app/hosts/:id/metrics` — historical host metrics for charts; implemented in `internal/hub/host_metrics.go`
+- `GET /api/app/hosts/:id/container-metrics` — historical running-container metrics for host detail charts; implemented in `internal/hub/container_metrics.go`
 - `POST /api/app/refresh-snapshots` — triggers on-demand snapshot collection from all connected agents (auth required, non-readonly); implemented in `internal/hub/snapshots.go`
 
 ## Middleware And Role Enforcement
@@ -192,6 +193,24 @@ Current behavior:
 - `host_metric_samples` retention is handled by the scheduled job `vigilHostMetricRetention`, which deletes samples older than 7 days by default
 
 This split keeps high-frequency monitoring off the heavier `GetHostSnapshot` path and avoids reusing the dashboard aggregate for charts or row-level resource status.
+
+## Container Metrics Pipeline
+
+Running-container monitoring metrics are also kept separate from both inventory snapshots and host-level metrics.
+
+Files:
+
+- `internal/hub/container_metrics.go` — persistence helpers, retention, and the dedicated host container metrics API
+- `internal/hub/ws/handlers.go` — `GetContainerMetrics()` WebSocket call
+- `internal/migrations/22_create_container_metrics.go` — `container_metric_samples` collection
+
+Current behavior:
+
+- the same `METRICS_INTERVAL` cadence used for host metrics also polls running-container metrics
+- each successful poll inserts one `container_metric_samples` record containing the full set of running-container samples for that host and timestamp
+- retention is handled by the scheduled job `vigilContainerMetricRetention`, which deletes samples older than 7 days by default
+
+This mirrors the Beszel-style split between inventory and monitoring while keeping the write path minimal for V1: one row per host poll instead of one row per container.
 
 ## Frontend Serving
 

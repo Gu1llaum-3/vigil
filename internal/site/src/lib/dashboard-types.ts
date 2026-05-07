@@ -138,6 +138,21 @@ export interface HostMetrics {
 	collected_at: string
 }
 
+export interface ContainerMetricsPoint {
+	id: string
+	name: string
+	cpu_percent: number
+	memory_used_bytes: number
+	memory_limit_bytes: number
+	network_rx_bps: number
+	network_tx_bps: number
+}
+
+export interface ContainerMetricsHistoryPoint {
+	collected_at: string
+	containers: ContainerMetricsPoint[]
+}
+
 export interface HostsOverviewRecord extends HostSnapshot {
 	id: string
 	name: string

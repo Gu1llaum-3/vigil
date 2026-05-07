@@ -94,6 +94,7 @@ The current built-in actions are:
 - `Ping` (2)
 - `GetHostSnapshot` (3) — requests a full system snapshot from the agent (OS, resources, storage, packages, repositories, reboot state, Docker)
 - `GetHostMetrics` (4) — requests lightweight periodic host monitoring metrics (CPU, memory, root disk usage, network throughput)
+- `GetContainerMetrics` (5) — requests lightweight periodic running-container metrics (CPU, memory usage, network throughput)
 
 ### Request Shape
 
@@ -171,6 +172,8 @@ After the initial snapshot, the hub sends a `GetHostMetrics` request with a shor
 
 - `host_metric_samples` for append-only chart history
 - `host_metric_current` for the latest per-agent resource view used by the hosts overview UI
+
+The hub also sends `GetContainerMetrics` with a short timeout and persists the result into `container_metric_samples` as append-only per-host polling snapshots. Each row stores the full set of running-container samples captured for that poll, which keeps the write path compact while still supporting multi-series container charts on the host detail page.
 
 The live `*ws.WsConn` for each connected agent is tracked in `Hub.agentConns` (a `sync.Map` keyed by agent ID). It is stored on connect and deleted on disconnect so that on-demand snapshot refresh knows which agents are reachable.
 

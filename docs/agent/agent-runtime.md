@@ -194,6 +194,8 @@ Built-in actions currently cover:
 - agent info reporting
 - liveness ping
 - host snapshot collection (`GetHostSnapshot`)
+- host metrics collection (`GetHostMetrics`)
+- running-container metrics collection (`GetContainerMetrics`)
 
 `GetAgentInfoHandler` reports `"docker": collectors.DockerAvailable()` in the capabilities map so the hub knows whether Docker data may be present in snapshots. This remains a read-only inventory capability: the agent does not expose Docker start/stop/restart or other active workload operations.
 
@@ -218,6 +220,8 @@ Each collector is a focused function that gathers one domain of host data:
 - `repositories_redhat.go` — DNF/YUM repository sources
 - `reboot.go` — reboot-required detection
 - `docker.go` — read-only Docker inventory (container state, image refs, image IDs, repo digests, exit code for terminal states)
+- `metrics.go` — lightweight host monitoring metrics (CPU, memory, root disk, network throughput)
+- `container_metrics.go` — lightweight running-container monitoring metrics gathered from `docker stats --no-stream`
 
 All collectors in this package use the `//go:build linux` build tag and are Linux-only. A non-Linux stub (`collectors_stub.go` or equivalent) provides no-op implementations so the agent compiles on other platforms without errors.
 
@@ -228,6 +232,8 @@ All collectors in this package use the `//go:build linux` build tag and are Linu
 `DockerAvailable()` is exported from this package and used by `GetAgentInfoHandler` to populate the `"docker"` capability flag. The collector now returns more specific snapshot states such as `not_configured`, `cli_missing`, `daemon_unreachable`, and `permission_denied` so the hub and UI can distinguish configuration errors from a healthy Docker inventory.
 
 `ContainerInfo` carries an `ExitCode *int` populated from `docker inspect` (`State.ExitCode`) only for containers in a terminal state (`exited` or `dead`). The pointer lets the hub distinguish "not reported" (nil) from "reported as 0", which matters because a clean `exited (0)` (one-shot job finished successfully) is classified differently from a non-zero exit. The field is `omitempty` on the wire and safe to roll out independently on agents and hubs.
+
+`CollectContainerMetrics()` is intentionally separate from `docker.go` inventory collection. It samples only lightweight runtime metrics for running containers and does not mutate or enrich the snapshot inventory path. The collector currently parses `docker stats --no-stream` output and derives per-container network throughput from successive polls, similar in spirit to Beszel's separate `container_stats` history.
 
 ## How To Add A New Handler
 

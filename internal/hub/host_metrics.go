@@ -91,6 +91,11 @@ func (h *Hub) collectAllHostMetrics(ctx context.Context) (refreshed, failed int)
 				results <- result{}
 				return
 			}
+			if err := h.collectAndPersistContainerMetrics(ctx, agentID, conn); err != nil {
+				slog.Warn("Container metrics collection failed", "agent", agentID, "err", err)
+				results <- result{}
+				return
+			}
 			results <- result{ok: true}
 		}()
 	}

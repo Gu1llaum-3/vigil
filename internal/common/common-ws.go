@@ -15,6 +15,8 @@ const (
 	GetHostSnapshot // 3
 	// GetHostMetrics requests lightweight host monitoring metrics from the agent.
 	GetHostMetrics // 4
+	// GetContainerMetrics requests lightweight running-container monitoring metrics from the agent.
+	GetContainerMetrics // 5
 )
 
 // HubRequest defines the structure for requests sent from hub to agent.
@@ -79,6 +81,23 @@ type HostMetricsResponse struct {
 	NetworkRxBps      uint64  `cbor:"network_rx_bps"      json:"network_rx_bps"`
 	NetworkTxBps      uint64  `cbor:"network_tx_bps"      json:"network_tx_bps"`
 	CollectedAt       string  `cbor:"collected_at"        json:"collected_at"`
+}
+
+// ContainerMetricsPoint is a single running container metric sample.
+type ContainerMetricsPoint struct {
+	ID               string  `cbor:"id"                json:"id"`
+	Name             string  `cbor:"name"              json:"name"`
+	CPUPercent       float64 `cbor:"cpu_percent"       json:"cpu_percent"`
+	MemoryUsedBytes  uint64  `cbor:"memory_used_bytes" json:"memory_used_bytes"`
+	MemoryLimitBytes uint64  `cbor:"memory_limit_bytes" json:"memory_limit_bytes"`
+	NetworkRxBps     uint64  `cbor:"network_rx_bps"    json:"network_rx_bps"`
+	NetworkTxBps     uint64  `cbor:"network_tx_bps"    json:"network_tx_bps"`
+}
+
+// ContainerMetricsSnapshotResponse is the periodic running-container monitoring payload returned by the agent.
+type ContainerMetricsSnapshotResponse struct {
+	Containers  []ContainerMetricsPoint `cbor:"containers"   json:"containers"`
+	CollectedAt string                  `cbor:"collected_at" json:"collected_at"`
 }
 
 // OSInfo holds operating system identification fields.

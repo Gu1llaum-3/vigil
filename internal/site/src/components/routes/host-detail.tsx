@@ -33,6 +33,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils"
 import { pb } from "@/lib/api"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
+import type { ContainerMetricsHistoryPoint } from "@/lib/dashboard-types"
 import { type ContainersFilters, defaultContainersFilters } from "./dashboard/containers-filter-sheet"
 import { ContainersTable } from "./dashboard/containers-table"
 import { useDashboardData } from "./dashboard/use-dashboard-data"
@@ -64,6 +65,19 @@ function formatBytesPerSecond(bytesPerSecond: number) {
 	if (!bytesPerSecond || bytesPerSecond <= 0) return "0 B/s"
 	const units = ["B/s", "KB/s", "MB/s", "GB/s"]
 	let value = bytesPerSecond
+	let unit = 0
+	while (value >= 1024 && unit < units.length - 1) {
+		value /= 1024
+		unit++
+	}
+	const digits = unit === 0 ? 0 : unit === 1 ? 1 : 2
+	return `${value.toFixed(digits)} ${units[unit]}`
+}
+
+function formatBytesCompact(bytes: number) {
+	if (!bytes || bytes <= 0) return "0 B"
+	const units = ["B", "KB", "MB", "GB", "TB"]
+	let value = bytes
 	let unit = 0
 	while (value >= 1024 && unit < units.length - 1) {
 		value /= 1024
@@ -250,6 +264,90 @@ function MetricHistoryChart({
 	)
 }
 
+function MultiSeriesHistoryChart({
+	title,
+	datasets,
+	formatter,
+}: {
+	title: React.ReactNode
+	datasets: Array<{ label: string; color: string; points: Array<{ x: number; y: number }> }>
+	formatter: (value: number) => string
+}) {
+	const visibleDatasets = datasets.filter((dataset) => dataset.points.length > 0)
+	const data = {
+		datasets: visibleDatasets.map((dataset) => ({
+			label: dataset.label,
+			data: dataset.points,
+			borderColor: dataset.color,
+			backgroundColor: `${dataset.color}33`,
+			borderWidth: 2,
+			pointRadius: 1.5,
+			pointHoverRadius: 4,
+			tension: 0.2,
+		})),
+	}
+	const options: ChartOptions<"line"> = {
+		responsive: true,
+		maintainAspectRatio: false,
+		interaction: { mode: "index", intersect: false },
+		plugins: {
+			legend: { display: true, position: "bottom" },
+			tooltip: {
+				callbacks: {
+					title(items) {
+						const raw = items[0]?.parsed?.x
+						return typeof raw === "number" ? formatChartTime(raw) : ""
+					},
+					label(context) {
+						const raw = context.parsed?.y
+						const label = context.dataset.label || ""
+						return typeof raw === "number" ? `${label}: ${formatter(raw)}` : label
+					},
+				},
+			},
+		},
+		scales: {
+			x: {
+				type: "linear",
+				grid: { display: false },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatChartTime(value) : value
+					},
+				},
+			},
+			y: {
+				beginAtZero: true,
+				grid: { color: "rgba(148, 163, 184, 0.15)" },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatter(value) : value
+					},
+				},
+			},
+		},
+	}
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="text-base">{title}</CardTitle>
+			</CardHeader>
+			<CardContent>
+				{visibleDatasets.length === 0 ? (
+					<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 text-sm text-muted-foreground">
+						<Trans>No metrics yet.</Trans>
+					</div>
+				) : (
+					<div className="h-64">
+						<Line data={data} options={options} />
+					</div>
+				)}
+			</CardContent>
+		</Card>
+	)
+}
+
 function NetworkHistoryChart({ history }: { history: HostMetrics[] }) {
 	const data = {
 		datasets: [
@@ -370,7 +468,9 @@ export default function HostDetailPage() {
 	const [hostLoading, setHostLoading] = useState(true)
 	const [metricsRange, setMetricsRange] = useState<MetricsRange>("24h")
 	const [metricsHistory, setMetricsHistory] = useState<HostMetrics[]>([])
+	const [containerMetricsHistory, setContainerMetricsHistory] = useState<ContainerMetricsHistoryPoint[]>([])
 	const metricsRequestRef = useRef(0)
+	const containerMetricsRequestRef = useRef(0)
 	const detailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	const loadHost = useCallback(async () => {
@@ -409,6 +509,27 @@ export default function HostDetailPage() {
 		}
 	}, [hostId, metricsRange])
 
+	const loadContainerMetrics = useCallback(async () => {
+		if (!hostId) {
+			setContainerMetricsHistory([])
+			return
+		}
+		const requestId = ++containerMetricsRequestRef.current
+		try {
+			const data = await pb.send<ContainerMetricsHistoryPoint[]>(`/api/app/hosts/${hostId}/container-metrics?range=${metricsRange}`, {
+				method: "GET",
+			})
+			if (requestId === containerMetricsRequestRef.current) {
+				setContainerMetricsHistory(data)
+			}
+		} catch (error) {
+			if (requestId === containerMetricsRequestRef.current) {
+				console.error("host container metrics fetch failed", error)
+				setContainerMetricsHistory([])
+			}
+		}
+	}, [hostId, metricsRange])
+
 	const hostContainers = useMemo(
 		() => (dashboard?.containers ?? []).filter((container) => container.host_id === hostId),
 		[dashboard, hostId]
@@ -429,6 +550,10 @@ export default function HostDetailPage() {
 	}, [loadMetrics])
 
 	useEffect(() => {
+		loadContainerMetrics()
+	}, [loadContainerMetrics])
+
+	useEffect(() => {
 		if (!hostId) return
 		const unsubscribes: Array<() => void> = []
 		const refresh = () => {
@@ -436,18 +561,20 @@ export default function HostDetailPage() {
 			detailDebounceRef.current = setTimeout(() => {
 				loadHost()
 				loadMetrics()
+				loadContainerMetrics()
 			}, 1000)
 		}
 		;(async () => {
 			unsubscribes.push(await pb.collection("agents").subscribe(hostId, refresh))
 			unsubscribes.push(await pb.collection("host_snapshots").subscribe("*", refresh))
 			unsubscribes.push(await pb.collection("host_metric_current").subscribe("*", refresh))
+			unsubscribes.push(await pb.collection("container_metric_samples").subscribe("*", refresh))
 		})()
 		return () => {
 			for (const unsubscribe of unsubscribes) unsubscribe()
 			if (detailDebounceRef.current) clearTimeout(detailDebounceRef.current)
 		}
-	}, [hostId, loadHost, loadMetrics])
+	}, [hostId, loadContainerMetrics, loadHost, loadMetrics])
 
 	useEffect(() => {
 		document.title = `${host?.name || t`Host`} / Vigil`
@@ -456,6 +583,86 @@ export default function HostDetailPage() {
 	const cpuHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.cpu_percent), [metricsHistory])
 	const memoryHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
 	const diskHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
+	const visibleContainerIDs = useMemo(() => new Set(hostContainers.map((container) => container.id)), [hostContainers])
+	const filteredContainerMetricsHistory = useMemo(
+		() =>
+			containerMetricsHistory.map((entry) => ({
+				...entry,
+				containers: entry.containers.filter((container) => visibleContainerIDs.has(container.id)),
+			})),
+		[containerMetricsHistory, visibleContainerIDs]
+	)
+	const containerNames = useMemo(() => {
+		const names = new Map<string, string>()
+		for (const entry of filteredContainerMetricsHistory) {
+			for (const container of entry.containers) {
+				if (!names.has(container.id)) {
+					names.set(container.id, container.name || container.id)
+				}
+			}
+		}
+		return Array.from(names.entries())
+			.map(([id, name]) => ({ id, name }))
+			.sort((a, b) => a.name.localeCompare(b.name))
+	}, [filteredContainerMetricsHistory])
+	const containerPalette = [
+		"rgb(59, 130, 246)",
+		"rgb(16, 185, 129)",
+		"rgb(245, 158, 11)",
+		"rgb(236, 72, 153)",
+		"rgb(168, 85, 247)",
+		"rgb(239, 68, 68)",
+		"rgb(20, 184, 166)",
+		"rgb(99, 102, 241)",
+	]
+	const containerCpuDatasets = useMemo(
+		() =>
+			containerNames.map((container, index) => ({
+				label: container.name,
+				color: containerPalette[index % containerPalette.length],
+				points: filteredContainerMetricsHistory
+					.map((entry) => {
+						const point = entry.containers.find((item) => item.id === container.id)
+						const x = new Date(entry.collected_at).getTime()
+						if (!point || !Number.isFinite(x)) return null
+						return { x, y: point.cpu_percent }
+					})
+					.filter((point): point is { x: number; y: number } => Boolean(point)),
+			})),
+		[containerNames, filteredContainerMetricsHistory]
+	)
+	const containerMemoryDatasets = useMemo(
+		() =>
+			containerNames.map((container, index) => ({
+				label: container.name,
+				color: containerPalette[index % containerPalette.length],
+				points: filteredContainerMetricsHistory
+					.map((entry) => {
+						const point = entry.containers.find((item) => item.id === container.id)
+						const x = new Date(entry.collected_at).getTime()
+						if (!point || !Number.isFinite(x)) return null
+						return { x, y: point.memory_used_bytes }
+					})
+					.filter((point): point is { x: number; y: number } => Boolean(point)),
+			})),
+		[containerNames, filteredContainerMetricsHistory]
+	)
+	const containerNetworkDatasets = useMemo(
+		() =>
+			containerNames.map((container, index) => ({
+				label: container.name,
+				color: containerPalette[index % containerPalette.length],
+				points: filteredContainerMetricsHistory
+					.map((entry) => {
+						const point = entry.containers.find((item) => item.id === container.id)
+						const x = new Date(entry.collected_at).getTime()
+						if (!point || !Number.isFinite(x)) return null
+						return { x, y: point.network_rx_bps + point.network_tx_bps }
+					})
+					.filter((point): point is { x: number; y: number } => Boolean(point)),
+			})),
+		[containerNames, filteredContainerMetricsHistory]
+	)
 
 	if (loading || hostLoading) {
 		return (
@@ -683,11 +890,30 @@ export default function HostDetailPage() {
 				</TabsContent>
 
 				<TabsContent value="containers">
-					<ContainersTable
-						containers={hostContainers}
-						filters={containerFilters}
-						onFiltersChange={setContainerFilters}
-					/>
+					<div className="space-y-4">
+						<div className="grid gap-4 xl:grid-cols-3">
+							<MultiSeriesHistoryChart
+								title={<Trans>Container CPU usage</Trans>}
+								datasets={containerCpuDatasets}
+								formatter={(value) => formatPercent(value)}
+							/>
+							<MultiSeriesHistoryChart
+								title={<Trans>Container memory usage</Trans>}
+								datasets={containerMemoryDatasets}
+								formatter={(value) => formatBytesCompact(value)}
+							/>
+							<MultiSeriesHistoryChart
+								title={<Trans>Container network throughput</Trans>}
+								datasets={containerNetworkDatasets}
+								formatter={(value) => formatBytesPerSecond(value)}
+							/>
+						</div>
+						<ContainersTable
+							containers={hostContainers}
+							filters={containerFilters}
+							onFiltersChange={setContainerFilters}
+						/>
+					</div>
 				</TabsContent>
 
 				<TabsContent value="images">

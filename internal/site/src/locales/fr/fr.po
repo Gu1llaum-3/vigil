@@ -468,6 +468,10 @@ msgstr "Connexion"
 msgid "Container"
 msgstr "Conteneur"
 
+#: src/components/routes/host-detail.tsx
+msgid "Container CPU usage"
+msgstr "Utilisation CPU des conteneurs"
+
 #: src/components/routes/home.tsx
 #~ msgid "Container fleet"
 #~ msgstr "Flotte de conteneurs"
@@ -479,6 +483,14 @@ msgstr "Mise à jour d'image conteneur"
 #: src/components/routes/notifications.tsx
 msgid "Container images"
 msgstr "Images conteneur"
+
+#: src/components/routes/host-detail.tsx
+msgid "Container memory usage"
+msgstr "Utilisation memoire des conteneurs"
+
+#: src/components/routes/host-detail.tsx
+msgid "Container network throughput"
+msgstr "Debit reseau des conteneurs"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 msgid "Container, image, host, ports…"

@@ -257,6 +257,7 @@ Current behavior:
 - `/hosts` renders the monitoring-first host table, including search, filters, sorting, pagination, and a manual inventory refresh action. The row layout now prioritizes `UP`, host identity, CPU, memory, disk, network throughput, and agent version.
 - Host names in `HostsTable` link to `/hosts/:id`.
 - `/hosts/:id` groups host-specific information into Radix `Tabs`: monitoring, overview, containers, image updates, packages, and system.
+- The `Containers` tab starts with Beszel-style multi-series charts for per-container CPU, memory, and network throughput before the inventory table.
 - `/containers` renders the full runtime container inventory previously shown on the dashboard.
 - Host cells in the container table link back to the host detail page.
 
@@ -265,6 +266,7 @@ The hosts overview now uses dedicated APIs instead of the dashboard aggregate:
 - `GET /api/app/hosts-overview`
 - `GET /api/app/hosts/:id`
 - `GET /api/app/hosts/:id/metrics?range=1h|6h|24h|7d`
+- `GET /api/app/hosts/:id/container-metrics?range=1h|6h|24h|7d`
 
 Realtime refresh for `/hosts` is driven by PocketBase subscriptions to `agents`, `host_snapshots`, and `host_metric_current`, with a 1-second debounce before re-fetching the overview payload.
 
@@ -314,7 +316,7 @@ Components:
 The `Patch Status` donut and the host patch badge both follow the same priority order: `Reboot required`, `Security updates`, `Out of SLA (>30d)`, `Compliant`, and `Unknown / Pending`.
 The `Unknown / Pending` state is used when update data exists but the agent could not determine the last upgrade time.
 
-Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. This file now contains both the `GET /api/app/dashboard` response types and the dedicated host monitoring types used by `/api/app/hosts-overview` and `/api/app/hosts/:id/metrics`.
+Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. This file now contains both the `GET /api/app/dashboard` response types and the dedicated host/container monitoring types used by `/api/app/hosts-overview`, `/api/app/hosts/:id/metrics`, and `/api/app/hosts/:id/container-metrics`.
 
 Both tables filter via a side `Sheet` panel rather than chips. Each table exposes a `Filters` button (with an active-count badge) next to its search input; the panel combines a single-select facet (Connection / Status) with multi-select checkbox groups (Compliance + Features for hosts, Severity + Image audit for containers). Combination semantics are intersection between groups (AND) and union within a group (OR); an empty multi-select group means "no constraint".
 

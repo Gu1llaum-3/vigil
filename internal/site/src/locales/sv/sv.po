@@ -468,6 +468,10 @@ msgstr ""
 msgid "Container"
 msgstr ""
 
+#: src/components/routes/host-detail.tsx
+msgid "Container CPU usage"
+msgstr ""
+
 #: src/components/routes/home.tsx
 #~ msgid "Container fleet"
 #~ msgstr ""
@@ -478,6 +482,14 @@ msgstr ""
 
 #: src/components/routes/notifications.tsx
 msgid "Container images"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Container memory usage"
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Container network throughput"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx

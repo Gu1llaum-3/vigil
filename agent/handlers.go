@@ -43,6 +43,7 @@ func NewHandlerRegistry() *HandlerRegistry {
 	registry.Register(common.Ping, &PingHandler{})
 	registry.Register(common.GetHostSnapshot, &GetHostSnapshotHandler{})
 	registry.Register(common.GetHostMetrics, &GetHostMetricsHandler{})
+	registry.Register(common.GetContainerMetrics, &GetContainerMetricsHandler{})
 	return registry
 }
 
@@ -127,5 +128,16 @@ type GetHostMetricsHandler struct{}
 func (h *GetHostMetricsHandler) Handle(hctx *HandlerContext) error {
 	slog.Debug("GetHostMetrics request received")
 	metrics := collectors.CollectMetrics()
+	return hctx.SendResponse(metrics, hctx.RequestID)
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+// GetContainerMetricsHandler handles lightweight running-container metrics collection requests from the hub.
+type GetContainerMetricsHandler struct{}
+
+func (h *GetContainerMetricsHandler) Handle(hctx *HandlerContext) error {
+	slog.Debug("GetContainerMetrics request received")
+	metrics := collectors.CollectContainerMetrics()
 	return hctx.SendResponse(metrics, hctx.RequestID)
 }

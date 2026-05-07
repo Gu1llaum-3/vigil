@@ -77,6 +77,20 @@ func (h *Hub) scheduledJobs() []ScheduledJobDefinition {
 				return payload, nil
 			},
 		},
+		{
+			Key:             containerMetricsRetentionCronJobID,
+			Label:           "Container Metrics Retention",
+			Description:     "Deletes old container metric samples kept only for short-term charts.",
+			DefaultSchedule: containerMetricsRetentionCronExpr,
+			Run: func() (map[string]any, error) {
+				deleted, err := h.purgeContainerMetricSamplesOlderThan(containerMetricsRetentionDays)
+				payload := map[string]any{"container_metric_samples_deleted": deleted}
+				if err != nil {
+					return payload, err
+				}
+				return payload, nil
+			},
+		},
 	}
 }
 

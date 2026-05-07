@@ -115,6 +115,34 @@ func (ws *WsConn) GetHostMetrics(ctx context.Context) (common.HostMetricsRespons
 }
 
 ////////////////////////////////////////////////////////////////////////////
+// Container metrics (used to collect lightweight periodic running-container metrics)
+////////////////////////////////////////////////////////////////////////////
+
+// containerMetricsHandler implements ResponseHandler for GetContainerMetrics requests.
+type containerMetricsHandler struct {
+	result *common.ContainerMetricsSnapshotResponse
+}
+
+func (h *containerMetricsHandler) Handle(agentResponse common.AgentResponse) error {
+	return cbor.Unmarshal(agentResponse.Data, h.result)
+}
+
+// GetContainerMetrics requests lightweight running-container metrics from the connected agent.
+func (ws *WsConn) GetContainerMetrics(ctx context.Context) (common.ContainerMetricsSnapshotResponse, error) {
+	if !ws.IsConnected() {
+		return common.ContainerMetricsSnapshotResponse{}, gws.ErrConnClosed
+	}
+	req, err := ws.requestManager.SendRequest(ctx, common.GetContainerMetrics, nil)
+	if err != nil {
+		return common.ContainerMetricsSnapshotResponse{}, err
+	}
+	var result common.ContainerMetricsSnapshotResponse
+	handler := &containerMetricsHandler{result: &result}
+	err = ws.handleAgentRequest(req, handler)
+	return result, err
+}
+
+////////////////////////////////////////////////////////////////////////////
 // Fingerprint handling (used for WebSocket authentication)
 ////////////////////////////////////////////////////////////////////////////
 
