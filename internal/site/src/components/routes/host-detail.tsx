@@ -448,6 +448,10 @@ export default function HostDetailPage() {
 		document.title = `${host?.name || t`Host`} / Vigil`
 	}, [host?.name, t])
 
+	const cpuHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.cpu_percent), [metricsHistory])
+	const memoryHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
+	const diskHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
+
 	if (loading || hostLoading) {
 		return (
 			<div className="flex min-h-72 items-center justify-center">
@@ -476,9 +480,6 @@ export default function HostDetailPage() {
 	const outdatedCount = host.packages?.outdated_count ?? 0
 	const rebootRequired = host.reboot?.required
 	const dockerCount = host.docker?.container_count ?? 0
-	const cpuHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.cpu_percent), [metricsHistory])
-	const memoryHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
-	const diskHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
 
 	return (
 		<div className="space-y-6 pb-10">
