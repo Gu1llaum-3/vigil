@@ -11,6 +11,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 )
 
+var retryAfter = time.After
+
 const (
 	// imageAuditParallelism is the maximum number of containers audited
 	// concurrently. Registries throttle aggressively under bursty traffic, so
@@ -19,9 +21,10 @@ const (
 
 	// imageAuditMaxRetries is the number of additional attempts beyond the
 	// first try when a registry call hits a transient error.
-	imageAuditMaxRetries = 2
+	imageAuditMaxRetries = 5
 
 	imageAuditPerContainerTimeout = 20 * time.Second
+	imageAuditRetryDelay          = 250 * time.Millisecond
 )
 
 // Error kinds surfaced through imageAuditResult.ErrorKind. These help the UI
@@ -80,7 +83,7 @@ func isRetryableRegistryError(err error) bool {
 	}
 }
 
-// cachingRegistryClient memoizes ListTags calls per (repository) within an
+// cachingRegistryClient memoizes ListTags calls per repository within an
 // audit cycle and retries transient failures with a fixed backoff. It is safe
 // for concurrent use. A new instance must be created per audit cycle so the
 // cache does not outlive its freshness window.
@@ -88,18 +91,19 @@ type cachingRegistryClient struct {
 	inner imageRegistryClient
 
 	tagsMu sync.Mutex
-	tags   map[string]tagsCacheEntry
+	tags   map[string]*tagsCacheEntry
 }
 
 type tagsCacheEntry struct {
-	tags []string
-	err  error
+	ready chan struct{}
+	tags  []string
+	err   error
 }
 
 func newCachingRegistryClient(inner imageRegistryClient) *cachingRegistryClient {
 	return &cachingRegistryClient{
 		inner: inner,
-		tags:  make(map[string]tagsCacheEntry),
+		tags:  make(map[string]*tagsCacheEntry),
 	}
 }
 
@@ -119,27 +123,33 @@ func (c *cachingRegistryClient) ListTags(ctx context.Context, repository string)
 	c.tagsMu.Lock()
 	if entry, ok := c.tags[repository]; ok {
 		c.tagsMu.Unlock()
+		select {
+		case <-entry.ready:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 		return entry.tags, entry.err
 	}
 	// Reserve the slot under the lock so concurrent calls for the same repo
-	// wait on the in-flight result.
-	wait := make(chan struct{})
-	c.tags[repository] = tagsCacheEntry{}
+	// wait on the in-flight result instead of duplicating the request.
+	entry := &tagsCacheEntry{ready: make(chan struct{})}
+	c.tags[repository] = entry
 	c.tagsMu.Unlock()
-	defer close(wait)
 
 	tags, err := retryRegistrySlice(ctx, func() ([]string, error) {
 		return c.inner.ListTags(ctx, repository)
 	})
 	c.tagsMu.Lock()
-	c.tags[repository] = tagsCacheEntry{tags: tags, err: err}
+	entry.tags = tags
+	entry.err = err
+	close(entry.ready)
 	c.tagsMu.Unlock()
 	return tags, err
 }
 
 func retryRegistryCall(ctx context.Context, fn func() (string, error)) (string, error) {
 	var lastErr error
-	delay := 200 * time.Millisecond
+	delay := imageAuditRetryDelay
 	for attempt := 0; attempt <= imageAuditMaxRetries; attempt++ {
 		if ctx.Err() != nil {
 			return "", ctx.Err()
@@ -155,16 +165,16 @@ func retryRegistryCall(ctx context.Context, fn func() (string, error)) (string, 
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
-		case <-time.After(delay):
+		case <-retryAfter(delay):
 		}
-		delay *= 4
+		delay *= 2
 	}
 	return "", lastErr
 }
 
 func retryRegistrySlice(ctx context.Context, fn func() ([]string, error)) ([]string, error) {
 	var lastErr error
-	delay := 200 * time.Millisecond
+	delay := imageAuditRetryDelay
 	for attempt := 0; attempt <= imageAuditMaxRetries; attempt++ {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -180,9 +190,9 @@ func retryRegistrySlice(ctx context.Context, fn func() ([]string, error)) ([]str
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(delay):
+		case <-retryAfter(delay):
 		}
-		delay *= 4
+		delay *= 2
 	}
 	return nil, lastErr
 }

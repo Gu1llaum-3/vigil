@@ -72,6 +72,60 @@ func TestCachingRegistryClientCachesErrorsToo(t *testing.T) {
 	require.EqualValues(t, 1, calls.Load())
 }
 
+func TestCachingRegistryClientWaitsForInFlightListTags(t *testing.T) {
+	release := make(chan struct{})
+	started := make(chan struct{}, 1)
+	var innerCalls atomic.Int32
+	client := newCachingRegistryClient(blockingListTagsClient{
+		tags:    []string{"1.0", "1.1"},
+		block:   release,
+		started: started,
+		calls:   &innerCalls,
+	})
+
+	firstResult := make(chan []string, 1)
+	firstErr := make(chan error, 1)
+	go func() {
+		tags, err := client.ListTags(context.Background(), "docker.io/library/nginx")
+		firstResult <- tags
+		firstErr <- err
+	}()
+	<-started
+
+	secondResult := make(chan []string, 1)
+	secondErr := make(chan error, 1)
+	go func() {
+		tags, err := client.ListTags(context.Background(), "docker.io/library/nginx")
+		secondResult <- tags
+		secondErr <- err
+	}()
+
+	select {
+	case <-secondResult:
+		t.Fatal("second ListTags call returned before the first completed")
+	case <-time.After(20 * time.Millisecond):
+	}
+
+	close(release)
+
+	select {
+	case tags := <-firstResult:
+		require.Equal(t, []string{"1.0", "1.1"}, tags)
+	case <-time.After(time.Second):
+		t.Fatal("first ListTags call did not complete")
+	}
+	require.NoError(t, <-firstErr)
+
+	select {
+	case tags := <-secondResult:
+		require.Equal(t, []string{"1.0", "1.1"}, tags)
+	case <-time.After(time.Second):
+		t.Fatal("second ListTags call did not complete")
+	}
+	require.NoError(t, <-secondErr)
+	require.EqualValues(t, 1, innerCalls.Load())
+}
+
 func TestRetryRegistryCallRetriesTransientErrors(t *testing.T) {
 	var calls int
 	out, err := retryRegistryCall(context.Background(), func() (string, error) {
@@ -84,6 +138,28 @@ func TestRetryRegistryCallRetriesTransientErrors(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ok", out)
 	require.Equal(t, 3, calls)
+}
+
+func TestRetryRegistryCallUsesConfiguredRetryBudget(t *testing.T) {
+	oldRetryAfter := retryAfter
+	retryAfter = func(time.Duration) <-chan time.Time {
+		ch := make(chan time.Time, 1)
+		ch <- time.Now()
+		return ch
+	}
+	defer func() { retryAfter = oldRetryAfter }()
+
+	var calls int
+	out, err := retryRegistryCall(context.Background(), func() (string, error) {
+		calls++
+		if calls < 6 {
+			return "", &transport.Error{StatusCode: http.StatusBadGateway}
+		}
+		return "ok", nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, "ok", out)
+	require.Equal(t, 6, calls)
 }
 
 func TestRetryRegistryCallDoesNotRetryAuthFailures(t *testing.T) {
@@ -175,6 +251,35 @@ func (c callCountingRegistryClient) ListTags(ctx context.Context, repo string) (
 		c.listCalls.Add(1)
 	}
 	return c.inner.ListTags(ctx, repo)
+}
+
+type blockingListTagsClient struct {
+	tags    []string
+	block   <-chan struct{}
+	started chan<- struct{}
+	calls   *atomic.Int32
+}
+
+func (c blockingListTagsClient) HeadDigest(context.Context, string) (string, error) {
+	return "", nil
+}
+
+func (c blockingListTagsClient) ResolvedDigest(context.Context, string, string) (string, error) {
+	return "", nil
+}
+
+func (c blockingListTagsClient) ListTags(_ context.Context, _ string) ([]string, error) {
+	if c.calls != nil {
+		c.calls.Add(1)
+	}
+	if c.started != nil {
+		select {
+		case c.started <- struct{}{}:
+		default:
+		}
+	}
+	<-c.block
+	return c.tags, nil
 }
 
 type slowMockClient struct {
