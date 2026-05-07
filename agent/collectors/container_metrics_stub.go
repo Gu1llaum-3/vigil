@@ -1,3 +1,5 @@
+//go:build !linux
+
 package collectors
 
 import "github.com/Gu1llaum-3/vigil/internal/common"
