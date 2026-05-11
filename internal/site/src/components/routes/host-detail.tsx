@@ -34,11 +34,13 @@ import { pb } from "@/lib/api"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import type { ContainerMetricsHistoryPoint } from "@/lib/dashboard-types"
 import {
+	formatBytes,
 	formatBytesCompact,
 	formatBytesPerSecond,
 	formatDateTime,
 	formatPercent,
 	formatRam,
+	formatStorageValue,
 	formatUptime,
 } from "@/lib/format"
 import { type ContainersFilters, defaultContainersFilters } from "./dashboard/containers-filter-sheet"
