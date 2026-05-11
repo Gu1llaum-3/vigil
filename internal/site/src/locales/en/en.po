@@ -34,6 +34,11 @@ msgstr "{0, plural, one {# container} other {# containers}}"
 msgid "{0, plural, one {# host} other {# hosts}}"
 msgstr "{0, plural, one {# host} other {# hosts}}"
 
+#. placeholder {0}: container.repo_digests.length
+#: src/components/routes/container-detail.tsx
+msgid "{0, plural, one {Repo digest} other {Repo digests}}"
+msgstr "{0, plural, one {Repo digest} other {Repo digests}}"
+
 #. placeholder {0}: result.items.length
 #: src/components/routes/settings/notifications/history.tsx
 msgid "{0} entries on this page"
@@ -253,8 +258,8 @@ msgstr "Audit policy"
 msgid "Audit policy for {0}"
 msgstr "Audit policy for {0}"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
 msgid "Audit policy updated"
 msgstr "Audit policy updated"
 
@@ -287,6 +292,10 @@ msgstr "Avg 24h"
 #: src/components/routes/monitor-detail.tsx
 msgid "Back"
 msgstr "Back"
+
+#: src/components/routes/container-detail.tsx
+msgid "Back to containers"
+msgstr "Back to containers"
 
 #: src/components/routes/host-detail.tsx
 msgid "Back to hosts"
@@ -363,6 +372,7 @@ msgstr "Check {email} for a reset link."
 msgid "Check failed"
 msgstr "Check failed"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
 msgid "Check images now"
@@ -372,6 +382,7 @@ msgstr "Check images now"
 msgid "Check logs for more details."
 msgstr "Check logs for more details."
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Checked"
@@ -457,6 +468,7 @@ msgstr "connected"
 msgid "Connection"
 msgstr "Connection"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Container"
@@ -465,6 +477,10 @@ msgstr "Container"
 #: src/components/routes/host-detail.tsx
 #~ msgid "Container CPU usage"
 #~ msgstr "Container CPU usage"
+
+#: src/components/routes/container-detail.tsx
+msgid "Container details"
+msgstr "Container details"
 
 #: src/components/routes/home.tsx
 #~ msgid "Container fleet"
@@ -485,6 +501,10 @@ msgstr "Container images"
 #: src/components/routes/host-detail.tsx
 #~ msgid "Container network throughput"
 #~ msgstr "Container network throughput"
+
+#: src/components/routes/container-detail.tsx
+msgid "Container not found."
+msgstr "Container not found."
 
 #: src/components/routes/host-detail.tsx
 msgid "Container runtime usage"
@@ -565,10 +585,12 @@ msgstr "Count"
 msgid "CPU"
 msgstr "CPU"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/host-detail.tsx
 msgid "CPU now"
 msgstr "CPU now"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/host-detail.tsx
 msgid "CPU usage"
 msgstr "CPU usage"
@@ -606,8 +628,8 @@ msgstr "Critical alerts"
 msgid "Cron expression evaluated in UTC. Examples: <0>0 */6 * * *</0> (every 6 hours), <1>*/15 * * * *</1> (every 15 minutes)."
 msgstr "Cron expression evaluated in UTC. Examples: <0>0 */6 * * *</0> (every 6 hours), <1>*/15 * * * *</1> (every 15 minutes)."
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
 msgid "Current"
 msgstr "Current"
 
@@ -711,11 +733,11 @@ msgstr "Details"
 msgid "Digest only"
 msgstr "Digest only"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "Digests"
 msgstr "Digests"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "Disable audit"
 msgstr "Disable audit"
 
@@ -836,9 +858,9 @@ msgstr "Enter your one-time password."
 msgid "Ephemeral"
 msgstr "Ephemeral"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/home.tsx
-#: src/components/routes/images.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
@@ -858,6 +880,7 @@ msgstr "Event"
 msgid "Events"
 msgstr "Events"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Exit code"
 msgstr "Exit code"
@@ -910,6 +933,7 @@ msgstr "Failed to load purge settings"
 msgid "Failed to move monitor"
 msgstr "Failed to move monitor"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
 msgid "Failed to run image audit"
@@ -939,8 +963,8 @@ msgstr "Failed to save purge settings"
 msgid "Failed to save settings"
 msgstr "Failed to save settings"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
 msgid "Failed to update audit policy"
 msgstr "Failed to update audit policy"
 
@@ -1025,6 +1049,7 @@ msgstr "History"
 msgid "Home"
 msgstr "Home"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
@@ -1081,6 +1106,10 @@ msgstr "Hosts overview"
 msgid "Hub URL"
 msgstr "Hub URL"
 
+#: src/components/routes/container-detail.tsx
+msgid "ID"
+msgstr "ID"
+
 #: src/components/routes/settings/jobs.tsx
 msgid "Idle"
 msgstr "Idle"
@@ -1089,16 +1118,19 @@ msgstr "Idle"
 msgid "If you've lost the password to your admin account, you may reset it using the following command."
 msgstr "If you've lost the password to your admin account, you may reset it using the following command."
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Image"
 msgstr "Image"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Image audit"
 msgstr "Image audit"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
 msgid "Image audit completed"
@@ -1108,7 +1140,11 @@ msgstr "Image audit completed"
 msgid "Image audit override"
 msgstr "Image audit override"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
+msgid "Image ID"
+msgstr "Image ID"
+
+#: src/components/routes/container-detail.tsx
 msgid "Image ref"
 msgstr "Image ref"
 
@@ -1126,6 +1162,10 @@ msgstr "Image updates"
 #: src/components/routes/host-detail.tsx
 msgid "Insecure"
 msgstr "Insecure"
+
+#: src/components/routes/container-detail.tsx
+msgid "Inspect"
+msgstr "Inspect"
 
 #: src/components/routes/host-detail.tsx
 msgid "Installed"
@@ -1225,7 +1265,7 @@ msgstr "Latency"
 msgid "Latency history"
 msgstr "Latency history"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "Latest"
 msgstr "Latest"
 
@@ -1233,18 +1273,18 @@ msgstr "Latest"
 msgid "Latest image id"
 msgstr "Latest image id"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
 msgid "Latest in line"
 msgstr "Latest in line"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
 msgid "Latest overall"
 msgstr "Latest overall"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
 msgid "Latest same major"
 msgstr "Latest same major"
 
@@ -1288,7 +1328,7 @@ msgstr "Loading notifications…"
 msgid "Loading purge settings…"
 msgstr "Loading purge settings…"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "Local"
 msgstr "Local"
 
@@ -1332,6 +1372,11 @@ msgstr "Mark all as read"
 msgid "Memory"
 msgstr "Memory"
 
+#: src/components/routes/container-detail.tsx
+msgid "Memory now"
+msgstr "Memory now"
+
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Memory usage"
 msgstr "Memory usage"
@@ -1387,6 +1432,7 @@ msgstr "Monitor recovered"
 msgid "Monitor updated"
 msgstr "Monitor updated"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Monitoring"
 msgstr "Monitoring"
@@ -1437,11 +1483,12 @@ msgstr "Network"
 msgid "Network and repositories"
 msgstr "Network and repositories"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Network now"
 msgstr "Network now"
 
-#: src/components/routes/host-detail.tsx
+#: src/components/metric-charts.tsx
 msgid "Network throughput"
 msgstr "Network throughput"
 
@@ -1453,7 +1500,7 @@ msgstr "Never"
 msgid "new major"
 msgstr "new major"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "New major available"
 msgstr "New major available"
 
@@ -1526,6 +1573,10 @@ msgstr "No host needs attention."
 msgid "No hosts match the current filter."
 msgstr "No hosts match the current filter."
 
+#: src/components/routes/container-detail.tsx
+msgid "No image audit data for this container yet."
+msgstr "No image audit data for this container yet."
+
 #: src/components/routes/host-detail.tsx
 msgid "No image audit data for this host."
 msgstr "No image audit data for this host."
@@ -1546,7 +1597,7 @@ msgstr "No images match these filters"
 msgid "No latency"
 msgstr "No latency"
 
-#: src/components/routes/host-detail.tsx
+#: src/components/metric-charts.tsx
 msgid "No metrics yet."
 msgstr "No metrics yet."
 
@@ -1806,7 +1857,7 @@ msgstr "Permanent"
 msgid "Persistence"
 msgstr "Persistence"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "Pin to current tag"
 msgstr "Pin to current tag"
 
@@ -1848,6 +1899,7 @@ msgstr "Policy"
 msgid "Port"
 msgstr "Port"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Ports"
 msgstr "Ports"
@@ -1966,7 +2018,7 @@ msgstr "Refresh inventory"
 msgid "regex"
 msgstr "regex"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Registry"
 msgstr "Registry"
@@ -1990,7 +2042,7 @@ msgstr "Remove"
 msgid "Repositories"
 msgstr "Repositories"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "Repository"
 msgstr "Repository"
 
@@ -2223,18 +2275,23 @@ msgstr "Sign in"
 msgid "SMTP settings"
 msgstr "SMTP settings"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "Source"
 msgstr "Source"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "State"
 msgstr "State"
 
+#: src/components/routes/container-detail.tsx
+msgid "State detail"
+msgstr "State detail"
+
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/host-detail.tsx
-#: src/components/routes/images.tsx
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/notifications.tsx
@@ -2492,7 +2549,7 @@ msgstr "Username (optional)"
 msgid "Users"
 msgstr "Users"
 
-#: src/components/routes/images.tsx
+#: src/components/routes/container-detail.tsx
 msgid "Versions"
 msgstr "Versions"
 
