@@ -98,6 +98,28 @@ func (h *Hub) getHostContainerMetricsHistory(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, history)
 }
 
+func (h *Hub) getHostContainerMetricsLatest(e *core.RequestEvent) error {
+	agentID := e.Request.PathValue("id")
+	if _, err := h.FindRecordById("agents", agentID); err != nil {
+		return e.NotFoundError("Host not found", nil)
+	}
+	records, err := h.FindRecordsByFilter(
+		containerMetricSamplesCollection,
+		"agent = {:agent}",
+		"-collected_at",
+		1,
+		0,
+		dbx.Params{"agent": agentID},
+	)
+	if err != nil {
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	if len(records) == 0 {
+		return e.JSON(http.StatusOK, ContainerMetricHistoryPoint{Containers: []common.ContainerMetricsPoint{}})
+	}
+	return e.JSON(http.StatusOK, containerMetricHistoryPointFromRecord(records[0]))
+}
+
 func (h *Hub) purgeContainerMetricSamplesOlderThan(days int) (int, error) {
 	if days <= 0 {
 		return 0, fmt.Errorf("days must be greater than 0")

@@ -108,6 +108,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.GET("/hosts/{id}", h.getHostDetail)
 	apiAuth.GET("/hosts/{id}/metrics", h.getHostMetricsHistory)
 	apiAuth.GET("/hosts/{id}/container-metrics", h.getHostContainerMetricsHistory)
+	apiAuth.GET("/hosts/{id}/container-metrics/latest", h.getHostContainerMetricsLatest)
 	// trigger immediate snapshot refresh for all connected agents
 	apiAuth.POST("/refresh-snapshots", h.refreshSnapshots).BindFunc(excludeReadOnlyRole)
 

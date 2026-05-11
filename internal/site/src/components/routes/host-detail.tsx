@@ -385,7 +385,9 @@ export default function HostDetailPage() {
 	const [hostLoading, setHostLoading] = useState(true)
 	const [metricsRange, setMetricsRange] = useState<MetricsRange>("24h")
 	const [metricsHistory, setMetricsHistory] = useState<HostMetrics[]>([])
-	const [containerMetricsHistory, setContainerMetricsHistory] = useState<ContainerMetricsHistoryPoint[]>([])
+	const [latestContainerMetricsPoint, setLatestContainerMetricsPoint] = useState<ContainerMetricsHistoryPoint | null>(
+		null
+	)
 	const metricsRequestRef = useRef(0)
 	const containerMetricsRequestRef = useRef(0)
 	const detailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -426,26 +428,27 @@ export default function HostDetailPage() {
 		}
 	}, [hostId, metricsRange])
 
-	const loadContainerMetrics = useCallback(async () => {
+	const loadLatestContainerMetrics = useCallback(async () => {
 		if (!hostId) {
-			setContainerMetricsHistory([])
+			setLatestContainerMetricsPoint(null)
 			return
 		}
 		const requestId = ++containerMetricsRequestRef.current
 		try {
-			const data = await pb.send<ContainerMetricsHistoryPoint[]>(`/api/app/hosts/${hostId}/container-metrics?range=${metricsRange}`, {
-				method: "GET",
-			})
+			const data = await pb.send<ContainerMetricsHistoryPoint>(
+				`/api/app/hosts/${hostId}/container-metrics/latest`,
+				{ method: "GET" }
+			)
 			if (requestId === containerMetricsRequestRef.current) {
-				setContainerMetricsHistory(data)
+				setLatestContainerMetricsPoint(data ?? null)
 			}
 		} catch (error) {
 			if (requestId === containerMetricsRequestRef.current) {
 				console.error("host container metrics fetch failed", error)
-				setContainerMetricsHistory([])
+				setLatestContainerMetricsPoint(null)
 			}
 		}
-	}, [hostId, metricsRange])
+	}, [hostId])
 
 	const hostContainers = useMemo(
 		() => (dashboard?.containers ?? []).filter((container) => container.host_id === hostId),
@@ -467,8 +470,8 @@ export default function HostDetailPage() {
 	}, [loadMetrics])
 
 	useEffect(() => {
-		loadContainerMetrics()
-	}, [loadContainerMetrics])
+		loadLatestContainerMetrics()
+	}, [loadLatestContainerMetrics])
 
 	useEffect(() => {
 		if (!hostId) return
@@ -478,7 +481,7 @@ export default function HostDetailPage() {
 			detailDebounceRef.current = setTimeout(() => {
 				loadHost()
 				loadMetrics()
-				loadContainerMetrics()
+				loadLatestContainerMetrics()
 			}, 1000)
 		}
 		;(async () => {
@@ -491,7 +494,7 @@ export default function HostDetailPage() {
 			for (const unsubscribe of unsubscribes) unsubscribe()
 			if (detailDebounceRef.current) clearTimeout(detailDebounceRef.current)
 		}
-	}, [hostId, loadContainerMetrics, loadHost, loadMetrics])
+	}, [hostId, loadLatestContainerMetrics, loadHost, loadMetrics])
 
 	useEffect(() => {
 		document.title = `${host?.name || t`Host`} / Vigil`
@@ -501,33 +504,18 @@ export default function HostDetailPage() {
 	const memoryHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
 	const diskHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
 	const visibleContainerIDList = useMemo(() => hostContainers.map((container) => container.id), [hostContainers])
-	const visibleContainerIDs = useMemo(() => new Set(visibleContainerIDList), [visibleContainerIDList])
-	const filteredContainerMetricsHistory = useMemo(
-		() =>
-			containerMetricsHistory.map((entry) => ({
-				...entry,
-				containers: entry.containers.filter(
-					(container) =>
-						visibleContainerIDs.has(container.id) ||
-						visibleContainerIDList.some((visibleID) => matchesContainerID(container.id, visibleID))
-				),
-			})),
-		[containerMetricsHistory, visibleContainerIDList, visibleContainerIDs]
-	)
 	const latestContainerMetrics = useMemo(() => {
-		const latestEntry = [...filteredContainerMetricsHistory].reverse().find((entry) => entry.containers.length > 0)
-		if (!latestEntry) {
-			return new Map<string, (typeof latestEntry.containers)[number]>()
-		}
-		const metricsByVisibleID = new Map<string, (typeof latestEntry.containers)[number]>()
+		const metricsByVisibleID = new Map<string, ContainerMetricsHistoryPoint["containers"][number]>()
+		const containers = latestContainerMetricsPoint?.containers ?? []
+		if (containers.length === 0) return metricsByVisibleID
 		for (const visibleID of visibleContainerIDList) {
-			const metric = latestEntry.containers.find((container) => matchesContainerID(container.id, visibleID))
+			const metric = containers.find((container) => matchesContainerID(container.id, visibleID))
 			if (metric) {
 				metricsByVisibleID.set(visibleID, metric)
 			}
 		}
 		return metricsByVisibleID
-	}, [filteredContainerMetricsHistory, visibleContainerIDList])
+	}, [latestContainerMetricsPoint, visibleContainerIDList])
 
 	if (loading || hostLoading) {
 		return (
