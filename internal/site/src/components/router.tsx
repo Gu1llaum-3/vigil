@@ -6,6 +6,7 @@ const routes = {
 	hosts: "/hosts",
 	host: "/hosts/:id",
 	containers: "/containers",
+	container: "/containers/:hostId/:name",
 	monitors: "/monitors",
 	monitor: "/monitors/:id",
 	images: "/images",

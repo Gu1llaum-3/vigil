@@ -242,6 +242,7 @@ Dedicated fleet exploration routes split detailed tables out of the dashboard:
 hosts: "/hosts"
 host: "/hosts/:id"
 containers: "/containers"
+container: "/containers/:hostId/:name"
 ```
 
 The list routes are lazy-loaded in `main.tsx`:
@@ -250,6 +251,7 @@ The list routes are lazy-loaded in `main.tsx`:
 const HostsPage = lazy(() => import("@/components/routes/hosts.tsx"))
 const HostDetailPage = lazy(() => import("@/components/routes/host-detail.tsx"))
 const ContainersPage = lazy(() => import("@/components/routes/containers.tsx"))
+const ContainerDetailPage = lazy(() => import("@/components/routes/container-detail.tsx"))
 ```
 
 Current behavior:
@@ -257,8 +259,9 @@ Current behavior:
 - `/hosts` renders the monitoring-first host table, including search, filters, sorting, pagination, and a manual inventory refresh action. The row layout now prioritizes `UP`, host identity, CPU, memory, disk, network throughput, and agent version.
 - Host names in `HostsTable` link to `/hosts/:id`.
 - `/hosts/:id` groups host-specific information into Radix `Tabs`: monitoring, overview, containers, image updates, packages, and system.
-- The `Containers` tab starts with Beszel-style multi-series charts for per-container CPU, memory, and network throughput before the inventory table.
-- `/containers` renders the full runtime container inventory previously shown on the dashboard.
+- The `Containers` tab starts with a runtime usage table (CPU/Memory/Network per container) fed by `/api/app/hosts/:id/container-metrics/latest`. Container names in that table link to the container detail page.
+- `/containers` renders the full runtime container inventory previously shown on the dashboard. Container names link to the container detail page.
+- `/containers/:hostId/:name` is the dedicated per-container detail page. It mirrors the host detail layout: header with breadcrumb to the host, status/CPU/memory/network metric cards, and three tabs — `Monitoring` (CPU/memory/network charts over 1h/6h/24h/7d), `Image audit` (versions, digests, source, admin-only `Check images now`/`Pin to current tag`/`Disable audit` actions), and `Inspect` (snapshot-derived fields like image ref/id, ports, repo digests, exit code).
 - Host cells in the container table link back to the host detail page.
 
 The hosts overview now uses dedicated APIs instead of the dashboard aggregate:
@@ -266,9 +269,14 @@ The hosts overview now uses dedicated APIs instead of the dashboard aggregate:
 - `GET /api/app/hosts-overview`
 - `GET /api/app/hosts/:id`
 - `GET /api/app/hosts/:id/metrics?range=1h|6h|24h|7d`
-- `GET /api/app/hosts/:id/container-metrics?range=1h|6h|24h|7d`
+- `GET /api/app/hosts/:id/container-metrics?range=1h|6h|24h|7d` (full history of all containers on the host; reserved for future host-level charts)
+- `GET /api/app/hosts/:id/container-metrics/latest` (single record, used by the host detail runtime usage table)
+- `GET /api/app/hosts/:id/container-metrics/by-name/:name?range=1h|6h|24h|7d` (history filtered to one container, fed to the container detail charts)
+- `GET /api/app/hosts/:id/container-metrics/by-name/:name/latest` (single record for that one container)
 
-Realtime refresh for `/hosts` is driven by PocketBase subscriptions to `agents`, `host_snapshots`, and `host_metric_current`, with a 1-second debounce before re-fetching the overview payload.
+Realtime refresh for `/hosts` is driven by PocketBase subscriptions to `agents`, `host_snapshots`, and `host_metric_current`, with a 1-second debounce before re-fetching the overview payload. The container detail page subscribes to `container_metric_samples`, `host_snapshots`, and `container_image_audits` with the same 1-second debounce.
+
+Shared chart components live in `internal/site/src/components/metric-charts.tsx` (`MetricCard`, `MetricBar`, `MetricHistoryChart`, `NetworkHistoryChart`, `buildTimeSeries`, `metricsRanges`) and shared format helpers in `internal/site/src/lib/format.ts`. Both are used by `host-detail.tsx` and `container-detail.tsx`.
 
 ## Image Updates Route
 
@@ -287,11 +295,11 @@ What the page renders:
 - a header with the total audited container count and an admin-only `Check images now` button (calls `POST /api/app/jobs/vigilContainerImageAudit/run`)
 - five counter cards: `New major versions`, `Updates available`, `Check failed`, `Up to date`, `Disabled`
 - collapsible groups by bucket in priority order (major → update → failed → up_to_date → disabled → other), each row showing the container/host, current image ref, status badge, and short tag pills (line / same major / new major) with the audit timestamp
-- a right-side `Sheet` drawer per row with full version, digest, and source details, plus admin actions `Pin to current tag` and `Disable audit`. Pinning posts an override with `policy=patch` and a `tag_include` regex anchored on the current tag.
+- clicking a row navigates to the container detail page (`/containers/:hostId/:name`), which owns the full version/digest/source view as well as the admin actions `Pin to current tag` and `Disable audit`. Pinning posts an override with `policy=patch` and a `tag_include` regex anchored on the current tag.
 - a free-text search input that filters across container, host, image ref, and tag fields
 - distinct empty states for no configured agents, no detected containers, containers without generated audit results, and active filters with no matches
 
-Data source: `GET /api/app/dashboard` (filtered to entries with a non-empty `image_audit`). The page subscribes to the `container_image_audits` PocketBase collection with the standard 1-second debounce so audit state updates propagate without a manual refresh; the drawer re-resolves its selected row against the latest data each render so the open detail view stays in sync.
+Data source: `GET /api/app/dashboard` (filtered to entries with a non-empty `image_audit`). The page subscribes to the `container_image_audits` PocketBase collection with the standard 1-second debounce so audit state updates propagate without a manual refresh. Per-container detail (and the related admin actions) now lives on the container detail page rather than in an inline drawer.
 
 Override edits made elsewhere (the dashboard `OverrideMenu` and its `AdvancedOverrideDialog`, the page's pin/disable buttons) all hit the same admin endpoint at `/api/app/container-audit-overrides`. The advanced dialog exposes the regex `tag_include` / `tag_exclude` fields with client-side validation (`new RegExp(...)` in a `try/catch`), in addition to the policy select and a free-form notes field.
 

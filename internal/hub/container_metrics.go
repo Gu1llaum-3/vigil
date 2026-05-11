@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
@@ -24,8 +25,42 @@ const (
 )
 
 type ContainerMetricHistoryPoint struct {
-	CollectedAt string                        `json:"collected_at"`
+	CollectedAt string                         `json:"collected_at"`
 	Containers  []common.ContainerMetricsPoint `json:"containers"`
+}
+
+type ContainerMetricSeriesPoint struct {
+	CollectedAt      string  `json:"collected_at"`
+	CPUPercent       float64 `json:"cpu_percent"`
+	MemoryUsedBytes  uint64  `json:"memory_used_bytes"`
+	MemoryLimitBytes uint64  `json:"memory_limit_bytes"`
+	NetworkRxBps     uint64  `json:"network_rx_bps"`
+	NetworkTxBps     uint64  `json:"network_tx_bps"`
+}
+
+func matchContainerByName(points []common.ContainerMetricsPoint, name string) *common.ContainerMetricsPoint {
+	if name == "" {
+		return nil
+	}
+	trimmed := strings.TrimPrefix(name, "/")
+	for i := range points {
+		candidate := strings.TrimPrefix(points[i].Name, "/")
+		if candidate == trimmed {
+			return &points[i]
+		}
+	}
+	return nil
+}
+
+func containerSeriesFromPoint(collectedAt string, point common.ContainerMetricsPoint) ContainerMetricSeriesPoint {
+	return ContainerMetricSeriesPoint{
+		CollectedAt:      collectedAt,
+		CPUPercent:       point.CPUPercent,
+		MemoryUsedBytes:  point.MemoryUsedBytes,
+		MemoryLimitBytes: point.MemoryLimitBytes,
+		NetworkRxBps:     point.NetworkRxBps,
+		NetworkTxBps:     point.NetworkTxBps,
+	}
 }
 
 func (h *Hub) collectAndPersistContainerMetrics(ctx context.Context, agentID string, conn *ws.WsConn) error {
@@ -96,6 +131,62 @@ func (h *Hub) getHostContainerMetricsHistory(e *core.RequestEvent) error {
 		history = append(history, containerMetricHistoryPointFromRecord(rec))
 	}
 	return e.JSON(http.StatusOK, history)
+}
+
+func (h *Hub) getContainerMetricsHistoryByName(e *core.RequestEvent) error {
+	agentID := e.Request.PathValue("id")
+	name := e.Request.PathValue("name")
+	if _, err := h.FindRecordById("agents", agentID); err != nil {
+		return e.NotFoundError("Host not found", nil)
+	}
+	since := time.Now().UTC().Add(-parseMetricsHistoryRange(e.Request.URL.Query().Get("range")))
+	records, err := h.FindRecordsByFilter(
+		containerMetricSamplesCollection,
+		"agent = {:agent} && collected_at >= {:since}",
+		"collected_at",
+		0,
+		0,
+		dbx.Params{"agent": agentID, "since": since},
+	)
+	if err != nil {
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	series := make([]ContainerMetricSeriesPoint, 0, len(records))
+	for _, rec := range records {
+		point := containerMetricHistoryPointFromRecord(rec)
+		if match := matchContainerByName(point.Containers, name); match != nil {
+			series = append(series, containerSeriesFromPoint(point.CollectedAt, *match))
+		}
+	}
+	return e.JSON(http.StatusOK, series)
+}
+
+func (h *Hub) getContainerMetricsLatestByName(e *core.RequestEvent) error {
+	agentID := e.Request.PathValue("id")
+	name := e.Request.PathValue("name")
+	if _, err := h.FindRecordById("agents", agentID); err != nil {
+		return e.NotFoundError("Host not found", nil)
+	}
+	records, err := h.FindRecordsByFilter(
+		containerMetricSamplesCollection,
+		"agent = {:agent}",
+		"-collected_at",
+		1,
+		0,
+		dbx.Params{"agent": agentID},
+	)
+	if err != nil {
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	if len(records) == 0 {
+		return e.JSON(http.StatusOK, nil)
+	}
+	point := containerMetricHistoryPointFromRecord(records[0])
+	match := matchContainerByName(point.Containers, name)
+	if match == nil {
+		return e.JSON(http.StatusOK, nil)
+	}
+	return e.JSON(http.StatusOK, containerSeriesFromPoint(point.CollectedAt, *match))
 }
 
 func (h *Hub) getHostContainerMetricsLatest(e *core.RequestEvent) error {

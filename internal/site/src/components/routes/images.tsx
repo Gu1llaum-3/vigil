@@ -16,12 +16,11 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PageHeader } from "@/components/page-header"
-import { $router, Link } from "@/components/router"
+import { $router, Link, navigate } from "@/components/router"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { toast } from "@/components/ui/use-toast"
 import { isAdmin, isReadOnlyUser, pb } from "@/lib/api"
 import type { ContainerFleetEntry, ContainerImageAudit, DashboardResponse } from "@/lib/dashboard-types"
@@ -305,111 +304,6 @@ function AuditGroup({
 	)
 }
 
-// ── detail drawer ────────────────────────────────────────────────────────────
-
-function AuditDetail({
-	entry,
-	onClose,
-	onPin,
-	onDisable,
-}: {
-	entry: AuditedEntry | null
-	onClose: () => void
-	onPin: (entry: AuditedEntry) => Promise<void>
-	onDisable: (entry: AuditedEntry) => Promise<void>
-}) {
-	const { t } = useLingui()
-	const lineLabelFor = useLineStatusLabel()
-	const admin = isAdmin()
-	if (!entry) return null
-	const audit = entry.image_audit
-	const Row = ({ label, value, mono }: { label: string; value: string; mono?: boolean }) => (
-		<div className="grid grid-cols-[10rem_1fr] gap-2 text-sm">
-			<span className="text-muted-foreground">{label}</span>
-			<span className={cn("break-all", mono && "font-mono text-xs")}>{value || "—"}</span>
-		</div>
-	)
-	return (
-		<Sheet open onOpenChange={(o) => !o && onClose()}>
-			<SheetContent side="right" className="w-full max-w-xl overflow-y-auto px-6 py-6 sm:max-w-xl">
-				<SheetHeader className="space-y-1 px-0">
-					<SheetTitle className="text-base font-semibold">{entry.name || entry.id}</SheetTitle>
-					<SheetDescription className="font-mono text-xs">{entry.host_name || entry.host_id}</SheetDescription>
-				</SheetHeader>
-				<div className="mt-4 space-y-4">
-					<section className="space-y-1.5 rounded-md border border-border/60 p-3">
-						<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-							<Trans>Status</Trans>
-						</h3>
-						<div className="flex flex-wrap items-center gap-2">
-							<Badge variant="outline" className="text-[10px] uppercase">
-								{lineLabelFor(audit)}
-							</Badge>
-							<Badge variant="secondary" className="text-[10px]">
-								{audit.policy || "auto"}
-							</Badge>
-							<span className="text-xs text-muted-foreground">{formatRelative(audit.checked_at)}</span>
-						</div>
-						{audit.error && (
-							<p className="text-xs text-red-400">
-								<Trans>Error</Trans>: <span className="font-mono">{audit.error}</span>
-							</p>
-						)}
-					</section>
-
-					<section className="space-y-2 rounded-md border border-border/60 p-3">
-						<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-							<Trans>Versions</Trans>
-						</h3>
-						<Row label={t`Current`} value={audit.tag} mono />
-						<Row label={t`Latest in line`} value={audit.line_latest_tag || audit.latest_tag || ""} mono />
-						{audit.same_major_latest_tag &&
-							audit.same_major_latest_tag !== (audit.line_latest_tag || audit.latest_tag) && (
-								<Row label={t`Latest same major`} value={audit.same_major_latest_tag} mono />
-							)}
-						{audit.overall_latest_tag &&
-							audit.overall_latest_tag !== audit.same_major_latest_tag &&
-							audit.overall_latest_tag !== (audit.line_latest_tag || audit.latest_tag) && (
-								<Row label={t`Latest overall`} value={audit.overall_latest_tag} mono />
-							)}
-						{audit.major_update_available && audit.new_major_tag && (
-							<Row label={t`New major available`} value={audit.new_major_tag} mono />
-						)}
-					</section>
-
-					<section className="space-y-2 rounded-md border border-border/60 p-3">
-						<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-							<Trans>Digests</Trans>
-						</h3>
-						<Row label={t`Local`} value={audit.local_digest} mono />
-						<Row label={t`Latest`} value={audit.latest_digest} mono />
-					</section>
-
-					<section className="space-y-2 rounded-md border border-border/60 p-3">
-						<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-							<Trans>Source</Trans>
-						</h3>
-						<Row label={t`Image ref`} value={audit.current_ref || entry.image_ref || entry.image} mono />
-						<Row label={t`Registry`} value={audit.registry} mono />
-						<Row label={t`Repository`} value={audit.repository} mono />
-					</section>
-
-					{admin && (
-						<section className="flex flex-wrap gap-2">
-							<Button variant="outline" size="sm" onClick={() => onPin(entry)}>
-								<Trans>Pin to current tag</Trans>
-							</Button>
-							<Button variant="outline" size="sm" onClick={() => onDisable(entry)}>
-								<Trans>Disable audit</Trans>
-							</Button>
-						</section>
-					)}
-				</div>
-			</SheetContent>
-		</Sheet>
-	)
-}
-
 function EmptyAuditState({
 	kind,
 	onResetFilters,
@@ -506,7 +400,6 @@ export default function ImagesPage() {
 	const [hostFilter, setHostFilter] = useState("")
 	const [statusFilter, setStatusFilter] = useState<Bucket | "">("")
 	const [auditing, setAuditing] = useState(false)
-	const [selected, setSelected] = useState<AuditedEntry | null>(null)
 	const admin = isAdmin()
 	const bucketLabels = useBucketLabels()
 	const allContainers = dashboard?.containers ?? []
@@ -527,14 +420,6 @@ export default function ImagesPage() {
 		for (const c of containers) seen.set(c.host_id, c.host_name || c.host_id)
 		return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
 	}, [containers])
-
-	// Re-resolve the selected entry against the latest data so the drawer
-	// reflects the most recent audit state without a manual refresh.
-	const selectedKey = selected ? `${selected.host_id}|${selected.id}` : null
-	const liveSelected = useMemo(
-		() => (selectedKey ? (containers.find((c) => `${c.host_id}|${c.id}` === selectedKey) ?? null) : null),
-		[containers, selectedKey]
-	)
 
 	const filtered = useMemo(() => {
 		let result = containers
@@ -614,52 +499,9 @@ export default function ImagesPage() {
 		}
 	}
 
-	const upsertOverride = useCallback(
-		async (entry: AuditedEntry, payload: { policy: string; tag_include?: string; tag_exclude?: string }) => {
-			try {
-				await pb.send("/api/app/container-audit-overrides", {
-					method: "PUT",
-					body: JSON.stringify({
-						agent: entry.host_id,
-						container_name: entry.name,
-						policy: payload.policy,
-						tag_include: payload.tag_include ?? "",
-						tag_exclude: payload.tag_exclude ?? "",
-					}),
-					headers: { "Content-Type": "application/json" },
-				})
-				toast({ title: t`Audit policy updated` })
-				refetch()
-			} catch (error: unknown) {
-				toast({
-					title: t`Failed to update audit policy`,
-					description: (error as Error).message,
-					variant: "destructive",
-				})
-			}
-		},
-		[refetch, t]
-	)
-
-	const pin = useCallback(
-		async (entry: AuditedEntry) => {
-			// Pin = lock to the current tag's patch line (no upgrade until manual change).
-			await upsertOverride(entry, {
-				policy: "patch",
-				tag_include: `^${entry.image_audit.tag.replace(/[.+?^${}()|[\]\\]/g, "\\$&")}$`,
-			})
-			setSelected(null)
-		},
-		[upsertOverride]
-	)
-
-	const disable = useCallback(
-		async (entry: AuditedEntry) => {
-			await upsertOverride(entry, { policy: "disabled" })
-			setSelected(null)
-		},
-		[upsertOverride]
-	)
+	const openContainer = useCallback((entry: AuditedEntry) => {
+		navigate(getPagePath($router, "container", { hostId: entry.host_id, name: entry.name }))
+	}, [])
 
 	return (
 		<div className="space-y-4 pb-10">
@@ -747,14 +589,12 @@ export default function ImagesPage() {
 							key={bucket}
 							bucket={bucket}
 							entries={grouped[bucket]}
-							onSelect={setSelected}
+							onSelect={openContainer}
 							defaultOpen={bucket === "major" || bucket === "update" || bucket === "failed"}
 						/>
 					))}
 				</div>
 			)}
-
-			<AuditDetail entry={liveSelected} onClose={() => setSelected(null)} onPin={pin} onDisable={disable} />
 		</div>
 	)
 }

@@ -12,16 +12,6 @@ import {
 	ShieldAlertIcon,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Line } from "react-chartjs-2"
-import {
-	Chart as ChartJS,
-	Legend,
-	LineElement,
-	LinearScale,
-	PointElement,
-	Tooltip,
-	type ChartOptions,
-} from "chart.js"
 import { $router, Link } from "@/components/router"
 import Spinner from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
@@ -30,102 +20,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+	buildTimeSeries,
+	MetricBar,
+	MetricCard,
+	MetricHistoryChart,
+	type MetricsRange,
+	metricsRanges,
+	NetworkHistoryChart,
+} from "@/components/metric-charts"
 import { cn } from "@/lib/utils"
 import { pb } from "@/lib/api"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import type { ContainerMetricsHistoryPoint } from "@/lib/dashboard-types"
+import {
+	formatBytesCompact,
+	formatBytesPerSecond,
+	formatDateTime,
+	formatPercent,
+	formatRam,
+	formatUptime,
+} from "@/lib/format"
 import { type ContainersFilters, defaultContainersFilters } from "./dashboard/containers-filter-sheet"
 import { ContainersTable } from "./dashboard/containers-table"
 import { useDashboardData } from "./dashboard/use-dashboard-data"
-
-ChartJS.register(LineElement, LinearScale, PointElement, Tooltip, Legend)
-
-type MetricsRange = "1h" | "6h" | "24h" | "7d"
-
-const metricsRanges: { key: MetricsRange; label: string }[] = [
-	{ key: "1h", label: "1h" },
-	{ key: "6h", label: "6h" },
-	{ key: "24h", label: "24h" },
-	{ key: "7d", label: "7d" },
-]
-
-function formatBytes(bytes: number) {
-	if (!bytes || bytes <= 0) return "-"
-	const units = ["B", "KB", "MB", "GB", "TB"]
-	let value = bytes
-	let unit = 0
-	while (value >= 1024 && unit < units.length - 1) {
-		value /= 1024
-		unit++
-	}
-	return `${formatStorageValue(value)} ${units[unit]}`
-}
-
-function formatBytesPerSecond(bytesPerSecond: number) {
-	if (!bytesPerSecond || bytesPerSecond <= 0) return "0 B/s"
-	const units = ["B/s", "KB/s", "MB/s", "GB/s"]
-	let value = bytesPerSecond
-	let unit = 0
-	while (value >= 1024 && unit < units.length - 1) {
-		value /= 1024
-		unit++
-	}
-	const digits = unit === 0 ? 0 : unit === 1 ? 1 : 2
-	return `${value.toFixed(digits)} ${units[unit]}`
-}
-
-function formatBytesCompact(bytes: number) {
-	if (!bytes || bytes <= 0) return "0 B"
-	const units = ["B", "KB", "MB", "GB", "TB"]
-	let value = bytes
-	let unit = 0
-	while (value >= 1024 && unit < units.length - 1) {
-		value /= 1024
-		unit++
-	}
-	const digits = unit === 0 ? 0 : unit === 1 ? 1 : 2
-	return `${value.toFixed(digits)} ${units[unit]}`
-}
-
-function formatStorageValue(value: number) {
-	return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function formatPercent(value?: number | null): string {
-	if (value == null) return "—"
-	return `${Math.round(value * 10) / 10}%`
-}
-
-function formatRam(mb: number) {
-	if (!mb || mb <= 0) return "-"
-	return mb >= 1024 ? `${Math.round(mb / 1024)} GB` : `${Math.round(mb)} MB`
-}
-
-function formatUptime(seconds: number) {
-	if (!seconds || seconds <= 0) return "-"
-	const days = Math.floor(seconds / 86400)
-	const hours = Math.floor((seconds % 86400) / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	if (days > 0) return `${days}d ${hours}h`
-	if (hours > 0) return `${hours}h ${minutes}m`
-	return `${minutes}m`
-}
-
-function formatDateTime(value: string) {
-	if (!value) return "-"
-	const parsed = new Date(value)
-	if (Number.isNaN(parsed.getTime())) return value
-	return parsed.toLocaleString()
-}
-
-function formatChartTime(value: number) {
-	return new Intl.DateTimeFormat(undefined, {
-		month: "short",
-		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	}).format(new Date(value))
-}
 
 function statusBadge(status: string) {
 	return status === "connected" ? (
@@ -151,224 +69,6 @@ function simplifiedImageAuditBadgeClass(status: string) {
 	return isImageUpdateAvailable(status)
 		? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
 		: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-}
-
-function buildSeries(history: HostMetrics[], selector: (point: HostMetrics) => number) {
-	return history
-		.map((point) => {
-			const x = new Date(point.collected_at).getTime()
-			if (!Number.isFinite(x)) return null
-			return { x, y: selector(point) }
-		})
-		.filter((point): point is { x: number; y: number } => Boolean(point))
-}
-
-function MetricHistoryChart({
-	title,
-	points,
-	formatter,
-	color,
-}: {
-	title: React.ReactNode
-	points: Array<{ x: number; y: number }>
-	formatter: (value: number) => string
-	color: string
-}) {
-	const chartData = {
-		datasets: [
-			{
-				label: "metric",
-				data: points,
-				borderColor: color,
-				borderWidth: 2,
-				pointRadius: 2,
-				pointHoverRadius: 4,
-				tension: 0.2,
-			},
-		],
-	}
-	const options: ChartOptions<"line"> = {
-		responsive: true,
-		maintainAspectRatio: false,
-		interaction: { mode: "index", intersect: false },
-		plugins: {
-			legend: { display: false },
-			tooltip: {
-				callbacks: {
-					title(items) {
-						const raw = items[0]?.parsed?.x
-						return typeof raw === "number" ? formatChartTime(raw) : ""
-					},
-					label(context) {
-						const raw = context.parsed?.y
-						return typeof raw === "number" ? formatter(raw) : ""
-					},
-				},
-			},
-		},
-		scales: {
-			x: {
-				type: "linear",
-				grid: { display: false },
-				ticks: {
-					callback(value) {
-						return typeof value === "number" ? formatChartTime(value) : value
-					},
-				},
-			},
-			y: {
-				beginAtZero: true,
-				grid: { color: "rgba(148, 163, 184, 0.15)" },
-				ticks: {
-					callback(value) {
-						return typeof value === "number" ? formatter(value) : value
-					},
-				},
-			},
-		},
-	}
-
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="text-base">{title}</CardTitle>
-			</CardHeader>
-			<CardContent>
-				{points.length === 0 ? (
-					<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 text-sm text-muted-foreground">
-						<Trans>No metrics yet.</Trans>
-					</div>
-				) : (
-					<div className="h-64">
-						<Line data={chartData} options={options} />
-					</div>
-				)}
-			</CardContent>
-		</Card>
-	)
-}
-
-function NetworkHistoryChart({ history }: { history: HostMetrics[] }) {
-	const data = {
-		datasets: [
-			{
-				label: "rx",
-				data: buildSeries(history, (point) => point.network_rx_bps),
-				borderColor: "rgb(59, 130, 246)",
-				backgroundColor: "rgba(59, 130, 246, 0.15)",
-				borderWidth: 2,
-				pointRadius: 2,
-				pointHoverRadius: 4,
-				tension: 0.2,
-			},
-			{
-				label: "tx",
-				data: buildSeries(history, (point) => point.network_tx_bps),
-				borderColor: "rgb(16, 185, 129)",
-				backgroundColor: "rgba(16, 185, 129, 0.15)",
-				borderWidth: 2,
-				pointRadius: 2,
-				pointHoverRadius: 4,
-				tension: 0.2,
-			},
-		],
-	}
-	const options: ChartOptions<"line"> = {
-		responsive: true,
-		maintainAspectRatio: false,
-		interaction: { mode: "index", intersect: false },
-		plugins: {
-			legend: { display: true, position: "bottom" },
-			tooltip: {
-				callbacks: {
-					title(items) {
-						const raw = items[0]?.parsed?.x
-						return typeof raw === "number" ? formatChartTime(raw) : ""
-					},
-					label(context) {
-						const raw = context.parsed?.y
-						return typeof raw === "number" ? formatBytesPerSecond(raw) : ""
-					},
-				},
-			},
-		},
-		scales: {
-			x: {
-				type: "linear",
-				grid: { display: false },
-				ticks: {
-					callback(value) {
-						return typeof value === "number" ? formatChartTime(value) : value
-					},
-				},
-			},
-			y: {
-				beginAtZero: true,
-				grid: { color: "rgba(148, 163, 184, 0.15)" },
-				ticks: {
-					callback(value) {
-						return typeof value === "number" ? formatBytesPerSecond(value) : value
-					},
-				},
-			},
-		},
-	}
-
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="text-base">
-					<Trans>Network throughput</Trans>
-				</CardTitle>
-			</CardHeader>
-			<CardContent>
-				{history.length === 0 ? (
-					<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 text-sm text-muted-foreground">
-						<Trans>No metrics yet.</Trans>
-					</div>
-				) : (
-					<div className="h-64">
-						<Line data={data} options={options} />
-					</div>
-				)}
-			</CardContent>
-		</Card>
-	)
-}
-
-function MetricCard({
-	title,
-	value,
-	icon,
-	tone,
-}: {
-	title: React.ReactNode
-	value: React.ReactNode
-	icon: React.ReactNode
-	tone?: string
-}) {
-	return (
-		<Card className={cn("border-border/70", tone)}>
-			<CardContent className="p-4">
-				<div className="mb-2 text-muted-foreground">{icon}</div>
-				<div className="text-2xl font-semibold tabular-nums">{value}</div>
-				<div className="mt-1 text-xs text-muted-foreground">{title}</div>
-			</CardContent>
-		</Card>
-	)
-}
-
-function MetricBar({ value, tone = "emerald" }: { value?: number | null; tone?: "emerald" | "amber" }) {
-	const percent = Math.max(0, Math.min(100, value ?? 0))
-	const barClass = tone === "amber" ? "bg-amber-500/80" : "bg-emerald-500/80"
-	return (
-		<div className="flex min-w-[180px] items-center gap-3">
-			<span className="w-12 shrink-0 text-xs font-medium tabular-nums">{formatPercent(value)}</span>
-			<div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-				<div className={cn("h-full rounded-full transition-all", barClass)} style={{ width: `${percent}%` }} />
-			</div>
-		</div>
-	)
 }
 
 function matchesContainerID(metricID: string, visibleID: string) {
@@ -500,9 +200,9 @@ export default function HostDetailPage() {
 		document.title = `${host?.name || t`Host`} / Vigil`
 	}, [host?.name, t])
 
-	const cpuHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.cpu_percent), [metricsHistory])
-	const memoryHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
-	const diskHistory = useMemo(() => buildSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
+	const cpuHistory = useMemo(() => buildTimeSeries(metricsHistory, (point) => point.cpu_percent), [metricsHistory])
+	const memoryHistory = useMemo(() => buildTimeSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
+	const diskHistory = useMemo(() => buildTimeSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
 	const visibleContainerIDList = useMemo(() => hostContainers.map((container) => container.id), [hostContainers])
 	const latestContainerMetrics = useMemo(() => {
 		const metricsByVisibleID = new Map<string, ContainerMetricsHistoryPoint["containers"][number]>()
@@ -689,7 +389,10 @@ export default function HostDetailPage() {
 							formatter={(value) => formatPercent(value)}
 							color="rgb(245, 158, 11)"
 						/>
-						<NetworkHistoryChart history={metricsHistory} />
+						<NetworkHistoryChart
+							rxPoints={buildTimeSeries(metricsHistory, (point) => point.network_rx_bps)}
+							txPoints={buildTimeSeries(metricsHistory, (point) => point.network_tx_bps)}
+						/>
 					</div>
 				</TabsContent>
 
@@ -785,7 +488,19 @@ export default function HostDetailPage() {
 														<TableRow key={container.id}>
 															<TableCell>
 																<div className="min-w-[240px]">
-																	<div className="font-medium">{container.name || container.id}</div>
+																	{container.name ? (
+																		<Link
+																			href={getPagePath($router, "container", {
+																				hostId: container.host_id,
+																				name: container.name,
+																			})}
+																			className="font-medium hover:underline"
+																		>
+																			{container.name}
+																		</Link>
+																	) : (
+																		<div className="font-medium">{container.id}</div>
+																	)}
 																	<div className="font-mono text-xs text-muted-foreground">
 																		{container.image_ref || container.image || container.id}
 																	</div>
@@ -869,7 +584,21 @@ export default function HostDetailPage() {
 													: "up_to_date"
 												return (
 													<TableRow key={container.id}>
-														<TableCell className="font-medium">{container.name || container.id}</TableCell>
+														<TableCell className="font-medium">
+															{container.name ? (
+																<Link
+																	href={getPagePath($router, "container", {
+																		hostId: container.host_id,
+																		name: container.name,
+																	})}
+																	className="hover:underline"
+																>
+																	{container.name}
+																</Link>
+															) : (
+																container.id
+															)}
+														</TableCell>
 														<TableCell className="font-mono text-xs">
 															{audit?.current_ref || container.image_ref || container.image}
 														</TableCell>

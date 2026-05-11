@@ -854,12 +854,23 @@ export const ContainersTable = memo(function ContainersTable({
 						<Trans>Container</Trans>
 					</SortBtn>
 				),
-				cell: ({ row: { original: c } }) => (
-					<div>
-						<div className="font-semibold">{c.name || c.id || "—"}</div>
-						{c.id && <div className="font-mono text-xs text-muted-foreground">{c.id.slice(0, 12)}</div>}
-					</div>
-				),
+				cell: ({ row: { original: c } }) =>
+					c.name ? (
+						<div>
+							<Link
+								href={getPagePath($router, "container", { hostId: c.host_id, name: c.name })}
+								className="font-semibold hover:underline"
+							>
+								{c.name}
+							</Link>
+							{c.id && <div className="font-mono text-xs text-muted-foreground">{c.id.slice(0, 12)}</div>}
+						</div>
+					) : (
+						<div>
+							<div className="font-semibold">{c.id || "—"}</div>
+							{c.id && <div className="font-mono text-xs text-muted-foreground">{c.id.slice(0, 12)}</div>}
+						</div>
+					),
 			},
 			{
 				id: "image",
