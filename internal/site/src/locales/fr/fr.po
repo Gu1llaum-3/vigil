@@ -364,7 +364,6 @@ msgid "Check {email} for a reset link."
 msgstr "Vérifiez {email} pour un lien de réinitialisation."
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Check failed"
 msgstr "Vérification échouée"
@@ -469,8 +468,8 @@ msgid "Container"
 msgstr "Conteneur"
 
 #: src/components/routes/host-detail.tsx
-msgid "Container CPU usage"
-msgstr "Utilisation CPU des conteneurs"
+#~ msgid "Container CPU usage"
+#~ msgstr "Utilisation CPU des conteneurs"
 
 #: src/components/routes/home.tsx
 #~ msgid "Container fleet"
@@ -485,12 +484,16 @@ msgid "Container images"
 msgstr "Images conteneur"
 
 #: src/components/routes/host-detail.tsx
-msgid "Container memory usage"
-msgstr "Utilisation memoire des conteneurs"
+#~ msgid "Container memory usage"
+#~ msgstr "Utilisation memoire des conteneurs"
 
 #: src/components/routes/host-detail.tsx
-msgid "Container network throughput"
-msgstr "Debit reseau des conteneurs"
+#~ msgid "Container network throughput"
+#~ msgstr "Debit reseau des conteneurs"
+
+#: src/components/routes/host-detail.tsx
+msgid "Container runtime usage"
+msgstr "Utilisation runtime des conteneurs"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 msgid "Container, image, host, ports…"
@@ -563,6 +566,7 @@ msgid "Count"
 msgstr "Nombre"
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "CPU"
 msgstr "CPU"
 
@@ -721,7 +725,6 @@ msgid "Disable audit"
 msgstr "Désactiver l'audit"
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Disabled"
 msgstr "Désactivé"
@@ -1330,6 +1333,7 @@ msgid "Mark all as read"
 msgstr "Tout marquer comme lu"
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Memory"
 msgstr "Mémoire"
 
@@ -1430,9 +1434,9 @@ msgstr "À traiter"
 msgid "Net"
 msgstr "Réseau"
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Network"
-#~ msgstr "Réseau"
+#: src/components/routes/host-detail.tsx
+msgid "Network"
+msgstr "Réseau"
 
 #: src/components/routes/host-detail.tsx
 msgid "Network and repositories"
@@ -1494,6 +1498,10 @@ msgstr "Aucun conteneur détecté"
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "No containers match the current filter."
 msgstr "Aucun conteneur ne correspond au filtre actuel."
+
+#: src/components/routes/host-detail.tsx
+msgid "No containers on this host."
+msgstr "Aucun conteneur sur cet hote."
 
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "No credentials configured. Add one to authenticate against a private registry."
@@ -2405,7 +2413,6 @@ msgstr "inconnu"
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Unknown"
 msgstr "Inconnu"

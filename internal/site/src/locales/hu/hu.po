@@ -364,7 +364,6 @@ msgid "Check {email} for a reset link."
 msgstr "Ellenőrizd a {email} címet a visszaállító linkért."
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Check failed"
 msgstr ""
@@ -469,8 +468,8 @@ msgid "Container"
 msgstr ""
 
 #: src/components/routes/host-detail.tsx
-msgid "Container CPU usage"
-msgstr ""
+#~ msgid "Container CPU usage"
+#~ msgstr ""
 
 #: src/components/routes/home.tsx
 #~ msgid "Container fleet"
@@ -485,11 +484,15 @@ msgid "Container images"
 msgstr ""
 
 #: src/components/routes/host-detail.tsx
-msgid "Container memory usage"
-msgstr ""
+#~ msgid "Container memory usage"
+#~ msgstr ""
 
 #: src/components/routes/host-detail.tsx
-msgid "Container network throughput"
+#~ msgid "Container network throughput"
+#~ msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "Container runtime usage"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
@@ -563,6 +566,7 @@ msgid "Count"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "CPU"
 msgstr ""
 
@@ -721,7 +725,6 @@ msgid "Disable audit"
 msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Disabled"
 msgstr ""
@@ -1330,6 +1333,7 @@ msgid "Mark all as read"
 msgstr ""
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 msgid "Memory"
 msgstr ""
 
@@ -1430,9 +1434,9 @@ msgstr ""
 msgid "Net"
 msgstr ""
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#~ msgid "Network"
-#~ msgstr ""
+#: src/components/routes/host-detail.tsx
+msgid "Network"
+msgstr ""
 
 #: src/components/routes/host-detail.tsx
 msgid "Network and repositories"
@@ -1493,6 +1497,10 @@ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "No containers match the current filter."
+msgstr ""
+
+#: src/components/routes/host-detail.tsx
+msgid "No containers on this host."
 msgstr ""
 
 #: src/components/routes/settings/registry-credentials.tsx
@@ -2405,7 +2413,6 @@ msgstr ""
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
 msgid "Unknown"
 msgstr ""
