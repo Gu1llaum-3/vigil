@@ -44,7 +44,8 @@ interface ContainerMetricSeriesPoint {
 	network_tx_bps: number
 }
 
-function containerStatusLabel(status: string, t: (s: TemplateStringsArray) => string): string {
+function useContainerStatusLabel(status: string): string {
+	const { t } = useLingui()
 	switch (status) {
 		case "running":
 			return t`Running`
@@ -64,7 +65,7 @@ function containerStatusLabel(status: string, t: (s: TemplateStringsArray) => st
 }
 
 function ContainerStatusBadge({ container }: { container: ContainerFleetEntry }) {
-	const { t } = useLingui()
+	const label = useContainerStatusLabel(container.status)
 	const severity = containerSeverity(container)
 	const cls =
 		severity === "ok"
@@ -76,12 +77,14 @@ function ContainerStatusBadge({ container }: { container: ContainerFleetEntry })
 					: "border-border/50 text-muted-foreground"
 	return (
 		<Badge variant="outline" className={cn(cls)}>
-			{containerStatusLabel(container.status, t)}
+			{label}
 		</Badge>
 	)
 }
 
-function lineLabel(audit: ContainerImageAudit, t: (s: TemplateStringsArray) => string): string {
+function useAuditLineLabel(audit: ContainerImageAudit | null | undefined): string {
+	const { t } = useLingui()
+	if (!audit) return ""
 	const ls = audit.line_status || audit.status
 	if (ls === "patch_available") return t`Patch available`
 	if (ls === "minor_available") return t`Minor available`
@@ -218,6 +221,7 @@ export default memo(function ContainerDetailPage() {
 			? (latest.memory_used_bytes / latest.memory_limit_bytes) * 100
 			: undefined
 	const netNow = latest?.network_rx_bps ?? 0
+	const statusLabel = useContainerStatusLabel(container?.status ?? "")
 
 	if (loading) {
 		return (
@@ -275,7 +279,7 @@ export default memo(function ContainerDetailPage() {
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<MetricCard
 					title={<Trans>Status</Trans>}
-					value={containerStatusLabel(container.status, t)}
+					value={statusLabel}
 					icon={<BoxIcon className="size-4" />}
 				/>
 				<MetricCard
@@ -364,6 +368,7 @@ function ImageAuditPane({ container, onChanged }: { container: ContainerFleetEnt
 	const { t } = useLingui()
 	const admin = isAdmin()
 	const audit = container.image_audit
+	const auditLineLabel = useAuditLineLabel(audit)
 	const [auditing, setAuditing] = useState(false)
 
 	const runAuditNow = useCallback(async () => {
@@ -459,7 +464,7 @@ function ImageAuditPane({ container, onChanged }: { container: ContainerFleetEnt
 				<CardContent className="space-y-2">
 					<div className="flex flex-wrap items-center gap-2">
 						<Badge variant="outline" className="text-[10px] uppercase">
-							{lineLabel(audit, t)}
+							{auditLineLabel}
 						</Badge>
 						<Badge variant="secondary" className="text-[10px]">
 							{audit.policy || "auto"}
