@@ -461,7 +461,7 @@ func init() {
 			}
 		],
 		"indexes": [
-			"CREATE INDEX ` + "`" + `idx_monitor_events_monitor` + "`" + ` ON ` + "`" + `monitor_events` + "`" + ` (` + "`" + `monitor` + "`" + `)",
+			"CREATE INDEX ` + "`" + `idx_monitor_events_monitor_checked_at` + "`" + ` ON ` + "`" + `monitor_events` + "`" + ` (` + "`" + `monitor` + "`" + `, ` + "`" + `checked_at` + "`" + `)",
 			"CREATE INDEX ` + "`" + `idx_monitor_events_checked_at` + "`" + ` ON ` + "`" + `monitor_events` + "`" + ` (` + "`" + `checked_at` + "`" + `)"
 		],
 		"system": false
