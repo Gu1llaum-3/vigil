@@ -105,9 +105,29 @@ nfpms:
 
 release:
   prerelease: auto
-  make_latest: false
+  make_latest: true
   draft: false
   replace_existing_artifacts: true
+
+# Keyless (OIDC) signing of the checksums file with cosign. The release workflow
+# installs cosign and runs with `id-token: write`, so no private key is needed.
+# Verify with:
+#   cosign verify-blob --certificate vigil_<ver>_checksums.txt.pem \
+#     --signature vigil_<ver>_checksums.txt.sig \
+#     --certificate-identity-regexp 'https://github.com/Gu1llaum-3/vigil/.*' \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+#     vigil_<ver>_checksums.txt
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    output: true
+    certificate: '${artifact}.pem'
+    args:
+      - sign-blob
+      - '--output-certificate=${certificate}'
+      - '--output-signature=${signature}'
+      - '${artifact}'
+      - '--yes'
 
 changelog:
   disable: true
