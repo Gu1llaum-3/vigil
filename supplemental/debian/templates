@@ -3,3 +3,26 @@ Type: string
 Description: SSH public key provided by vigil hub:
  If you leave this blank, you will need to configure it in
  /etc/vigil-agent.conf before starting Vigil.
+
+Template: vigil-agent/hub_url
+Type: string
+Description: Vigil hub URL:
+ The full URL of the Vigil hub the agent connects to
+ (for example https://hub.example.com). The agent will not be started
+ automatically until this is set. You can configure it later in
+ /etc/vigil-agent.conf.
+
+Template: vigil-agent/token
+Type: password
+Description: Vigil enrollment or agent token:
+ Token used to authenticate this agent to the hub. If you leave this
+ blank, you will need to configure it in /etc/vigil-agent.conf.
+
+Template: vigil-agent/docker_access
+Type: boolean
+Default: false
+Description: Grant the agent access to the Docker socket?
+ Adding the vigil user to the "docker" group lets the agent collect
+ container inventory and metrics. Membership in that group is equivalent
+ to root on this host and effectively bypasses the service sandboxing,
+ so only enable it if you need Docker monitoring.
