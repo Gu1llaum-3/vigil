@@ -48,6 +48,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "@/components/ui/use-toast"
 import { $router, Link } from "@/components/router"
+import { useAuditLabel } from "@/lib/audit-status"
 import { isAdmin, pb } from "@/lib/api"
 import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
 import { cn, copyToClipboard } from "@/lib/utils"
@@ -208,6 +209,7 @@ function StatusCell({ container }: { container: ContainerFleetEntry }) {
 
 function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 	const { t } = useLingui()
+	const auditLabel = useAuditLabel()
 	const audit = container.image_audit
 	if (!audit) {
 		return (
@@ -247,22 +249,7 @@ function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 					? "border-red-500/30 bg-red-500/10 text-red-400"
 					: "border-border/50 text-muted-foreground"
 
-	const label =
-		lineStatus === "up_to_date"
-			? t`Up to date`
-			: lineStatus === "patch_available"
-				? t`Patch available`
-				: lineStatus === "minor_available"
-					? t`Minor available`
-					: lineStatus === "tag_rebuilt"
-						? t`Tag rebuilt`
-						: audit.status === "update_available"
-							? t`Update available`
-							: audit.status === "unsupported"
-								? t`Unsupported`
-								: audit.status === "check_failed"
-									? t`Check failed`
-									: t`Unknown`
+	const label = auditLabel(audit)
 
 	const rows: Array<{ label: string; value: string }> = [
 		{ label: t`Policy`, value: audit.policy || "—" },

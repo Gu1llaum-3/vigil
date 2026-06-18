@@ -20,7 +20,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+import { MetricBar } from "@/components/metric-charts"
+import { formatBytesPerSecond } from "@/lib/format"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import {
 	applyHostsFilters,
@@ -89,43 +90,12 @@ function SortBtn({ column, children }: { column: Column<HostsOverviewRecord, unk
 	)
 }
 
-function formatPercent(value?: number | null): string {
-	if (value == null) return "—"
-	return `${Math.round(value * 10) / 10}%`
-}
-
-function formatBytesPerSecond(bytesPerSecond?: number): string {
-	if (!bytesPerSecond || bytesPerSecond <= 0) return "0 B/s"
-	const units = ["B/s", "KB/s", "MB/s", "GB/s"]
-	let value = bytesPerSecond
-	let unit = 0
-	while (value >= 1024 && unit < units.length - 1) {
-		value /= 1024
-		unit++
-	}
-	const digits = unit === 0 ? 0 : unit === 1 ? 1 : 2
-	return `${value.toFixed(digits)} ${units[unit]}`
-}
-
 function statusRank(host: HostsOverviewRecord): number {
 	return host.status === "connected" ? 1 : 0
 }
 
 function metricPercentValue(host: HostsOverviewRecord, selector: (metrics: HostMetrics) => number): number {
 	return host.metrics ? selector(host.metrics) : -1
-}
-
-function MetricBar({ value, tone = "emerald" }: { value?: number | null; tone?: "emerald" | "amber" }) {
-	const percent = Math.max(0, Math.min(100, value ?? 0))
-	const barClass = tone === "amber" ? "bg-amber-500/80" : "bg-emerald-500/80"
-	return (
-		<div className="flex min-w-[180px] items-center gap-3">
-			<span className="w-12 shrink-0 text-xs font-medium tabular-nums">{formatPercent(value)}</span>
-			<div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-				<div className={cn("h-full rounded-full transition-all", barClass)} style={{ width: `${percent}%` }} />
-			</div>
-		</div>
-	)
 }
 
 interface HostsTableProps {
@@ -149,7 +119,9 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 		if (!search) return result
 		const q = search.toLowerCase()
 		return result.filter((h) =>
-			[h.name, h.hostname, h.primary_ip, h.os?.name, h.kernel, h.version].some((v) => v?.toLowerCase().includes(q))
+			[h.name, h.hostname, h.primary_ip, h.network?.gateway, h.os?.name, h.kernel, h.version].some((v) =>
+				v?.toLowerCase().includes(q)
+			)
 		)
 	}, [hosts, filters, search])
 
@@ -205,7 +177,8 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 								{h.name || h.hostname || h.id}
 							</Link>
 							<div className="text-xs text-muted-foreground">
-								{[h.hostname && h.hostname !== h.name ? h.hostname : "", h.primary_ip].filter(Boolean).join(" · ") || "—"}
+								{[h.hostname && h.hostname !== h.name ? h.hostname : "", h.primary_ip].filter(Boolean).join(" · ") ||
+									"—"}
 							</div>
 						</div>
 						<InfoBtn
@@ -249,7 +222,10 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					</SortBtn>
 				),
 				cell: ({ row: { original: h } }) => (
-					<MetricBar value={h.metrics?.disk_used_percent} tone={h.metrics && h.metrics.disk_used_percent >= 75 ? "amber" : "emerald"} />
+					<MetricBar
+						value={h.metrics?.disk_used_percent}
+						tone={h.metrics && h.metrics.disk_used_percent >= 75 ? "amber" : "emerald"}
+					/>
 				),
 			},
 			{
@@ -262,8 +238,8 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 				),
 				cell: ({ row: { original: h } }) => (
 					<div className="space-y-0.5 text-xs tabular-nums">
-						<div>{formatBytesPerSecond(h.metrics?.network_rx_bps)} ↓</div>
-						<div className="text-muted-foreground">{formatBytesPerSecond(h.metrics?.network_tx_bps)} ↑</div>
+						<div>{formatBytesPerSecond(h.metrics?.network_rx_bps ?? 0)} ↓</div>
+						<div className="text-muted-foreground">{formatBytesPerSecond(h.metrics?.network_tx_bps ?? 0)} ↑</div>
 					</div>
 				),
 			},
@@ -315,7 +291,10 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					<span className="text-xs text-muted-foreground">
 						<Trans>Rows</Trans>
 					</span>
-					<Select value={String(pagination.pageSize)} onValueChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) })}>
+					<Select
+						value={String(pagination.pageSize)}
+						onValueChange={(v) => setPagination({ pageIndex: 0, pageSize: Number(v) })}
+					>
 						<SelectTrigger className="w-[72px]">
 							<SelectValue />
 						</SelectTrigger>
@@ -407,7 +386,12 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					<Plural value={filteredHosts.length} one="# host" other="# hosts" />
 				</span>
 				<div className="flex items-center gap-2">
-					<Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => table.previousPage()}
+						disabled={!table.getCanPreviousPage()}
+					>
 						<ChevronDownIcon className="size-3 rotate-90" />
 					</Button>
 					<span>

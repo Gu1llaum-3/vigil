@@ -1,16 +1,7 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
-import {
-	ArrowLeftIcon,
-	BoxIcon,
-	CpuIcon,
-	HardDriveIcon,
-	Loader2Icon,
-	NetworkIcon,
-	RefreshCwIcon,
-	ServerIcon,
-} from "lucide-react"
+import { ArrowLeftIcon, BoxIcon, CpuIcon, HardDriveIcon, Loader2Icon, NetworkIcon, RefreshCwIcon } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
 	buildTimeSeries,
@@ -28,9 +19,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
+import { useAuditLabel } from "@/lib/audit-status"
 import { isAdmin, pb } from "@/lib/api"
 import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
-import type { ContainerFleetEntry, ContainerImageAudit } from "@/lib/dashboard-types"
+import type { ContainerFleetEntry } from "@/lib/dashboard-types"
 import { formatBytesCompact, formatBytesPerSecond, formatDateTime, formatPercent } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useDashboardData } from "./dashboard/use-dashboard-data"
@@ -80,21 +72,6 @@ function ContainerStatusBadge({ container }: { container: ContainerFleetEntry })
 			{label}
 		</Badge>
 	)
-}
-
-function useAuditLineLabel(audit: ContainerImageAudit | null | undefined): string {
-	const { t } = useLingui()
-	if (!audit) return ""
-	const ls = audit.line_status || audit.status
-	if (ls === "patch_available") return t`Patch available`
-	if (ls === "minor_available") return t`Minor available`
-	if (ls === "tag_rebuilt") return t`Tag rebuilt`
-	if (audit.status === "update_available") return t`Update available`
-	if (audit.status === "up_to_date" || ls === "up_to_date") return t`Up to date`
-	if (audit.status === "check_failed") return t`Check failed`
-	if (audit.status === "unsupported") return t`Unsupported`
-	if (audit.status === "disabled") return t`Disabled`
-	return t`Unknown`
 }
 
 function InfoRow({ label, value, mono }: { label: React.ReactNode; value: React.ReactNode; mono?: boolean }) {
@@ -181,7 +158,17 @@ export default memo(function ContainerDetailPage() {
 
 	useEffect(() => {
 		if (!hostId) return
+		let cancelled = false
 		const unsubscribes: Array<() => void> = []
+		// If the effect is cleaned up before a subscription promise resolves, tear that
+		// subscription down immediately instead of leaking it past unmount.
+		const register = (unsubscribe: () => void) => {
+			if (cancelled) {
+				unsubscribe()
+				return
+			}
+			unsubscribes.push(unsubscribe)
+		}
 		const refresh = () => {
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 			debounceRef.current = setTimeout(() => {
@@ -190,11 +177,12 @@ export default memo(function ContainerDetailPage() {
 			}, 1000)
 		}
 		;(async () => {
-			unsubscribes.push(await pb.collection("container_metric_samples").subscribe("*", refresh))
-			unsubscribes.push(await pb.collection("host_snapshots").subscribe("*", refresh))
-			unsubscribes.push(await pb.collection("container_image_audits").subscribe("*", refresh))
+			register(await pb.collection("container_metric_samples").subscribe("*", refresh))
+			register(await pb.collection("host_snapshots").subscribe("*", refresh))
+			register(await pb.collection("container_image_audits").subscribe("*", refresh))
 		})()
 		return () => {
+			cancelled = true
 			for (const u of unsubscribes) u()
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
@@ -217,9 +205,7 @@ export default memo(function ContainerDetailPage() {
 
 	const cpuNow = latest?.cpu_percent
 	const memoryNow =
-		latest && latest.memory_limit_bytes > 0
-			? (latest.memory_used_bytes / latest.memory_limit_bytes) * 100
-			: undefined
+		latest && latest.memory_limit_bytes > 0 ? (latest.memory_used_bytes / latest.memory_limit_bytes) * 100 : undefined
 	const netNow = latest?.network_rx_bps ?? 0
 	const statusLabel = useContainerStatusLabel(container?.status ?? "")
 
@@ -277,11 +263,7 @@ export default memo(function ContainerDetailPage() {
 			</div>
 
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				<MetricCard
-					title={<Trans>Status</Trans>}
-					value={statusLabel}
-					icon={<BoxIcon className="size-4" />}
-				/>
+				<MetricCard title={<Trans>Status</Trans>} value={statusLabel} icon={<BoxIcon className="size-4" />} />
 				<MetricCard
 					title={<Trans>CPU now</Trans>}
 					value={formatPercent(cpuNow)}
@@ -290,11 +272,7 @@ export default memo(function ContainerDetailPage() {
 				<MetricCard
 					title={<Trans>Memory now</Trans>}
 					value={
-						memoryNow != null
-							? formatPercent(memoryNow)
-							: latest
-								? formatBytesCompact(latest.memory_used_bytes)
-								: "—"
+						memoryNow != null ? formatPercent(memoryNow) : latest ? formatBytesCompact(latest.memory_used_bytes) : "—"
 					}
 					icon={<HardDriveIcon className="size-4" />}
 				/>
@@ -368,7 +346,7 @@ function ImageAuditPane({ container, onChanged }: { container: ContainerFleetEnt
 	const { t } = useLingui()
 	const admin = isAdmin()
 	const audit = container.image_audit
-	const auditLineLabel = useAuditLineLabel(audit)
+	const auditLineLabel = useAuditLabel()(audit)
 	const [auditing, setAuditing] = useState(false)
 
 	const runAuditNow = useCallback(async () => {

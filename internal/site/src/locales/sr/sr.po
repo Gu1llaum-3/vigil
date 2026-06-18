@@ -372,8 +372,8 @@ msgstr ""
 msgid "Check {email} for a reset link."
 msgstr "Проверите {email} за линк за ресетовање."
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Check failed"
 msgstr ""
 
@@ -604,6 +604,7 @@ msgstr ""
 msgid "Create account"
 msgstr "Креирај налог"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Created"
@@ -659,6 +660,7 @@ msgstr ""
 msgid "Days To Keep"
 msgstr ""
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
@@ -748,6 +750,7 @@ msgstr ""
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Disabled"
 msgstr ""
 
@@ -890,6 +893,7 @@ msgstr ""
 msgid "Exit code"
 msgstr ""
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Exited"
 msgstr ""
@@ -1398,8 +1402,7 @@ msgstr ""
 msgid "Method (default POST)"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Minor available"
 msgstr ""
 
@@ -1816,8 +1819,7 @@ msgstr ""
 msgid "Password reset request received"
 msgstr "Захтев за ресетовање лозинке примљен"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Patch available"
 msgstr ""
 
@@ -1837,6 +1839,7 @@ msgstr ""
 msgid "Patch Status"
 msgstr ""
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Paused"
@@ -2089,6 +2092,7 @@ msgstr ""
 msgid "Resources"
 msgstr ""
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Restarting"
@@ -2144,6 +2148,7 @@ msgstr ""
 msgid "running"
 msgstr ""
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Running"
@@ -2339,8 +2344,7 @@ msgstr ""
 msgid "Tag include (regex)"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Tag rebuilt"
 msgstr ""
 
@@ -2467,10 +2471,11 @@ msgstr ""
 msgid "unknown"
 msgstr ""
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Unknown"
 msgstr ""
 
@@ -2482,8 +2487,8 @@ msgstr ""
 msgid "Unread"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Unsupported"
 msgstr ""
 
@@ -2496,9 +2501,8 @@ msgstr ""
 msgid "Up"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Up to date"
 msgstr ""
 
@@ -2506,9 +2510,7 @@ msgstr ""
 msgid "Update"
 msgstr ""
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Update available"
 msgstr ""
 

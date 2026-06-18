@@ -43,6 +43,7 @@ import {
 	formatStorageValue,
 	formatUptime,
 } from "@/lib/format"
+import { auditBadgeClass, classifyAuditBucket, useAuditLabel } from "@/lib/audit-status"
 import { type ContainersFilters, defaultContainersFilters } from "./dashboard/containers-filter-sheet"
 import { ContainersTable } from "./dashboard/containers-table"
 import { useDashboardData } from "./dashboard/use-dashboard-data"
@@ -59,26 +60,13 @@ function statusBadge(status: string) {
 	)
 }
 
-function isImageUpdateAvailable(status: string) {
-	return status === "patch_available" || status === "minor_available" || status === "update_available"
-}
-
-function simplifiedImageAuditLabel(status: string) {
-	return isImageUpdateAvailable(status) ? <Trans>Update available</Trans> : <Trans>Up to date</Trans>
-}
-
-function simplifiedImageAuditBadgeClass(status: string) {
-	return isImageUpdateAvailable(status)
-		? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-		: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-}
-
 function matchesContainerID(metricID: string, visibleID: string) {
 	return metricID === visibleID || visibleID.startsWith(metricID) || metricID.startsWith(visibleID)
 }
 
 export default function HostDetailPage() {
 	const { t } = useLingui()
+	const auditLabel = useAuditLabel()
 	const page = useStore($router)
 	const hostId = (page?.params as { id?: string } | undefined)?.id ?? ""
 	const { dashboard, loading } = useDashboardData()
@@ -118,7 +106,9 @@ export default function HostDetailPage() {
 		}
 		const requestId = ++metricsRequestRef.current
 		try {
-			const data = await pb.send<HostMetrics[]>(`/api/app/hosts/${hostId}/metrics?range=${metricsRange}`, { method: "GET" })
+			const data = await pb.send<HostMetrics[]>(`/api/app/hosts/${hostId}/metrics?range=${metricsRange}`, {
+				method: "GET",
+			})
 			if (requestId === metricsRequestRef.current) {
 				setMetricsHistory(data)
 			}
@@ -137,10 +127,9 @@ export default function HostDetailPage() {
 		}
 		const requestId = ++containerMetricsRequestRef.current
 		try {
-			const data = await pb.send<ContainerMetricsHistoryPoint>(
-				`/api/app/hosts/${hostId}/container-metrics/latest`,
-				{ method: "GET" }
-			)
+			const data = await pb.send<ContainerMetricsHistoryPoint>(`/api/app/hosts/${hostId}/container-metrics/latest`, {
+				method: "GET",
+			})
 			if (requestId === containerMetricsRequestRef.current) {
 				setLatestContainerMetricsPoint(data ?? null)
 			}
@@ -177,7 +166,17 @@ export default function HostDetailPage() {
 
 	useEffect(() => {
 		if (!hostId) return
+		let cancelled = false
 		const unsubscribes: Array<() => void> = []
+		// If the effect is cleaned up before a subscription promise resolves, tear that
+		// subscription down immediately instead of leaking it past unmount.
+		const register = (unsubscribe: () => void) => {
+			if (cancelled) {
+				unsubscribe()
+				return
+			}
+			unsubscribes.push(unsubscribe)
+		}
 		const refresh = () => {
 			if (detailDebounceRef.current) clearTimeout(detailDebounceRef.current)
 			detailDebounceRef.current = setTimeout(() => {
@@ -187,12 +186,13 @@ export default function HostDetailPage() {
 			}, 1000)
 		}
 		;(async () => {
-			unsubscribes.push(await pb.collection("agents").subscribe(hostId, refresh))
-			unsubscribes.push(await pb.collection("host_snapshots").subscribe("*", refresh))
-			unsubscribes.push(await pb.collection("host_metric_current").subscribe("*", refresh))
-			unsubscribes.push(await pb.collection("container_metric_samples").subscribe("*", refresh))
+			register(await pb.collection("agents").subscribe(hostId, refresh))
+			register(await pb.collection("host_snapshots").subscribe("*", refresh))
+			register(await pb.collection("host_metric_current").subscribe("*", refresh))
+			register(await pb.collection("container_metric_samples").subscribe("*", refresh))
 		})()
 		return () => {
+			cancelled = true
 			for (const unsubscribe of unsubscribes) unsubscribe()
 			if (detailDebounceRef.current) clearTimeout(detailDebounceRef.current)
 		}
@@ -203,8 +203,14 @@ export default function HostDetailPage() {
 	}, [host?.name, t])
 
 	const cpuHistory = useMemo(() => buildTimeSeries(metricsHistory, (point) => point.cpu_percent), [metricsHistory])
-	const memoryHistory = useMemo(() => buildTimeSeries(metricsHistory, (point) => point.memory_used_percent), [metricsHistory])
-	const diskHistory = useMemo(() => buildTimeSeries(metricsHistory, (point) => point.disk_used_percent), [metricsHistory])
+	const memoryHistory = useMemo(
+		() => buildTimeSeries(metricsHistory, (point) => point.memory_used_percent),
+		[metricsHistory]
+	)
+	const diskHistory = useMemo(
+		() => buildTimeSeries(metricsHistory, (point) => point.disk_used_percent),
+		[metricsHistory]
+	)
 	const visibleContainerIDList = useMemo(() => hostContainers.map((container) => container.id), [hostContainers])
 	const latestContainerMetrics = useMemo(() => {
 		const metricsByVisibleID = new Map<string, ContainerMetricsHistoryPoint["containers"][number]>()
@@ -515,14 +521,18 @@ export default function HostDetailPage() {
 																<div className="space-y-1">
 																	<MetricBar value={memoryPercent} />
 																	<div className="text-xs text-muted-foreground tabular-nums">
-																		{metrics ? `${formatBytesCompact(metrics.memory_used_bytes)} / ${formatBytesCompact(metrics.memory_limit_bytes)}` : "—"}
+																		{metrics
+																			? `${formatBytesCompact(metrics.memory_used_bytes)} / ${formatBytesCompact(metrics.memory_limit_bytes)}`
+																			: "—"}
 																	</div>
 																</div>
 															</TableCell>
 															<TableCell>
 																<div className="space-y-0.5 text-xs tabular-nums">
 																	<div>{formatBytesPerSecond(metrics?.network_rx_bps ?? 0)} ↓</div>
-																	<div className="text-muted-foreground">{formatBytesPerSecond(metrics?.network_tx_bps ?? 0)} ↑</div>
+																	<div className="text-muted-foreground">
+																		{formatBytesPerSecond(metrics?.network_tx_bps ?? 0)} ↑
+																	</div>
 																</div>
 															</TableCell>
 														</TableRow>
@@ -581,9 +591,8 @@ export default function HostDetailPage() {
 										) : (
 											auditedContainers.map((container) => {
 												const audit = container.image_audit
-												const simplifiedStatus = isImageUpdateAvailable(audit?.line_status || audit?.status || "")
-													? "update_available"
-													: "up_to_date"
+												const bucket = audit ? classifyAuditBucket(audit) : "other"
+												const showCandidate = bucket === "update" || bucket === "major"
 												return (
 													<TableRow key={container.id}>
 														<TableCell className="font-medium">
@@ -605,15 +614,12 @@ export default function HostDetailPage() {
 															{audit?.current_ref || container.image_ref || container.image}
 														</TableCell>
 														<TableCell>
-															<Badge
-																variant="outline"
-																className={cn("text-[10px]", simplifiedImageAuditBadgeClass(simplifiedStatus))}
-															>
-																{simplifiedImageAuditLabel(simplifiedStatus)}
+															<Badge variant="outline" className={cn("text-[10px]", auditBadgeClass(bucket))}>
+																{auditLabel(audit)}
 															</Badge>
 														</TableCell>
 														<TableCell className="font-mono text-xs">
-															{simplifiedStatus === "update_available" ? audit?.line_latest_tag || audit?.latest_tag || "-" : "-"}
+															{showCandidate ? audit?.line_latest_tag || audit?.latest_tag || "-" : "-"}
 														</TableCell>
 														<TableCell className="text-right text-xs text-muted-foreground">
 															{formatDateTime(audit?.checked_at || "")}

@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
+import { type AuditBucket, classifyAuditBucket, useAuditLabel } from "@/lib/audit-status"
 import { isAdmin, isReadOnlyUser, pb } from "@/lib/api"
 import type { ContainerFleetEntry, ContainerImageAudit, DashboardResponse } from "@/lib/dashboard-types"
 import { cn } from "@/lib/utils"
@@ -30,23 +31,7 @@ import { cn } from "@/lib/utils"
 
 type AuditedEntry = ContainerFleetEntry & { image_audit: ContainerImageAudit }
 
-type Bucket = "major" | "update" | "up_to_date" | "failed" | "disabled" | "other"
-
-function classifyBucket(audit: ContainerImageAudit): Bucket {
-	if (audit.major_update_available) return "major"
-	const ls = audit.line_status || audit.status
-	if (
-		ls === "patch_available" ||
-		ls === "minor_available" ||
-		ls === "tag_rebuilt" ||
-		audit.status === "update_available"
-	)
-		return "update"
-	if (audit.status === "up_to_date" || ls === "up_to_date") return "up_to_date"
-	if (audit.status === "check_failed") return "failed"
-	if (audit.status === "disabled") return "disabled"
-	return "other"
-}
+type Bucket = AuditBucket
 
 function useBucketLabels(): Record<Bucket, string> {
 	const { t } = useLingui()
@@ -79,22 +64,6 @@ function bucketIcon(bucket: Bucket) {
 
 const bucketOrder: Bucket[] = ["major", "update", "failed", "up_to_date", "disabled", "other"]
 const ALL_FILTERS = "__all__"
-
-function useLineStatusLabel(): (audit: ContainerImageAudit) => string {
-	const { t } = useLingui()
-	return (audit: ContainerImageAudit) => {
-		const ls = audit.line_status || audit.status
-		if (ls === "patch_available") return t`Patch available`
-		if (ls === "minor_available") return t`Minor available`
-		if (ls === "tag_rebuilt") return t`Tag rebuilt`
-		if (audit.status === "update_available") return t`Update available`
-		if (audit.status === "up_to_date" || ls === "up_to_date") return t`Up to date`
-		if (audit.status === "check_failed") return t`Check failed`
-		if (audit.status === "unsupported") return t`Unsupported`
-		if (audit.status === "disabled") return t`Disabled`
-		return t`Unknown`
-	}
-}
 
 function formatRelative(iso: string): string {
 	if (!iso) return "—"
@@ -194,7 +163,7 @@ function AuditRow({
 }) {
 	const { t } = useLingui()
 	const audit = entry.image_audit
-	const bucket = classifyBucket(audit)
+	const bucket = classifyAuditBucket(audit)
 	const targets: Array<{ label: string; value: string; tone: string }> = []
 	const lineLatest = audit.line_latest_tag || audit.latest_tag || ""
 	if (lineLatest && lineLatest !== audit.tag) {
@@ -234,6 +203,11 @@ function AuditRow({
 				<div className="mt-0.5 flex items-center gap-1.5 truncate text-xs">
 					<span className="font-mono text-muted-foreground">{audit.current_ref || entry.image}</span>
 				</div>
+				{bucket === "failed" && audit.error && (
+					<div className="mt-0.5 truncate text-xs text-red-500/90" title={audit.error}>
+						{audit.error}
+					</div>
+				)}
 			</div>
 			<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
 				{bucket !== "up_to_date" && bucket !== "disabled" && statusLabel && (
@@ -269,7 +243,7 @@ function AuditGroup({
 	defaultOpen: boolean
 }) {
 	const labels = useBucketLabels()
-	const lineLabelFor = useLineStatusLabel()
+	const lineLabelFor = useAuditLabel()
 	const [open, setOpen] = useState(defaultOpen)
 	if (entries.length === 0) return null
 	return (
@@ -432,7 +406,7 @@ export default function ImagesPage() {
 			)
 		}
 		if (hostFilter) result = result.filter((c) => c.host_id === hostFilter)
-		if (statusFilter) result = result.filter((c) => classifyBucket(c.image_audit) === statusFilter)
+		if (statusFilter) result = result.filter((c) => classifyAuditBucket(c.image_audit) === statusFilter)
 		return result
 	}, [containers, search, hostFilter, statusFilter])
 
@@ -446,7 +420,7 @@ export default function ImagesPage() {
 			other: [],
 		}
 		for (const entry of filtered) {
-			out[classifyBucket(entry.image_audit)].push(entry)
+			out[classifyAuditBucket(entry.image_audit)].push(entry)
 		}
 		return out
 	}, [filtered])
@@ -460,7 +434,7 @@ export default function ImagesPage() {
 			disabled: 0,
 			other: 0,
 		}
-		for (const entry of containers) c[classifyBucket(entry.image_audit)]++
+		for (const entry of containers) c[classifyAuditBucket(entry.image_audit)]++
 		return c
 	}, [containers])
 

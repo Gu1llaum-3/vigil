@@ -367,8 +367,8 @@ msgstr "Channels"
 msgid "Check {email} for a reset link."
 msgstr "Check {email} for a reset link."
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Check failed"
 msgstr "Check failed"
 
@@ -599,6 +599,7 @@ msgstr "CPU usage"
 msgid "Create account"
 msgstr "Create account"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Created"
@@ -654,6 +655,7 @@ msgstr "Days to keep"
 msgid "Days To Keep"
 msgstr "Days To Keep"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
@@ -743,6 +745,7 @@ msgstr "Disable audit"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Disabled"
 msgstr "Disabled"
 
@@ -885,6 +888,7 @@ msgstr "Events"
 msgid "Exit code"
 msgstr "Exit code"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Exited"
 msgstr "Exited"
@@ -1393,8 +1397,7 @@ msgstr "Method"
 msgid "Method (default POST)"
 msgstr "Method (default POST)"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Minor available"
 msgstr "Minor available"
 
@@ -1811,8 +1814,7 @@ msgstr "Password or token"
 msgid "Password reset request received"
 msgstr "Password reset request received"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Patch available"
 msgstr "Patch available"
 
@@ -1832,6 +1834,7 @@ msgstr "Patch status"
 msgid "Patch Status"
 msgstr "Patch Status"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Paused"
@@ -2084,6 +2087,7 @@ msgstr "Resource"
 msgid "Resources"
 msgstr "Resources"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Restarting"
@@ -2139,6 +2143,7 @@ msgstr "Run Now"
 msgid "running"
 msgstr "running"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Running"
@@ -2334,8 +2339,7 @@ msgstr "Tag exclude (regex)"
 msgid "Tag include (regex)"
 msgstr "Tag include (regex)"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Tag rebuilt"
 msgstr "Tag rebuilt"
 
@@ -2462,10 +2466,11 @@ msgstr "Type"
 msgid "unknown"
 msgstr "unknown"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Unknown"
 msgstr "Unknown"
 
@@ -2477,8 +2482,8 @@ msgstr "Unknown / Pending"
 msgid "Unread"
 msgstr "Unread"
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Unsupported"
 msgstr "Unsupported"
 
@@ -2491,9 +2496,8 @@ msgstr "up"
 msgid "Up"
 msgstr "Up"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Up to date"
 msgstr "Up to date"
 
@@ -2501,9 +2505,7 @@ msgstr "Up to date"
 msgid "Update"
 msgstr "Update"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Update available"
 msgstr "Update available"
 

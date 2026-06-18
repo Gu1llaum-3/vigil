@@ -372,8 +372,8 @@ msgstr "Canaux"
 msgid "Check {email} for a reset link."
 msgstr "Vérifiez {email} pour un lien de réinitialisation."
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Check failed"
 msgstr "Vérification échouée"
 
@@ -604,6 +604,7 @@ msgstr "Utilisation CPU"
 msgid "Create account"
 msgstr "Créer un compte"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Created"
@@ -659,6 +660,7 @@ msgstr "Jours à conserver"
 msgid "Days To Keep"
 msgstr "Jours à conserver"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
@@ -748,6 +750,7 @@ msgstr "Désactiver l'audit"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Disabled"
 msgstr "Désactivé"
 
@@ -890,6 +893,7 @@ msgstr "Événements"
 msgid "Exit code"
 msgstr "Code de sortie"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Exited"
 msgstr "Arrêté"
@@ -1398,8 +1402,7 @@ msgstr "Méthode"
 msgid "Method (default POST)"
 msgstr "Méthode (POST par défaut)"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Minor available"
 msgstr "Version mineure disponible"
 
@@ -1816,8 +1819,7 @@ msgstr "Mot de passe ou jeton"
 msgid "Password reset request received"
 msgstr "Demande de réinitialisation du mot de passe reçue"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Patch available"
 msgstr "Correctif disponible"
 
@@ -1837,6 +1839,7 @@ msgstr "Statut des patchs"
 msgid "Patch Status"
 msgstr "Statut des patchs"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Paused"
@@ -2089,6 +2092,7 @@ msgstr "Ressource"
 msgid "Resources"
 msgstr "Ressources"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Restarting"
@@ -2144,6 +2148,7 @@ msgstr "Exécuter maintenant"
 msgid "running"
 msgstr "en cours"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Running"
@@ -2339,8 +2344,7 @@ msgstr "Tag exclude (regex)"
 msgid "Tag include (regex)"
 msgstr "Tag include (regex)"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Tag rebuilt"
 msgstr "Tag reconstruit"
 
@@ -2467,10 +2471,11 @@ msgstr "Type"
 msgid "unknown"
 msgstr "inconnu"
 
+#: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Unknown"
 msgstr "Inconnu"
 
@@ -2482,8 +2487,8 @@ msgstr "Inconnu / En attente"
 msgid "Unread"
 msgstr "Non lue"
 
-#: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Unsupported"
 msgstr "Non pris en charge"
 
@@ -2496,9 +2501,8 @@ msgstr "OK"
 msgid "Up"
 msgstr "OK"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
 #: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Up to date"
 msgstr "À jour"
 
@@ -2506,9 +2510,7 @@ msgstr "À jour"
 msgid "Update"
 msgstr "Mise à jour"
 
-#: src/components/routes/dashboard/containers-table.tsx
-#: src/components/routes/host-detail.tsx
-#: src/components/routes/images.tsx
+#: src/lib/audit-status.ts
 msgid "Update available"
 msgstr "Mise à jour disponible"
 
