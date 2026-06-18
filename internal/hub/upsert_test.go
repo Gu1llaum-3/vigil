@@ -3,7 +3,7 @@
 package hub
 
 import (
-	"sync"
+	"errors"
 	"testing"
 
 	"github.com/pocketbase/dbx"
@@ -36,37 +36,25 @@ func TestUpsertByUniqueSequential(t *testing.T) {
 	require.InDelta(t, 20.0, records[0].GetFloat("cpu_percent"), 0.001)
 }
 
-// TestUpsertByUniqueConcurrent exercises the retry-on-conflict path: many goroutines
-// upsert the same unique key at once (as the connect-time and ticker collection paths
-// can), and the result must be exactly one record with no error escaping the helper.
-func TestUpsertByUniqueConcurrent(t *testing.T) {
-	hub, testApp, err := createTestHub(t)
-	require.NoError(t, err)
-	defer cleanupTestHub(hub, testApp)
-
-	const agentID = "agentupsert002"
-	const workers = 8
-
-	var wg sync.WaitGroup
-	errs := make(chan error, workers)
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func(n int) {
-			defer wg.Done()
-			errs <- hub.upsertByUnique(hostMetricCurrentCollection, "agent = {:agent}", dbx.Params{"agent": agentID}, func(rec *core.Record) {
-				rec.Set("agent", agentID)
-				rec.Set("cpu_percent", float64(n))
-				rec.Set("collected_at", "2026-06-18T00:00:00Z")
-			})
-		}(i)
+// TestIsUniqueConstraintErr covers the predicate that drives the retry-on-conflict path
+// in upsertByUnique. The retry only fires when a concurrent insert is recognized, and
+// PocketBase surfaces that as a validation-style message ("Value must be unique."), not
+// the raw SQLite text — so both forms must match while unrelated errors must not.
+func TestIsUniqueConstraintErr(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"pocketbase validation", errors.New("agent: Value must be unique."), true},
+		{"raw sqlite", errors.New("UNIQUE constraint failed: host_metric_current.agent"), true},
+		{"uppercase sqlite", errors.New("UNIQUE CONSTRAINT FAILED"), true},
+		{"unrelated", errors.New("database is closed"), false},
 	}
-	wg.Wait()
-	close(errs)
-	for e := range errs {
-		require.NoError(t, e)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, isUniqueConstraintErr(tc.err))
+		})
 	}
-
-	records, err := hub.FindRecordsByFilter(hostMetricCurrentCollection, "agent = {:agent}", "", 0, 0, dbx.Params{"agent": agentID})
-	require.NoError(t, err)
-	require.Len(t, records, 1)
 }

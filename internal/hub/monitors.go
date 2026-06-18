@@ -78,7 +78,7 @@ func (ms *MonitorScheduler) startMonitor(monitorID string) {
 	}
 	monCtx, cancel := context.WithCancel(ms.ctx)
 	ms.cancels.Store(monitorID, cancel)
-	go ms.runMonitor(monCtx, monitorID)
+	goSafe("monitor check", func() { ms.runMonitor(monCtx, monitorID) })
 }
 
 // stopMonitor cancels the check goroutine for a monitor.

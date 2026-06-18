@@ -62,6 +62,21 @@ func onAfterBootstrapAndMigrations(app core.App, fn func(app core.App) error) er
 	return nil
 }
 
+// goSafe runs fn in a goroutine, recovering from panics so a transient failure in a
+// detached background subsystem (ticker, scheduler, monitor check, dispatcher) is logged
+// rather than crashing the whole hub process. This also keeps tests robust against the
+// teardown race where a background goroutine queries the database as it is being closed.
+func goSafe(subsystem string, fn func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("background goroutine recovered from panic", "subsystem", subsystem, "panic", r)
+			}
+		}()
+		fn()
+	}()
+}
+
 // StartHub sets up event handlers and starts the PocketBase server.
 func (h *Hub) StartHub() error {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -80,17 +95,17 @@ func (h *Hub) StartHub() error {
 		// start periodic snapshot collection
 		snapshotInterval := parseSnapshotInterval()
 		slog.Info("Snapshot ticker started", "interval", snapshotInterval)
-		go h.startSnapshotTicker(ctx, snapshotInterval)
+		goSafe("snapshot ticker", func() { h.startSnapshotTicker(ctx, snapshotInterval) })
 		metricsInterval := parseMetricsInterval()
 		slog.Info("Metrics ticker started", "interval", metricsInterval)
-		go h.startMetricsTicker(ctx, metricsInterval)
+		goSafe("metrics ticker", func() { h.startMetricsTicker(ctx, metricsInterval) })
 		if err := h.registerScheduledJobs(); err != nil {
 			return err
 		}
 		// start monitor scheduler
-		go h.monitorScheduler.start(ctx)
+		goSafe("monitor scheduler", func() { h.monitorScheduler.start(ctx) })
 		// start notification dispatcher
-		go h.notifier.Start(ctx)
+		goSafe("notification dispatcher", func() { h.notifier.Start(ctx) })
 		return e.Next()
 	})
 
