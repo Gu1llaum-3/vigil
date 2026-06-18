@@ -108,6 +108,59 @@ type MonitorMetrics struct {
 	Uptime30d       *float64
 }
 
+type monitorMetricsRow struct {
+	Monitor         string  `db:"monitor"`
+	AvgLatency24hMs float64 `db:"avg_latency_24h_ms"`
+	Total24h        int     `db:"total_24h"`
+	Up24h           int     `db:"up_24h"`
+	Total30d        int     `db:"total_30d"`
+	Up30d           int     `db:"up_30d"`
+}
+
+// loadAllMonitorMetrics computes the 24h/30d metrics for every monitor in a single
+// GROUP BY aggregate instead of one query per monitor, so the monitors list cost no
+// longer scales with the number of monitors. The push-type latency guard is applied by
+// the caller (the type lives on the monitor record, not the events). Latency is left as
+// set here; callers nil it for push monitors.
+func (h *Hub) loadAllMonitorMetrics() (map[string]*MonitorMetrics, error) {
+	now := time.Now()
+	var rows []monitorMetricsRow
+	query := `
+SELECT
+	monitor,
+	COUNT(*) AS total_30d,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} THEN 1 ELSE 0 END), 0) AS total_24h,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status = 1 THEN 1 ELSE 0 END), 0) AS up_24h,
+	COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) AS up_30d,
+	COALESCE(AVG(CASE WHEN checked_at >= {:since24} THEN latency_ms END), 0) AS avg_latency_24h_ms
+FROM monitor_events
+WHERE checked_at >= {:since30}
+GROUP BY monitor`
+	if err := h.DB().NewQuery(query).Bind(dbx.Params{
+		"since24": now.Add(-24 * time.Hour).UTC(),
+		"since30": now.Add(-30 * 24 * time.Hour).UTC(),
+	}).All(&rows); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*MonitorMetrics, len(rows))
+	for _, row := range rows {
+		metrics := &MonitorMetrics{}
+		if row.Total24h > 0 {
+			avg := row.AvgLatency24hMs
+			metrics.AvgLatency24hMs = &avg
+			uptime24 := float64(row.Up24h) / float64(row.Total24h) * 100
+			metrics.Uptime24h = &uptime24
+		}
+		if row.Total30d > 0 {
+			uptime30 := float64(row.Up30d) / float64(row.Total30d) * 100
+			metrics.Uptime30d = &uptime30
+		}
+		result[row.Monitor] = metrics
+	}
+	return result, nil
+}
+
 func monitorToRecord(m *core.Record, appURL string, metrics *MonitorMetrics, recentChecks []MonitorCheckPoint) MonitorRecord {
 	r := MonitorRecord{
 		ID:            m.Id,
@@ -216,6 +269,12 @@ func (h *Hub) getMonitors(e *core.RequestEvent) error {
 		return err
 	}
 
+	// Aggregate metrics for all monitors in a single query rather than one per monitor.
+	metricsByMonitor, err := h.loadAllMonitorMetrics()
+	if err != nil {
+		return err
+	}
+
 	appURL := h.Settings().Meta.AppURL
 
 	groupMap := make(map[string]*MonitorGroupResponse, len(groups))
@@ -239,7 +298,10 @@ func (h *Hub) getMonitors(e *core.RequestEvent) error {
 	}
 
 	for _, m := range monitors {
-		metrics, _ := h.loadMonitorMetrics(m)
+		metrics := metricsByMonitor[m.Id]
+		if metrics != nil && m.GetString("type") == "push" {
+			metrics.AvgLatency24hMs = nil
+		}
 		recentChecks, _ := h.loadRecentChecks(m, 10)
 		mr := monitorToRecord(m, appURL, metrics, recentChecks)
 		if gr, ok := groupMap[mr.Group]; ok {
