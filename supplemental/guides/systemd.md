@@ -98,7 +98,7 @@ After=network.target
 
 [Service]
 # update the values in the curly braces below (remove the braces)
-ExecStart={/path/to/working/directory}/app serve
+ExecStart={/path/to/working/directory}/vigil serve
 WorkingDirectory={/path/to/working/directory}
 User={YOUR_USERNAME}
 Restart=always

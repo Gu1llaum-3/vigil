@@ -255,6 +255,48 @@ Current dispatch points:
 
 When adding new notification triggers, follow this pattern and do not use `OnRecordAfterUpdate` hooks on high-frequency collections.
 
+## Never Inline Secrets Into Generated Service Files
+
+The install/packaging scripts must not interpolate `KEY`/`TOKEN`/`HUB_URL` (or any
+user-supplied value) directly into a service definition that is later executed or
+parsed.
+
+Why:
+
+- the OpenRC and procd init scripts are shell scripts that run as root; a value
+  containing `"`, `$()`, backticks, etc. inlined into them is a root command
+  injection
+- a systemd `Environment="KEY=$VALUE"` line plus a `sed` rewrite breaks on values
+  containing `"`, `|`, `&`, or `\`
+
+Current rules (`supplemental/scripts/install-agent.sh`, `supplemental/debian/*`):
+
+- strip CR/LF from the values first
+- systemd uses `EnvironmentFile=` (read by systemd, never shell-evaluated); write
+  the file with plain `KEY=value` lines and only update non-empty values so
+  upgrades preserve existing secrets
+- OpenRC/procd/FreeBSD write a root-only (`0600`) env file with single-quote
+  escaping (`sq()` / `write_shell_env_file`) and `.`-source it from the init script
+- the systemd path migrates older units that inlined the secrets into the env file
+  so upgrades do not lose configuration
+
+When adding a new platform or service manager, follow this pattern — do not add a
+new inline-interpolation path.
+
+## Docker Group Membership Is Root-Equivalent
+
+Adding the agent's service user to the `docker` group grants full control of the
+Docker daemon, which is equivalent to root on the host and effectively bypasses the
+systemd sandboxing (`ProtectSystem=strict`, etc.).
+
+Rules:
+
+- the Debian package makes this opt-in via the `vigil-agent/docker_access` debconf
+  question; do not make it automatic
+- the hub container image runs as a non-root uid (`10001`) and grants `CAP_NET_RAW`
+  to the `ping` binary via `setcap` so the ping monitor still works without root —
+  do not "fix" a ping failure by reverting the image to root
+
 ## Good Default Verification Habit
 
 For most non-trivial changes, the safe baseline is:

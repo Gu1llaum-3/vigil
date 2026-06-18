@@ -100,7 +100,9 @@ Purpose:
 
 Operational note:
 
-- the image includes `iputils` so the `ping` monitor works in the official hub container
+- the image runs as a non-root user (uid `10001`); the data dir `/vigil_data` is owned by that uid, so a host bind mount must be chowned to `10001:10001` (the shipped Compose uses a named volume to avoid this)
+- it defines a `HEALTHCHECK` against PocketBase's `GET /api/health`
+- the image includes `iputils` so the `ping` monitor works in the official hub container; `CAP_NET_RAW` is granted to the `ping` binary via `setcap` so it works under the non-root user (Docker's default capability set includes `NET_RAW`)
 - ICMP still depends on the runtime environment allowing echo requests; network policy or capability restrictions can block it even when `ping` is installed
 - hardened container or cluster policies can still block ICMP echo at runtime even when the binary is present
 
@@ -134,10 +136,15 @@ Purpose:
 - create service-oriented runtime structure
 - provide OS-specific service integration details
 
+Integrity and secret handling:
+
+- both scripts download the release archive named `vigil_${OS}_${ARCH}.tar.gz` and verify its SHA-256 against the published `vigil_${VERSION}_checksums.txt` before installing; a mismatch aborts the install
+- `install-hub.sh` installs the `vigil` binary and a `vigil` system user; `install-agent.sh` installs the `vigil-agent` binary
+- secrets (`KEY`/`TOKEN`/`HUB_URL`) are never inlined into generated service definitions — systemd uses an `EnvironmentFile=`, and the OpenRC/procd/FreeBSD paths source a root-only, shell-escaped env file (see `docs/conventions-and-gotchas.md`)
+
 Important note:
 
-- these scripts still use generic boilerplate naming and should be reviewed carefully in derived projects
-- `supplemental/scripts/install-agent.sh` is currently aligned to the agent release artifacts published by `.goreleaser.yml`, which at the moment means Linux only: `amd64`, `arm64`, and `arm` (`armv7`)
+- `supplemental/scripts/install-agent.sh` is aligned to the agent release artifacts published by `.goreleaser.yml`, which at the moment means Linux only: `amd64`, `arm64`, and `arm` (`armv7`)
 - the agent install script does not currently configure a working self-update flow; treat `--auto-update` as a compatibility placeholder rather than a supported feature
 
 ### FreeBSD-Specific Service Support
@@ -158,6 +165,12 @@ Typical concerns to review here:
 - archive naming
 - target OS and architecture matrix
 - packaged supporting files
+
+Integrity:
+
+- `make_latest: true` so GitHub's `/releases/latest` resolves for stable tags (the install scripts depend on it); prereleases stay excluded via `prerelease: auto`
+- the `checksums.txt` file is signed with cosign keyless (OIDC) by the release workflow, producing `*.sig` and `*.pem`; the `signs:` block documents the `cosign verify-blob` recipe
+- the hub image build publishes provenance and an SBOM
 
 If you rename the project or change binary names, this file must stay in sync with `app.go` and any install scripts.
 
