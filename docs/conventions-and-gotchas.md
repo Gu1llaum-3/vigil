@@ -18,6 +18,14 @@ Why:
 
 If you are editing agent status update paths, follow the existing hub pattern.
 
+## Use `upsertByUnique` For Concurrent One-Record-Per-Key Upserts
+
+Several hub collections hold one record per unique key (`host_snapshots`, `host_metric_current`, ... unique on `agent`). The naive find-then-save pattern races when two goroutines write the same key concurrently — both miss the find, both insert, and the second `SaveNoValidate` fails with a unique-constraint error (PocketBase surfaces this as `"<field>: Value must be unique."`, not the raw SQLite `"UNIQUE constraint failed"`).
+
+This is reachable in practice: the connect-time collection (`agent_connect.go`) and the periodic ticker (`startMetricsTicker` / snapshot ticker) can fire for the same agent at the same moment.
+
+For background upserts on a concurrent path, use `(*Hub).upsertByUnique(collection, filter, params, apply)` in `internal/hub/upsert.go`. It retries on a unique-constraint conflict, re-finding each attempt so the losing insert becomes an update. The `apply` callback must set every field including the unique key, and it must be idempotent (it can run more than once on retry) — so do not put one-shot side effects (e.g. emitting a notification) inside it. `upsertContainerImageAudit` intentionally keeps its own logic for that reason; it runs on a single non-overlapping job cycle.
+
 ## Use Explicit Timeouts For Hub-To-Agent Calls
 
 The hub request manager provides default timeout behavior, but hub-side calls should still use explicit `context.WithTimeout` when invoking agent actions.

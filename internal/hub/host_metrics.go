@@ -140,17 +140,12 @@ func (h *Hub) insertHostMetricSample(agentID string, metrics common.HostMetricsR
 }
 
 func (h *Hub) upsertHostMetricCurrent(agentID string, metrics common.HostMetricsResponse) {
-	rec, err := h.FindFirstRecordByFilter(hostMetricCurrentCollection, "agent = {:agent}", dbx.Params{"agent": agentID})
+	// Concurrent paths (connect-time collection + periodic ticker) can target the same
+	// agent, so use the retry-on-conflict helper to keep the unique(agent) upsert safe.
+	err := h.upsertByUnique(hostMetricCurrentCollection, "agent = {:agent}", dbx.Params{"agent": agentID}, func(rec *core.Record) {
+		applyHostMetricRecord(rec, agentID, metrics)
+	})
 	if err != nil {
-		col, colErr := h.FindCachedCollectionByNameOrId(hostMetricCurrentCollection)
-		if colErr != nil {
-			slog.Warn("host_metric_current collection not found", "err", colErr)
-			return
-		}
-		rec = core.NewRecord(col)
-	}
-	applyHostMetricRecord(rec, agentID, metrics)
-	if err := h.SaveNoValidate(rec); err != nil {
 		slog.Warn("Failed to save current host metrics", "agent", agentID, "err", err)
 	}
 }
@@ -258,6 +253,26 @@ func (h *Hub) loadCurrentHostMetricsByAgent() (map[string]common.HostMetricsResp
 	return result, nil
 }
 
+// buildHostOverviewRecord assembles a host overview record from an agent record and its
+// optional snapshot and current metrics. Shared by the fleet overview and the single-host
+// detail endpoint so both produce an identical shape.
+func buildHostOverviewRecord(agent *core.Record, snapshot *common.HostSnapshotResponse, metrics *common.HostMetricsResponse) HostOverviewRecord {
+	host := HostOverviewRecord{
+		ID:       agent.Id,
+		Name:     agent.GetString("name"),
+		Status:   agent.GetString("status"),
+		LastSeen: agent.GetDateTime("last_seen").String(),
+		Version:  agent.GetString("version"),
+	}
+	if snapshot != nil {
+		host.HostSnapshotResponse = *snapshot
+	}
+	if metrics != nil {
+		host.Metrics = metrics
+	}
+	return host
+}
+
 func (h *Hub) loadHostsOverview() ([]HostOverviewRecord, error) {
 	agentRecords, err := h.FindAllRecords("agents")
 	if err != nil {
@@ -270,22 +285,6 @@ func (h *Hub) loadHostsOverview() ([]HostOverviewRecord, error) {
 	metricsByAgent, err := h.loadCurrentHostMetricsByAgent()
 	if err != nil {
 		return nil, err
-	}
-
-	type agentMeta struct {
-		name     string
-		status   string
-		lastSeen string
-		version  string
-	}
-	agentsByID := make(map[string]agentMeta, len(agentRecords))
-	for _, agent := range agentRecords {
-		agentsByID[agent.Id] = agentMeta{
-			name:     agent.GetString("name"),
-			status:   agent.GetString("status"),
-			lastSeen: agent.GetDateTime("last_seen").String(),
-			version:  agent.GetString("version"),
-		}
 	}
 
 	snapshotsByAgent := make(map[string]common.HostSnapshotResponse, len(snapshotRecords))
@@ -303,22 +302,17 @@ func (h *Hub) loadHostsOverview() ([]HostOverviewRecord, error) {
 
 	hosts := make([]HostOverviewRecord, 0, len(agentRecords))
 	for _, agent := range agentRecords {
-		meta := agentsByID[agent.Id]
-		host := HostOverviewRecord{
-			ID:       agent.Id,
-			Name:     meta.name,
-			Status:   meta.status,
-			LastSeen: meta.lastSeen,
-			Version:  meta.version,
-		}
+		var snapshotPtr *common.HostSnapshotResponse
 		if snapshot, ok := snapshotsByAgent[agent.Id]; ok {
-			host.HostSnapshotResponse = snapshot
+			snapshotCopy := snapshot
+			snapshotPtr = &snapshotCopy
 		}
+		var metricsPtr *common.HostMetricsResponse
 		if metrics, ok := metricsByAgent[agent.Id]; ok {
 			metricsCopy := metrics
-			host.Metrics = &metricsCopy
+			metricsPtr = &metricsCopy
 		}
-		hosts = append(hosts, host)
+		hosts = append(hosts, buildHostOverviewRecord(agent, snapshotPtr, metricsPtr))
 	}
 
 	sort.SliceStable(hosts, func(i, j int) bool {
@@ -346,16 +340,26 @@ func (h *Hub) getHostsOverview(e *core.RequestEvent) error {
 
 func (h *Hub) getHostDetail(e *core.RequestEvent) error {
 	agentID := e.Request.PathValue("id")
-	hosts, err := h.loadHostsOverview()
+	agent, err := h.FindRecordById("agents", agentID)
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return e.NotFoundError("Host not found", nil)
 	}
-	for _, host := range hosts {
-		if host.ID == agentID {
-			return e.JSON(http.StatusOK, host)
+
+	var snapshotPtr *common.HostSnapshotResponse
+	if rec, snapErr := h.FindFirstRecordByFilter("host_snapshots", "agent = {:agent}", dbx.Params{"agent": agentID}); snapErr == nil {
+		var snapshot common.HostSnapshotResponse
+		if json.Unmarshal([]byte(rec.GetString("data")), &snapshot) == nil {
+			snapshotPtr = &snapshot
 		}
 	}
-	return e.NotFoundError("Host not found", nil)
+
+	var metricsPtr *common.HostMetricsResponse
+	if rec, metErr := h.FindFirstRecordByFilter(hostMetricCurrentCollection, "agent = {:agent}", dbx.Params{"agent": agentID}); metErr == nil {
+		metrics := hostMetricsFromRecord(rec)
+		metricsPtr = &metrics
+	}
+
+	return e.JSON(http.StatusOK, buildHostOverviewRecord(agent, snapshotPtr, metricsPtr))
 }
 
 func (h *Hub) getHostMetricsHistory(e *core.RequestEvent) error {

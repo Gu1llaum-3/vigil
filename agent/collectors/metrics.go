@@ -24,8 +24,13 @@ type metricsState struct {
 	prevTxBytes uint64
 	prevNetAt   time.Time
 	ifaceNames  map[string]struct{}
-	ifacesOK    bool
+	ifacesAt    time.Time
 }
+
+// ifaceRedetectInterval bounds how long a detected interface set is reused before
+// being re-evaluated, so interfaces that appear after startup (VPN, hot-plugged NIC,
+// or a boot race where none were up yet) are eventually picked up.
+const ifaceRedetectInterval = 5 * time.Minute
 
 var hostMetricsState metricsState
 
@@ -99,9 +104,11 @@ func collectDiskMetrics(metrics *common.HostMetricsResponse) {
 }
 
 func collectNetworkMetricsLocked(now time.Time, metrics *common.HostMetricsResponse) {
-	if !hostMetricsState.ifacesOK {
+	if hostMetricsState.ifacesAt.IsZero() ||
+		len(hostMetricsState.ifaceNames) == 0 ||
+		now.Sub(hostMetricsState.ifacesAt) >= ifaceRedetectInterval {
 		hostMetricsState.ifaceNames = detectMetricInterfaces()
-		hostMetricsState.ifacesOK = true
+		hostMetricsState.ifacesAt = now
 	}
 	if len(hostMetricsState.ifaceNames) == 0 {
 		return

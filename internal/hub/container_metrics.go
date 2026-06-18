@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -206,7 +205,7 @@ func (h *Hub) getHostContainerMetricsLatest(e *core.RequestEvent) error {
 		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	if len(records) == 0 {
-		return e.JSON(http.StatusOK, ContainerMetricHistoryPoint{Containers: []common.ContainerMetricsPoint{}})
+		return e.JSON(http.StatusOK, nil)
 	}
 	return e.JSON(http.StatusOK, containerMetricHistoryPointFromRecord(records[0]))
 }
@@ -222,18 +221,4 @@ func (h *Hub) purgeContainerMetricSamplesOlderThan(days int) (int, error) {
 		return count, err
 	}
 	return count, deleteRows(h, "DELETE FROM container_metric_samples WHERE collected_at < {:cutoff}", params)
-}
-
-func sortContainerMetricPoints(points []common.ContainerMetricsPoint) {
-	sort.SliceStable(points, func(i, j int) bool {
-		left := points[i].Name
-		if left == "" {
-			left = points[i].ID
-		}
-		right := points[j].Name
-		if right == "" {
-			right = points[j].ID
-		}
-		return left < right
-	})
 }

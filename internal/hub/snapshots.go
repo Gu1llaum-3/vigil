@@ -22,21 +22,14 @@ func (h *Hub) upsertHostSnapshot(agentId string, snapshot common.HostSnapshotRes
 		return
 	}
 
-	rec, err := h.FindFirstRecordByFilter("host_snapshots", "agent = {:agent}", dbx.Params{"agent": agentId})
-	if err != nil {
-		// No existing record — create one
-		col, colErr := h.FindCachedCollectionByNameOrId("host_snapshots")
-		if colErr != nil {
-			slog.Warn("host_snapshots collection not found", "err", colErr)
-			return
-		}
-		rec = core.NewRecord(col)
+	// Concurrent paths (connect-time collection + periodic snapshot ticker) can target the
+	// same agent, so use the retry-on-conflict helper to keep the unique(agent) upsert safe.
+	err = h.upsertByUnique("host_snapshots", "agent = {:agent}", dbx.Params{"agent": agentId}, func(rec *core.Record) {
 		rec.Set("agent", agentId)
-	}
-
-	rec.Set("data", string(dataBytes))
-	rec.Set("collected_at", snapshot.CollectedAt)
-	if err := h.SaveNoValidate(rec); err != nil {
+		rec.Set("data", string(dataBytes))
+		rec.Set("collected_at", snapshot.CollectedAt)
+	})
+	if err != nil {
 		slog.Warn("Failed to save host snapshot", "agent", agentId, "err", err)
 	}
 }
