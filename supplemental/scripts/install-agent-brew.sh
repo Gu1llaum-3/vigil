@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 KEY=""
 TOKEN=""
@@ -20,15 +21,15 @@ while [ $# -gt 0 ]; do
   case "$1" in
   -k)
     shift
-    KEY="$1"
+    KEY="${1:-}"
     ;;
   -t)
     shift
-    TOKEN="$1"
+    TOKEN="${1:-}"
     ;;
   -url)
     shift
-    HUB_URL="$1"
+    HUB_URL="${1:-}"
     ;;
   -h | --help)
     usage
@@ -68,13 +69,24 @@ fi
 
 mkdir -p ~/.config/vigil ~/.cache/vigil
 
-echo "KEY=\"$KEY\"" >~/.config/vigil/vigil-agent.env
+# Strip CR/LF so values cannot break the env file.
+KEY=$(printf '%s' "$KEY" | tr -d '\r\n')
+TOKEN=$(printf '%s' "$TOKEN" | tr -d '\r\n')
+HUB_URL=$(printf '%s' "$HUB_URL" | tr -d '\r\n')
 
+ENV_FILE=~/.config/vigil/vigil-agent.env
+
+# Create the secrets file with restrictive permissions before writing into it.
+umask 077
+: >"$ENV_FILE"
+chmod 600 "$ENV_FILE"
+
+printf 'KEY="%s"\n' "$KEY" >"$ENV_FILE"
 if [ -n "$TOKEN" ]; then
-  echo "TOKEN=\"$TOKEN\"" >>~/.config/vigil/vigil-agent.env
+  printf 'TOKEN="%s"\n' "$TOKEN" >>"$ENV_FILE"
 fi
 if [ -n "$HUB_URL" ]; then
-  echo "HUB_URL=\"$HUB_URL\"" >>~/.config/vigil/vigil-agent.env
+  printf 'HUB_URL="%s"\n' "$HUB_URL" >>"$ENV_FILE"
 fi
 
 brew tap Gu1llaum-3/vigil
