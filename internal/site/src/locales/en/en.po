@@ -1332,6 +1332,11 @@ msgstr "Loading notifications…"
 msgid "Loading purge settings…"
 msgstr "Loading purge settings…"
 
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Loading…"
+msgstr "Loading…"
+
 #: src/components/routes/container-detail.tsx
 msgid "Local"
 msgstr "Local"

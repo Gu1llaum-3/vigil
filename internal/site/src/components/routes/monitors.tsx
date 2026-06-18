@@ -841,6 +841,13 @@ export default memo(function MonitorsPage() {
 				}
 			/>
 
+			{/* Loading state */}
+			{loading && (
+				<div className="py-10 text-center text-muted-foreground">
+					<Trans>Loading…</Trans>
+				</div>
+			)}
+
 			{/* Empty state */}
 			{!loading && allMonitors.length === 0 && (
 				<div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">

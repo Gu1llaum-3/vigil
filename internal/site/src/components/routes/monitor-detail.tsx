@@ -327,7 +327,11 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 	}
 
 	if (loading && !monitor) {
-		return <div className="py-10 text-center text-muted-foreground">Loading...</div>
+		return (
+			<div className="py-10 text-center text-muted-foreground">
+				<Trans>Loading…</Trans>
+			</div>
+		)
 	}
 
 	if (error) {
