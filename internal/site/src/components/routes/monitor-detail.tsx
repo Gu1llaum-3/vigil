@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { $router, Link } from "@/components/router"
 import { pb } from "@/lib/api"
-import type { MonitorEventRecord, MonitorGroupResponse, MonitorRecord, MonitorStatus } from "@/lib/monitor-types"
+import type { MonitorEventRecord, MonitorRecord, MonitorStatus } from "@/lib/monitor-types"
 
 ChartJS.register(LineElement, LinearScale, PointElement, Tooltip, Legend)
 
@@ -200,10 +200,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 			if (showLoading) setLoading(true)
 			setError(null)
 			try {
-				const groups = await pb.send<MonitorGroupResponse[]>("/api/app/monitors", { method: "GET" })
-				const detail =
-					groups.flatMap((group) => group.monitors).find((item) => item.id === monitorId) ??
-					(await pb.send<MonitorRecord>(`/api/app/monitors/${monitorId}`, { method: "GET" }))
+				const detail = await pb.send<MonitorRecord>(`/api/app/monitors/${monitorId}`, { method: "GET" })
 				if (requestSeq !== requestSeqRef.current) return
 				setMonitor(detail)
 
