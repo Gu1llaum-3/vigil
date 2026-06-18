@@ -204,10 +204,10 @@ Use searches like:
 Start here:
 
 - `.goreleaser.yml`
-- `supplemental/docker/`
+- `supplemental/docker/` (hub only)
 - `supplemental/guides/systemd.md`
 - `supplemental/scripts/`
-- `supplemental/kubernetes/`
+- `supplemental/debian/`
 - `internal/ghupdate/*`
 
 Read next:

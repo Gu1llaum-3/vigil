@@ -10,15 +10,23 @@ This document explains what is available, what each asset is for, and how the pi
 
 The main operational assets are:
 
-- `supplemental/docker/`
+- `supplemental/docker/` (hub only)
 - `supplemental/guides/systemd.md`
 - `supplemental/scripts/`
-- `supplemental/kubernetes/`
+- `supplemental/debian/`
 - `.goreleaser.yml`
 - `internal/hub/update.go`
 - `internal/ghupdate/*`
 
 Not all of these are equally production-opinionated. Some are examples and starting points rather than a single blessed deployment path.
+
+## Deployment Model
+
+The supported deployment model is intentionally asymmetric:
+
+- **Hub** — runs as a container (primary path, see the hub Compose below) or as a native service installed via `install-hub.sh`. Docker is the recommended way to run the hub, but not the only one.
+- **Agents** — installed **natively** on each monitored host (shell / PowerShell / Debian package / Homebrew). There is no agent container image; the agent is a lightweight process that integrates with the host's service manager.
+- **Kubernetes** — not supported. There is no Helm chart.
 
 ## Docker Compose Assets
 
@@ -75,35 +83,7 @@ Release behavior:
 - GitHub prereleases stay separate and are never promoted to `latest`
 - rerunning the same tag replaces existing release artifacts instead of failing on duplicate asset names
 
-### Agent Compose
-
-Path:
-
-- `supplemental/docker/agent/docker-compose.yml`
-
-Purpose:
-
-- run the agent in a container with environment-driven configuration
-- connect back to an existing hub
-
-Typical use case:
-
-- remote host deployment where Docker is preferred
-
-### Same-System Compose
-
-Path:
-
-- `supplemental/docker/same-system/docker-compose.yml`
-
-Purpose:
-
-- run hub and agent on the same machine for local development or demos
-
-Typical use case:
-
-- quick smoke testing of the full architecture
-- demos or evaluation setups
+> **Note:** there is intentionally no agent Compose or combined hub+agent Compose. Agents are installed natively (see *Service Management And Install Scripts*).
 
 ### Hub Dockerfile
 
@@ -165,25 +145,6 @@ Important note:
 Some supplemental assets still include FreeBSD-oriented service examples, but the shipped agent install script should be treated as Linux-only until the agent release matrix expands.
 
 Treat those non-Linux paths as templates rather than verified install flows.
-
-## Kubernetes Assets
-
-Path:
-
-- `supplemental/kubernetes/`
-
-The current chart and values are a starting point for running the hub in Kubernetes.
-
-Highlights from the provided values:
-
-- configurable image repository and tag
-- service and ingress options
-- PVC support for hub persistence
-- resource and autoscaling settings
-
-Current limitation:
-
-- these assets are generic and require environment-specific hardening and naming before production use
 
 ## Release Packaging
 
@@ -270,9 +231,8 @@ Treat the assets in `supplemental/` as supported examples, not as a single canon
 
 That means:
 
-- Docker Compose files are useful starting points
+- the hub Docker Compose file is a useful starting point
 - install scripts encode useful defaults and service structure
-- Kubernetes assets are a generic base, not a final production chart
 - derived projects should review naming, security, storage, and secret handling before production rollout
 
 ## Recommended Deployment Review Checklist
@@ -291,12 +251,10 @@ Before using a deployment asset in a real environment, review:
 
 - `.goreleaser.yml`
 - `supplemental/docker/hub/docker-compose.yml`
-- `supplemental/docker/agent/docker-compose.yml`
-- `supplemental/docker/same-system/docker-compose.yml`
 - `supplemental/guides/systemd.md`
 - `supplemental/scripts/install-hub.sh`
 - `supplemental/scripts/install-agent.sh`
-- `supplemental/kubernetes/**/*`
+- `supplemental/debian/`
 - `internal/hub/update.go`
 - `internal/ghupdate/*`
 - `internal/hub/heartbeat/heartbeat.go`

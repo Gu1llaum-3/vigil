@@ -28,7 +28,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 - Read `docs/development/workflow-and-testing.md` before running builds, dev flows, or tests.
 - Read `docs/customization/renaming-and-derived-projects.md` for rename-sensitive work in derived projects.
 - Read `docs/conventions-and-gotchas.md` for repo-specific rules that can cause regressions.
-- Read `docs/operations/deployment-and-packaging.md` for Docker, scripts, systemd, Helm, releases, and self-update behavior.
+- Read `docs/operations/deployment-and-packaging.md` for Docker (hub), install scripts, systemd, Debian packaging, releases, and self-update behavior.
 - Read `docs/troubleshooting/common-issues.md` when diagnosing recurring repo-specific failures.
 - Read `docs/ai/agent-navigation.md` when you need the fastest task-to-file routing.
 

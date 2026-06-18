@@ -108,7 +108,6 @@ Review `supplemental/` for placeholders or generic naming.
 Important targets:
 
 - Docker Compose files under `supplemental/docker/`
-- Kubernetes chart values under `supplemental/kubernetes/`
 - Debian or packaging assets under `supplemental/`
 - release metadata in `.goreleaser.yml`
 
@@ -140,7 +139,7 @@ These files are easy to miss because they are not part of the main runtime code 
 - `supplemental/docker/**/*`
 - `supplemental/scripts/*`
 - `supplemental/guides/systemd.md`
-- `supplemental/kubernetes/**/*`
+- `supplemental/debian/**/*`
 
 ## Frontend Branding Checklist
 
@@ -194,7 +193,7 @@ Run this validation after the rename is complete.
 4. run `make build-web-ui`
 5. verify login page title and branding
 6. verify generated binaries and service names are correct
-7. review Docker, script, and Helm assets for stale identifiers
+7. review Docker, script, and packaging assets for stale identifiers
 
 ## Suggested Search Terms
 
