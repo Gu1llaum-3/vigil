@@ -66,8 +66,8 @@ const AgentDialog = ({ open, setOpen }: { open: boolean; setOpen: (open: boolean
 		setError("")
 
 		Promise.all([
-			pb.send<AppInfo>("/api/app/info"),
-			pb.send<EnrollmentTokenResponse>("/api/app/agent-enrollment-token"),
+			pb.send<AppInfo>("/api/app/info", { method: "GET" }),
+			pb.send<EnrollmentTokenResponse>("/api/app/agent-enrollment-token", { method: "GET" }),
 		])
 			.then(([info, enrollment]) => {
 				if (cancelled) {

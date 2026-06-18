@@ -176,7 +176,7 @@ function buildSeries(events: MonitorEventRecord[]) {
 const MonitorDetailPage = memo(function MonitorDetailPage() {
 	const { t } = useLingui()
 	const page = useStore($router)
-	const monitorId = page?.params?.id as string | undefined
+	const monitorId = (page?.params as { id?: string } | undefined)?.id
 	const [range, setRange] = useState<RangeKey>("24h")
 	const [monitor, setMonitor] = useState<MonitorRecord | null>(null)
 	const [events, setEvents] = useState<MonitorEventRecord[]>([])

@@ -71,7 +71,7 @@ export default function NotificationLogToasts() {
 						return
 					}
 
-					const log = event.record as NotificationLog
+					const log = event.record as unknown as NotificationLog
 					if (log.status === "sent" && ALERT_EVENT_KINDS.has(log.event_kind)) {
 						const now = Date.now()
 						const key = `${log.event_kind}|${log.resource_type}|${log.resource_id}`

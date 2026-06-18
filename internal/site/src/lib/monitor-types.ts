@@ -54,6 +54,11 @@ export interface MonitorGroupRecord {
 	weight: number
 }
 
+// Request body for POST /api/app/monitors/:id/move
+export interface MonitorMovePayload {
+	group: string
+}
+
 export interface MonitorEventRecord {
 	id: string
 	status: MonitorStatus

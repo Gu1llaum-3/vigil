@@ -54,6 +54,7 @@ import {
 	type MonitorFormData,
 	type MonitorGroupRecord,
 	type MonitorGroupResponse,
+	type MonitorMovePayload,
 	type MonitorRecord,
 	type MonitorType,
 } from "@/lib/monitor-types"
@@ -1123,7 +1124,7 @@ function MonitorRow({ monitor: m, availableGroups, readonly, onMoveMonitor, onEd
 							variant="ghost"
 							size="icon"
 							className="h-5 w-5 shrink-0"
-							onClick={() => copyToClipboard(m.push_url)}
+							onClick={() => copyToClipboard(m.push_url ?? "")}
 						>
 							<CopyIcon className="h-3 w-3" />
 						</Button>
