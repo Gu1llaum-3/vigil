@@ -12,6 +12,9 @@ builds:
     main: internal/cmd/hub/hub.go
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/Gu1llaum-3/vigil.Version={{ .Version }}
     goos:
       - linux
       - darwin
@@ -35,6 +38,9 @@ builds:
     main: internal/cmd/agent/agent.go
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/Gu1llaum-3/vigil.Version={{ .Version }}
     goos:
       - linux
     goarch:
