@@ -157,6 +157,28 @@ func (p *updater) update() (updated bool, err error) {
 		return false, err
 	}
 
+	// Verify the downloaded asset against the release checksums before extracting or
+	// replacing the executable. Fail closed: no checksums file or a mismatch aborts the
+	// update (prevents installing a trojaned binary via MITM / compromised mirror).
+	// The checksums file is always fetched from the canonical GitHub origin (never the
+	// mirror), so a malicious mirror cannot supply both the binary and a matching digest.
+	checksumsAsset, err := latest.findChecksumsAsset()
+	if err != nil {
+		return false, fmt.Errorf("cannot verify update integrity: %w", err)
+	}
+	checksumsPath := filepath.Join(releaseDir, checksumsAsset.Name)
+	if err := downloadFile(p.config.Context, p.config.HttpClient, checksumsAsset.DownloadUrl, checksumsPath, false, ""); err != nil {
+		return false, fmt.Errorf("failed to download checksums: %w", err)
+	}
+	checksums, err := os.ReadFile(checksumsPath)
+	if err != nil {
+		return false, err
+	}
+	if err := verifyAssetChecksum(assetPath, checksums, asset.Name); err != nil {
+		return false, fmt.Errorf("update integrity check failed: %w", err)
+	}
+	ColorPrint(ColorGreen, "Checksum verified.")
+
 	ColorPrintf(ColorYellow, "Extracting %s...", asset.Name)
 
 	extractDir := filepath.Join(releaseDir, "extracted_"+asset.Name)

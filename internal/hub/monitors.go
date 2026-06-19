@@ -276,6 +276,9 @@ func checkHTTP(ctx context.Context, monitor *core.Record) (status int, msg strin
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+			// SSRF guard: reject loopback/link-local/metadata (and optionally private)
+			// resolved addresses; also covers redirects and DNS rebinding.
+			DialContext: newGuardedDialer().DialContext,
 		},
 	}
 
@@ -430,7 +433,8 @@ func checkTCP(ctx context.Context, monitor *core.Record) (status int, msg string
 		return monitorStatusDown, "Missing hostname or port"
 	}
 
-	dialer := &net.Dialer{}
+	// SSRF guard: block loopback/link-local/metadata (and optionally private) targets.
+	dialer := newGuardedDialer()
 	conn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", hostname, port))
 	if err != nil {
 		return monitorStatusDown, fmt.Sprintf("Connection failed: %s", err)

@@ -37,6 +37,9 @@ func extractTarGz(srcPath, destDir string) error {
 
 	tr := tar.NewReader(gz)
 
+	// normalize dest path to check later for Tar Slip
+	base := filepath.Clean(destDir) + string(os.PathSeparator)
+
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
@@ -46,31 +49,44 @@ func extractTarGz(srcPath, destDir string) error {
 			return err
 		}
 
-		if header.Typeflag == tar.TypeDir {
-			if err := os.MkdirAll(filepath.Join(destDir, header.Name), 0755); err != nil {
+		target := filepath.Join(destDir, header.Name)
+		// Reject path traversal ("../") entries that would escape destDir (Tar Slip).
+		if !strings.HasPrefix(target, base) {
+			return fmt.Errorf("invalid file path in archive: %s", header.Name)
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				return err
+			}
+			outFile, err := os.Create(target)
+			if err != nil {
+				return err
+			}
+			// Bound decompression to guard against a tar bomb writing an oversized file.
+			if _, err := io.Copy(outFile, io.LimitReader(tr, maxArchiveFileBytes)); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+		default:
+			// Skip symlinks, hardlinks, devices, fifos, etc. — they enable arbitrary
+			// file writes/links outside destDir and are never part of a release archive.
 			continue
 		}
-
-		if err := os.MkdirAll(filepath.Dir(filepath.Join(destDir, header.Name)), 0755); err != nil {
-			return err
-		}
-
-		outFile, err := os.Create(filepath.Join(destDir, header.Name))
-		if err != nil {
-			return err
-		}
-
-		if _, err := io.Copy(outFile, tr); err != nil {
-			outFile.Close()
-			return err
-		}
-		outFile.Close()
 	}
 
 	return nil
 }
+
+// maxArchiveFileBytes bounds the size of any single extracted file (defense against a
+// malicious/oversized archive). Release binaries are well under this.
+const maxArchiveFileBytes = 1 << 30 // 1 GiB
 
 // extractZip extracts the zip archive at "src" to "dest".
 //

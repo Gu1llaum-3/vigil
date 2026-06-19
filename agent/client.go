@@ -2,6 +2,7 @@ package agent
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -38,6 +39,7 @@ type WebSocketClient struct {
 	hubRequest         *common.HubRequest[cbor.RawMessage] // Reusable request structure for message parsing
 	lastConnectAttempt time.Time                           // Timestamp of last connection attempt
 	hubVerified        bool                                // Whether the hub has been cryptographically verified
+	tlsConfig          *tls.Config                         // TLS config for the hub connection (verifies by default)
 }
 
 // newWebSocketClient creates a new WebSocket client for the given agent.
@@ -54,6 +56,12 @@ func newWebSocketClient(agent *Agent) (client *WebSocketClient, err error) {
 	if err != nil {
 		return nil, errors.New("invalid hub URL")
 	}
+	// build the TLS config for the hub connection (verifies the hub certificate by
+	// default; opt-in to a custom CA or, explicitly, to skipping verification).
+	client.tlsConfig, err = buildHubTLSConfig(client.hubURL.Hostname(), utils.GetEnv)
+	if err != nil {
+		return nil, err
+	}
 	// get registration token
 	client.token, err = getToken()
 	if err != nil {
@@ -65,6 +73,36 @@ func newWebSocketClient(agent *Agent) (client *WebSocketClient, err error) {
 	client.fingerprint = agent.getFingerprint()
 
 	return client, nil
+}
+
+// buildHubTLSConfig builds the TLS configuration for the agent→hub connection.
+//
+// By default it verifies the hub's certificate against the system trust store (so a
+// network man-in-the-middle cannot capture the agent token). Two opt-ins are supported:
+//   - HUB_CA_FILE: path to a PEM bundle to trust (private CA / self-signed hub / pinning).
+//   - HUB_TLS_INSECURE=true: explicitly disable verification (development only; logs a warning).
+func buildHubTLSConfig(serverName string, getEnv func(string) (string, bool)) (*tls.Config, error) {
+	cfg := &tls.Config{ServerName: serverName, MinVersion: tls.VersionTLS12}
+
+	if v, ok := getEnv("HUB_TLS_INSECURE"); ok && (v == "true" || v == "1") {
+		slog.Warn("HUB_TLS_INSECURE is set: skipping hub TLS certificate verification — the connection is vulnerable to man-in-the-middle and token theft; use only in trusted/dev environments")
+		cfg.InsecureSkipVerify = true
+		return cfg, nil
+	}
+
+	if caFile, ok := getEnv("HUB_CA_FILE"); ok && caFile != "" {
+		pem, err := os.ReadFile(caFile)
+		if err != nil {
+			return nil, fmt.Errorf("read HUB_CA_FILE: %w", err)
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf("HUB_CA_FILE %q contains no valid PEM certificates", caFile)
+		}
+		cfg.RootCAs = pool
+	}
+
+	return cfg, nil
 }
 
 // getToken returns the token for the WebSocket client.
@@ -105,7 +143,7 @@ func (client *WebSocketClient) getOptions() *gws.ClientOption {
 
 	client.options = &gws.ClientOption{
 		Addr:      client.hubURL.String(),
-		TlsConfig: &tls.Config{InsecureSkipVerify: true},
+		TlsConfig: client.tlsConfig,
 		RequestHeader: http.Header{
 			"User-Agent": []string{getUserAgent()},
 			"X-Token":    []string{client.token},
