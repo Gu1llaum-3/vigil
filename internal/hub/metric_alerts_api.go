@@ -90,6 +90,15 @@ func (h *Hub) upsertMetricAlert(e *core.RequestEvent) error {
 	if body.WarningValue > 0 && body.CriticalValue > 0 && body.WarningValue > body.CriticalValue {
 		return e.BadRequestError("warning threshold must be ≤ critical threshold", nil)
 	}
+	// The resolve margin (hysteresis) must be smaller than the lowest active threshold,
+	// otherwise the dead band would extend below 0 and a fired alert could never recover.
+	minThreshold := body.WarningValue
+	if minThreshold <= 0 {
+		minThreshold = body.CriticalValue
+	}
+	if minThreshold > 0 && body.Hysteresis >= minThreshold {
+		return e.BadRequestError("resolve margin must be smaller than the threshold", nil)
+	}
 
 	// NOTE: do not filter by `agent = ""` — PocketBase relation filtering does not
 	// match an empty (unset) relation, so the global row would never be found and a

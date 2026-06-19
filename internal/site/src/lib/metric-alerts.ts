@@ -26,7 +26,10 @@ export const metricAlertInfo: Record<
 }
 
 export function emptyMetricAlert(agent: string, metric: MetricAlertMetric): MetricAlert {
-	return { agent, metric, enabled: false, warning_value: 0, critical_value: 0, hysteresis: 5 }
+	// loadavg is a small unitless number (≈ cores); a 5-point margin would exceed
+	// typical thresholds and make alerts unrecoverable, so default it to 0.5.
+	const hysteresis = metric === "loadavg" ? 0.5 : 5
+	return { agent, metric, enabled: false, warning_value: 0, critical_value: 0, hysteresis }
 }
 
 export function getMetricAlerts(): Promise<MetricAlert[]> {

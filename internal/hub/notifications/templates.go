@@ -8,10 +8,10 @@ import (
 )
 
 var defaultTitles = map[EventKind]*template.Template{
-	EventMonitorDown:  template.Must(template.New("").Parse(`Monitor "{{.Resource.Name}}" is DOWN`)),
-	EventMonitorUp:    template.Must(template.New("").Parse(`Monitor "{{.Resource.Name}}" recovered`)),
-	EventAgentOffline: template.Must(template.New("").Parse(`Agent "{{.Resource.Name}}" is offline`)),
-	EventAgentOnline:  template.Must(template.New("").Parse(`Agent "{{.Resource.Name}}" is back online`)),
+	EventMonitorDown:                   template.Must(template.New("").Parse(`Monitor "{{.Resource.Name}}" is DOWN`)),
+	EventMonitorUp:                     template.Must(template.New("").Parse(`Monitor "{{.Resource.Name}}" recovered`)),
+	EventAgentOffline:                  template.Must(template.New("").Parse(`Agent "{{.Resource.Name}}" is offline`)),
+	EventAgentOnline:                   template.Must(template.New("").Parse(`Agent "{{.Resource.Name}}" is back online`)),
 	EventContainerImageUpdateAvailable: template.Must(template.New("").Funcs(template.FuncMap{"join": strings.Join}).Parse(`Container image update available for "{{.Resource.Name}}"`)),
 	EventHostMetricExceeded: template.Must(template.New("").Parse(
 		`{{.Current}}: {{index .Details "metric"}} high on "{{.Resource.Name}}"`)),

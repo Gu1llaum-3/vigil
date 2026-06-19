@@ -77,7 +77,7 @@ export interface NotificationLog {
 	sent_at: string
 }
 
-export type SystemNotificationCategory = "monitors" | "agents" | "container_images"
+export type SystemNotificationCategory = "monitors" | "agents" | "container_images" | "host_metrics"
 
 export interface SystemNotification {
 	id: string

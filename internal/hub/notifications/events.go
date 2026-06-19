@@ -6,10 +6,10 @@ import "time"
 type EventKind string
 
 const (
-	EventMonitorDown  EventKind = "monitor.down"
-	EventMonitorUp    EventKind = "monitor.up"
-	EventAgentOffline EventKind = "agent.offline"
-	EventAgentOnline  EventKind = "agent.online"
+	EventMonitorDown                   EventKind = "monitor.down"
+	EventMonitorUp                     EventKind = "monitor.up"
+	EventAgentOffline                  EventKind = "agent.offline"
+	EventAgentOnline                   EventKind = "agent.online"
 	EventContainerImageUpdateAvailable EventKind = "container_image.update_available"
 	EventHostMetricExceeded            EventKind = "host.metric_exceeded"
 	EventHostMetricRecovered           EventKind = "host.metric_normal"

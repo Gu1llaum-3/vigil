@@ -2,6 +2,7 @@ package hub
 
 import (
 	"log/slog"
+	"math"
 	"sync"
 	"time"
 
@@ -12,7 +13,16 @@ import (
 
 const metricAlertsCollection = "metric_alerts"
 
-const defaultHysteresis = 5.0
+// defaultHysteresisFor returns the fallback resolve-margin (dead band) for a metric
+// when none is configured. Percent metrics tolerate a wide 5-point band; loadavg is
+// a small unitless number (≈ cores), so a 5-point band would swamp typical thresholds
+// and make alerts unrecoverable — use a small margin instead.
+func defaultHysteresisFor(metric metricKind) float64 {
+	if metric == metricLoadAvg {
+		return 0.5
+	}
+	return 5.0
+}
 
 // metricKind identifies an alertable host metric.
 type metricKind string
@@ -93,7 +103,7 @@ func (e *metricAlertEvaluator) load() {
 			hysteresis: numberAsFloat64(rec.Get("hysteresis")),
 		}
 		if th.hysteresis <= 0 {
-			th.hysteresis = defaultHysteresis
+			th.hysteresis = defaultHysteresisFor(metric)
 		}
 		if agentID := rec.GetString("agent"); agentID != "" {
 			if perAgent[agentID] == nil {
@@ -249,12 +259,18 @@ func metricValue(metric metricKind, m common.HostMetricsResponse) (float64, stri
 
 // computeTier returns the breach tier for value, applying hysteresis on the way
 // down: a tier is only left once value falls below (tierThreshold - hysteresis).
+//
+// The dead band is clamped to 90% of the threshold (clearBound) so the recovery
+// point stays strictly positive even if a stored hysteresis is ≥ the threshold
+// (e.g. a legacy loadavg row with threshold 2 and hysteresis 5). Without this, the
+// band would extend below 0 and a fired alert could never recover. The API also
+// rejects hysteresis ≥ threshold at write time; this is the defensive floor.
 func computeTier(prev alertTier, value float64, th metricThreshold) alertTier {
 	if th.critical > 0 {
 		if value >= th.critical {
 			return tierCritical
 		}
-		if prev == tierCritical && value >= th.critical-th.hysteresis {
+		if prev == tierCritical && value >= clearBound(th.critical, th.hysteresis) {
 			return tierCritical
 		}
 	}
@@ -262,11 +278,18 @@ func computeTier(prev alertTier, value float64, th metricThreshold) alertTier {
 		if value >= th.warning {
 			return tierWarning
 		}
-		if (prev == tierWarning || prev == tierCritical) && value >= th.warning-th.hysteresis {
+		if (prev == tierWarning || prev == tierCritical) && value >= clearBound(th.warning, th.hysteresis) {
 			return tierWarning
 		}
 	}
 	return tierNone
+}
+
+// clearBound is the value a metric must fall below to leave a breach tier. The
+// hysteresis is capped at 90% of the threshold so the bound is always > 0 and the
+// alert remains recoverable regardless of the configured/stored hysteresis.
+func clearBound(threshold, hysteresis float64) float64 {
+	return threshold - math.Min(hysteresis, threshold*0.9)
 }
 
 // evaluateMetricAlerts is the Hub entry point called from persistHostMetrics.

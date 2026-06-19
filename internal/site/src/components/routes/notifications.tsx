@@ -13,7 +13,7 @@ import { $systemNotificationsReadStamp, bumpSystemNotificationsReadStamp } from 
 import type { SystemNotification, SystemNotificationCategory, SystemNotificationsPage } from "@/types"
 
 const ALL_FILTERS = "__all__"
-const CATEGORIES: SystemNotificationCategory[] = ["monitors", "agents", "container_images"]
+const CATEGORIES: SystemNotificationCategory[] = ["monitors", "agents", "container_images", "host_metrics"]
 const SEVERITIES = ["info", "warning", "critical"] as const
 
 function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
@@ -123,6 +123,8 @@ export default function NotificationsPage() {
 				return t`Agents`
 			case "container_images":
 				return t`Container images`
+			case "host_metrics":
+				return t`Host metrics`
 		}
 	}
 

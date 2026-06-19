@@ -676,6 +676,10 @@ function BellEventLabel({ event }: { event: string }) {
 			return <Trans>Agent back online</Trans>
 		case "container_image.update_available":
 			return <Trans>Container image update</Trans>
+		case "host.metric_exceeded":
+			return <Trans>Host metric threshold exceeded</Trans>
+		case "host.metric_normal":
+			return <Trans>Host metric back to normal</Trans>
 		default:
 			return <>{event}</>
 	}
@@ -965,7 +969,7 @@ const SectionRules = memo(
 					name: r.name,
 					events: r.events,
 					channels: r.channels,
-					min_severity: "info",
+					min_severity: r.min_severity,
 					throttle_seconds: r.throttle_seconds,
 				})
 				onRulesChange(rules.map((x) => (x.id === saved.id ? saved : x)))

@@ -187,19 +187,19 @@ func applyHostMetricRecord(rec *core.Record, agentID string, metrics common.Host
 
 func hostMetricsFromRecord(rec *core.Record) common.HostMetricsResponse {
 	metrics := common.HostMetricsResponse{
-		CPUPercent:        numberAsFloat64(rec.Get("cpu_percent")),
-		MemoryTotalBytes:  numberAsUint64(rec.Get("memory_total_bytes")),
-		MemoryUsedBytes:   numberAsUint64(rec.Get("memory_used_bytes")),
-		MemoryUsedPercent: numberAsFloat64(rec.Get("memory_used_percent")),
-		DiskTotalBytes:    numberAsUint64(rec.Get("disk_total_bytes")),
-		DiskUsedBytes:     numberAsUint64(rec.Get("disk_used_bytes")),
-		DiskUsedPercent:   numberAsFloat64(rec.Get("disk_used_percent")),
+		CPUPercent:         numberAsFloat64(rec.Get("cpu_percent")),
+		MemoryTotalBytes:   numberAsUint64(rec.Get("memory_total_bytes")),
+		MemoryUsedBytes:    numberAsUint64(rec.Get("memory_used_bytes")),
+		MemoryUsedPercent:  numberAsFloat64(rec.Get("memory_used_percent")),
+		DiskTotalBytes:     numberAsUint64(rec.Get("disk_total_bytes")),
+		DiskUsedBytes:      numberAsUint64(rec.Get("disk_used_bytes")),
+		DiskUsedPercent:    numberAsFloat64(rec.Get("disk_used_percent")),
 		DiskMaxUsedPercent: numberAsFloat64(rec.Get("disk_max_used_percent")),
-		NetworkRxBps:      numberAsUint64(rec.Get("network_rx_bps")),
-		NetworkTxBps:      numberAsUint64(rec.Get("network_tx_bps")),
-		Load1:             numberAsFloat64(rec.Get("load1")),
-		Load5:             numberAsFloat64(rec.Get("load5")),
-		Load15:            numberAsFloat64(rec.Get("load15")),
+		NetworkRxBps:       numberAsUint64(rec.Get("network_rx_bps")),
+		NetworkTxBps:       numberAsUint64(rec.Get("network_tx_bps")),
+		Load1:              numberAsFloat64(rec.Get("load1")),
+		Load5:              numberAsFloat64(rec.Get("load5")),
+		Load15:             numberAsFloat64(rec.Get("load15")),
 	}
 	if !rec.GetDateTime("collected_at").IsZero() {
 		metrics.CollectedAt = rec.GetDateTime("collected_at").Time().UTC().Format(time.RFC3339)

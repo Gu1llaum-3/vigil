@@ -136,7 +136,12 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 									label={<Trans>Resolve margin</Trans>}
 									value={form.hysteresis}
 									unit={info.unit}
-									max={Math.max(10, Math.round(info.max / 5))}
+									// Must stay below the threshold or the alert can never recover, so cap
+									// the slider one step under the active (warning, else critical) threshold.
+									max={Math.max(
+										info.step,
+										(form.warning_value || form.critical_value || info.max) - info.step,
+									)}
 									step={info.step}
 									onChange={(v) => patch(metric, { hysteresis: v })}
 									onCommit={(v) => save(metric, { hysteresis: v })}

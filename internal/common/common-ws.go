@@ -83,14 +83,14 @@ type HostMetricsResponse struct {
 	// agents older than the metric-alerts feature — callers must degrade gracefully.
 	DiskMaxUsedPercent float64 `cbor:"disk_max_used_percent" json:"disk_max_used_percent"`
 	DiskMaxMount       string  `cbor:"disk_max_mount"        json:"disk_max_mount"`
-	NetworkRxBps      uint64  `cbor:"network_rx_bps"      json:"network_rx_bps"`
-	NetworkTxBps      uint64  `cbor:"network_tx_bps"      json:"network_tx_bps"`
+	NetworkRxBps       uint64  `cbor:"network_rx_bps"      json:"network_rx_bps"`
+	NetworkTxBps       uint64  `cbor:"network_tx_bps"      json:"network_tx_bps"`
 	// Load1/5/15 are the 1/5/15-minute load averages. Zero on agents older than the
 	// metric-alerts feature.
-	Load1  float64 `cbor:"load1"  json:"load1"`
-	Load5  float64 `cbor:"load5"  json:"load5"`
-	Load15 float64 `cbor:"load15" json:"load15"`
-	CollectedAt       string  `cbor:"collected_at"        json:"collected_at"`
+	Load1       float64 `cbor:"load1"  json:"load1"`
+	Load5       float64 `cbor:"load5"  json:"load5"`
+	Load15      float64 `cbor:"load15" json:"load15"`
+	CollectedAt string  `cbor:"collected_at"        json:"collected_at"`
 }
 
 // ContainerMetricsPoint is a single running container metric sample.
