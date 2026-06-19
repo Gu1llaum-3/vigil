@@ -244,7 +244,7 @@ Defined in `internal/migrations/0_collections_snapshot_*.go`.
 |---|---|---|
 | `users` | `_pb_users_auth_` | Auth collection. Role: `user`, `admin`, `readonly` |
 | `user_settings` | `4afacsdnlu8q8r2` | One record per user. JSON `settings` field |
-| `agents` | `pbc_4000000001` | One record per agent. Key fields: `token`, `fingerprint`, `status`, `capabilities`, `metadata` |
+| `agents` | `pbc_4000000001` | One record per agent. Key fields: `token`, `fingerprint`, `status`, `capabilities`, `metadata`. The `token` field is **hidden** (migration `27_hide_agent_token.go`) so it is not exposed via the generic collection API/realtime; non-readonly users fetch tokens via `GET /api/app/agent-tokens` and rotate via `POST /api/app/agents/{id}/rotate-token`. |
 | `agent_enrollment_tokens` | `pbc_4000000002` | One per user (unique index on `created_by`) |
 | `host_snapshots` | — | One record per agent (unique index). Relation to `agents`, JSON `data` field. Created by migration `2_create_host_snapshots.go` |
 | `host_metric_samples` | `pbc_7000000001` | Append-only host monitoring history. Relation to `agents`; scalar CPU/memory/disk/network fields plus `collected_at`. Indexed on `(agent, collected_at)`. Created by migration `21_create_host_metrics.go`. |
@@ -305,7 +305,9 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `USER_CREATION` | Allow OAuth2 user self-registration | — |
 | `MFA_OTP` | Enable MFA/OTP (`true` = all users, `superusers` = superusers only) | — |
 | `AUTO_LOGIN` | Trusted email — auto-authenticate this user | — |
-| `TRUSTED_AUTH_HEADER` | HTTP header containing a trusted user email | — |
+| `TRUSTED_AUTH_HEADER` | HTTP header containing a trusted user email. **Spoofable** — only enable when the hub is reachable solely through a reverse proxy that sets this header and strips it from inbound requests. | — |
+| `MONITOR_BLOCK_PRIVATE_TARGETS` | Also block private/ULA ranges for HTTP/TCP monitor targets (loopback/link-local/cloud-metadata are always blocked). For hardened/multi-tenant hubs. | — |
+| `MONITOR_ALLOW_PRIVATE_TARGETS` | Disable the monitor SSRF guard entirely (allow loopback/link-local/private). Trusted single-tenant only. | — |
 | `HEARTBEAT_URL` | External monitoring endpoint to ping periodically | — |
 | `HEARTBEAT_INTERVAL` | Seconds between heartbeat pings | `60` |
 | `HEARTBEAT_METHOD` | HTTP method for heartbeat (`GET`, `POST`) | `POST` |
@@ -324,7 +326,11 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `TOKEN_FILE` | Path to a file containing the token | Alt. to `TOKEN` |
 | `KEY` | Hub's public key for identity verification | Recommended |
 | `KEY_FILE` | Path to a file containing the hub's public key | Alt. to `KEY` |
+| `HUB_CA_FILE` | PEM bundle to trust for the hub TLS certificate (private CA / self-signed hub / pinning) | No |
+| `HUB_TLS_INSECURE` | `true` disables hub TLS certificate verification (dev only; enables MITM/token theft) | No |
 | `LOG_LEVEL` | `debug`, `warn`, `error` | No |
+
+The agent verifies the hub's TLS certificate against the system trust store by default. Use `HUB_CA_FILE` for a private CA / self-signed hub; `HUB_TLS_INSECURE=true` disables verification entirely (development only).
 
 Without `KEY`/`KEY_FILE`, the agent skips hub identity verification. Acceptable for development; use in production only in trusted network environments.
 
