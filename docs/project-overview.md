@@ -57,7 +57,7 @@ The same design choice appears elsewhere:
 
 - the Go module path is still placeholder-oriented in `go.mod`
 - frontend package metadata is generic
-- Docker, systemd, packaging, and Helm assets under `supplemental/` use generic names
+- Docker, systemd, and packaging assets under `supplemental/` use generic names
 
 ## Current Implementation Scope
 
@@ -102,10 +102,9 @@ The frontend is not yet a broad product surface. It is a shell that demonstrates
 
 The repository also includes:
 
-- Docker Compose examples
+- a hub Docker Compose example
 - Linux and FreeBSD install scripts
 - Debian packaging assets
-- a Helm chart
 - release packaging configuration in `.goreleaser.yml`
 
 ## Documentation Roles

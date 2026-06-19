@@ -36,13 +36,33 @@ RUN set -eu; \
 
 FROM alpine:3.21
 
-RUN apk add --no-cache ca-certificates iputils
+# iputils provides the `ping` binary used by the hub ping monitor; libcap lets us
+# grant it CAP_NET_RAW so it still works when the container runs as a non-root user
+# (Docker's default capability set includes NET_RAW at runtime).
+RUN apk add --no-cache ca-certificates iputils libcap \
+	&& setcap cap_net_raw+ep "$(command -v ping)"
+
+# Run as an unprivileged, fixed uid/gid rather than root.
+RUN addgroup -g 10001 vigil \
+	&& adduser -D -u 10001 -G vigil vigil
 
 COPY --from=builder /out/vigil /app/vigil
+
+# The data dir resolves to /vigil_data because the working directory is "/" and
+# the hub's DefaultDataDir is the relative path "vigil_data". Do NOT add a WORKDIR
+# here or that resolution (and the VOLUME below) would break.
+RUN mkdir -p /vigil_data \
+	&& chown -R 10001:10001 /vigil_data /app
 
 VOLUME ["/vigil_data"]
 
 EXPOSE 8090
+
+USER 10001:10001
+
+# PocketBase serves GET /api/health; busybox wget exits non-zero on any HTTP error.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+	CMD wget -qO- http://127.0.0.1:8090/api/health >/dev/null 2>&1 || exit 1
 
 ENTRYPOINT ["/app/vigil"]
 CMD ["serve", "--http=0.0.0.0:8090"]

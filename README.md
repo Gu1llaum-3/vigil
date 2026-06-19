@@ -89,9 +89,8 @@ make dev
 │   └── users/                # User collection management
 └── supplemental/             # Deployment helpers and examples
     ├── debian/               # Debian packaging scripts and systemd service unit
-    ├── docker/               # Docker Compose examples (hub, agent, same-system)
+    ├── docker/               # Hub Docker Compose (agents install natively)
     ├── guides/               # Installation guides (e.g. systemd)
-    ├── kubernetes/           # Helm chart for hub deployment
     ├── licenses/             # Third-party license files
     └── scripts/              # Shell/PowerShell install scripts
 ```

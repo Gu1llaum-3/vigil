@@ -1,9 +1,22 @@
 services:
   vigil:
-    image: 'gu1llaum3/vigil'
+    # Published by CI to GHCR. Pin an explicit version in production (e.g. :0.2.0)
+    # rather than relying on :latest, which moves with every stable release.
+    image: 'ghcr.io/gu1llaum-3/vigil:latest'
     container_name: 'vigil'
     restart: unless-stopped
     ports:
       - '8090:8090'
+    # Conservative resource ceilings so a runaway hub (DB growth, retention jobs)
+    # cannot starve the host. Tune for your deployment.
+    mem_limit: 512m
+    mem_reservation: 128m
+    cpus: 1.0
     volumes:
-      - ./vigil_data:/vigil_data
+      # Named volume works out of the box with the non-root image user (uid 10001).
+      # To use a host bind mount instead, create the directory and chown it to
+      # 10001:10001 first, e.g. `mkdir -p ./vigil_data && chown 10001:10001 ./vigil_data`.
+      - vigil_data:/vigil_data
+
+volumes:
+  vigil_data:

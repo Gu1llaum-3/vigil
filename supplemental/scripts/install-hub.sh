@@ -159,6 +159,7 @@ PORT=8090
 GITHUB_URL="https://github.com"
 AUTO_UPDATE_FLAG="false"
 UNINSTALL=false
+VERSION="latest"
 
 # Parse command line arguments
 while [ $# -gt 0 ]; do
@@ -173,7 +174,8 @@ while [ $# -gt 0 ]; do
       printf "Options: \n"
       printf "  -u           : Uninstall the Vigil Hub\n"
       printf "  -p <port>    : Specify a port number (default: 8090)\n"
-      printf "  -c, --mirror [URL] : Use a GitHub mirror/proxy URL (default: https://gh.Gu1llaum-3.example)\n"
+      printf "  -v <version> : Install a specific version (default: latest)\n"
+      printf "  -c, --mirror [URL] : Use a GitHub mirror/proxy URL (default: https://gh.github.com)\n"
       printf "  --auto-update : Enable automatic daily updates (disabled by default)\n"
       printf "  -h, --help   : Display this help message\n"
       exit 0
@@ -183,13 +185,18 @@ while [ $# -gt 0 ]; do
       PORT="$1"
       shift
       ;;
+    -v | --version)
+      shift
+      VERSION="$1"
+      shift
+      ;;
     -c | --mirror)
       shift
       if [ -n "$1" ] && ! echo "$1" | grep -q '^-'; then
         GITHUB_URL="$(ensure_trailing_slash "$1")https://github.com"
         shift
       else
-        GITHUB_URL="https://gh.Gu1llaum-3.example"
+        GITHUB_URL="https://gh.github.com"
       fi
       ;;
     --auto-update)
@@ -209,7 +216,7 @@ if is_freebsd; then
   BIN_PATH="/usr/local/sbin/vigil"
 else
   HUB_DIR="/opt/vigil"
-  BIN_PATH="/opt/vigil/app"
+  BIN_PATH="/opt/vigil/vigil"
 fi
 
 # Uninstall process
@@ -230,7 +237,9 @@ if [ "$UNINSTALL" = true ]; then
 
     echo "Removing the Vigil Hub binary and data..."
     rm -f "$BIN_PATH"
-    rm -rf "$HUB_DIR"
+    if [ -n "$HUB_DIR" ] && [ "$HUB_DIR" != "/" ]; then
+      rm -rf "$HUB_DIR"
+    fi
 
     echo "Removing the dedicated user..."
     pw user del app 2>/dev/null
@@ -260,7 +269,9 @@ if [ "$UNINSTALL" = true ]; then
 
     # Remove the Vigil Hub binary and data
     echo "Removing the Vigil Hub binary and data..."
-    rm -rf "$HUB_DIR"
+    if [ -n "$HUB_DIR" ] && [ "$HUB_DIR" != "/" ]; then
+      rm -rf "$HUB_DIR"
+    fi
 
     # Remove the dedicated user
     echo "Removing the dedicated user..."
@@ -322,11 +333,44 @@ echo "Downloading and installing the Vigil Hub..."
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(detect_architecture)
-FILE_NAME="app_${OS}_${ARCH}.tar.gz"
+FILE_NAME="vigil_${OS}_${ARCH}.tar.gz"
+
+# Select the checksum tool for this platform
+if is_freebsd; then
+  CHECK_CMD="sha256 -q"
+else
+  CHECK_CMD="sha256sum"
+fi
+
+# Resolve the version to install (the checksums file name embeds the version,
+# so we must know it before downloading; make_latest may be unset on releases).
+if [ "$VERSION" = "latest" ]; then
+  API_RELEASE_URL="https://api.github.com/repos/Gu1llaum-3/vigil/releases/latest"
+  INSTALL_VERSION=$(curl -fsSL "$API_RELEASE_URL" | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | tr -d 'v')
+  if [ -z "$INSTALL_VERSION" ]; then
+    echo "Failed to get the latest stable version from GitHub."
+    echo "Specify a version explicitly with -v <version>, or try --mirror <url> if GitHub is not reachable."
+    exit 1
+  fi
+else
+  INSTALL_VERSION=$(echo "$VERSION" | sed 's/^v//')
+fi
+
+echo "Installing vigil hub v${INSTALL_VERSION}..."
 
 TEMP_DIR=$(mktemp -d)
 ARCHIVE_PATH="$TEMP_DIR/$FILE_NAME"
-DOWNLOAD_URL="$GITHUB_URL/Gu1llaum-3/vigil/releases/latest/download/$FILE_NAME"
+RELEASE_BASE="$GITHUB_URL/Gu1llaum-3/vigil/releases/download/v${INSTALL_VERSION}"
+DOWNLOAD_URL="$RELEASE_BASE/$FILE_NAME"
+
+# Fetch and validate the published SHA-256 checksum for this artifact
+CHECKSUM=$(curl -fsSL "$RELEASE_BASE/vigil_${INSTALL_VERSION}_checksums.txt" | grep "$FILE_NAME" | cut -d' ' -f1)
+if [ -z "$CHECKSUM" ] || ! echo "$CHECKSUM" | grep -qE "^[a-fA-F0-9]{64}$"; then
+  echo "Failed to get checksum or invalid checksum format for $FILE_NAME."
+  echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
+  rm -rf "$TEMP_DIR"
+  exit 1
+fi
 
 if ! curl -fL# --retry 3 --retry-delay 2 --connect-timeout 10 "$DOWNLOAD_URL" -o "$ARCHIVE_PATH"; then
   echo "Failed to download the Vigil Hub from:"
@@ -343,20 +387,29 @@ if ! tar -tzf "$ARCHIVE_PATH" >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! tar -xzf "$ARCHIVE_PATH" -C "$TEMP_DIR" app; then
-  echo "Failed to extract app from archive."
+# Verify integrity before trusting the archive contents
+if [ "$($CHECK_CMD "$ARCHIVE_PATH" | cut -d' ' -f1)" != "$CHECKSUM" ]; then
+  echo "Checksum verification failed for $FILE_NAME."
+  echo "Expected: $CHECKSUM"
+  echo "Got:      $($CHECK_CMD "$ARCHIVE_PATH" | cut -d' ' -f1)"
   rm -rf "$TEMP_DIR"
   exit 1
 fi
 
-if [ ! -s "$TEMP_DIR/app" ]; then
+if ! tar -xzf "$ARCHIVE_PATH" -C "$TEMP_DIR" vigil; then
+  echo "Failed to extract the vigil binary from the archive."
+  rm -rf "$TEMP_DIR"
+  exit 1
+fi
+
+if [ ! -s "$TEMP_DIR/vigil" ]; then
   echo "Downloaded binary is missing or empty."
   rm -rf "$TEMP_DIR"
   exit 1
 fi
 
-chmod +x "$TEMP_DIR/app"
-mv "$TEMP_DIR/app" "$BIN_PATH"
+chmod +x "$TEMP_DIR/vigil"
+mv "$TEMP_DIR/vigil" "$BIN_PATH"
 chown app:app "$BIN_PATH"
 rm -rf "$TEMP_DIR"
 

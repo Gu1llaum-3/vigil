@@ -1,3 +1,34 @@
+# Build output and dependencies
 build/
 internal/site/node_modules/
+internal/site/dist/
+
+# VCS and CI
+.git/
+.github/
+.gitignore
+
+# Runtime data and state (the hub Dockerfile does `COPY . ./`, so without these
+# the SQLite DB, hub SSH private key and credentials key could be baked into a layer)
+vigil_data/
+app_data/
+pb_data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Secrets
+*.env
+.env
+.env.*
+*.key
+*.pem
+id_ed25519*
+credentials.key
+
+# Editor / OS cruft
 **/.DS_Store
+.idea/
+.vscode/

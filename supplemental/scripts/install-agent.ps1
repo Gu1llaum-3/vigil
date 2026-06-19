@@ -23,6 +23,13 @@ if ([string]::IsNullOrWhiteSpace($Key)) {
 # Stop on first error
 $ErrorActionPreference = "Stop"
 
+# Force TLS 1.2 for any HTTPS request (older Windows PowerShell defaults to TLS 1.0/1.1).
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+} catch {
+    # Ignore on platforms where SecurityProtocol is not configurable (PS Core).
+}
+
 #region Utility Functions
 
 # Function to check if running as admin

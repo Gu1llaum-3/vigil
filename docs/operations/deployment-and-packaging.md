@@ -10,15 +10,23 @@ This document explains what is available, what each asset is for, and how the pi
 
 The main operational assets are:
 
-- `supplemental/docker/`
+- `supplemental/docker/` (hub only)
 - `supplemental/guides/systemd.md`
 - `supplemental/scripts/`
-- `supplemental/kubernetes/`
+- `supplemental/debian/`
 - `.goreleaser.yml`
 - `internal/hub/update.go`
 - `internal/ghupdate/*`
 
 Not all of these are equally production-opinionated. Some are examples and starting points rather than a single blessed deployment path.
+
+## Deployment Model
+
+The supported deployment model is intentionally asymmetric:
+
+- **Hub** — runs as a container (primary path, see the hub Compose below) or as a native service installed via `install-hub.sh`. Docker is the recommended way to run the hub, but not the only one.
+- **Agents** — installed **natively** on each monitored host (shell / PowerShell / Debian package / Homebrew). There is no agent container image; the agent is a lightweight process that integrates with the host's service manager.
+- **Kubernetes** — not supported. There is no Helm chart.
 
 ## Docker Compose Assets
 
@@ -75,35 +83,7 @@ Release behavior:
 - GitHub prereleases stay separate and are never promoted to `latest`
 - rerunning the same tag replaces existing release artifacts instead of failing on duplicate asset names
 
-### Agent Compose
-
-Path:
-
-- `supplemental/docker/agent/docker-compose.yml`
-
-Purpose:
-
-- run the agent in a container with environment-driven configuration
-- connect back to an existing hub
-
-Typical use case:
-
-- remote host deployment where Docker is preferred
-
-### Same-System Compose
-
-Path:
-
-- `supplemental/docker/same-system/docker-compose.yml`
-
-Purpose:
-
-- run hub and agent on the same machine for local development or demos
-
-Typical use case:
-
-- quick smoke testing of the full architecture
-- demos or evaluation setups
+> **Note:** there is intentionally no agent Compose or combined hub+agent Compose. Agents are installed natively (see *Service Management And Install Scripts*).
 
 ### Hub Dockerfile
 
@@ -120,7 +100,9 @@ Purpose:
 
 Operational note:
 
-- the image includes `iputils` so the `ping` monitor works in the official hub container
+- the image runs as a non-root user (uid `10001`); the data dir `/vigil_data` is owned by that uid, so a host bind mount must be chowned to `10001:10001` (the shipped Compose uses a named volume to avoid this)
+- it defines a `HEALTHCHECK` against PocketBase's `GET /api/health`
+- the image includes `iputils` so the `ping` monitor works in the official hub container; `CAP_NET_RAW` is granted to the `ping` binary via `setcap` so it works under the non-root user (Docker's default capability set includes `NET_RAW`)
 - ICMP still depends on the runtime environment allowing echo requests; network policy or capability restrictions can block it even when `ping` is installed
 - hardened container or cluster policies can still block ICMP echo at runtime even when the binary is present
 
@@ -154,10 +136,15 @@ Purpose:
 - create service-oriented runtime structure
 - provide OS-specific service integration details
 
+Integrity and secret handling:
+
+- both scripts download the release archive named `vigil_${OS}_${ARCH}.tar.gz` and verify its SHA-256 against the published `vigil_${VERSION}_checksums.txt` before installing; a mismatch aborts the install
+- `install-hub.sh` installs the `vigil` binary and a `vigil` system user; `install-agent.sh` installs the `vigil-agent` binary
+- secrets (`KEY`/`TOKEN`/`HUB_URL`) are never inlined into generated service definitions — systemd uses an `EnvironmentFile=`, and the OpenRC/procd/FreeBSD paths source a root-only, shell-escaped env file (see `docs/conventions-and-gotchas.md`)
+
 Important note:
 
-- these scripts still use generic boilerplate naming and should be reviewed carefully in derived projects
-- `supplemental/scripts/install-agent.sh` is currently aligned to the agent release artifacts published by `.goreleaser.yml`, which at the moment means Linux only: `amd64`, `arm64`, and `arm` (`armv7`)
+- `supplemental/scripts/install-agent.sh` is aligned to the agent release artifacts published by `.goreleaser.yml`, which at the moment means Linux only: `amd64`, `arm64`, and `arm` (`armv7`)
 - the agent install script does not currently configure a working self-update flow; treat `--auto-update` as a compatibility placeholder rather than a supported feature
 
 ### FreeBSD-Specific Service Support
@@ -165,25 +152,6 @@ Important note:
 Some supplemental assets still include FreeBSD-oriented service examples, but the shipped agent install script should be treated as Linux-only until the agent release matrix expands.
 
 Treat those non-Linux paths as templates rather than verified install flows.
-
-## Kubernetes Assets
-
-Path:
-
-- `supplemental/kubernetes/`
-
-The current chart and values are a starting point for running the hub in Kubernetes.
-
-Highlights from the provided values:
-
-- configurable image repository and tag
-- service and ingress options
-- PVC support for hub persistence
-- resource and autoscaling settings
-
-Current limitation:
-
-- these assets are generic and require environment-specific hardening and naming before production use
 
 ## Release Packaging
 
@@ -197,6 +165,12 @@ Typical concerns to review here:
 - archive naming
 - target OS and architecture matrix
 - packaged supporting files
+
+Integrity:
+
+- `make_latest: true` so GitHub's `/releases/latest` resolves for stable tags (the install scripts depend on it); prereleases stay excluded via `prerelease: auto`
+- the `checksums.txt` file is signed with cosign keyless (OIDC) by the release workflow, producing `*.sig` and `*.pem`; the `signs:` block documents the `cosign verify-blob` recipe
+- the hub image build publishes provenance and an SBOM
 
 If you rename the project or change binary names, this file must stay in sync with `app.go` and any install scripts.
 
@@ -270,9 +244,8 @@ Treat the assets in `supplemental/` as supported examples, not as a single canon
 
 That means:
 
-- Docker Compose files are useful starting points
+- the hub Docker Compose file is a useful starting point
 - install scripts encode useful defaults and service structure
-- Kubernetes assets are a generic base, not a final production chart
 - derived projects should review naming, security, storage, and secret handling before production rollout
 
 ## Recommended Deployment Review Checklist
@@ -291,12 +264,10 @@ Before using a deployment asset in a real environment, review:
 
 - `.goreleaser.yml`
 - `supplemental/docker/hub/docker-compose.yml`
-- `supplemental/docker/agent/docker-compose.yml`
-- `supplemental/docker/same-system/docker-compose.yml`
 - `supplemental/guides/systemd.md`
 - `supplemental/scripts/install-hub.sh`
 - `supplemental/scripts/install-agent.sh`
-- `supplemental/kubernetes/**/*`
+- `supplemental/debian/`
 - `internal/hub/update.go`
 - `internal/ghupdate/*`
 - `internal/hub/heartbeat/heartbeat.go`

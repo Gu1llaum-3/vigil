@@ -452,7 +452,7 @@ if [ "$UNINSTALL" = true ]; then
     systemctl disable vigil-agent.service >/dev/null 2>&1
 
     echo "Removing the systemd service file..."
-    rm /etc/systemd/system/vigil-agent.service
+    rm -f /etc/systemd/system/vigil-agent.service
 
     # Remove the update timer and service if they exist
     echo "Removing the daily update service and timer..."
@@ -465,7 +465,9 @@ if [ "$UNINSTALL" = true ]; then
   fi
 
   echo "Removing the Vigil Agent directory..."
-  rm -rf "$AGENT_DIR"
+  if [ -n "$AGENT_DIR" ] && [ "$AGENT_DIR" != "/" ]; then
+    rm -rf "$AGENT_DIR"
+  fi
 
   echo "Removing the dedicated user for the agent service..."
   killall vigil-agent 2>/dev/null
@@ -533,8 +535,54 @@ if [ -z "$KEY" ]; then
   fi
 fi
 
-# Remove newlines from KEY
-KEY=$(echo "$KEY" | tr -d '\n')
+# --- secret / env handling ------------------------------------------------
+# Strip CR/LF so KEY/TOKEN/HUB_URL cannot break or inject into the generated
+# service definitions and env files.
+KEY=$(printf '%s' "$KEY" | tr -d '\r\n')
+TOKEN=$(printf '%s' "$TOKEN" | tr -d '\r\n')
+HUB_URL=$(printf '%s' "$HUB_URL" | tr -d '\r\n')
+
+# Single-quote-escape a value so it is safe inside a shell-sourced env file.
+sq() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+# Create a root-only env file that is safe to `.`-source from an init script
+# (used by the OpenRC, procd and FreeBSD service paths).
+write_shell_env_file() {
+  _ef="$1"
+  (
+    umask 077
+    {
+      printf 'KEY=%s\n' "$(sq "$KEY")"
+      printf 'TOKEN=%s\n' "$(sq "$TOKEN")"
+      printf 'HUB_URL=%s\n' "$(sq "$HUB_URL")"
+    } >"$_ef"
+  )
+  chmod 600 "$_ef" 2>/dev/null || true
+  chown root:root "$_ef" 2>/dev/null || true
+}
+
+# Upsert a KEY=value line into a systemd EnvironmentFile, only when the value is
+# non-empty (so upgrades that omit -t/-k/-url preserve the existing secret).
+# systemd never runs a shell on these values, and avoiding sed keeps |, & and \
+# safe.
+upsert_systemd_env() {
+  _ef="$1"
+  _k="$2"
+  _v="$3"
+  [ -z "$_v" ] && return 0
+  (
+    umask 077
+    touch "$_ef"
+  )
+  _tmp="${_ef}.tmp.$$"
+  grep -v "^${_k}=" "$_ef" >"$_tmp" 2>/dev/null || true
+  printf '%s=%s\n' "$_k" "$_v" >>"$_tmp"
+  mv "$_tmp" "$_ef"
+  chmod 600 "$_ef" 2>/dev/null || true
+  chown root:root "$_ef" 2>/dev/null || true
+}
 
 # TOKEN and HUB_URL are optional for backwards compatibility - no interactive prompts
 # They will be set as empty environment variables if not provided
@@ -740,9 +788,12 @@ start_pre() {
     checkpath -f -m 0644 -o app:app "\$output_log" "\$error_log"
 }
 
-export KEY="$KEY"
-export TOKEN="$TOKEN"
-export HUB_URL="$HUB_URL"
+# Load KEY/TOKEN/HUB_URL from the root-only env file written at install time.
+# Values are single-quote-escaped there, so sourcing cannot execute injected code.
+if [ -r "$AGENT_DIR/agent.env" ]; then
+    . "$AGENT_DIR/agent.env"
+    export KEY TOKEN HUB_URL
+fi
 
 depend() {
     need net
@@ -750,6 +801,7 @@ depend() {
 }
 EOF
     chmod +x /etc/init.d/vigil-agent
+    write_shell_env_file "$AGENT_DIR/agent.env"
     rc-update add vigil-agent default
   else
     echo "Alpine OpenRC service file already exists. Skipping creation."
@@ -791,11 +843,14 @@ USE_PROCD=1
 START=99
 
 start_service() {
+    # Load KEY/TOKEN/HUB_URL from the root-only env file (values are
+    # single-quote-escaped there, so sourcing cannot execute injected code).
+    [ -r "$AGENT_DIR/agent.env" ] && . "$AGENT_DIR/agent.env"
     procd_open_instance
     procd_set_param command $BIN_PATH
     procd_set_param user app
     procd_set_param pidfile /var/run/vigil-agent.pid
-    procd_set_param env KEY="$KEY" TOKEN="$TOKEN" HUB_URL="$HUB_URL"
+    procd_set_param env KEY="\$KEY" TOKEN="\$TOKEN" HUB_URL="\$HUB_URL"
     procd_set_param respawn
     procd_set_param stdout 1
     procd_set_param stderr 1
@@ -805,6 +860,7 @@ start_service() {
 EOF
     # Enable the service
     chmod +x /etc/init.d/vigil-agent
+    write_shell_env_file "$AGENT_DIR/agent.env"
     /etc/init.d/vigil-agent enable
   else
     echo "OpenWRT init script already exists. Skipping creation."
@@ -832,11 +888,14 @@ elif is_freebsd; then
   # Create environment configuration file with proper permissions if it doesn't exist
   if [ ! -f "$AGENT_DIR/env" ]; then
     echo "Creating environment configuration file..."
-    cat >"$AGENT_DIR/env" <<EOF
-KEY="$KEY"
-TOKEN=$TOKEN
-HUB_URL=$HUB_URL
-EOF
+    (
+      umask 077
+      {
+        printf 'KEY=%s\n' "$(sq "$KEY")"
+        printf 'TOKEN=%s\n' "$(sq "$TOKEN")"
+        printf 'HUB_URL=%s\n' "$(sq "$HUB_URL")"
+      } >"$AGENT_DIR/env"
+    )
     chmod 640 "$AGENT_DIR/env"
     chown "root:${AGENT_USER}" "$AGENT_DIR/env"
   else
@@ -879,20 +938,45 @@ EOF
   fi
 
 else
-  # Original systemd service installation code
-  if [ ! -f /etc/systemd/system/vigil-agent.service ]; then
-    echo "Creating the systemd service for the agent..."
+  # systemd service installation
+  echo "Configuring the systemd service for the agent..."
 
-    cat >/etc/systemd/system/vigil-agent.service <<EOF
+  SERVICE_FILE="/etc/systemd/system/vigil-agent.service"
+  ENV_FILE="$AGENT_DIR/agent.env"
+
+  # Migrate legacy units that inlined the secrets via Environment="VAR=..." into
+  # the root-only EnvironmentFile, so an upgrade does not lose KEY/TOKEN/HUB_URL.
+  # (We only read the unit we previously generated here, never user-controlled
+  # input re-executed as code.)
+  if [ ! -f "$ENV_FILE" ] && [ -f "$SERVICE_FILE" ] && grep -q '^Environment="' "$SERVICE_FILE"; then
+    echo "Migrating inline service secrets to $ENV_FILE..."
+    ( umask 077; : >"$ENV_FILE" )
+    for _k in KEY TOKEN HUB_URL; do
+      _val=$(sed -n "s/^Environment=\"${_k}=\(.*\)\"\$/\1/p" "$SERVICE_FILE" | head -n1)
+      [ -n "$_val" ] && printf '%s=%s\n' "$_k" "$_val" >>"$ENV_FILE"
+    done
+    chmod 600 "$ENV_FILE" 2>/dev/null || true
+    chown root:root "$ENV_FILE" 2>/dev/null || true
+  fi
+
+  # Apply any newly provided values. Only non-empty values are written, so an
+  # upgrade that omits -t/-k/-url preserves whatever is already there. systemd
+  # reads this file as root and never runs a shell on it, so crafted values
+  # cannot inject commands (unlike the previous inline Environment=/sed path).
+  upsert_systemd_env "$ENV_FILE" KEY "$KEY"
+  upsert_systemd_env "$ENV_FILE" TOKEN "$TOKEN"
+  upsert_systemd_env "$ENV_FILE" HUB_URL "$HUB_URL"
+
+  # The unit is fully managed by this script: (re)write it every run so the
+  # EnvironmentFile directive and sandboxing stay canonical.
+  cat >"$SERVICE_FILE" <<EOF
 [Unit]
 Description=Vigil Agent Service
 Wants=network-online.target
 After=network-online.target
 
 [Service]
-Environment="KEY=$KEY"
-Environment="TOKEN=$TOKEN"
-Environment="HUB_URL=$HUB_URL"
+EnvironmentFile=-$AGENT_DIR/agent.env
 ExecStart=$BIN_PATH
 User=app
 Restart=on-failure
@@ -913,23 +997,6 @@ RestrictSUIDSGID=true
 [Install]
 WantedBy=multi-user.target
 EOF
-  else
-    echo "Systemd service file already exists. Skipping creation."
-  fi
-
-  # Always update environment variables in the service file if new values were provided.
-  # This ensures that upgrades passing a new -t / -k / -url actually take effect,
-  # since the service file is not recreated when it already exists.
-  SERVICE_FILE="/etc/systemd/system/vigil-agent.service"
-  if [ -n "$TOKEN" ]; then
-    sed -i "s|Environment=\"TOKEN=.*\"|Environment=\"TOKEN=$TOKEN\"|" "$SERVICE_FILE"
-  fi
-  if [ -n "$KEY" ]; then
-    sed -i "s|Environment=\"KEY=.*\"|Environment=\"KEY=$KEY\"|" "$SERVICE_FILE"
-  fi
-  if [ -n "$HUB_URL" ]; then
-    sed -i "s|Environment=\"HUB_URL=.*\"|Environment=\"HUB_URL=$HUB_URL\"|" "$SERVICE_FILE"
-  fi
 
   # Load and start the service
   printf "\nLoading and starting the agent service...\n"

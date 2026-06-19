@@ -7,16 +7,23 @@ After=network-online.target
 EnvironmentFile=/etc/vigil-agent.conf
 ExecStart=/usr/bin/vigil-agent
 User=vigil
+Group=vigil
 Restart=on-failure
+RestartSec=5
 StateDirectory=vigil-agent
 
 # Security/sandboxing settings
+NoNewPrivileges=yes
+PrivateTmp=yes
 KeyringMode=private
 LockPersonality=yes
 ProtectClock=yes
 ProtectHome=read-only
 ProtectHostname=yes
 ProtectKernelLogs=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
 ProtectSystem=strict
 RemoveIPC=yes
 RestrictSUIDSGID=true
