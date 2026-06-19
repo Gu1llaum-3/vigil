@@ -192,6 +192,11 @@ msgstr "Agents are configured, but no Docker containers have been reported by mo
 msgid "Agents connect to the hub via WebSocket."
 msgstr "Agents connect to the hub via WebSocket."
 
+#: src/components/routes/host-detail.tsx
+#: src/components/routes/hosts.tsx
+msgid "Alert thresholds"
+msgstr "Alert thresholds"
+
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
@@ -621,9 +626,21 @@ msgstr "Credential updated"
 msgid "Credentials used by the hub to authenticate against private container registries during image audits. Passwords are encrypted at rest with a key stored in the data directory. The hub falls back to the host's <0>~/.docker/config.json</0> for registries not listed here."
 msgstr "Credentials used by the hub to authenticate against private container registries during image audits. Passwords are encrypted at rest with a key stored in the data directory. The hub falls back to the host's <0>~/.docker/config.json</0> for registries not listed here."
 
+#: src/components/metric-thresholds.tsx
+#~ msgid "Critical"
+#~ msgstr "Critical"
+
+#: src/components/metric-thresholds.tsx
+msgid "Critical above"
+msgstr "Critical above"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Critical alerts"
 msgstr "Critical alerts"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Critical only"
+msgstr "Critical only"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Cron expression evaluated in UTC. Examples: <0>0 */6 * * *</0> (every 6 hours), <1>*/15 * * * *</1> (every 15 minutes)."
@@ -660,6 +677,14 @@ msgstr "Days To Keep"
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
 msgstr "Dead"
+
+#: src/components/routes/hosts.tsx
+msgid "Default CPU / memory / disk / load thresholds for every host. Override per host from a host's page. Create a notification rule for the \"host.metric_exceeded\" event to be notified."
+msgstr "Default CPU / memory / disk / load thresholds for every host. Override per host from a host's page. Create a notification rule for the \"host.metric_exceeded\" event to be notified."
+
+#: src/components/routes/settings/notifications.tsx
+#~ msgid "Default thresholds applied to every host. Override per host from the host detail page. Create a notification rule for the \"host.metric_exceeded\" event to be notified."
+#~ msgstr "Default thresholds applied to every host. Override per host from the host detail page. Create a notification rule for the \"host.metric_exceeded\" event to be notified."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Define when and where notifications are sent."
@@ -1024,6 +1049,14 @@ msgstr "Gateway"
 msgid "General"
 msgstr "General"
 
+#: src/components/routes/hosts.tsx
+msgid "Global alert thresholds"
+msgstr "Global alert thresholds"
+
+#: src/components/routes/settings/notifications.tsx
+#~ msgid "Global metric alert thresholds"
+#~ msgstr "Global metric alert thresholds"
+
 #: src/components/routes/monitors.tsx
 msgid "Group"
 msgstr "Group"
@@ -1110,6 +1143,10 @@ msgstr "Hosts overview"
 msgid "Hub URL"
 msgstr "Hub URL"
 
+#: src/components/metric-thresholds.tsx
+#~ msgid "Hysteresis"
+#~ msgstr "Hysteresis"
+
 #: src/components/routes/container-detail.tsx
 msgid "ID"
 msgstr "ID"
@@ -1162,6 +1199,14 @@ msgstr "Image update"
 #: src/components/routes/images.tsx
 msgid "Image updates"
 msgstr "Image updates"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Info and above"
+msgstr "Info and above"
+
+#: src/components/metric-thresholds.tsx
+#~ msgid "Inherits global default"
+#~ msgstr "Inherits global default"
 
 #: src/components/routes/host-detail.tsx
 msgid "Insecure"
@@ -1401,6 +1446,14 @@ msgstr "Method"
 #: src/components/routes/settings/notifications.tsx
 msgid "Method (default POST)"
 msgstr "Method (default POST)"
+
+#: src/components/routes/settings/notifications.tsx
+#~ msgid "Metric thresholds"
+#~ msgstr "Metric thresholds"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Minimum severity"
+msgstr "Minimum severity"
 
 #: src/lib/audit-status.ts
 msgid "Minor available"
@@ -1769,6 +1822,14 @@ msgstr "Out of SLA (>30d)"
 msgid "Outdated packages"
 msgstr "Outdated packages"
 
+#: src/components/metric-thresholds.tsx
+#~ msgid "Overrides global default"
+#~ msgstr "Overrides global default"
+
+#: src/components/metric-thresholds.tsx
+msgid "Overrides the global default"
+msgstr "Overrides the global default"
+
 #: src/components/routes/host-detail.tsx
 msgid "Overview"
 msgstr "Overview"
@@ -1852,6 +1913,10 @@ msgstr "Payload preview"
 #: src/components/routes/monitor-detail.tsx
 msgid "Pending"
 msgstr "Pending"
+
+#: src/components/routes/host-detail.tsx
+msgid "Per-host overrides of the global metric alert thresholds."
+msgstr "Per-host overrides of the global metric alert thresholds."
 
 #: src/components/routes/monitors.tsx
 msgid "Per-request timeout"
@@ -2082,6 +2147,14 @@ msgstr "Reset fingerprint"
 #: src/components/login/forgot-pass-form.tsx
 msgid "Reset Password"
 msgstr "Reset Password"
+
+#: src/components/metric-thresholds.tsx
+msgid "Reset to global"
+msgstr "Reset to global"
+
+#: src/components/metric-thresholds.tsx
+msgid "Resolve margin"
+msgstr "Resolve margin"
 
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
@@ -2575,6 +2648,14 @@ msgstr "View all notifications"
 #: src/components/routes/home.tsx
 msgid "Warning"
 msgstr "Warning"
+
+#: src/components/metric-thresholds.tsx
+msgid "Warning above"
+msgstr "Warning above"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Warning and above"
+msgstr "Warning and above"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx

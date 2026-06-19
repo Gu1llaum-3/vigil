@@ -6,6 +6,7 @@ import {
 	BoxIcon,
 	CheckCircle2Icon,
 	CpuIcon,
+	GaugeIcon,
 	HardDriveIcon,
 	NetworkIcon,
 	ServerIcon,
@@ -18,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -29,8 +31,9 @@ import {
 	metricsRanges,
 	NetworkHistoryChart,
 } from "@/components/metric-charts"
+import { MetricThresholds } from "@/components/metric-thresholds"
 import { cn } from "@/lib/utils"
-import { pb } from "@/lib/api"
+import { isAdmin, pb } from "@/lib/api"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import type { ContainerMetricsHistoryPoint } from "@/lib/dashboard-types"
 import {
@@ -282,6 +285,29 @@ export default function HostDetailPage() {
 							</span>
 						</div>
 					</div>
+					{isAdmin() && (
+						<Sheet>
+							<SheetTrigger asChild>
+								<Button variant="outline" size="sm">
+									<GaugeIcon className="me-2 size-4" />
+									<Trans>Alert thresholds</Trans>
+								</Button>
+							</SheetTrigger>
+							<SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+								<SheetHeader>
+									<SheetTitle>
+										<Trans>Alert thresholds</Trans> — {host.name || host.hostname || host.id}
+									</SheetTitle>
+									<SheetDescription>
+										<Trans>Per-host overrides of the global metric alert thresholds.</Trans>
+									</SheetDescription>
+								</SheetHeader>
+								<div className="mt-4">
+									<MetricThresholds agentId={hostId} />
+								</div>
+							</SheetContent>
+						</Sheet>
+					)}
 				</div>
 			</div>
 

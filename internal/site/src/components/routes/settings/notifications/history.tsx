@@ -18,6 +18,8 @@ const EVENT_VALUES = [
 	"agent.offline",
 	"agent.online",
 	"container_image.update_available",
+	"host.metric_exceeded",
+	"host.metric_normal",
 ] as const
 
 type NotificationHistoryProps = {

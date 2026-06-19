@@ -197,6 +197,11 @@ msgstr "Des agents sont configurés, mais aucun conteneur Docker n'a été remon
 msgid "Agents connect to the hub via WebSocket."
 msgstr "Les agents se connectent au hub via WebSocket."
 
+#: src/components/routes/host-detail.tsx
+#: src/components/routes/hosts.tsx
+msgid "Alert thresholds"
+msgstr "Seuils d'alerte"
+
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
@@ -626,9 +631,21 @@ msgstr "Identifiant mis à jour"
 msgid "Credentials used by the hub to authenticate against private container registries during image audits. Passwords are encrypted at rest with a key stored in the data directory. The hub falls back to the host's <0>~/.docker/config.json</0> for registries not listed here."
 msgstr "Identifiants utilisés par le hub pour s'authentifier auprès des registres de conteneurs privés lors des audits d'images. Les mots de passe sont chiffrés au repos avec une clé stockée dans le répertoire de données. Le hub se rabat sur le <0>~/.docker/config.json</0> de l'hôte pour les registres non listés ici."
 
+#: src/components/metric-thresholds.tsx
+#~ msgid "Critical"
+#~ msgstr "Critique"
+
+#: src/components/metric-thresholds.tsx
+msgid "Critical above"
+msgstr "Critique au-dessus de"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Critical alerts"
 msgstr "Alertes critiques"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Critical only"
+msgstr "Critique uniquement"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Cron expression evaluated in UTC. Examples: <0>0 */6 * * *</0> (every 6 hours), <1>*/15 * * * *</1> (every 15 minutes)."
@@ -665,6 +682,14 @@ msgstr "Jours à conserver"
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Dead"
 msgstr "Mort"
+
+#: src/components/routes/hosts.tsx
+msgid "Default CPU / memory / disk / load thresholds for every host. Override per host from a host's page. Create a notification rule for the \"host.metric_exceeded\" event to be notified."
+msgstr "Seuils CPU / mémoire / disque / charge par défaut pour tous les hôtes. Surchargez-les par hôte depuis la page d'un hôte. Créez une règle de notification pour l'événement « host.metric_exceeded » pour être notifié."
+
+#: src/components/routes/settings/notifications.tsx
+#~ msgid "Default thresholds applied to every host. Override per host from the host detail page. Create a notification rule for the \"host.metric_exceeded\" event to be notified."
+#~ msgstr "Seuils par défaut appliqués à chaque hôte. Surchargez-les par hôte depuis la page de détail de l'hôte. Créez une règle de notification pour l'événement « host.metric_exceeded » pour être notifié."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Define when and where notifications are sent."
@@ -1029,6 +1054,14 @@ msgstr "Passerelle"
 msgid "General"
 msgstr "Général"
 
+#: src/components/routes/hosts.tsx
+msgid "Global alert thresholds"
+msgstr "Seuils d'alerte globaux"
+
+#: src/components/routes/settings/notifications.tsx
+#~ msgid "Global metric alert thresholds"
+#~ msgstr "Seuils d'alerte métriques globaux"
+
 #: src/components/routes/monitors.tsx
 msgid "Group"
 msgstr "Dossier"
@@ -1115,6 +1148,10 @@ msgstr "Vue d'ensemble des hôtes"
 msgid "Hub URL"
 msgstr "URL du hub"
 
+#: src/components/metric-thresholds.tsx
+#~ msgid "Hysteresis"
+#~ msgstr "Hystérésis"
+
 #: src/components/routes/container-detail.tsx
 msgid "ID"
 msgstr ""
@@ -1167,6 +1204,14 @@ msgstr "Mise à jour d'image"
 #: src/components/routes/images.tsx
 msgid "Image updates"
 msgstr "Mises à jour d'images"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Info and above"
+msgstr "Info et au-dessus"
+
+#: src/components/metric-thresholds.tsx
+#~ msgid "Inherits global default"
+#~ msgstr "Hérite du défaut global"
 
 #: src/components/routes/host-detail.tsx
 msgid "Insecure"
@@ -1406,6 +1451,14 @@ msgstr "Méthode"
 #: src/components/routes/settings/notifications.tsx
 msgid "Method (default POST)"
 msgstr "Méthode (POST par défaut)"
+
+#: src/components/routes/settings/notifications.tsx
+#~ msgid "Metric thresholds"
+#~ msgstr "Seuils métriques"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Minimum severity"
+msgstr "Sévérité minimale"
 
 #: src/lib/audit-status.ts
 msgid "Minor available"
@@ -1774,6 +1827,14 @@ msgstr "Hors SLA (>30j)"
 msgid "Outdated packages"
 msgstr "Paquets obsolètes"
 
+#: src/components/metric-thresholds.tsx
+#~ msgid "Overrides global default"
+#~ msgstr "Surcharge le défaut global"
+
+#: src/components/metric-thresholds.tsx
+msgid "Overrides the global default"
+msgstr "Surcharge le défaut global"
+
 #: src/components/routes/host-detail.tsx
 msgid "Overview"
 msgstr "Vue d'ensemble"
@@ -1857,6 +1918,10 @@ msgstr "Aperçu de la charge utile"
 #: src/components/routes/monitor-detail.tsx
 msgid "Pending"
 msgstr "En attente"
+
+#: src/components/routes/host-detail.tsx
+msgid "Per-host overrides of the global metric alert thresholds."
+msgstr "Surcharges par hôte des seuils d'alerte métriques globaux."
 
 #: src/components/routes/monitors.tsx
 msgid "Per-request timeout"
@@ -2087,6 +2152,14 @@ msgstr "Réinitialiser l'empreinte"
 #: src/components/login/forgot-pass-form.tsx
 msgid "Reset Password"
 msgstr "Réinitialiser le mot de passe"
+
+#: src/components/metric-thresholds.tsx
+msgid "Reset to global"
+msgstr "Réinitialiser au global"
+
+#: src/components/metric-thresholds.tsx
+msgid "Resolve margin"
+msgstr "Marge de résolution"
 
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
@@ -2580,6 +2653,14 @@ msgstr "Voir toutes les notifications"
 #: src/components/routes/home.tsx
 msgid "Warning"
 msgstr "Avertissement"
+
+#: src/components/metric-thresholds.tsx
+msgid "Warning above"
+msgstr "Avertissement au-dessus de"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Warning and above"
+msgstr "Avertissement et au-dessus"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx

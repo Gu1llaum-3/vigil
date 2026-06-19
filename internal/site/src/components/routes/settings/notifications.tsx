@@ -35,12 +35,20 @@ import type { NotificationChannel, NotificationKind, NotificationRule, SystemNot
 import NotificationHistory from "./notifications/history.tsx"
 
 const ALL_KINDS: NotificationKind[] = ["email", "webhook", "slack", "teams", "gchat", "ntfy", "gotify", "in-app"]
-const ALL_EVENTS = ["monitor.down", "monitor.up", "agent.offline", "agent.online", "container_image.update_available"]
-const BELL_EVENTS = ["monitor.down", "monitor.up", "agent.offline", "agent.online", "container_image.update_available"]
+const ALL_EVENTS = [
+	"monitor.down",
+	"monitor.up",
+	"agent.offline",
+	"agent.online",
+	"container_image.update_available",
+	"host.metric_exceeded",
+	"host.metric_normal",
+]
+const BELL_EVENTS = ALL_EVENTS
 
 function defaultBellPreferences(): SystemNotificationPreferences {
 	return {
-		enabled_categories: { monitors: true, agents: true, container_images: true },
+		enabled_categories: { monitors: true, agents: true, container_images: true, host_metrics: true },
 		enabled_events: Object.fromEntries(BELL_EVENTS.map((event) => [event, true])),
 	}
 }
@@ -491,6 +499,7 @@ const RuleDialog = memo(
 		const [events, setEvents] = useState<string[]>([])
 		const [selectedChannels, setSelectedChannels] = useState<string[]>([])
 		const [throttle, setThrottle] = useState("0")
+		const [minSeverity, setMinSeverity] = useState("info")
 		const [saving, setSaving] = useState(false)
 
 		useEffect(() => {
@@ -501,12 +510,14 @@ const RuleDialog = memo(
 					setEvents(state.editing.events ?? [])
 					setSelectedChannels(state.editing.channels ?? [])
 					setThrottle(String(state.editing.throttle_seconds ?? 0))
+					setMinSeverity(state.editing.min_severity || "info")
 				} else {
 					setName("")
 					setEnabled(true)
 					setEvents(["monitor.down", "agent.offline"])
 					setSelectedChannels([])
 					setThrottle("0")
+					setMinSeverity("info")
 				}
 				setSaving(false)
 			}
@@ -529,7 +540,7 @@ const RuleDialog = memo(
 					enabled,
 					events,
 					channels: selectedChannels,
-					min_severity: "info",
+					min_severity: minSeverity,
 					throttle_seconds: Number(throttle) || 0,
 				}
 				let saved: NotificationRule
@@ -621,6 +632,19 @@ const RuleDialog = memo(
 								min={0}
 								placeholder="0"
 							/>
+						</div>
+						<div className="space-y-1">
+							<Label>{t`Minimum severity`}</Label>
+							<Select value={minSeverity} onValueChange={setMinSeverity}>
+								<SelectTrigger>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="info">{t`Info and above`}</SelectItem>
+									<SelectItem value="warning">{t`Warning and above`}</SelectItem>
+									<SelectItem value="critical">{t`Critical only`}</SelectItem>
+								</SelectContent>
+							</Select>
 						</div>
 					</div>
 					<DialogFooter>
