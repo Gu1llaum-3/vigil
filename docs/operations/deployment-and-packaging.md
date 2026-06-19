@@ -2,7 +2,7 @@
 
 ## Why This Document Exists
 
-Nexus already includes several operational assets, but they are spread across `supplemental/`, `.goreleaser.yml`, and runtime update code.
+Vigil already includes several operational assets, but they are spread across `supplemental/`, `.goreleaser.yml`, and runtime update code.
 
 This document explains what is available, what each asset is for, and how the pieces relate to the actual runtime.
 

@@ -38,7 +38,7 @@ You may specify a port number with the `-p` flag. The default port is `8090`.
 #### Update
 
 ```bash
-sudo /opt/vigil/vigil update && sudo systemctl restart app-hub
+sudo /opt/vigil/vigil update && sudo systemctl restart vigil-hub
 ```
 
 ### Agent
@@ -89,11 +89,11 @@ To upgrade an existing agent installation, re-run the install script and optiona
 
 ### Hub
 
-1. Create the system service at `/etc/systemd/system/app.service`
+1. Create the system service at `/etc/systemd/system/vigil-hub.service`
 
 ```bash
 [Unit]
-Description=App Hub Service
+Description=Vigil Hub Service
 After=network.target
 
 [Service]
@@ -111,8 +111,8 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable app.service
-sudo systemctl start app.service
+sudo systemctl enable vigil-hub.service
+sudo systemctl start vigil-hub.service
 ```
 
 ### Agent

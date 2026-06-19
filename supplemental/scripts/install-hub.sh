@@ -33,12 +33,12 @@ generate_freebsd_rc_service() {
 # vigil_hub_port (str):      Port to listen on
 #                             Default: 8090
 # vigil_hub_user (str):      Vigil Hub daemon user
-#                             Default: app
-# vigil_hub_bin (str):       Path to the app binary
+#                             Default: vigil
+# vigil_hub_bin (str):       Path to the vigil binary
 #                             Default: /usr/local/sbin/vigil
-# vigil_hub_data (str):      Path to the app data directory
-#                             Default: /usr/local/etc/vigil/app_data
-# vigil_hub_flags (str):     Extra flags passed to app command invocation
+# vigil_hub_data (str):      Path to the data directory
+#                             Default: /usr/local/etc/vigil/vigil_data
+# vigil_hub_flags (str):     Extra flags passed to the vigil command invocation
 #                             Default:
 
 . /etc/rc.subr
@@ -49,10 +49,10 @@ rcvar=vigil_hub_enable
 load_rc_config $name
 : ${vigil_hub_enable:="YES"}
 : ${vigil_hub_port:="8090"}
-: ${vigil_hub_user:="app"}
+: ${vigil_hub_user:="vigil"}
 : ${vigil_hub_flags:=""}
 : ${vigil_hub_bin:="/usr/local/sbin/vigil"}
-: ${vigil_hub_data:="/usr/local/etc/vigil/app_data"}
+: ${vigil_hub_data:="/usr/local/etc/vigil/vigil_data"}
 
 logfile="/var/log/${name}.log"
 pidfile="/var/run/${name}.pid"
@@ -223,14 +223,14 @@ fi
 if [ "$UNINSTALL" = true ]; then
   if is_freebsd; then
     echo "Stopping and disabling the Vigil Hub service..."
-    service app-hub stop 2>/dev/null
+    service vigil-hub stop 2>/dev/null
     sysrc vigil_hub_enable="NO" 2>/dev/null
 
     echo "Removing the FreeBSD service files..."
-    rm -f /usr/local/etc/rc.d/app-hub
+    rm -f /usr/local/etc/rc.d/vigil-hub
 
     echo "Removing the daily update cron job..."
-    rm -f /etc/cron.d/app-hub
+    rm -f /etc/cron.d/vigil-hub
 
     echo "Removing log files..."
     rm -f /var/log/vigil_hub.log
@@ -242,26 +242,26 @@ if [ "$UNINSTALL" = true ]; then
     fi
 
     echo "Removing the dedicated user..."
-    pw user del app 2>/dev/null
+    pw user del vigil 2>/dev/null
 
     echo "The Vigil Hub has been uninstalled successfully!"
     exit 0
   else
     # Stop and disable the Vigil Hub service
     echo "Stopping and disabling the Vigil Hub service..."
-    systemctl stop app-hub.service
-    systemctl disable app-hub.service
+    systemctl stop vigil-hub.service
+    systemctl disable vigil-hub.service
 
     # Remove the systemd service file
     echo "Removing the systemd service file..."
-    rm -f /etc/systemd/system/app-hub.service
+    rm -f /etc/systemd/system/vigil-hub.service
 
     # Remove the update timer and service if they exist
     echo "Removing the daily update service and timer..."
-    systemctl stop app-hub-update.timer 2>/dev/null
-    systemctl disable app-hub-update.timer 2>/dev/null
-    rm -f /etc/systemd/system/app-hub-update.service
-    rm -f /etc/systemd/system/app-hub-update.timer
+    systemctl stop vigil-hub-update.timer 2>/dev/null
+    systemctl disable vigil-hub-update.timer 2>/dev/null
+    rm -f /etc/systemd/system/vigil-hub-update.service
+    rm -f /etc/systemd/system/vigil-hub-update.timer
 
     # Reload the systemd daemon
     echo "Reloading the systemd daemon..."
@@ -275,7 +275,7 @@ if [ "$UNINSTALL" = true ]; then
 
     # Remove the dedicated user
     echo "Removing the dedicated user..."
-    userdel app 2>/dev/null
+    userdel vigil 2>/dev/null
 
     echo "The Vigil Hub has been uninstalled successfully!"
     exit 0
@@ -313,19 +313,19 @@ fi
 # Create a dedicated user for the service if it doesn't exist
 echo "Creating a dedicated user for the Vigil Hub service..."
 if is_freebsd; then
-  if ! id -u app >/dev/null 2>&1; then
-    pw user add app -d /nonexistent -s /usr/sbin/nologin -c "app user"
+  if ! id -u vigil >/dev/null 2>&1; then
+    pw user add vigil -d /nonexistent -s /usr/sbin/nologin -c "vigil user"
   fi
 else
-  if ! id -u app >/dev/null 2>&1; then
-    useradd -M -s /bin/false app
+  if ! id -u vigil >/dev/null 2>&1; then
+    useradd -M -s /bin/false vigil
   fi
 fi
 
 # Create the directory for the Vigil Hub
 echo "Creating the directory for the Vigil Hub..."
-mkdir -p "$HUB_DIR/app_data"
-chown -R app:app "$HUB_DIR"
+mkdir -p "$HUB_DIR/vigil_data"
+chown -R vigil:vigil "$HUB_DIR"
 chmod 755 "$HUB_DIR"
 
 # Download and install the Vigil Hub
@@ -410,17 +410,17 @@ fi
 
 chmod +x "$TEMP_DIR/vigil"
 mv "$TEMP_DIR/vigil" "$BIN_PATH"
-chown app:app "$BIN_PATH"
+chown vigil:vigil "$BIN_PATH"
 rm -rf "$TEMP_DIR"
 
 if is_freebsd; then
   echo "Creating FreeBSD rc service..."
 
   # Create the rc service file
-  generate_freebsd_rc_service > /usr/local/etc/rc.d/app-hub
+  generate_freebsd_rc_service > /usr/local/etc/rc.d/vigil-hub
 
   # Set proper permissions for the rc script
-  chmod 755 /usr/local/etc/rc.d/app-hub
+  chmod 755 /usr/local/etc/rc.d/vigil-hub
 
   # Configure the port
   sysrc vigil_hub_port="$PORT"
@@ -428,11 +428,11 @@ if is_freebsd; then
   # Enable and start the service
   echo "Enabling and starting the Vigil Hub service..."
   sysrc vigil_hub_enable="YES"
-  service app-hub restart
+  service vigil-hub restart
 
   # Check if service started successfully
   sleep 2
-  if ! service app-hub status | grep -q "is running"; then
+  if ! service vigil-hub status | grep -q "is running"; then
     echo "Error: The Vigil Hub service failed to start. Checking logs..."
     tail -n 20 /var/log/vigil_hub.log
     exit 1
@@ -440,28 +440,28 @@ if is_freebsd; then
 
   # Auto-update service for FreeBSD
   if [ "$AUTO_UPDATE_FLAG" = "true" ]; then
-    echo "Setting up daily automatic updates for app-hub..."
+    echo "Setting up daily automatic updates for vigil-hub..."
 
     # Create cron job in /etc/cron.d
-    cat >/etc/cron.d/app-hub <<EOF
+    cat >/etc/cron.d/vigil-hub <<EOF
 # Vigil Hub daily update job
 12 8 * * * root $BIN_PATH update >/dev/null 2>&1
 EOF
-    chmod 644 /etc/cron.d/app-hub
+    chmod 644 /etc/cron.d/vigil-hub
     printf "\nDaily updates have been enabled via /etc/cron.d.\n"
   fi
 
   # Check service status
-  if ! service app-hub status >/dev/null 2>&1; then
+  if ! service vigil-hub status >/dev/null 2>&1; then
     echo "Error: The Vigil Hub service is not running."
-    service app-hub status
+    service vigil-hub status
     exit 1
   fi
 
 else
   # Original systemd service installation code
   printf "Creating the systemd service for the Vigil Hub...\n"
-  cat >/etc/systemd/system/app-hub.service <<EOF
+  cat >/etc/systemd/system/vigil-hub.service <<EOF
 [Unit]
 Description=Vigil Hub Service
 After=network.target
@@ -469,7 +469,7 @@ After=network.target
 [Service]
 ExecStart=$BIN_PATH serve --http "0.0.0.0:$PORT"
 WorkingDirectory=$HUB_DIR
-User=app
+User=vigil
 Restart=always
 RestartSec=5
 
@@ -480,28 +480,28 @@ EOF
   # Load and start the service
   printf "Loading and starting the Vigil Hub service...\n"
   systemctl daemon-reload
-  systemctl enable --quiet app-hub.service
-  systemctl start --quiet app-hub.service
+  systemctl enable --quiet vigil-hub.service
+  systemctl start --quiet vigil-hub.service
 
   # Wait for the service to start or fail
   sleep 2
 
   # Check if the service is running
-  if [ "$(systemctl is-active app-hub.service)" != "active" ]; then
+  if [ "$(systemctl is-active vigil-hub.service)" != "active" ]; then
     echo "Error: The Vigil Hub service is not running."
-    echo "$(systemctl status app-hub.service)"
+    echo "$(systemctl status vigil-hub.service)"
     exit 1
   fi
 
   # Enable auto-update if flag is set to true
   if [ "$AUTO_UPDATE_FLAG" = "true" ]; then
-    echo "Setting up daily automatic updates for app-hub..."
+    echo "Setting up daily automatic updates for vigil-hub..."
 
     # Create systemd service for the daily update
-    cat >/etc/systemd/system/app-hub-update.service <<EOF
+    cat >/etc/systemd/system/vigil-hub-update.service <<EOF
 [Unit]
-Description=Update app-hub if needed
-Wants=app-hub.service
+Description=Update vigil-hub if needed
+Wants=vigil-hub.service
 
 [Service]
 Type=oneshot
@@ -509,9 +509,9 @@ ExecStart=$BIN_PATH update
 EOF
 
     # Create systemd timer for the daily update
-    cat >/etc/systemd/system/app-hub-update.timer <<EOF
+    cat >/etc/systemd/system/vigil-hub-update.timer <<EOF
 [Unit]
-Description=Run app-hub update daily
+Description=Run vigil-hub update daily
 
 [Timer]
 OnCalendar=daily
@@ -523,7 +523,7 @@ WantedBy=timers.target
 EOF
 
     systemctl daemon-reload
-    systemctl enable --now app-hub-update.timer
+    systemctl enable --now vigil-hub-update.timer
 
     printf "\nDaily updates have been enabled.\n"
   fi

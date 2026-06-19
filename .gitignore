@@ -4,10 +4,8 @@ pb_data
 data
 temp
 .vscode
-app
-app-agent
-app_data
-app_data*
+vigil
+vigil-agent
 vigil_data
 vigil_data*
 dist

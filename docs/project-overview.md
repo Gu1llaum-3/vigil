@@ -1,8 +1,8 @@
 # Project Overview
 
-## What Nexus Is
+## What Vigil Is
 
-Nexus is a reusable application boilerplate for building web applications with a central hub and lightweight remote agents.
+Vigil is a reusable application boilerplate for building web applications with a central hub and lightweight remote agents.
 
 It is not a one-off product with domain-specific business logic. The repository is structured so a derived project can rename, brand, and extend it without rewriting the core architecture.
 
@@ -15,7 +15,7 @@ The current implementation combines:
 
 ## Core Mental Model
 
-Nexus has two primary runtime components.
+Vigil has two primary runtime components.
 
 ### Hub
 
@@ -51,7 +51,7 @@ Rename-sensitive metadata is centralized in `app.go`:
 - default data directory names
 - default release owner and repo values
 
-This makes it possible to derive a real product from Nexus without hunting through the whole repository for every user-facing and technical identifier.
+This makes it possible to derive a real product from Vigil without hunting through the whole repository for every user-facing and technical identifier.
 
 The same design choice appears elsewhere:
 

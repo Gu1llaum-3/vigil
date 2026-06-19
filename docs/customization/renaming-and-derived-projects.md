@@ -2,7 +2,7 @@
 
 ## Why This Matters
 
-Nexus is a reusable boilerplate. A derived project should be able to rename and rebrand it without leaving behind confusing defaults, broken package metadata, or mismatched service names.
+Vigil is a reusable boilerplate. A derived project should be able to rename and rebrand it without leaving behind confusing defaults, broken package metadata, or mismatched service names.
 
 This repository already centralizes a large part of that work in `app.go`, but renaming still affects multiple layers:
 
@@ -143,7 +143,7 @@ These files are easy to miss because they are not part of the main runtime code 
 
 ## Frontend Branding Checklist
 
-When turning Nexus into a product, decide whether to update:
+When turning Vigil into a product, decide whether to update:
 
 - display name shown in login and document titles
 - logo component
@@ -171,7 +171,7 @@ Do not leave stale translated strings referring to the old boilerplate name.
 
 ## Derived-Project Defaults To Revisit
 
-When creating a real product from Nexus, revisit these defaults instead of accepting them automatically:
+When creating a real product from Vigil, revisit these defaults instead of accepting them automatically:
 
 - auth mode choices
 - OAuth self-registration behavior
@@ -208,7 +208,7 @@ Useful searches after a rename:
 
 ## What Should Stay Generic Upstream
 
-If you are still maintaining Nexus as the upstream boilerplate, keep these generic in the upstream repository:
+If you are still maintaining Vigil as the upstream boilerplate, keep these generic in the upstream repository:
 
 - module placeholders
 - binary and display names

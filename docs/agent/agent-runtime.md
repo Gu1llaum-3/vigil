@@ -2,7 +2,7 @@
 
 ## Role Of The Agent
 
-The Nexus agent is a lightweight remote process that connects outbound to the hub and responds to hub-initiated actions.
+The Vigil agent is a lightweight remote process that connects outbound to the hub and responds to hub-initiated actions.
 
 It is responsible for:
 

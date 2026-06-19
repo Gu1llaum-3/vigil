@@ -2,7 +2,7 @@
 
 ## Why This Document Exists
 
-Nexus has several project-specific rules that are easy to miss if you only read one subsystem in isolation.
+Vigil has several project-specific rules that are easy to miss if you only read one subsystem in isolation.
 
 These rules are important because they protect wire compatibility, auth behavior, lifecycle correctness, and contributor workflow.
 

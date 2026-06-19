@@ -48,7 +48,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 - If the task is “add or change a scheduled job, cron job, or jobs settings UI”, read `docs/backend/hub-backend.md`, `docs/architecture/auth-and-data-model.md`, and `docs/frontend/frontend-app.md`.
 - If the task is “change retention, purge, or data lifecycle behavior”, read `docs/backend/hub-backend.md`, `docs/architecture/auth-and-data-model.md`, and `docs/frontend/frontend-app.md` when the settings UI is affected.
 - If the task is “change build, dev, or test workflow”, read `docs/development/workflow-and-testing.md`.
-- If the task is “rename or derive a new product from Nexus”, read `docs/customization/renaming-and-derived-projects.md`.
+- If the task is “rename or derive a new product from Vigil”, read `docs/customization/renaming-and-derived-projects.md`.
 - If the task is “deployment, packaging, or release work”, read `docs/operations/deployment-and-packaging.md`.
 
 ---
@@ -347,7 +347,7 @@ OS=linux ARCH=amd64 make build-agent
 OS=linux ARCH=arm64 make build-agent
 
 # Dev mode with hot-reload (requires entr)
-make dev-hub    # hub on :8090, rebuilds on .go changes (app_data/ created at project root)
+make dev-hub    # hub on :8090, rebuilds on .go changes (vigil_data/ created at project root)
 make dev-agent  # agent, rebuilds on .go changes
 make dev-server # Vite dev server for the frontend
 

@@ -2,7 +2,7 @@
 
 ## Why This Document Exists
 
-In Nexus, authentication, user setup, agent enrollment, and persisted settings are spread across:
+In Vigil, authentication, user setup, agent enrollment, and persisted settings are spread across:
 
 - PocketBase collections and migrations
 - custom hub routes
