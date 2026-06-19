@@ -29,8 +29,20 @@ const metricIcons: Record<MetricAlertMetric, ComponentType<{ className?: string 
 function buildForms(alerts: MetricAlert[], agentId: string): Forms {
 	const forms = {} as Forms
 	for (const metric of METRIC_ALERT_METRICS) {
-		const existing = alerts.find((a) => a.agent === agentId && a.metric === metric)
-		forms[metric] = existing ? { ...existing } : emptyMetricAlert(agentId, metric)
+		const override = alerts.find((a) => a.agent === agentId && a.metric === metric)
+		if (override) {
+			forms[metric] = { ...override }
+			continue
+		}
+		// Per-host scope with no override yet: seed the card from the global default so
+		// it reflects what this host currently inherits. id stays undefined, so saving
+		// (toggle off → mute, or editing → override) creates the per-host row.
+		if (agentId !== "") {
+			const global = alerts.find((a) => a.agent === "" && a.metric === metric)
+			forms[metric] = global ? { ...global, id: undefined, agent: agentId } : emptyMetricAlert(agentId, metric)
+			continue
+		}
+		forms[metric] = emptyMetricAlert(agentId, metric)
 	}
 	return forms
 }
@@ -90,7 +102,8 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 				const form = forms[metric]
 				const info = metricAlertInfo[metric]
 				const Icon = metricIcons[metric]
-				const isOverride = agentId !== "" && Boolean(form.id)
+				const perHost = agentId !== ""
+				const hasOverride = perHost && Boolean(form.id)
 				return (
 					<div
 						key={metric}
@@ -149,10 +162,19 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 							</div>
 						)}
 
-						{isOverride && (
+						{perHost && !hasOverride && (
+							<div className="border-t border-muted-foreground/10 px-4 py-2 text-xs text-muted-foreground">
+								<Trans>Inherits the global default</Trans>
+							</div>
+						)}
+						{hasOverride && (
 							<div className="flex items-center justify-between gap-2 border-t border-muted-foreground/10 px-4 py-2 text-xs text-muted-foreground">
 								<span>
-									<Trans>Overrides the global default</Trans>
+									{form.enabled ? (
+										<Trans>Overrides the global default</Trans>
+									) : (
+										<Trans>Alerts muted for this host</Trans>
+									)}
 								</span>
 								<button type="button" className="underline hover:text-foreground" onClick={() => resetToGlobal(metric)}>
 									<Trans>Reset to global</Trans>

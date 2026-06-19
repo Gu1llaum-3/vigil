@@ -73,7 +73,12 @@ type metricAlertEvaluator struct {
 	perAgent map[string]map[metricKind]metricThreshold
 
 	stateMu sync.Mutex
-	state   map[string]map[metricKind]alertTier // agentID → metric → fired tier
+	state   map[string]map[metricKind]alertTier // agentID → metric → current fired tier
+	// peak holds the highest tier reached during the current alert episode, so a
+	// recovery carries the peak severity even after a silent critical→warning downgrade
+	// (otherwise a min_severity=critical rule would miss the recovery). In-memory only;
+	// a restart falls back to the restored current tier (see transition).
+	peak map[string]map[metricKind]alertTier
 }
 
 func newMetricAlertEvaluator(h *Hub) *metricAlertEvaluator {
@@ -82,6 +87,7 @@ func newMetricAlertEvaluator(h *Hub) *metricAlertEvaluator {
 		global:   map[metricKind]metricThreshold{},
 		perAgent: map[string]map[metricKind]metricThreshold{},
 		state:    map[string]map[metricKind]alertTier{},
+		peak:     map[string]map[metricKind]alertTier{},
 	}
 }
 
@@ -120,8 +126,11 @@ func (e *metricAlertEvaluator) load() {
 	e.mu.Unlock()
 }
 
-// thresholdFor resolves the effective threshold for (agent, metric): per-agent
-// override wins over the global default.
+// thresholdFor resolves the effective threshold for (agent, metric). A per-agent
+// override always wins over the global default, including when it is disabled: a
+// disabled override means "mute this metric for this host" and does NOT fall back to
+// an enabled global. To re-inherit the global, the override row is deleted (the UI's
+// "Reset to global"), not disabled.
 func (e *metricAlertEvaluator) thresholdFor(agentID string, metric metricKind) (metricThreshold, bool) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -146,23 +155,38 @@ func (e *metricAlertEvaluator) evaluate(agentID string, metrics common.HostMetri
 			continue
 		}
 		value, unit := metricValue(metric, metrics)
-		// A failed or partial collection leaves a metric at exactly 0. On a live host
-		// that reports metrics, none of these (memory %, root disk %, CPU %, load) is
-		// ever genuinely 0, so treat an exact 0 as "no reading": keep the current tier
-		// instead of emitting a spurious recovery. A truly idle metric resolves on the
-		// next poll, where the reading is a tiny non-zero value below the clear bound.
-		if value == 0 {
+		// A failed or partial collection leaves a metric at exactly 0. For metrics that
+		// are never genuinely 0 on a live host (memory %, root disk %, and CPU %, which
+		// also reads 0 on the first post-connect sample before it has a baseline), treat
+		// an exact 0 as "no reading" and keep the current tier instead of emitting a
+		// spurious recovery. loadavg legitimately reads 0.00 on an idle host, so its 0 is
+		// honored (otherwise a fired load alert could never recover on an idle box).
+		if value == 0 && zeroIsMissing(metric) {
 			continue
 		}
-		prev, next, changed := e.transition(agentID, metric, value, th)
+		prev, next, peak, changed := e.transition(agentID, metric, value, th)
 		if !changed {
 			continue
 		}
-		e.dispatch(agentID, metric, value, unit, prev, next, th, metrics)
+		evt, ok := metricAlertEvent(agentID, e.agentName(agentID), metric, value, unit, prev, next, peak, th, metrics)
+		if !ok {
+			continue
+		}
+		e.dispatch(evt, agentID, metric)
 	}
 }
 
-func (e *metricAlertEvaluator) dispatch(agentID string, metric metricKind, value float64, unit string, prev, next alertTier, th metricThreshold, metrics common.HostMetricsResponse) {
+// zeroIsMissing reports whether an exact-0 reading for a metric should be treated as a
+// non-reading (failed/partial collection or no baseline) rather than a real value.
+func zeroIsMissing(metric metricKind) bool {
+	return metric != metricLoadAvg
+}
+
+// metricAlertEvent builds the notification event for a tier transition, or returns
+// ok=false when the transition is silent (a critical→warning downgrade). It is pure so
+// the severity/details logic can be unit-tested without a hub. OccurredAt is stamped by
+// the caller (dispatch).
+func metricAlertEvent(agentID, agentName string, metric metricKind, value float64, unit string, prev, next, peak alertTier, th metricThreshold, metrics common.HostMetricsResponse) (notifications.Event, bool) {
 	var evt notifications.Event
 	switch {
 	case next > prev: // escalation (→warning, →critical)
@@ -193,8 +217,13 @@ func (e *metricAlertEvaluator) dispatch(agentID string, metric metricKind, value
 			Details:  details,
 		}
 	case next == tierNone: // full recovery
+		// Carry the peak severity reached during the episode (warning/critical), not the
+		// default "info" nor the possibly-downgraded immediate tier, so a rule with
+		// min_severity≥warning (incl. =critical after a critical→warning decline) still
+		// delivers the matching recovery instead of leaving the alert stuck "active".
 		evt = notifications.Event{
 			Kind:     notifications.EventHostMetricRecovered,
+			Severity: peak.String(),
 			Previous: prev.String(),
 			Current:  next.String(),
 			Details: map[string]any{
@@ -204,12 +233,15 @@ func (e *metricAlertEvaluator) dispatch(agentID string, metric metricKind, value
 			},
 		}
 	default: // downgrade critical→warning: stay in alert, stay silent in v1
-		return
+		return notifications.Event{}, false
 	}
 
-	evt.OccurredAt = time.Now()
-	evt.Resource = notifications.ResourceRef{ID: agentID, Name: e.agentName(agentID), Type: "agent"}
+	evt.Resource = notifications.ResourceRef{ID: agentID, Name: agentName, Type: "agent"}
+	return evt, true
+}
 
+func (e *metricAlertEvaluator) dispatch(evt notifications.Event, agentID string, metric metricKind) {
+	evt.OccurredAt = time.Now()
 	if err := e.hub.createSystemNotification(evt); err != nil {
 		slog.Warn("metric alerts: failed to create system notification", "agent", agentID, "metric", metric, "err", err)
 	}
@@ -217,33 +249,54 @@ func (e *metricAlertEvaluator) dispatch(agentID string, metric metricKind, value
 }
 
 func (e *metricAlertEvaluator) agentName(agentID string) string {
-	if rec, err := e.hub.FindRecordById("agents", agentID); err == nil {
-		if name := rec.GetString("name"); name != "" {
-			return name
-		}
+	rec, err := e.hub.FindRecordById("agents", agentID)
+	if err != nil {
+		return agentID
 	}
-	return agentID
+	return agentLogName(rec)
 }
 
 // --- edge-trigger state ---
 
 // transition atomically computes the next tier for (agent, metric) from value and,
-// if it differs from the current tier, stores it and reports the previous tier. The
-// whole read-modify-write happens under one lock so concurrent polls for the same
-// agent cannot both observe the same prev and dispatch twice.
-func (e *metricAlertEvaluator) transition(agentID string, metric metricKind, value float64, th metricThreshold) (prev, next alertTier, changed bool) {
+// if it differs from the current tier, stores it and reports the previous tier plus the
+// peak tier reached during this alert episode. The whole read-modify-write happens under
+// one lock so concurrent polls for the same agent cannot both observe the same prev and
+// dispatch twice. peak is what a recovery should be notified at: it survives a silent
+// critical→warning downgrade and is reset once the metric returns to normal.
+func (e *metricAlertEvaluator) transition(agentID string, metric metricKind, value float64, th metricThreshold) (prev, next, peak alertTier, changed bool) {
 	e.stateMu.Lock()
 	defer e.stateMu.Unlock()
 	prev = e.state[agentID][metric]
 	next = computeTier(prev, value, th)
+	// The peak is at least the current tier (covers a restart that restored the tier
+	// but not the peak).
+	peak = e.peak[agentID][metric]
+	if peak < prev {
+		peak = prev
+	}
 	if next == prev {
-		return prev, next, false
+		return prev, next, peak, false
+	}
+	if next > peak {
+		peak = next
+	}
+	if next == tierNone {
+		// Recovered: report the episode peak, then forget it.
+		if byMetric, ok := e.peak[agentID]; ok {
+			delete(byMetric, metric)
+		}
+	} else {
+		if e.peak[agentID] == nil {
+			e.peak[agentID] = map[metricKind]alertTier{}
+		}
+		e.peak[agentID][metric] = peak
 	}
 	if e.state[agentID] == nil {
 		e.state[agentID] = map[metricKind]alertTier{}
 	}
 	e.state[agentID][metric] = next
-	return prev, next, true
+	return prev, next, peak, true
 }
 
 // clearState forgets the breach state for (agent, metric) when no threshold is
@@ -252,6 +305,9 @@ func (e *metricAlertEvaluator) clearState(agentID string, metric metricKind) {
 	e.stateMu.Lock()
 	defer e.stateMu.Unlock()
 	if byMetric, ok := e.state[agentID]; ok {
+		delete(byMetric, metric)
+	}
+	if byMetric, ok := e.peak[agentID]; ok {
 		delete(byMetric, metric)
 	}
 }

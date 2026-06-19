@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
 )
 
 // TestComputeTierHysteresis locks the anti-flapping behaviour: a value hovering
@@ -85,16 +86,18 @@ func TestComputeTierNeverTrapsAlert(t *testing.T) {
 	}
 }
 
-// TestEvaluateIgnoresZeroReading is the #4 guard: an exact-0 reading (failed/partial
-// collection) must not be treated as a recovery; the current tier is kept.
+// TestEvaluateIgnoresZeroReading is the #4 guard: for a metric where 0 is never a real
+// reading (cpu/memory/disk), an exact-0 sample (failed/partial collection) must not be
+// treated as a recovery; the current tier is kept. (loadavg is exempt — see
+// TestZeroIsMissing — so it is not used here.)
 func TestEvaluateIgnoresZeroReading(t *testing.T) {
 	e := &metricAlertEvaluator{
-		global:   map[metricKind]metricThreshold{metricLoadAvg: {enabled: true, warning: 2, hysteresis: 0.5}},
+		global:   map[metricKind]metricThreshold{metricCPU: {enabled: true, warning: 80, hysteresis: 5}},
 		perAgent: map[string]map[metricKind]metricThreshold{},
-		state:    map[string]map[metricKind]alertTier{"a1": {metricLoadAvg: tierWarning}},
+		state:    map[string]map[metricKind]alertTier{"a1": {metricCPU: tierWarning}},
 	}
-	e.evaluate("a1", common.HostMetricsResponse{Load1: 0})
-	if got := e.state["a1"][metricLoadAvg]; got != tierWarning {
+	e.evaluate("a1", common.HostMetricsResponse{CPUPercent: 0})
+	if got := e.state["a1"][metricCPU]; got != tierWarning {
 		t.Fatalf("zero reading must keep the fired tier, got %v", got)
 	}
 }
@@ -102,7 +105,10 @@ func TestEvaluateIgnoresZeroReading(t *testing.T) {
 // TestTransitionAtomic is the #7 race guard: concurrent transitions for the same
 // (agent, metric) must report the escalation exactly once.
 func TestTransitionAtomic(t *testing.T) {
-	e := &metricAlertEvaluator{state: map[string]map[metricKind]alertTier{}}
+	e := &metricAlertEvaluator{
+		state: map[string]map[metricKind]alertTier{},
+		peak:  map[string]map[metricKind]alertTier{},
+	}
 	th := metricThreshold{enabled: true, warning: 80, hysteresis: 5}
 	var changes int64
 	var wg sync.WaitGroup
@@ -110,7 +116,7 @@ func TestTransitionAtomic(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, _, changed := e.transition("a1", metricCPU, 90, th); changed {
+			if _, _, _, changed := e.transition("a1", metricCPU, 90, th); changed {
 				atomic.AddInt64(&changes, 1)
 			}
 		}()
@@ -118,6 +124,92 @@ func TestTransitionAtomic(t *testing.T) {
 	wg.Wait()
 	if changes != 1 {
 		t.Fatalf("expected exactly 1 reported transition, got %d", changes)
+	}
+}
+
+// TestMetricAlertEventSeverity locks the recovery-severity fix: a recovery event must
+// carry the severity of the tier it clears (not the default "info"), so a rule with
+// min_severity=warning still delivers the matching "back to normal". It also checks
+// escalation severity, the silent critical→warning downgrade, and the disk mount label.
+func TestMetricAlertEventSeverity(t *testing.T) {
+	th := metricThreshold{enabled: true, warning: 80, critical: 95, hysteresis: 5}
+	m := common.HostMetricsResponse{}
+
+	// escalation none→warning
+	if evt, ok := metricAlertEvent("a", "host", metricCPU, 82, "%", tierNone, tierWarning, tierWarning, th, m); !ok ||
+		evt.Kind != notifications.EventHostMetricExceeded || evt.Severity != "warning" {
+		t.Fatalf("escalation→warning: ok=%v kind=%v sev=%q", ok, evt.Kind, evt.Severity)
+	}
+	// escalation warning→critical
+	if evt, ok := metricAlertEvent("a", "host", metricCPU, 97, "%", tierWarning, tierCritical, tierCritical, th, m); !ok || evt.Severity != "critical" {
+		t.Fatalf("escalation→critical: ok=%v sev=%q", ok, evt.Severity)
+	}
+	// recovery from warning carries "warning"
+	if evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", tierWarning, tierNone, tierWarning, th, m); !ok ||
+		evt.Kind != notifications.EventHostMetricRecovered || evt.Severity != "warning" {
+		t.Fatalf("recovery-from-warning: ok=%v kind=%v sev=%q", ok, evt.Kind, evt.Severity)
+	}
+	// recovery whose episode peaked at critical carries "critical" (even if the immediate
+	// previous tier had been downgraded to warning)
+	if evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", tierWarning, tierNone, tierCritical, th, m); !ok || evt.Severity != "critical" {
+		t.Fatalf("recovery-peaked-critical: ok=%v sev=%q", ok, evt.Severity)
+	}
+	// downgrade critical→warning stays silent
+	if _, ok := metricAlertEvent("a", "host", metricCPU, 88, "%", tierCritical, tierWarning, tierCritical, th, m); ok {
+		t.Fatal("critical→warning downgrade must not emit an event")
+	}
+	// disk escalation names the busiest mount
+	dm := common.HostMetricsResponse{DiskMaxUsedPercent: 92, DiskMaxMount: "/data"}
+	if evt, ok := metricAlertEvent("a", "host", metricDisk, 92, "%", tierNone, tierWarning, tierWarning, th, dm); !ok || evt.Details["mount"] != "/data" {
+		t.Fatalf("disk mount label: ok=%v mount=%v", ok, evt.Details["mount"])
+	}
+}
+
+// TestTransitionTracksPeak locks option (a): after critical→warning (silent downgrade),
+// the episode peak stays critical, so the eventual recovery is reported at critical and
+// reaches a min_severity=critical rule.
+func TestTransitionTracksPeak(t *testing.T) {
+	e := &metricAlertEvaluator{
+		state: map[string]map[metricKind]alertTier{},
+		peak:  map[string]map[metricKind]alertTier{},
+	}
+	th := metricThreshold{enabled: true, warning: 80, critical: 95, hysteresis: 5}
+
+	if _, next, _, _ := e.transition("a", metricCPU, 96, th); next != tierCritical {
+		t.Fatalf("expected critical, got %v", next)
+	}
+	// drop into the warning band (below critical-hysteresis, above warning-hysteresis):
+	// a silent downgrade to warning, but the episode peak must remain critical.
+	if _, next, peak, _ := e.transition("a", metricCPU, 88, th); next != tierWarning || peak != tierCritical {
+		t.Fatalf("downgrade: next=%v peak=%v (want warning/critical)", next, peak)
+	}
+	// full recovery reports the peak (critical), not the downgraded warning tier.
+	prev, next, peak, changed := e.transition("a", metricCPU, 10, th)
+	if !changed || next != tierNone || peak != tierCritical {
+		t.Fatalf("recovery: changed=%v next=%v peak=%v (want true/normal/critical)", changed, next, peak)
+	}
+	evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", prev, next, peak, th, common.HostMetricsResponse{})
+	if !ok || evt.Severity != "critical" {
+		t.Fatalf("recovery event: ok=%v sev=%q (want critical)", ok, evt.Severity)
+	}
+	// the peak must be cleared after recovery so the next episode starts fresh.
+	if _, _, peak, _ := e.transition("a", metricCPU, 82, th); peak != tierWarning {
+		t.Fatalf("new episode peak=%v, want warning (peak not reset)", peak)
+	}
+}
+
+// TestZeroIsMissing locks the #4 refinement: an exact-0 reading is treated as "not
+// collected" for cpu/memory/disk (never genuinely 0 on a live host, and CPU reads 0
+// on the first post-connect sample), but loadavg legitimately reads 0.00 when idle,
+// so a real 0 there must be honored (otherwise a fired load alert never recovers).
+func TestZeroIsMissing(t *testing.T) {
+	for _, m := range []metricKind{metricCPU, metricMemory, metricDisk} {
+		if !zeroIsMissing(m) {
+			t.Fatalf("%s: exact 0 should be treated as missing", m)
+		}
+	}
+	if zeroIsMissing(metricLoadAvg) {
+		t.Fatal("loadavg: an exact 0 is a valid idle reading, must not be skipped")
 	}
 }
 
