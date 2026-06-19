@@ -31,17 +31,6 @@ export interface AppInfo {
 	cu: boolean // check updates
 }
 
-export interface UpdateInfo {
-	v: string // new version
-	url: string // url to new version
-}
-
-export interface SemVer {
-	major: number
-	minor: number
-	patch: number
-}
-
 export interface UserSettings {
 	hourFormat?: HourFormat
 	layoutWidth?: number
