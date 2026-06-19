@@ -410,6 +410,17 @@ func TestSomething(t *testing.T) {
 
 ---
 
+## Development Workflow
+
+- **Prefer test-driven development (TDD) whenever practical.** For new behavior or bug
+  fixes, write the failing test(s) first, confirm they fail for the right reason, then
+  implement until they pass. This pins down the intended behavior before the code exists.
+- Apply it where it pays off: pure/business logic, evaluators, parsers, edge-trigger or
+  state machines, API handlers, regressions. Skip it where a test would be noise or is
+  impractical (trivial wiring, pure UI/layout, throwaway scripts) — use judgment.
+- Keep the test list in mind as part of "done": after implementing, the relevant tests
+  must exist and pass (`go test -tags=testing ./...`), not just the build.
+
 ## Code Conventions
 
 - **No `Save` for internal agent status updates** — use `SaveNoValidate` to avoid triggering validation hooks
