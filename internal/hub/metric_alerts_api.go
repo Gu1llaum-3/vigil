@@ -43,6 +43,22 @@ func isAlertableMetric(metric string) bool {
 	return false
 }
 
+// findMetricAlertRecord locates the row for (agent, metric) by scanning, which
+// correctly matches the global row where agent is empty (a relation `= ""` filter
+// does not). Returns nil if none.
+func (h *Hub) findMetricAlertRecord(agent, metric string) *core.Record {
+	records, err := h.FindAllRecords(metricAlertsCollection)
+	if err != nil {
+		return nil
+	}
+	for _, rec := range records {
+		if rec.GetString("agent") == agent && rec.GetString("metric") == metric {
+			return rec
+		}
+	}
+	return nil
+}
+
 func (h *Hub) listMetricAlerts(e *core.RequestEvent) error {
 	records, err := h.FindAllRecords(metricAlertsCollection)
 	if err != nil {
@@ -75,12 +91,12 @@ func (h *Hub) upsertMetricAlert(e *core.RequestEvent) error {
 		return e.BadRequestError("warning threshold must be ≤ critical threshold", nil)
 	}
 
-	existing, findErr := h.FindFirstRecordByFilter(
-		metricAlertsCollection,
-		"agent = {:agent} && metric = {:metric}",
-		dbx.Params{"agent": body.Agent, "metric": body.Metric},
-	)
-	if findErr != nil {
+	// NOTE: do not filter by `agent = ""` — PocketBase relation filtering does not
+	// match an empty (unset) relation, so the global row would never be found and a
+	// duplicate insert would hit the unique (agent, metric) index. Scan instead
+	// (the collection is tiny: a few metrics × global + per-agent overrides).
+	existing := h.findMetricAlertRecord(body.Agent, body.Metric)
+	if existing == nil {
 		collection, err := h.FindCachedCollectionByNameOrId(metricAlertsCollection)
 		if err != nil {
 			return err
