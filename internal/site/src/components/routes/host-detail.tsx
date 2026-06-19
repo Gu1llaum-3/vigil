@@ -29,8 +29,9 @@ import {
 	metricsRanges,
 	NetworkHistoryChart,
 } from "@/components/metric-charts"
+import { MetricThresholdsSheet } from "@/components/metric-thresholds"
 import { cn } from "@/lib/utils"
-import { pb } from "@/lib/api"
+import { isAdmin, pb } from "@/lib/api"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import type { ContainerMetricsHistoryPoint } from "@/lib/dashboard-types"
 import {
@@ -282,6 +283,18 @@ export default function HostDetailPage() {
 							</span>
 						</div>
 					</div>
+					{isAdmin() && (
+						<MetricThresholdsSheet
+							agentId={hostId}
+							buttonSize="sm"
+							title={
+								<>
+									<Trans>Alert thresholds</Trans> — {host.name || host.hostname || host.id}
+								</>
+							}
+							description={<Trans>Per-host overrides of the global metric alert thresholds.</Trans>}
+						/>
+					)}
 				</div>
 			</div>
 

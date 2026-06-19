@@ -297,6 +297,25 @@ Rules:
   to the `ping` binary via `setcap` so the ping monitor still works without root —
   do not "fix" a ping failure by reverting the image to root
 
+## Host Metric Alerts: Direct Call, In-Memory Edge State, Hysteresis
+
+Metric-threshold alerts (CPU/RAM/disk/loadavg) are evaluated in
+`internal/hub/metric_alerts.go` and follow the same rules as the notification dispatcher:
+
+- The evaluator is invoked by a **direct call** to `h.evaluateMetricAlerts(...)` from
+  `persistHostMetrics`, **before** the `host_metric_current` upsert so the resulting edge
+  state is folded into that same write — NOT via a hook on `host_metric_samples`/`host_metric_current`
+  (high-frequency collections; a hook there repeats the monitor-scheduler infinite-loop mistake).
+- The threshold **cache** is kept in sync via `OnRecordAfter{Create,Update,Delete}Success("metric_alerts")`. Hooks here are fine because `metric_alerts` is a low-frequency, admin-edited collection.
+- Anti-spam is **edge-triggered with hysteresis**, not a time throttle: `computeTier` only leaves a tier once the value drops below `threshold − hysteresis`, so a value hovering at the threshold does not flap. The read-compute-write of the tier is **atomic** (single `stateMu` section in `transition()`) so two concurrent polls for the same agent cannot both dispatch the same escalation. `throttle_seconds` on a rule is a complementary control, not a substitute for edge detection.
+- The dead band is **clamped** so a fired alert can always recover: `computeTier` caps the effective hysteresis at 90% of the threshold, and the API rejects `hysteresis ≥ threshold`. (Without this, a small threshold like loadavg `2` with the old 5-point default could never resolve.)
+- The fired tier is **persisted** in `host_metric_current.alert_tiers` (a small `metric → tier` JSON map) and restored at boot by `loadState()`, so a hub restart does not re-fire already-active alerts. The in-memory map is the source of truth during a run; the column is its durable mirror.
+- An **exact-0** reading is treated as "no reading" (failed/partial collection) and keeps the current tier — but only for metrics where 0 is implausible on a live host (`zeroIsMissing`: cpu/memory/disk, incl. CPU's first post-connect sample). **loadavg is exempt**: 0.00 is a valid idle reading, so a fired load alert can still recover.
+- **Recovery severity = the episode peak.** A recovery (`host.metric_normal`) carries the highest tier reached during the episode (tracked in the in-memory `peak` map), not the immediate previous tier. This matters after a silent `critical→warning` downgrade: without it a `min_severity=critical` rule would deliver the critical breach but drop the recovery. Escalations stay silent on a `critical→warning` downgrade by design.
+- **Throttle is per `(rule, resource, kind, metric, tier)`** for host-metric events (`throttleKind`): the metric keeps a CPU breach from suppressing a disk breach on the same agent, and the tier keeps a `warning→critical` escalation from being throttled away by the earlier warning.
+- A **disabled per-agent override mutes** that metric for that host; it does NOT fall back to an enabled global. Re-inheriting the global is done by deleting the override row ("Reset to global"), not by disabling it.
+- New `HostMetricsResponse` fields are **append-only** (CBOR keyed by field name). Legacy agents omit `load*`/`disk_max_used_percent`; the evaluator degrades gracefully (falls back to root disk; load 0 never breaches).
+
 ## Good Default Verification Habit
 
 For most non-trivial changes, the safe baseline is:

@@ -78,6 +78,18 @@ The collection is tied to the user that created the enrollment token.
 - same metrics fields as `host_metric_samples`
 - unique index on `agent`
 - written only by the hub after each successful metrics poll
+- migration `24_add_metric_alert_columns.go` adds `load1`/`load5`/`load15`/`disk_max_used_percent` to both `host_metric_samples` and `host_metric_current`
+- migration `26_add_alert_tiers.go` adds an `alert_tiers` JSON column to `host_metric_current` only: it persists the metric-alert edge-trigger state (`metric → fired tier`) per agent so a hub restart does not re-fire already-active alerts (restored at boot by `loadState()`)
+
+### `metric_alerts`
+
+- created by migration `25_create_metric_alerts.go`
+- host metric-threshold alert definitions; one row per `(agent, metric)` (unique index)
+- `agent` empty = **global default**; `agent` set = **per-agent override** (override always wins at evaluation, including when disabled — a disabled override **mutes** that metric for that host and does not fall back to the global; re-inherit by deleting the row)
+- fields: `metric` (select `cpu`/`memory`/`disk`/`loadavg`), `enabled`, `warning_value`, `critical_value`, `hysteresis`
+- the API rejects `hysteresis ≥ threshold` (otherwise the dead band would extend below 0 and a fired alert could never recover)
+- admin-only: collection rules are `null`; access gated by `requireAdminRole` on `/api/app/metric-alerts`
+- evaluated by `internal/hub/metric_alerts.go` (edge-trigger + hysteresis; in-memory state mirrored to `host_metric_current.alert_tiers`); emits `host.metric_exceeded` / `host.metric_normal` events routed through `notification_rules`
 
 ### `monitor_groups`
 

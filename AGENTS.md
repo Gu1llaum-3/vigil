@@ -248,7 +248,8 @@ Defined in `internal/migrations/0_collections_snapshot_*.go`.
 | `agent_enrollment_tokens` | `pbc_4000000002` | One per user (unique index on `created_by`) |
 | `host_snapshots` | — | One record per agent (unique index). Relation to `agents`, JSON `data` field. Created by migration `2_create_host_snapshots.go` |
 | `host_metric_samples` | `pbc_7000000001` | Append-only host monitoring history. Relation to `agents`; scalar CPU/memory/disk/network fields plus `collected_at`. Indexed on `(agent, collected_at)`. Created by migration `21_create_host_metrics.go`. |
-| `host_metric_current` | `pbc_7000000002` | Latest-only host monitoring cache. Same scalar metrics fields as `host_metric_samples`, unique on `agent`. Created by migration `21_create_host_metrics.go`. |
+| `host_metric_current` | `pbc_7000000002` | Latest-only host monitoring cache. Same scalar metrics fields as `host_metric_samples`, unique on `agent`. Created by migration `21_create_host_metrics.go`. Migration `24_add_metric_alert_columns.go` adds `load1`/`load5`/`load15`/`disk_max_used_percent` to both samples and current. Migration `26_add_alert_tiers.go` adds an `alert_tiers` JSON column (current only) persisting the metric-alert edge-trigger state per agent so a restart does not re-fire active alerts. |
+| `metric_alerts` | `pbc_7000000004` | Host metric-threshold alert definitions. One row per `(agent, metric)` (unique index); empty `agent` = global default, set `agent` = per-agent override (a disabled override **mutes** the metric for that host; re-inherit by deleting the row). Fields: `metric` (`cpu`/`memory`/`disk`/`loadavg`), `enabled`, `warning_value`, `critical_value`, `hysteresis` (API rejects `hysteresis ≥ threshold`). Admin-only (rules `null`; gated by `requireAdminRole` on `/api/app/metric-alerts`). Evaluated by `internal/hub/metric_alerts.go` (edge state mirrored to `host_metric_current.alert_tiers`). Created by migration `25_create_metric_alerts.go`. |
 | `container_metric_samples` | `pbc_7000000003` | Append-only running-container monitoring history. Relation to `agents`; JSON `data` stores the full set of running-container metric points captured for one poll plus `collected_at`. Indexed on `(agent, collected_at)`. Created by migration `22_create_container_metrics.go`. |
 | `monitor_groups` | `pbc_5000000001` | Monitor grouping. Fields: `name`, `weight`. Created by migration `3_create_monitors.go` |
 | `monitors` | `pbc_5000000002` | One record per uptime monitor. Type: `http`/`tcp`/`dns`/`push`. Status written by scheduler via `SaveNoValidate`. Created by migration `3_create_monitors.go` |
@@ -414,6 +415,17 @@ func TestSomething(t *testing.T) {
 - **`internal/hub/transport/transport.go`** — the `Transport` interface abstracts over WebSocket and SSH. Now only WebSocket is used; the interface is still valid and useful but `SSHTransport` is the dead implementation.
 
 ---
+
+## Development Workflow
+
+- **Prefer test-driven development (TDD) whenever practical.** For new behavior or bug
+  fixes, write the failing test(s) first, confirm they fail for the right reason, then
+  implement until they pass. This pins down the intended behavior before the code exists.
+- Apply it where it pays off: pure/business logic, evaluators, parsers, edge-trigger or
+  state machines, API handlers, regressions. Skip it where a test would be noise or is
+  impractical (trivial wiring, pure UI/layout, throwaway scripts) — use judgment.
+- Keep the test list in mind as part of "done": after implementing, the relevant tests
+  must exist and pass (`go test -tags=testing ./...`), not just the build.
 
 ## Code Conventions
 

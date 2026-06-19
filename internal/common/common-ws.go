@@ -78,9 +78,19 @@ type HostMetricsResponse struct {
 	DiskTotalBytes    uint64  `cbor:"disk_total_bytes"    json:"disk_total_bytes"`
 	DiskUsedBytes     uint64  `cbor:"disk_used_bytes"     json:"disk_used_bytes"`
 	DiskUsedPercent   float64 `cbor:"disk_used_percent"   json:"disk_used_percent"`
-	NetworkRxBps      uint64  `cbor:"network_rx_bps"      json:"network_rx_bps"`
-	NetworkTxBps      uint64  `cbor:"network_tx_bps"      json:"network_tx_bps"`
-	CollectedAt       string  `cbor:"collected_at"        json:"collected_at"`
+	// DiskMaxUsedPercent is the highest used% across all real mounted filesystems
+	// (root + extra mounts); DiskMaxMount names that fullest mount. Zero/empty on
+	// agents older than the metric-alerts feature — callers must degrade gracefully.
+	DiskMaxUsedPercent float64 `cbor:"disk_max_used_percent" json:"disk_max_used_percent"`
+	DiskMaxMount       string  `cbor:"disk_max_mount"        json:"disk_max_mount"`
+	NetworkRxBps       uint64  `cbor:"network_rx_bps"      json:"network_rx_bps"`
+	NetworkTxBps       uint64  `cbor:"network_tx_bps"      json:"network_tx_bps"`
+	// Load1/5/15 are the 1/5/15-minute load averages. Zero on agents older than the
+	// metric-alerts feature.
+	Load1       float64 `cbor:"load1"  json:"load1"`
+	Load5       float64 `cbor:"load5"  json:"load5"`
+	Load15      float64 `cbor:"load15" json:"load15"`
+	CollectedAt string  `cbor:"collected_at"        json:"collected_at"`
 }
 
 // ContainerMetricsPoint is a single running container metric sample.

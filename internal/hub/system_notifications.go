@@ -13,7 +13,7 @@ import (
 
 const systemNotificationsCollection = "system_notifications"
 
-var systemNotificationCategories = []string{"monitors", "agents", "container_images"}
+var systemNotificationCategories = []string{"monitors", "agents", "container_images", "host_metrics"}
 
 var systemNotificationEventKinds = []string{
 	string(notifications.EventMonitorDown),
@@ -21,6 +21,8 @@ var systemNotificationEventKinds = []string{
 	string(notifications.EventAgentOffline),
 	string(notifications.EventAgentOnline),
 	string(notifications.EventContainerImageUpdateAvailable),
+	string(notifications.EventHostMetricExceeded),
+	string(notifications.EventHostMetricRecovered),
 }
 
 type systemNotificationResponse struct {
@@ -93,6 +95,10 @@ func (h *Hub) createSystemNotification(evt notifications.Event) error {
 }
 
 func systemNotificationCategory(evt notifications.Event) string {
+	switch evt.Kind {
+	case notifications.EventHostMetricExceeded, notifications.EventHostMetricRecovered:
+		return "host_metrics"
+	}
 	switch evt.Resource.Type {
 	case "monitor":
 		return "monitors"

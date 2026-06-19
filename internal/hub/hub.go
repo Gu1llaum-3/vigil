@@ -36,6 +36,7 @@ type Hub struct {
 	systemNotificationReadAt sync.Map // userID (string) → map[string]string
 	monitorScheduler         *MonitorScheduler
 	notifier                 *notifications.Dispatcher
+	metricAlerts             *metricAlertEvaluator
 	credentialsKey           []byte
 }
 
@@ -45,6 +46,7 @@ func NewHub(app core.App) *Hub {
 	hub.um = users.NewUserManager(hub)
 	hub.monitorScheduler = newMonitorScheduler(hub)
 	hub.notifier = notifications.New(hub)
+	hub.metricAlerts = newMetricAlertEvaluator(hub)
 	_ = onAfterBootstrapAndMigrations(app, hub.initialize)
 	return hub
 }
@@ -107,6 +109,11 @@ func (h *Hub) StartHub() error {
 		goSafe("monitor scheduler", func() { h.monitorScheduler.start(ctx) })
 		// start notification dispatcher
 		goSafe("notification dispatcher", func() { h.notifier.Start(ctx) })
+		// load metric-alert thresholds into the cache (collections exist post-migration)
+		h.metricAlerts.load()
+		// restore the edge-trigger state persisted in host_metric_current so a restart
+		// does not re-fire alerts that are already active (and keeps ongoing breaches).
+		h.metricAlerts.loadState()
 		// start external heartbeat (push monitoring, e.g. Uptime Kuma / Healthchecks.io)
 		// Disabled unless HEARTBEAT_URL is set; heartbeat.New returns nil in that case.
 		if hb := heartbeat.New(h.App, utils.GetEnv); hb != nil {
@@ -129,6 +136,9 @@ func (h *Hub) StartHub() error {
 		h.monitorScheduler.stopMonitor(e.Record.Id)
 		return e.Next()
 	})
+
+	// Keep the metric-alert threshold cache in sync with the metric_alerts collection.
+	h.registerMetricAlertHooks()
 
 	pb, ok := h.App.(*pocketbase.PocketBase)
 	if !ok {

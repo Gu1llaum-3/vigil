@@ -133,6 +133,11 @@ func (h *Hub) collectAndPersistHostMetrics(ctx context.Context, agentID string, 
 
 func (h *Hub) persistHostMetrics(agentID string, metrics common.HostMetricsResponse) {
 	h.insertHostMetricSample(agentID, metrics)
+	// Evaluate metric-threshold alerts before writing the current row, so the resulting
+	// edge-trigger state (alert_tiers) is persisted in that same write — surviving a
+	// restart without a second DB round-trip or a race on the current row. Direct call
+	// (no DB hook on the high-frequency metric collections — see conventions doc).
+	h.evaluateMetricAlerts(agentID, metrics)
 	h.upsertHostMetricCurrent(agentID, metrics)
 }
 
@@ -150,10 +155,19 @@ func (h *Hub) insertHostMetricSample(agentID string, metrics common.HostMetricsR
 }
 
 func (h *Hub) upsertHostMetricCurrent(agentID string, metrics common.HostMetricsResponse) {
+	// Snapshot the current edge-trigger tiers so they are persisted alongside the
+	// metrics in this single write (see persistHostMetrics).
+	var tiers map[string]int
+	if h.metricAlerts != nil {
+		tiers = h.metricAlerts.snapshotTiers(agentID)
+	}
 	// Concurrent paths (connect-time collection + periodic ticker) can target the same
 	// agent, so use the retry-on-conflict helper to keep the unique(agent) upsert safe.
 	err := h.upsertByUnique(hostMetricCurrentCollection, "agent = {:agent}", dbx.Params{"agent": agentID}, func(rec *core.Record) {
 		applyHostMetricRecord(rec, agentID, metrics)
+		if tiers != nil {
+			rec.Set("alert_tiers", tiers)
+		}
 	})
 	if err != nil {
 		slog.Warn("Failed to save current host metrics", "agent", agentID, "err", err)
@@ -173,22 +187,30 @@ func applyHostMetricRecord(rec *core.Record, agentID string, metrics common.Host
 	rec.Set("disk_total_bytes", metrics.DiskTotalBytes)
 	rec.Set("disk_used_bytes", metrics.DiskUsedBytes)
 	rec.Set("disk_used_percent", metrics.DiskUsedPercent)
+	rec.Set("disk_max_used_percent", metrics.DiskMaxUsedPercent)
 	rec.Set("network_rx_bps", metrics.NetworkRxBps)
 	rec.Set("network_tx_bps", metrics.NetworkTxBps)
+	rec.Set("load1", metrics.Load1)
+	rec.Set("load5", metrics.Load5)
+	rec.Set("load15", metrics.Load15)
 	rec.Set("collected_at", collectedAt)
 }
 
 func hostMetricsFromRecord(rec *core.Record) common.HostMetricsResponse {
 	metrics := common.HostMetricsResponse{
-		CPUPercent:        numberAsFloat64(rec.Get("cpu_percent")),
-		MemoryTotalBytes:  numberAsUint64(rec.Get("memory_total_bytes")),
-		MemoryUsedBytes:   numberAsUint64(rec.Get("memory_used_bytes")),
-		MemoryUsedPercent: numberAsFloat64(rec.Get("memory_used_percent")),
-		DiskTotalBytes:    numberAsUint64(rec.Get("disk_total_bytes")),
-		DiskUsedBytes:     numberAsUint64(rec.Get("disk_used_bytes")),
-		DiskUsedPercent:   numberAsFloat64(rec.Get("disk_used_percent")),
-		NetworkRxBps:      numberAsUint64(rec.Get("network_rx_bps")),
-		NetworkTxBps:      numberAsUint64(rec.Get("network_tx_bps")),
+		CPUPercent:         numberAsFloat64(rec.Get("cpu_percent")),
+		MemoryTotalBytes:   numberAsUint64(rec.Get("memory_total_bytes")),
+		MemoryUsedBytes:    numberAsUint64(rec.Get("memory_used_bytes")),
+		MemoryUsedPercent:  numberAsFloat64(rec.Get("memory_used_percent")),
+		DiskTotalBytes:     numberAsUint64(rec.Get("disk_total_bytes")),
+		DiskUsedBytes:      numberAsUint64(rec.Get("disk_used_bytes")),
+		DiskUsedPercent:    numberAsFloat64(rec.Get("disk_used_percent")),
+		DiskMaxUsedPercent: numberAsFloat64(rec.Get("disk_max_used_percent")),
+		NetworkRxBps:       numberAsUint64(rec.Get("network_rx_bps")),
+		NetworkTxBps:       numberAsUint64(rec.Get("network_tx_bps")),
+		Load1:              numberAsFloat64(rec.Get("load1")),
+		Load5:              numberAsFloat64(rec.Get("load5")),
+		Load15:             numberAsFloat64(rec.Get("load15")),
 	}
 	if !rec.GetDateTime("collected_at").IsZero() {
 		metrics.CollectedAt = rec.GetDateTime("collected_at").Time().UTC().Format(time.RFC3339)

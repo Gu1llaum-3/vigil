@@ -8,11 +8,15 @@ import (
 )
 
 var defaultTitles = map[EventKind]*template.Template{
-	EventMonitorDown:  template.Must(template.New("").Parse(`Monitor "{{.Resource.Name}}" is DOWN`)),
-	EventMonitorUp:    template.Must(template.New("").Parse(`Monitor "{{.Resource.Name}}" recovered`)),
-	EventAgentOffline: template.Must(template.New("").Parse(`Agent "{{.Resource.Name}}" is offline`)),
-	EventAgentOnline:  template.Must(template.New("").Parse(`Agent "{{.Resource.Name}}" is back online`)),
+	EventMonitorDown:                   template.Must(template.New("").Parse(`Monitor "{{.Resource.Name}}" is DOWN`)),
+	EventMonitorUp:                     template.Must(template.New("").Parse(`Monitor "{{.Resource.Name}}" recovered`)),
+	EventAgentOffline:                  template.Must(template.New("").Parse(`Agent "{{.Resource.Name}}" is offline`)),
+	EventAgentOnline:                   template.Must(template.New("").Parse(`Agent "{{.Resource.Name}}" is back online`)),
 	EventContainerImageUpdateAvailable: template.Must(template.New("").Funcs(template.FuncMap{"join": strings.Join}).Parse(`Container image update available for "{{.Resource.Name}}"`)),
+	EventHostMetricExceeded: template.Must(template.New("").Parse(
+		`{{.Current}}: {{index .Details "metric"}} high on "{{.Resource.Name}}"`)),
+	EventHostMetricRecovered: template.Must(template.New("").Parse(
+		`{{index .Details "metric"}} back to normal on "{{.Resource.Name}}"`)),
 }
 
 var defaultBodies = map[EventKind]*template.Template{
@@ -26,6 +30,10 @@ var defaultBodies = map[EventKind]*template.Template{
 		`Agent "{{.Resource.Name}}" is back online`)),
 	EventContainerImageUpdateAvailable: template.Must(template.New("").Funcs(template.FuncMap{"join": strings.Join}).Parse(
 		`Container "{{.Resource.Name}}" on agent "{{index .Details "agent_name"}}" uses {{index .Details "current_ref"}}. Newer versions available{{if index .Details "update_targets"}}: {{join (index .Details "update_targets") ", "}}{{end}}`)),
+	EventHostMetricExceeded: template.Must(template.New("").Parse(
+		`{{index .Details "metric"}} usage on "{{.Resource.Name}}" is {{printf "%.1f" (index .Details "value")}}{{index .Details "unit"}}{{if index .Details "mount"}} on {{index .Details "mount"}}{{end}} ({{.Current}} threshold {{printf "%.0f" (index .Details "threshold")}}{{index .Details "unit"}})`)),
+	EventHostMetricRecovered: template.Must(template.New("").Parse(
+		`{{index .Details "metric"}} usage on "{{.Resource.Name}}" recovered ({{printf "%.1f" (index .Details "value")}}{{index .Details "unit"}})`)),
 }
 
 // RenderMessage produces a (title, body) pair for the given event using the default templates.
