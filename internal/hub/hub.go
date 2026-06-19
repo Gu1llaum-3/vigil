@@ -111,6 +111,9 @@ func (h *Hub) StartHub() error {
 		goSafe("notification dispatcher", func() { h.notifier.Start(ctx) })
 		// load metric-alert thresholds into the cache (collections exist post-migration)
 		h.metricAlerts.load()
+		// restore the edge-trigger state persisted in host_metric_current so a restart
+		// does not re-fire alerts that are already active (and keeps ongoing breaches).
+		h.metricAlerts.loadState()
 		// start external heartbeat (push monitoring, e.g. Uptime Kuma / Healthchecks.io)
 		// Disabled unless HEARTBEAT_URL is set; heartbeat.New returns nil in that case.
 		if hb := heartbeat.New(h.App, utils.GetEnv); hb != nil {

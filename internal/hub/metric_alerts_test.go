@@ -3,6 +3,8 @@
 package hub
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
@@ -67,6 +69,70 @@ func TestMetricValueDiskFallback(t *testing.T) {
 	v, _ = metricValue(metricDisk, hostMetrics(t, 0, 0, 0, 72))
 	if v != 72 {
 		t.Fatalf("expected fallback to root disk 72, got %v", v)
+	}
+}
+
+// TestComputeTierNeverTrapsAlert is the #1 regression: when the stored hysteresis is
+// ≥ the threshold (e.g. a loadavg row at warning 2 / hysteresis 5), the dead band must
+// still be clamped above 0 so a fired alert can recover when the metric drops.
+func TestComputeTierNeverTrapsAlert(t *testing.T) {
+	th := metricThreshold{enabled: true, warning: 2, critical: 0, hysteresis: 5}
+	if got := computeTier(tierNone, 3, th); got != tierWarning {
+		t.Fatalf("expected warning at 3, got %v", got)
+	}
+	if got := computeTier(tierWarning, 0.1, th); got != tierNone {
+		t.Fatalf("expected recovery near idle (0.1), got %v", got)
+	}
+}
+
+// TestEvaluateIgnoresZeroReading is the #4 guard: an exact-0 reading (failed/partial
+// collection) must not be treated as a recovery; the current tier is kept.
+func TestEvaluateIgnoresZeroReading(t *testing.T) {
+	e := &metricAlertEvaluator{
+		global:   map[metricKind]metricThreshold{metricLoadAvg: {enabled: true, warning: 2, hysteresis: 0.5}},
+		perAgent: map[string]map[metricKind]metricThreshold{},
+		state:    map[string]map[metricKind]alertTier{"a1": {metricLoadAvg: tierWarning}},
+	}
+	e.evaluate("a1", common.HostMetricsResponse{Load1: 0})
+	if got := e.state["a1"][metricLoadAvg]; got != tierWarning {
+		t.Fatalf("zero reading must keep the fired tier, got %v", got)
+	}
+}
+
+// TestTransitionAtomic is the #7 race guard: concurrent transitions for the same
+// (agent, metric) must report the escalation exactly once.
+func TestTransitionAtomic(t *testing.T) {
+	e := &metricAlertEvaluator{state: map[string]map[metricKind]alertTier{}}
+	th := metricThreshold{enabled: true, warning: 80, hysteresis: 5}
+	var changes int64
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, _, changed := e.transition("a1", metricCPU, 90, th); changed {
+				atomic.AddInt64(&changes, 1)
+			}
+		}()
+	}
+	wg.Wait()
+	if changes != 1 {
+		t.Fatalf("expected exactly 1 reported transition, got %d", changes)
+	}
+}
+
+// TestThresholdForDisabledOverrideMutes is the #8 semantics: a disabled per-agent
+// override mutes the metric for that host even when the global default is enabled.
+func TestThresholdForDisabledOverrideMutes(t *testing.T) {
+	e := &metricAlertEvaluator{
+		global:   map[metricKind]metricThreshold{metricCPU: {enabled: true, warning: 80}},
+		perAgent: map[string]map[metricKind]metricThreshold{"a1": {metricCPU: {enabled: false, warning: 80}}},
+	}
+	if _, ok := e.thresholdFor("a1", metricCPU); ok {
+		t.Fatal("disabled per-agent override must mute the metric even when global is enabled")
+	}
+	if _, ok := e.thresholdFor("a2", metricCPU); !ok {
+		t.Fatal("agent without override must inherit the enabled global default")
 	}
 }
 

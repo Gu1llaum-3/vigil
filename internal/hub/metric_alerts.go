@@ -135,7 +135,9 @@ func (e *metricAlertEvaluator) thresholdFor(agentID string, metric metricKind) (
 }
 
 // evaluate compares each metric against its threshold and dispatches edge-triggered
-// notifications. Safe to call from the per-agent collection goroutines.
+// notifications. Safe to call from the per-agent collection goroutines: the
+// read-compute-write of the tier is done atomically in transition() so two
+// concurrent polls for the same agent cannot both dispatch the same escalation.
 func (e *metricAlertEvaluator) evaluate(agentID string, metrics common.HostMetricsResponse) {
 	for _, metric := range alertableMetrics {
 		th, ok := e.thresholdFor(agentID, metric)
@@ -144,12 +146,18 @@ func (e *metricAlertEvaluator) evaluate(agentID string, metrics common.HostMetri
 			continue
 		}
 		value, unit := metricValue(metric, metrics)
-		prev := e.tier(agentID, metric)
-		next := computeTier(prev, value, th)
-		if next == prev {
+		// A failed or partial collection leaves a metric at exactly 0. On a live host
+		// that reports metrics, none of these (memory %, root disk %, CPU %, load) is
+		// ever genuinely 0, so treat an exact 0 as "no reading": keep the current tier
+		// instead of emitting a spurious recovery. A truly idle metric resolves on the
+		// next poll, where the reading is a tiny non-zero value below the clear bound.
+		if value == 0 {
 			continue
 		}
-		e.setTier(agentID, metric, next)
+		prev, next, changed := e.transition(agentID, metric, value, th)
+		if !changed {
+			continue
+		}
 		e.dispatch(agentID, metric, value, unit, prev, next, th)
 	}
 }
@@ -212,19 +220,23 @@ func (e *metricAlertEvaluator) agentName(agentID string) string {
 
 // --- edge-trigger state ---
 
-func (e *metricAlertEvaluator) tier(agentID string, metric metricKind) alertTier {
+// transition atomically computes the next tier for (agent, metric) from value and,
+// if it differs from the current tier, stores it and reports the previous tier. The
+// whole read-modify-write happens under one lock so concurrent polls for the same
+// agent cannot both observe the same prev and dispatch twice.
+func (e *metricAlertEvaluator) transition(agentID string, metric metricKind, value float64, th metricThreshold) (prev, next alertTier, changed bool) {
 	e.stateMu.Lock()
 	defer e.stateMu.Unlock()
-	return e.state[agentID][metric]
-}
-
-func (e *metricAlertEvaluator) setTier(agentID string, metric metricKind, t alertTier) {
-	e.stateMu.Lock()
-	defer e.stateMu.Unlock()
+	prev = e.state[agentID][metric]
+	next = computeTier(prev, value, th)
+	if next == prev {
+		return prev, next, false
+	}
 	if e.state[agentID] == nil {
 		e.state[agentID] = map[metricKind]alertTier{}
 	}
-	e.state[agentID][metric] = t
+	e.state[agentID][metric] = next
+	return prev, next, true
 }
 
 // clearState forgets the breach state for (agent, metric) when no threshold is
@@ -235,6 +247,54 @@ func (e *metricAlertEvaluator) clearState(agentID string, metric metricKind) {
 	if byMetric, ok := e.state[agentID]; ok {
 		delete(byMetric, metric)
 	}
+}
+
+// snapshotTiers returns the active (non-normal) breach tiers for an agent as a
+// JSON-serializable map, for persistence into host_metric_current.alert_tiers.
+func (e *metricAlertEvaluator) snapshotTiers(agentID string) map[string]int {
+	e.stateMu.Lock()
+	defer e.stateMu.Unlock()
+	byMetric := e.state[agentID]
+	out := make(map[string]int, len(byMetric))
+	for m, t := range byMetric {
+		if t != tierNone {
+			out[string(m)] = int(t)
+		}
+	}
+	return out
+}
+
+// loadState restores the edge-trigger state from host_metric_current.alert_tiers so
+// a hub restart does not re-fire alerts that were already active.
+func (e *metricAlertEvaluator) loadState() {
+	records, err := e.hub.FindAllRecords(hostMetricCurrentCollection)
+	if err != nil {
+		slog.Warn("metric alerts: failed to restore edge state", "err", err)
+		return
+	}
+	state := map[string]map[metricKind]alertTier{}
+	for _, rec := range records {
+		agentID := rec.GetString("agent")
+		if agentID == "" {
+			continue
+		}
+		var tiers map[string]int
+		if err := rec.UnmarshalJSONField("alert_tiers", &tiers); err != nil || len(tiers) == 0 {
+			continue
+		}
+		byMetric := map[metricKind]alertTier{}
+		for k, v := range tiers {
+			if v != int(tierNone) {
+				byMetric[metricKind(k)] = alertTier(v)
+			}
+		}
+		if len(byMetric) > 0 {
+			state[agentID] = byMetric
+		}
+	}
+	e.stateMu.Lock()
+	e.state = state
+	e.stateMu.Unlock()
 }
 
 // metricValue extracts the comparable value (and its unit) for a metric, with a

@@ -133,10 +133,12 @@ func (h *Hub) collectAndPersistHostMetrics(ctx context.Context, agentID string, 
 
 func (h *Hub) persistHostMetrics(agentID string, metrics common.HostMetricsResponse) {
 	h.insertHostMetricSample(agentID, metrics)
-	h.upsertHostMetricCurrent(agentID, metrics)
-	// Evaluate metric-threshold alerts on the freshly collected values. Direct call
+	// Evaluate metric-threshold alerts before writing the current row, so the resulting
+	// edge-trigger state (alert_tiers) is persisted in that same write — surviving a
+	// restart without a second DB round-trip or a race on the current row. Direct call
 	// (no DB hook on the high-frequency metric collections — see conventions doc).
 	h.evaluateMetricAlerts(agentID, metrics)
+	h.upsertHostMetricCurrent(agentID, metrics)
 }
 
 func (h *Hub) insertHostMetricSample(agentID string, metrics common.HostMetricsResponse) {
@@ -153,10 +155,19 @@ func (h *Hub) insertHostMetricSample(agentID string, metrics common.HostMetricsR
 }
 
 func (h *Hub) upsertHostMetricCurrent(agentID string, metrics common.HostMetricsResponse) {
+	// Snapshot the current edge-trigger tiers so they are persisted alongside the
+	// metrics in this single write (see persistHostMetrics).
+	var tiers map[string]int
+	if h.metricAlerts != nil {
+		tiers = h.metricAlerts.snapshotTiers(agentID)
+	}
 	// Concurrent paths (connect-time collection + periodic ticker) can target the same
 	// agent, so use the retry-on-conflict helper to keep the unique(agent) upsert safe.
 	err := h.upsertByUnique(hostMetricCurrentCollection, "agent = {:agent}", dbx.Params{"agent": agentID}, func(rec *core.Record) {
 		applyHostMetricRecord(rec, agentID, metrics)
+		if tiers != nil {
+			rec.Set("alert_tiers", tiers)
+		}
 	})
 	if err != nil {
 		slog.Warn("Failed to save current host metrics", "agent", agentID, "err", err)
