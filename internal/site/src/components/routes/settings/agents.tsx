@@ -12,7 +12,7 @@ import {
 	Trash2Icon,
 	XIcon,
 } from "lucide-react"
-import { memo, useEffect, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { $router } from "@/components/router"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
 import { isReadOnlyUser, pb } from "@/lib/api"
-import { copyToClipboard, generateToken, getHubURL } from "@/lib/utils"
+import { copyToClipboard, getHubURL } from "@/lib/utils"
 import type { AgentRecord } from "@/types"
 
 const pbAgentOptions = {
@@ -72,6 +72,15 @@ const SettingsAgentsPage = memo(() => {
 		redirectPage($router, "settings", { name: "general" })
 	}
 	const [agents, setAgents] = useState<AgentRecord[]>([])
+	// Per-agent tokens are fetched from a dedicated endpoint: the token field is hidden on
+	// the agents collection so it is not exposed to every authenticated user.
+	const [tokens, setTokens] = useState<Record<string, string>>({})
+
+	const fetchTokens = useCallback(() => {
+		pb.send("/api/app/agent-tokens", { method: "GET" })
+			.then((data) => setTokens((data ?? {}) as Record<string, string>))
+			.catch(() => {})
+	}, [])
 
 	// Get agent records on mount
 	useEffect(() => {
@@ -80,7 +89,8 @@ const SettingsAgentsPage = memo(() => {
 			.then((list) => {
 				setAgents(sortAgents(list))
 			})
-	}, [])
+		fetchTokens()
+	}, [fetchTokens])
 
 	// Subscribe to agent updates
 	useEffect(() => {
@@ -106,12 +116,15 @@ const SettingsAgentsPage = memo(() => {
 						}
 						return current
 					})
+					// Tokens are not part of the (hidden-field) realtime payload; refresh the
+					// token map after any change (covers create and token rotation).
+					fetchTokens()
 				},
 				pbAgentOptions
 			)
 		})()
 		return () => unsubscribe?.()
-	}, [])
+	}, [fetchTokens])
 
 	return (
 		<>
@@ -119,7 +132,7 @@ const SettingsAgentsPage = memo(() => {
 			<Separator className="my-4" />
 			<SectionEnrollmentToken />
 			<Separator className="my-4" />
-			<SectionTable agents={agents} />
+			<SectionTable agents={agents} tokens={tokens} />
 		</>
 	)
 })
@@ -248,7 +261,7 @@ function getStatusIcon(status: string) {
 	}
 }
 
-const SectionTable = memo(({ agents = [] }: { agents: AgentRecord[] }) => {
+const SectionTable = memo(({ agents = [], tokens = {} }: { agents: AgentRecord[]; tokens: Record<string, string> }) => {
 	const { t } = useLingui()
 	const isReadOnly = isReadOnlyUser()
 	const displayNames = useMemo(() => buildAgentDisplayNames(agents), [agents])
@@ -315,11 +328,11 @@ const SectionTable = memo(({ agents = [] }: { agents: AgentRecord[] }) => {
 									<span className="sr-only">{agent.status || "unknown"}</span>
 								</span>
 							</TableCell>
-							<TableCell className="font-mono text-[0.95em] py-2">{agent.token}</TableCell>
+							<TableCell className="font-mono text-[0.95em] py-2">{tokens[agent.id] ?? ""}</TableCell>
 							<TableCell className="font-mono text-[0.95em] py-2">{agent.fingerprint}</TableCell>
 							{!isReadOnly && (
 								<TableCell className="py-2 px-4 xl:px-2">
-									<ActionsButtonTable agent={agent} />
+									<ActionsButtonTable agent={agent} token={tokens[agent.id] ?? ""} />
 								</TableCell>
 							)}
 						</TableRow>
@@ -332,14 +345,14 @@ const SectionTable = memo(({ agents = [] }: { agents: AgentRecord[] }) => {
 
 async function updateAgent(agent: AgentRecord, rotateToken = false, resetFingerprint = false) {
 	try {
-		const patch: Partial<AgentRecord> = {}
 		if (rotateToken) {
-			patch.token = generateToken()
+			// Token rotation is server-side (cryptographically strong; the token field is
+			// hidden on the collection so it cannot be set from the client).
+			await pb.send(`/api/app/agents/${agent.id}/rotate-token`, { method: "POST" })
 		}
 		if (resetFingerprint) {
-			patch.fingerprint = ""
+			await pb.collection("agents").update(agent.id, { fingerprint: "" })
 		}
-		await pb.collection("agents").update(agent.id, patch)
 	} catch (error: unknown) {
 		toast({
 			title: t`Error`,
@@ -359,8 +372,8 @@ async function deleteAgent(agent: AgentRecord) {
 	}
 }
 
-const ActionsButtonTable = memo(({ agent }: { agent: AgentRecord }) => {
-	const envVar = `HUB_URL=${getHubURL()}\nTOKEN=${agent.token}`
+const ActionsButtonTable = memo(({ agent, token }: { agent: AgentRecord; token: string }) => {
+	const envVar = `HUB_URL=${getHubURL()}\nTOKEN=${token}`
 	const copyEnv = () => copyToClipboard(envVar)
 	const copyYaml = () => copyToClipboard(envVar.replaceAll("=", ": "))
 

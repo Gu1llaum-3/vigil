@@ -14,6 +14,7 @@ import (
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/security"
 )
 
 // UpdateInfo holds information about the latest update check.
@@ -99,6 +100,12 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	}
 	// get or manage agent enrollment tokens
 	apiAuth.GET("/agent-enrollment-token", h.getAgentEnrollmentToken).BindFunc(excludeReadOnlyRole)
+	// per-agent tokens for the admin/operator agents UI (the token field is hidden on the
+	// collection so it is not exposed fleet-wide); readonly users are excluded.
+	apiAuth.GET("/agent-tokens", h.getAgentTokens).BindFunc(excludeReadOnlyRole)
+	// rotate a per-agent token server-side (cryptographically strong, replaces the old
+	// client-generated token).
+	apiAuth.POST("/agents/{id}/rotate-token", h.rotateAgentToken).BindFunc(excludeReadOnlyRole)
 	// handle agent websocket connection
 	apiNoAuth.GET("/agent-connect", h.handleAgentConnect)
 	// fleet patch audit dashboard
@@ -214,6 +221,37 @@ func (info *UpdateInfo) getUpdate(e *core.RequestEvent) error {
 }
 
 // getAgentEnrollmentToken handles enrollment token management (create, read, delete).
+// getAgentTokens returns a map of agent id → token for the agents UI. The token field is
+// hidden on the agents collection (so it is not exposed via the generic collection API to
+// every authenticated user); this endpoint re-exposes it only to non-readonly users.
+func (h *Hub) getAgentTokens(e *core.RequestEvent) error {
+	records, err := h.FindAllRecords("agents")
+	if err != nil {
+		return err
+	}
+	tokens := make(map[string]string, len(records))
+	for _, rec := range records {
+		tokens[rec.Id] = rec.GetString("token")
+	}
+	return e.JSON(http.StatusOK, tokens)
+}
+
+// rotateAgentToken generates a new cryptographically strong token for an agent and saves
+// it server-side, returning the new value. Replaces the previous client-generated token.
+func (h *Hub) rotateAgentToken(e *core.RequestEvent) error {
+	id := e.Request.PathValue("id")
+	rec, err := h.FindRecordById("agents", id)
+	if err != nil {
+		return e.NotFoundError("Agent not found", err)
+	}
+	token := security.RandomString(40)
+	rec.Set("token", token)
+	if err := h.SaveNoValidate(rec); err != nil {
+		return err
+	}
+	return e.JSON(http.StatusOK, map[string]string{"token": token})
+}
+
 func (h *Hub) getAgentEnrollmentToken(e *core.RequestEvent) error {
 	if e.Auth.IsSuperuser() {
 		return e.ForbiddenError("Superusers cannot use enrollment tokens", nil)
