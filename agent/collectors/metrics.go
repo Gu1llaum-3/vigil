@@ -12,6 +12,7 @@ import (
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	pscpu "github.com/shirou/gopsutil/v4/cpu"
 	psdisk "github.com/shirou/gopsutil/v4/disk"
+	psload "github.com/shirou/gopsutil/v4/load"
 	psmem "github.com/shirou/gopsutil/v4/mem"
 	psnet "github.com/shirou/gopsutil/v4/net"
 )
@@ -47,6 +48,7 @@ func CollectMetrics() common.HostMetricsResponse {
 	metrics.CPUPercent = collectCPUPercentLocked()
 	collectMemoryMetrics(&metrics)
 	collectDiskMetrics(&metrics)
+	collectLoadMetrics(&metrics)
 	collectNetworkMetricsLocked(now, &metrics)
 
 	return metrics
@@ -94,13 +96,43 @@ func collectMemoryMetrics(metrics *common.HostMetricsResponse) {
 }
 
 func collectDiskMetrics(metrics *common.HostMetricsResponse) {
-	usage, err := psdisk.Usage("/")
+	if usage, err := psdisk.Usage("/"); err == nil {
+		metrics.DiskTotalBytes = usage.Total
+		metrics.DiskUsedBytes = usage.Used
+		metrics.DiskUsedPercent = round2(usage.UsedPercent)
+		// seed the max with root so a Partitions() failure still yields the root value
+		metrics.DiskMaxUsedPercent = metrics.DiskUsedPercent
+		metrics.DiskMaxMount = "/"
+	}
+
+	// Highest used% across all real (physical) mounted filesystems, so a full
+	// secondary partition (e.g. /data) is caught, not just root. Partitions(false)
+	// excludes pseudo filesystems (tmpfs, overlay, proc, ...).
+	parts, err := psdisk.Partitions(false)
 	if err != nil {
 		return
 	}
-	metrics.DiskTotalBytes = usage.Total
-	metrics.DiskUsedBytes = usage.Used
-	metrics.DiskUsedPercent = round2(usage.UsedPercent)
+	for _, p := range parts {
+		usage, err := psdisk.Usage(p.Mountpoint)
+		if err != nil || usage.Total == 0 {
+			continue
+		}
+		used := round2(usage.UsedPercent)
+		if used > metrics.DiskMaxUsedPercent {
+			metrics.DiskMaxUsedPercent = used
+			metrics.DiskMaxMount = p.Mountpoint
+		}
+	}
+}
+
+func collectLoadMetrics(metrics *common.HostMetricsResponse) {
+	avg, err := psload.Avg()
+	if err != nil || avg == nil {
+		return
+	}
+	metrics.Load1 = round2(avg.Load1)
+	metrics.Load5 = round2(avg.Load5)
+	metrics.Load15 = round2(avg.Load15)
 }
 
 func collectNetworkMetricsLocked(now time.Time, metrics *common.HostMetricsResponse) {

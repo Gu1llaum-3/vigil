@@ -134,6 +134,9 @@ func (h *Hub) collectAndPersistHostMetrics(ctx context.Context, agentID string, 
 func (h *Hub) persistHostMetrics(agentID string, metrics common.HostMetricsResponse) {
 	h.insertHostMetricSample(agentID, metrics)
 	h.upsertHostMetricCurrent(agentID, metrics)
+	// Evaluate metric-threshold alerts on the freshly collected values. Direct call
+	// (no DB hook on the high-frequency metric collections — see conventions doc).
+	h.evaluateMetricAlerts(agentID, metrics)
 }
 
 func (h *Hub) insertHostMetricSample(agentID string, metrics common.HostMetricsResponse) {
@@ -173,8 +176,12 @@ func applyHostMetricRecord(rec *core.Record, agentID string, metrics common.Host
 	rec.Set("disk_total_bytes", metrics.DiskTotalBytes)
 	rec.Set("disk_used_bytes", metrics.DiskUsedBytes)
 	rec.Set("disk_used_percent", metrics.DiskUsedPercent)
+	rec.Set("disk_max_used_percent", metrics.DiskMaxUsedPercent)
 	rec.Set("network_rx_bps", metrics.NetworkRxBps)
 	rec.Set("network_tx_bps", metrics.NetworkTxBps)
+	rec.Set("load1", metrics.Load1)
+	rec.Set("load5", metrics.Load5)
+	rec.Set("load15", metrics.Load15)
 	rec.Set("collected_at", collectedAt)
 }
 
@@ -187,8 +194,12 @@ func hostMetricsFromRecord(rec *core.Record) common.HostMetricsResponse {
 		DiskTotalBytes:    numberAsUint64(rec.Get("disk_total_bytes")),
 		DiskUsedBytes:     numberAsUint64(rec.Get("disk_used_bytes")),
 		DiskUsedPercent:   numberAsFloat64(rec.Get("disk_used_percent")),
+		DiskMaxUsedPercent: numberAsFloat64(rec.Get("disk_max_used_percent")),
 		NetworkRxBps:      numberAsUint64(rec.Get("network_rx_bps")),
 		NetworkTxBps:      numberAsUint64(rec.Get("network_tx_bps")),
+		Load1:             numberAsFloat64(rec.Get("load1")),
+		Load5:             numberAsFloat64(rec.Get("load5")),
+		Load15:            numberAsFloat64(rec.Get("load15")),
 	}
 	if !rec.GetDateTime("collected_at").IsZero() {
 		metrics.CollectedAt = rec.GetDateTime("collected_at").Time().UTC().Format(time.RFC3339)

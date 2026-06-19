@@ -141,7 +141,7 @@ func (d *Dispatcher) processRule(ctx context.Context, rule *core.Record, evt Eve
 
 	// Check throttle
 	throttleSec := rule.GetInt("throttle_seconds")
-	if d.isThrottled(rule.Id, evt.Resource.ID, string(evt.Kind), throttleSec) {
+	if d.isThrottled(rule.Id, evt.Resource.ID, throttleKind(evt), throttleSec) {
 		d.saveLog(rule.Id, rule.GetString("created_by"), "", "", string(evt.Kind), evt.Resource.ID, evt.Resource.Name, evt.Resource.Type, "throttled", "", "")
 		return
 	}
@@ -198,6 +198,22 @@ func (d *Dispatcher) sendToChannel(ctx context.Context, channelID, ruleID, creat
 	}
 
 	d.saveLog(ruleID, createdBy, channelID, kind, string(evt.Kind), evt.Resource.ID, evt.Resource.Name, evt.Resource.Type, "failed", lastErr.Error(), preview)
+}
+
+// throttleKind is the throttle discriminator for an event. Throttling is per
+// (rule, resource, kind); host-metric events additionally carry the metric and the
+// breach tier so that (a) a CPU breach does not suppress a concurrent disk/memory/load
+// breach on the same agent, and (b) a warning→critical escalation of the same metric is
+// not throttled away by the earlier warning notification (different tier → different key).
+func throttleKind(evt Event) string {
+	k := string(evt.Kind)
+	if m, ok := evt.Details["metric"].(string); ok && m != "" {
+		k += ":" + m
+		if tier, ok := evt.Details["tier"].(string); ok && tier != "" {
+			k += ":" + tier
+		}
+	}
+	return k
 }
 
 func (d *Dispatcher) isThrottled(ruleID, resourceID, kind string, throttleSec int) bool {
