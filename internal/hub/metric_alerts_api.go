@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -32,6 +33,33 @@ func metricAlertResponse(rec *core.Record) metricAlertPayload {
 		Created:       rec.GetString("created"),
 		Updated:       rec.GetString("updated"),
 	}
+}
+
+// validateMetricAlertPayload checks an upsert payload: known metric, non-negative
+// values, warning ≤ critical, an enabled alert has at least one positive threshold
+// (otherwise it shows as active in the UI yet can never fire), and the resolve margin
+// stays below the lowest active threshold (so a fired alert can always recover).
+func validateMetricAlertPayload(body metricAlertPayload) error {
+	if !isAlertableMetric(body.Metric) {
+		return errors.New("invalid metric")
+	}
+	if body.WarningValue < 0 || body.CriticalValue < 0 || body.Hysteresis < 0 {
+		return errors.New("thresholds must be non-negative")
+	}
+	if body.WarningValue > 0 && body.CriticalValue > 0 && body.WarningValue > body.CriticalValue {
+		return errors.New("warning threshold must be ≤ critical threshold")
+	}
+	if body.Enabled && body.WarningValue <= 0 && body.CriticalValue <= 0 {
+		return errors.New("an enabled alert needs a warning or critical threshold")
+	}
+	minThreshold := body.WarningValue
+	if minThreshold <= 0 {
+		minThreshold = body.CriticalValue
+	}
+	if minThreshold > 0 && body.Hysteresis >= minThreshold {
+		return errors.New("resolve margin must be smaller than the threshold")
+	}
+	return nil
 }
 
 func isAlertableMetric(metric string) bool {
@@ -81,48 +109,44 @@ func (h *Hub) upsertMetricAlert(e *core.RequestEvent) error {
 	}
 	body.Agent = strings.TrimSpace(body.Agent)
 	body.Metric = strings.TrimSpace(body.Metric)
-	if !isAlertableMetric(body.Metric) {
-		return e.BadRequestError("invalid metric", nil)
-	}
-	if body.WarningValue < 0 || body.CriticalValue < 0 || body.Hysteresis < 0 {
-		return e.BadRequestError("thresholds must be non-negative", nil)
-	}
-	if body.WarningValue > 0 && body.CriticalValue > 0 && body.WarningValue > body.CriticalValue {
-		return e.BadRequestError("warning threshold must be ≤ critical threshold", nil)
-	}
-	// The resolve margin (hysteresis) must be smaller than the lowest active threshold,
-	// otherwise the dead band would extend below 0 and a fired alert could never recover.
-	minThreshold := body.WarningValue
-	if minThreshold <= 0 {
-		minThreshold = body.CriticalValue
-	}
-	if minThreshold > 0 && body.Hysteresis >= minThreshold {
-		return e.BadRequestError("resolve margin must be smaller than the threshold", nil)
+	if err := validateMetricAlertPayload(body); err != nil {
+		return e.BadRequestError(err.Error(), nil)
 	}
 
 	// NOTE: do not filter by `agent = ""` — PocketBase relation filtering does not
 	// match an empty (unset) relation, so the global row would never be found and a
-	// duplicate insert would hit the unique (agent, metric) index. Scan instead
-	// (the collection is tiny: a few metrics × global + per-agent overrides).
-	existing := h.findMetricAlertRecord(body.Agent, body.Metric)
-	if existing == nil {
-		collection, err := h.FindCachedCollectionByNameOrId(metricAlertsCollection)
-		if err != nil {
-			return err
+	// duplicate insert would hit the unique (agent, metric) index. Scan instead (the
+	// collection is tiny). upsertByUnique can't be reused here for the same reason, so
+	// retry the scan+save on a unique conflict from a concurrent insert.
+	const maxAttempts = 4
+	var rec *core.Record
+	var saveErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		rec = h.findMetricAlertRecord(body.Agent, body.Metric)
+		if rec == nil {
+			collection, err := h.FindCachedCollectionByNameOrId(metricAlertsCollection)
+			if err != nil {
+				return err
+			}
+			rec = core.NewRecord(collection)
+			rec.Set("agent", body.Agent)
+			rec.Set("metric", body.Metric)
 		}
-		existing = core.NewRecord(collection)
-		existing.Set("agent", body.Agent)
-		existing.Set("metric", body.Metric)
-	}
-	existing.Set("enabled", body.Enabled)
-	existing.Set("warning_value", body.WarningValue)
-	existing.Set("critical_value", body.CriticalValue)
-	existing.Set("hysteresis", body.Hysteresis)
+		rec.Set("enabled", body.Enabled)
+		rec.Set("warning_value", body.WarningValue)
+		rec.Set("critical_value", body.CriticalValue)
+		rec.Set("hysteresis", body.Hysteresis)
 
-	if err := h.Save(existing); err != nil {
-		return e.BadRequestError("Failed to save metric alert", err)
+		saveErr = h.Save(rec)
+		if saveErr == nil {
+			return e.JSON(http.StatusOK, metricAlertResponse(rec))
+		}
+		if !isUniqueConstraintErr(saveErr) {
+			return e.BadRequestError("Failed to save metric alert", saveErr)
+		}
+		// A concurrent writer won the insert; re-scan so this turns into an update.
 	}
-	return e.JSON(http.StatusOK, metricAlertResponse(existing))
+	return e.BadRequestError("Failed to save metric alert", saveErr)
 }
 
 func (h *Hub) deleteMetricAlert(e *core.RequestEvent) error {

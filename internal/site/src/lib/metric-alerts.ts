@@ -14,22 +14,35 @@ export interface MetricAlert {
 	hysteresis: number
 }
 
-/** UI metadata per metric. `unit` is appended to threshold values; loadavg is unitless. */
+/**
+ * Non-translatable UI metadata per metric: `unit` is appended to threshold values
+ * (loadavg is unitless), `max`/`step` bound the sliders, and `warning`/`critical` are
+ * the defaults seeded when an alert is first enabled (so toggling it on yields a usable,
+ * firing alert rather than a 0/0 no-op the backend rejects). Labels/hints are translated
+ * in the component, not here.
+ */
 export const metricAlertInfo: Record<
 	MetricAlertMetric,
-	{ label: string; unit: string; hint: string; max: number; step: number }
+	{ unit: string; max: number; step: number; warning: number; critical: number; hysteresis: number }
 > = {
-	cpu: { label: "CPU usage", unit: "%", hint: "Average CPU utilization", max: 100, step: 1 },
-	memory: { label: "Memory usage", unit: "%", hint: "Average memory utilization", max: 100, step: 1 },
-	disk: { label: "Disk usage", unit: "%", hint: "Highest filesystem usage", max: 100, step: 1 },
-	loadavg: { label: "Load average", unit: "", hint: "1-minute load (≈ number of cores)", max: 16, step: 0.5 },
+	cpu: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
+	memory: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
+	disk: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
+	loadavg: { unit: "", max: 16, step: 0.5, warning: 4, critical: 8, hysteresis: 0.5 },
 }
 
 export function emptyMetricAlert(agent: string, metric: MetricAlertMetric): MetricAlert {
-	// loadavg is a small unitless number (≈ cores); a 5-point margin would exceed
-	// typical thresholds and make alerts unrecoverable, so default it to 0.5.
-	const hysteresis = metric === "loadavg" ? 0.5 : 5
-	return { agent, metric, enabled: false, warning_value: 0, critical_value: 0, hysteresis }
+	// Seed sensible defaults so enabling the alert produces a working threshold rather
+	// than a 0/0 no-op (which the backend now rejects).
+	const info = metricAlertInfo[metric]
+	return {
+		agent,
+		metric,
+		enabled: false,
+		warning_value: info.warning,
+		critical_value: info.critical,
+		hysteresis: info.hysteresis,
+	}
 }
 
 export function getMetricAlerts(): Promise<MetricAlert[]> {

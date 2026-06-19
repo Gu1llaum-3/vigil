@@ -1,7 +1,9 @@
-import { Trans } from "@lingui/react/macro"
+import { Trans, useLingui } from "@lingui/react/macro"
 import { CpuIcon, GaugeIcon, HardDriveIcon, Loader2Icon, MemoryStickIcon } from "lucide-react"
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
 import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import Slider from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
@@ -24,6 +26,43 @@ const metricIcons: Record<MetricAlertMetric, ComponentType<{ className?: string 
 	memory: MemoryStickIcon,
 	disk: HardDriveIcon,
 	loadavg: GaugeIcon,
+}
+
+/**
+ * MetricThresholdsSheet wraps MetricThresholds in a Sheet behind an "Alert thresholds"
+ * trigger button, shared by the Hosts list (global, agentId="") and the host detail
+ * page (per-host override). title/description vary per scope.
+ */
+export function MetricThresholdsSheet({
+	agentId = "",
+	title,
+	description,
+	buttonSize = "default",
+}: {
+	agentId?: string
+	title: ReactNode
+	description: ReactNode
+	buttonSize?: "default" | "sm"
+}) {
+	return (
+		<Sheet>
+			<SheetTrigger asChild>
+				<Button variant="outline" size={buttonSize} className="gap-2">
+					<GaugeIcon className="size-4" />
+					<Trans>Alert thresholds</Trans>
+				</Button>
+			</SheetTrigger>
+			<SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+				<SheetHeader>
+					<SheetTitle>{title}</SheetTitle>
+					<SheetDescription>{description}</SheetDescription>
+				</SheetHeader>
+				<div className="mt-4">
+					<MetricThresholds agentId={agentId} />
+				</div>
+			</SheetContent>
+		</Sheet>
+	)
 }
 
 function buildForms(alerts: MetricAlert[], agentId: string): Forms {
@@ -53,7 +92,17 @@ function buildForms(alerts: MetricAlert[], agentId: string): Forms {
  * cards with a toggle + inline-value sliders; changes auto-save on commit.
  */
 export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
+	const { t } = useLingui()
 	const [forms, setForms] = useState<Forms | null>(null)
+
+	// Translatable per-metric label + hint (the non-translatable numeric metadata lives
+	// in metricAlertInfo). Built here so lingui can extract the strings.
+	const metricText: Record<MetricAlertMetric, { label: string; hint: string }> = {
+		cpu: { label: t`CPU usage`, hint: t`Average CPU utilization` },
+		memory: { label: t`Memory usage`, hint: t`Average memory utilization` },
+		disk: { label: t`Disk usage`, hint: t`Highest filesystem usage` },
+		loadavg: { label: t`Load average`, hint: t`1-minute load (≈ number of cores)` },
+	}
 
 	const reload = () => {
 		getMetricAlerts()
@@ -80,7 +129,7 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 			const saved = await upsertMetricAlert(form)
 			patch(metric, saved)
 		} catch (e) {
-			toast({ title: "Failed to save threshold", description: String(e), variant: "destructive" })
+			toast({ title: t`Failed to save threshold`, description: String(e), variant: "destructive" })
 		}
 	}
 
@@ -90,9 +139,9 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 		try {
 			await deleteMetricAlert(id)
 			patch(metric, emptyMetricAlert(agentId, metric))
-			toast({ title: "Reverted to global default" })
+			toast({ title: t`Reverted to global default` })
 		} catch (e) {
-			toast({ title: "Failed to reset", description: String(e), variant: "destructive" })
+			toast({ title: t`Failed to reset`, description: String(e), variant: "destructive" })
 		}
 	}
 
@@ -112,9 +161,9 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 						<div className={cn("flex items-center justify-between gap-4 p-4", { "pb-0": form.enabled })}>
 							<div className="grid select-none gap-1">
 								<p className="flex items-center gap-3 font-semibold">
-									<Icon className="h-4 w-4 opacity-85" /> {info.label}
+									<Icon className="h-4 w-4 opacity-85" /> {metricText[metric].label}
 								</p>
-								{!form.enabled && <span className="text-sm text-muted-foreground">{info.hint}</span>}
+								{!form.enabled && <span className="text-sm text-muted-foreground">{metricText[metric].hint}</span>}
 							</div>
 							<Switch
 								checked={form.enabled}
@@ -149,10 +198,13 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 									label={<Trans>Resolve margin</Trans>}
 									value={form.hysteresis}
 									unit={info.unit}
-									// Must stay below the threshold or the alert can never recover, so cap
-									// the slider one step under the active (warning, else critical) threshold.
+									// Cap one step under the active (warning, else critical) threshold so the
+									// margin stays below it (a fired alert must be able to recover). Also keep
+									// max ≥ the current value so a previously-saved larger margin still renders
+									// at the right thumb position instead of silently clamping.
 									max={Math.max(
 										info.step,
+										form.hysteresis,
 										(form.warning_value || form.critical_value || info.max) - info.step,
 									)}
 									step={info.step}
