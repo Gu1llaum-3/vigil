@@ -105,7 +105,8 @@ func (hb *Heartbeat) Start(stop <-chan struct{}) {
 	}
 }
 
-// Send performs a single heartbeat ping. Exposed for the test-heartbeat API endpoint.
+// Send performs a single heartbeat ping (also used by the test suite to exercise
+// the request/response path).
 func (hb *Heartbeat) Send() error {
 	return hb.send()
 }
