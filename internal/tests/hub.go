@@ -4,7 +4,6 @@
 package tests
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/Gu1llaum-3/vigil/internal/hub"
@@ -108,13 +107,6 @@ func CreateRecord(app core.App, collectionName string, fields map[string]any) (*
 	record.Load(fields)
 
 	return record, app.Save(record)
-}
-
-func ClearCollection(t testing.TB, app core.App, collectionName string) error {
-	_, err := app.DB().NewQuery(fmt.Sprintf("DELETE from %s", collectionName)).Execute()
-	recordCount, err := app.CountRecords(collectionName)
-	assert.EqualValues(t, recordCount, 0, "should have 0 records after clearing")
-	return err
 }
 
 func (h *TestHub) Cleanup() {

@@ -105,7 +105,7 @@ type AgentRecord struct {
 
 // verifyWsConn verifies the WebSocket connection using the agent's fingerprint.
 func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []AgentRecord) (err error) {
-	wsConn := ws.NewWsConnection(conn, acr.agentSemVer)
+	wsConn := ws.NewWsConnection(conn)
 	conn.Session().Store("wsConn", wsConn)
 
 	defer func() {

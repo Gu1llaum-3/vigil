@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -288,7 +287,6 @@ type slowMockClient struct {
 	delay       time.Duration
 	inflight    *atomic.Int32
 	peak        *atomic.Int32
-	mu          sync.Mutex
 }
 
 func (s slowMockClient) trackInflight() func() {

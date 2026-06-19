@@ -6,8 +6,6 @@ import (
 	"time"
 	"weak"
 
-	"github.com/blang/semver"
-
 	"github.com/Gu1llaum-3/vigil/internal/common"
 
 	"github.com/fxamacker/cbor/v2"
@@ -28,7 +26,6 @@ type WsConn struct {
 	conn           *gws.Conn
 	requestManager *RequestManager
 	DownChan       chan struct{}
-	agentVersion   semver.Version
 }
 
 var upgrader *gws.Upgrader
@@ -43,13 +40,12 @@ func GetUpgrader() *gws.Upgrader {
 	return upgrader
 }
 
-// NewWsConnection creates a new WebSocket connection wrapper with agent version.
-func NewWsConnection(conn *gws.Conn, agentVersion semver.Version) *WsConn {
+// NewWsConnection creates a new WebSocket connection wrapper.
+func NewWsConnection(conn *gws.Conn) *WsConn {
 	return &WsConn{
 		conn:           conn,
 		requestManager: NewRequestManager(conn),
 		DownChan:       make(chan struct{}, 1),
-		agentVersion:   agentVersion,
 	}
 }
 
@@ -133,11 +129,6 @@ func (ws *WsConn) handleAgentRequest(req *PendingRequest, handler ResponseHandle
 // IsConnected returns true if the WebSocket connection is active.
 func (ws *WsConn) IsConnected() bool {
 	return ws.conn != nil
-}
-
-// AgentVersion returns the connected agent's version (as reported during handshake).
-func (ws *WsConn) AgentVersion() semver.Version {
-	return ws.agentVersion
 }
 
 // SendRequest sends a request to the agent and returns a pending request handle.
