@@ -361,6 +361,18 @@ Output binaries land in `./build/`.
 
 **Hub dev build** (`make build-hub-dev`) uses `-tags development` which serves the frontend from the Vite dev server instead of the embedded dist folder.
 
+### Seeding demo data for local UI preview
+
+To preview the dashboard / host-detail charts locally without deploying real agents (the agent collectors are Linux-only and report nothing on macOS), use the seeder. It injects a synthetic `demo-host` agent plus ~24h of host metric history into the dev `vigil_data/` DB:
+
+```bash
+make dev-hub                 # once, to create vigil_data/ and the collections (then Ctrl-C)
+go run ./internal/cmd/seed   # inject the demo host + metric history (idempotent; run while the hub is stopped)
+make dev                     # dev-server + hub, then open the "demo-host" detail page
+```
+
+`internal/cmd/seed` requires the collections to already exist (it prints a hint if not). Re-running refreshes the demo data. It only touches a `demo-host` record, so it is safe to run against a dev DB that also has real data.
+
 ---
 
 ## Testing
