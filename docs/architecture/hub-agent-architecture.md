@@ -2,7 +2,7 @@
 
 ## Runtime Shape
 
-Nexus is built around two long-running components:
+Vigil is built around two long-running components:
 
 - the hub, which owns the database, auth model, custom API, frontend serving, and agent lifecycle tracking
 - the agent, which runs remotely and opens an outbound WebSocket connection back to the hub

@@ -2,7 +2,7 @@
 
 ## Scope Of The Frontend
 
-The frontend in Nexus is a small but real application shell embedded into the hub.
+The frontend in Vigil is a small but real application shell embedded into the hub.
 
 It currently covers:
 

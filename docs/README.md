@@ -1,8 +1,8 @@
 # Docs
 
-This documentation set is for contributors working on the Nexus boilerplate itself.
+This documentation set is for contributors working on the Vigil boilerplate itself.
 
-Nexus is a reusable full-stack foundation built around:
+Vigil is a reusable full-stack foundation built around:
 
 - a PocketBase-based hub
 - an outbound WebSocket/CBOR agent
@@ -52,7 +52,7 @@ Use this folder when you need implementation context, extension guidance, or tas
 
 - `development/workflow-and-testing.md`
 
-### I need to turn Nexus into a derived product
+### I need to turn Vigil into a derived product
 
 - `customization/renaming-and-derived-projects.md`
 
@@ -63,7 +63,7 @@ Use this folder when you need implementation context, extension guidance, or tas
 ## Documentation Map
 
 - `project-overview.md`
-  - What Nexus is, what stays generic, and current implementation scope.
+  - What Vigil is, what stays generic, and current implementation scope.
 - `architecture/`
   - Runtime architecture, protocol flow, auth model, and data model.
 - `backend/`

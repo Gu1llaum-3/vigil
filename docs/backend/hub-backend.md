@@ -51,7 +51,7 @@ Read it before changing initialization behavior because it is the coordination p
 
 ## PocketBase Integration
 
-Nexus uses PocketBase as the application core rather than as a separate dependency hidden behind a service layer.
+Vigil uses PocketBase as the application core rather than as a separate dependency hidden behind a service layer.
 
 That means backend work often combines:
 

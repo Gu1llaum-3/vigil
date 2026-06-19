@@ -1,6 +1,6 @@
 # Agent Navigation
 
-This document is for AI agents that need fast, task-oriented routing through the Nexus codebase.
+This document is for AI agents that need fast, task-oriented routing through the Vigil codebase.
 
 Start with `docs/README.md` if you need broader orientation. Use this file when you already have a concrete task.
 
