@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Gu1llaum-3/vigil/internal/hub/heartbeat"
 	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
 	"github.com/Gu1llaum-3/vigil/internal/hub/utils"
 	"github.com/Gu1llaum-3/vigil/internal/users"
@@ -106,6 +107,11 @@ func (h *Hub) StartHub() error {
 		goSafe("monitor scheduler", func() { h.monitorScheduler.start(ctx) })
 		// start notification dispatcher
 		goSafe("notification dispatcher", func() { h.notifier.Start(ctx) })
+		// start external heartbeat (push monitoring, e.g. Uptime Kuma / Healthchecks.io)
+		// Disabled unless HEARTBEAT_URL is set; heartbeat.New returns nil in that case.
+		if hb := heartbeat.New(h.App, utils.GetEnv); hb != nil {
+			goSafe("heartbeat", func() { hb.Start(ctx.Done()) })
+		}
 		return e.Next()
 	})
 

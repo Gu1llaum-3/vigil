@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -883,21 +882,6 @@ func compareNumericVersions(left, right numericVersion) int {
 		}
 	}
 	return 0
-}
-
-func versionToTag(version numericVersion) string {
-	values := []string{strconv.Itoa(version.Major)}
-	if version.Parts >= 2 {
-		values = append(values, strconv.Itoa(version.Minor))
-	}
-	if version.Parts >= 3 {
-		values = append(values, strconv.Itoa(version.Patch))
-	}
-	tag := strings.Join(values, ".")
-	if version.Variant != "" {
-		tag += "-" + version.Variant
-	}
-	return tag
 }
 
 func containerImageAuditFromRecord(rec *core.Record) *ContainerImageAudit {

@@ -15,7 +15,6 @@ import (
 
 type mockImageRegistryClient struct {
 	headDigests     map[string]string
-	imageIDs        map[string]string
 	resolvedDigests map[string]string
 	tags            map[string][]string
 	err             error

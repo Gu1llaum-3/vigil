@@ -62,9 +62,8 @@ make dev
 ```
 .
 ├── agent/                    # Agent binary — data collection and hub communication
-│   ├── deltatracker/         # Incremental delta calculations for metrics
+│   ├── collectors/           # Linux system/package/repo/docker/metrics collectors
 │   ├── health/               # Agent health checks
-│   ├── tools/                # Build-time tools (e.g. smartctl fetcher)
 │   └── utils/                # Shared agent utilities
 ├── internal/
 │   ├── cmd/
@@ -75,7 +74,6 @@ make dev
 │   ├── hub/                  # Hub core logic (API, collections, server, agent connection)
 │   │   ├── expirymap/        # TTL map for ephemeral tokens
 │   │   ├── heartbeat/        # Outbound heartbeat ping service
-│   │   ├── transport/        # WebSocket transport abstraction
 │   │   ├── utils/            # Hub environment variable helpers
 │   │   └── ws/               # WebSocket connection management (CBOR, fingerprinting)
 │   ├── migrations/           # PocketBase database migrations
@@ -91,7 +89,6 @@ make dev
     ├── debian/               # Debian packaging scripts and systemd service unit
     ├── docker/               # Hub Docker Compose (agents install natively)
     ├── guides/               # Installation guides (e.g. systemd)
-    ├── licenses/             # Third-party license files
     └── scripts/              # Shell/PowerShell install scripts
 ```
 

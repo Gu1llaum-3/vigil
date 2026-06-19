@@ -5,14 +5,6 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
-type collectionRules struct {
-	list   *string
-	view   *string
-	create *string
-	update *string
-	delete *string
-}
-
 // setCollectionAuthSettings applies the application's collection auth settings.
 func setCollectionAuthSettings(app core.App) error {
 	usersCollection, err := app.FindCollectionByNameOrId("users")
@@ -50,22 +42,4 @@ func setCollectionAuthSettings(app core.App) error {
 		return err
 	}
 	return app.Save(usersCollection)
-}
-
-func applyCollectionRules(app core.App, collectionNames []string, rules collectionRules) error {
-	for _, collectionName := range collectionNames {
-		collection, err := app.FindCollectionByNameOrId(collectionName)
-		if err != nil {
-			return err
-		}
-		collection.ListRule = rules.list
-		collection.ViewRule = rules.view
-		collection.CreateRule = rules.create
-		collection.UpdateRule = rules.update
-		collection.DeleteRule = rules.delete
-		if err := app.Save(collection); err != nil {
-			return err
-		}
-	}
-	return nil
 }

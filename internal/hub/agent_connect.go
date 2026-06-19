@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -107,7 +105,7 @@ type AgentRecord struct {
 
 // verifyWsConn verifies the WebSocket connection using the agent's fingerprint.
 func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []AgentRecord) (err error) {
-	wsConn := ws.NewWsConnection(conn, acr.agentSemVer)
+	wsConn := ws.NewWsConnection(conn)
 	conn.Session().Store("wsConn", wsConn)
 
 	defer func() {
@@ -387,22 +385,4 @@ func (h *Hub) updateAgentInfo(agentId string, info common.AgentInfoResponse) {
 	rec.Set("capabilities", info.Capabilities)
 	rec.Set("metadata", info.Metadata)
 	_ = h.SaveNoValidate(rec)
-}
-
-// getRealIP extracts the client's real IP address from request headers.
-func getRealIP(r *http.Request) string {
-	if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
-		return ip
-	}
-	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
-		ips := strings.Split(ip, ",")
-		if len(ips) > 0 {
-			return strings.TrimSpace(ips[0])
-		}
-	}
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return ip
 }

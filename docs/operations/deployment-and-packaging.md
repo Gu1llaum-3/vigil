@@ -205,17 +205,22 @@ Purpose:
 
 - send periodic outbound pings to an external monitoring endpoint
 
+The heartbeat goroutine is started from `StartHub()` (in `internal/hub/hub.go`) on
+serve, and only when `HEARTBEAT_URL` is set (`heartbeat.New` returns nil otherwise);
+it stops with the app via the server context.
+
 Important env variables:
 
-- `HEARTBEAT_URL`
-- `HEARTBEAT_INTERVAL`
-- `HEARTBEAT_METHOD`
+- `HEARTBEAT_URL` — the push endpoint to ping
+- `HEARTBEAT_INTERVAL` — seconds between pings (default 60)
+- `HEARTBEAT_METHOD` — `POST` (default) or `GET`
 
 Operational use case:
 
-- external uptime monitoring for the hub process
-
-There is also a test-heartbeat path in the hub API, which is useful when validating configuration.
+- external uptime monitoring for the hub process via a push monitor, e.g. an
+  Uptime Kuma "Push" monitor (set `HEARTBEAT_URL` to the push URL and
+  `HEARTBEAT_METHOD=GET`), Healthchecks.io, or BetterStack. If the hub stops, the
+  pings stop and the external monitor alerts.
 
 ## Storage And Persistence Considerations
 

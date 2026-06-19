@@ -129,38 +129,6 @@ func (scenario *ApiScenario) Test(t *testing.T) {
 	})
 }
 
-// Benchmark benchmarks the test scenario.
-//
-// Example:
-//
-//	func BenchmarkListExample(b *testing.B) {
-//	    scenario := tests.ApiScenario{
-//	        Name:           "list example collection",
-//	        Method:         http.MethodGet,
-//	        URL:            "/api/collections/example/records",
-//	        ExpectedStatus: 200,
-//	        ExpectedContent: []string{
-//	            `"totalItems":3`,
-//	            `"id":"0yxhwia2amd8gec"`,
-//	            `"id":"achvryl401bhse3"`,
-//	            `"id":"llvuca81nly1qls"`,
-//	        },
-//	        ExpectedEvents: map[string]int{
-//	            "OnRecordsListRequest": 1,
-//	            "OnRecordEnrich":       3,
-//	        },
-//	    }
-//
-//	    scenario.Benchmark(b)
-//	}
-func (scenario *ApiScenario) Benchmark(b *testing.B) {
-	b.Run(scenario.normalizedName(), func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			scenario.test(b)
-		}
-	})
-}
-
 func (scenario *ApiScenario) normalizedName() string {
 	var name = scenario.Name
 
