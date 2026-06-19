@@ -100,6 +100,10 @@ msgstr "{warningCount} conteneur(s) en avertissement"
 msgid "0 means instant down. Default is 3."
 msgstr "0 = arrêt immédiat. Valeur par défaut : 3."
 
+#: src/components/metric-thresholds.tsx
+msgid "1-minute load (≈ number of cores)"
+msgstr "Charge sur 1 minute (≈ nombre de cœurs)"
+
 #: src/components/routes/settings/purge.tsx
 msgid "A background job runs daily and deletes monitoring events and notification logs older than the configured retention window."
 msgstr "Une tâche de fond s'exécute chaque jour et supprime les événements de supervision et les journaux de notifications plus anciens que la fenêtre de rétention configurée."
@@ -197,10 +201,14 @@ msgstr "Des agents sont configurés, mais aucun conteneur Docker n'a été remon
 msgid "Agents connect to the hub via WebSocket."
 msgstr "Les agents se connectent au hub via WebSocket."
 
+#: src/components/metric-thresholds.tsx
 #: src/components/routes/host-detail.tsx
-#: src/components/routes/hosts.tsx
 msgid "Alert thresholds"
 msgstr "Seuils d'alerte"
+
+#: src/components/metric-thresholds.tsx
+msgid "Alerts muted for this host"
+msgstr "Alertes coupées pour cet hôte"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
@@ -293,6 +301,14 @@ msgstr "Rétention automatique"
 #: src/components/routes/settings/purge.tsx
 msgid "Automatic retention settings have been updated."
 msgstr "Les paramètres de rétention automatique ont été mis à jour."
+
+#: src/components/metric-thresholds.tsx
+msgid "Average CPU utilization"
+msgstr "Utilisation moyenne du CPU"
+
+#: src/components/metric-thresholds.tsx
+msgid "Average memory utilization"
+msgstr "Utilisation moyenne de la mémoire"
 
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
@@ -600,6 +616,7 @@ msgstr "CPU"
 msgid "CPU now"
 msgstr "CPU actuel"
 
+#: src/components/metric-thresholds.tsx
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/host-detail.tsx
 msgid "CPU usage"
@@ -787,6 +804,7 @@ msgstr "Disque"
 msgid "Disk now"
 msgstr "Disque actuel"
 
+#: src/components/metric-thresholds.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Disk usage"
 msgstr "Utilisation disque"
@@ -967,6 +985,10 @@ msgstr "Impossible de charger les paramètres de purge"
 msgid "Failed to move monitor"
 msgstr "Échec du déplacement de la sonde"
 
+#: src/components/metric-thresholds.tsx
+msgid "Failed to reset"
+msgstr "Échec de la réinitialisation"
+
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
@@ -996,6 +1018,10 @@ msgstr "Impossible d'enregistrer les paramètres de purge"
 #: src/components/routes/settings/layout.tsx
 msgid "Failed to save settings"
 msgstr "Échec de l'enregistrement des paramètres"
+
+#: src/components/metric-thresholds.tsx
+msgid "Failed to save threshold"
+msgstr "Échec de l'enregistrement du seuil"
 
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1082,6 +1108,10 @@ msgstr "Dossier mis à jour"
 msgid "Headers (JSON object, optional)"
 msgstr "En-têtes (objet JSON, optionnel)"
 
+#: src/components/metric-thresholds.tsx
+msgid "Highest filesystem usage"
+msgstr "Utilisation du système de fichiers la plus élevée"
+
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "History"
@@ -1105,6 +1135,18 @@ msgstr "Hôte de nouveau en ligne"
 #: src/components/routes/host-detail.tsx
 msgid "Host is offline"
 msgstr "L'hôte est hors ligne"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Host metric back to normal"
+msgstr "Métrique hôte revenue à la normale"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Host metric threshold exceeded"
+msgstr "Seuil de métrique hôte dépassé"
+
+#: src/components/routes/notifications.tsx
+msgid "Host metrics"
+msgstr "Métriques hôtes"
 
 #: src/components/routes/host-detail.tsx
 msgid "Host not found."
@@ -1212,6 +1254,10 @@ msgstr "Info et au-dessus"
 #: src/components/metric-thresholds.tsx
 #~ msgid "Inherits global default"
 #~ msgstr "Hérite du défaut global"
+
+#: src/components/metric-thresholds.tsx
+msgid "Inherits the global default"
+msgstr "Hérite du réglage global"
 
 #: src/components/routes/host-detail.tsx
 msgid "Insecure"
@@ -1354,6 +1400,10 @@ msgstr "Laisser tel quel pour conserver la valeur existante."
 msgid "Leave blank to keep current"
 msgstr "Laisser vide pour conserver l'actuel"
 
+#: src/components/metric-thresholds.tsx
+msgid "Load average"
+msgstr "Charge moyenne"
+
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Loading credentials…"
 msgstr "Chargement des identifiants…"
@@ -1435,6 +1485,7 @@ msgstr "Mémoire"
 msgid "Memory now"
 msgstr ""
 
+#: src/components/metric-thresholds.tsx
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Memory usage"
@@ -2179,6 +2230,10 @@ msgstr "En redémarrage"
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Restarting for"
 msgstr "Redémarrage depuis"
+
+#: src/components/metric-thresholds.tsx
+msgid "Reverted to global default"
+msgstr "Revenu au réglage global par défaut"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Review active scheduled jobs, their usual schedule, latest execution state, and run them manually."
