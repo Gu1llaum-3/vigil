@@ -6,6 +6,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Line } from "react-chartjs-2"
 import {
 	Chart as ChartJS,
+	Filler,
 	Legend,
 	LineElement,
 	LinearScale,
@@ -14,6 +15,7 @@ import {
 	type ChartOptions,
 	type Plugin,
 } from "chart.js"
+import { areaFill } from "@/components/metric-charts"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,7 +24,7 @@ import { $router, Link } from "@/components/router"
 import { pb } from "@/lib/api"
 import type { MonitorEventRecord, MonitorRecord, MonitorStatus } from "@/lib/monitor-types"
 
-ChartJS.register(LineElement, LinearScale, PointElement, Tooltip, Legend)
+ChartJS.register(LineElement, LinearScale, PointElement, Filler, Tooltip, Legend)
 
 type RangeKey = "1h" | "3h" | "6h" | "24h"
 
@@ -260,14 +262,14 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 					label: "Latency",
 					data: series.points,
 					borderColor: "rgb(59, 130, 246)",
-					backgroundColor: "rgba(59, 130, 246, 0.15)",
-					pointBackgroundColor: "rgb(59, 130, 246)",
-					pointBorderColor: "rgb(59, 130, 246)",
-					borderWidth: 2,
-					pointRadius: 2,
+					backgroundColor: areaFill("rgb(59, 130, 246)"),
+					borderWidth: 1.5,
+					fill: true,
+					pointRadius: 0,
 					pointHoverRadius: 4,
+					pointHitRadius: 8,
 					spanGaps: false,
-					tension: 0.2,
+					cubicInterpolationMode: "monotone",
 				},
 			],
 		}),

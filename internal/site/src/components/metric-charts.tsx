@@ -1,21 +1,48 @@
 import { Trans } from "@lingui/react/macro"
 import {
 	Chart as ChartJS,
+	Filler,
 	Legend,
 	LineElement,
 	LinearScale,
 	PointElement,
-	Tooltip,
 	type ChartOptions,
+	type ScriptableContext,
+	Tooltip,
 } from "chart.js"
 import { Line } from "react-chartjs-2"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatBytesPerSecond, formatChartTime, formatPercent } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-ChartJS.register(LineElement, LinearScale, PointElement, Tooltip, Legend)
+ChartJS.register(LineElement, LinearScale, PointElement, Filler, Tooltip, Legend)
 
 export type ChartPoint = { x: number; y: number }
+
+// areaFill builds a scriptable vertical gradient (color → transparent) for the
+// filled area under a line, matching the Beszel-style area look.
+export function areaFill(color: string, topOpacity = 0.35) {
+	const rgba = (alpha: number) => color.replace("rgb(", "rgba(").replace(")", `, ${alpha})`)
+	return (ctx: ScriptableContext<"line">) => {
+		const { chartArea, ctx: canvas } = ctx.chart
+		// chartArea is undefined on the first render pass before layout.
+		if (!chartArea) return rgba(0)
+		const gradient = canvas.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+		gradient.addColorStop(0, rgba(topOpacity))
+		gradient.addColorStop(1, rgba(0))
+		return gradient
+	}
+}
+
+// Shared line styling for the smooth, filled, dotless Beszel-style charts.
+const areaLineStyle = {
+	borderWidth: 1.5,
+	fill: true as const,
+	pointRadius: 0,
+	pointHoverRadius: 4,
+	pointHitRadius: 8,
+	cubicInterpolationMode: "monotone" as const,
+}
 
 export function buildSeries<T>(history: T[], xSelector: (point: T) => number, ySelector: (point: T) => number) {
 	return history
@@ -48,10 +75,8 @@ export function MetricHistoryChart({
 				label: "metric",
 				data: points,
 				borderColor: color,
-				borderWidth: 2,
-				pointRadius: 2,
-				pointHoverRadius: 4,
-				tension: 0.2,
+				backgroundColor: areaFill(color),
+				...areaLineStyle,
 			},
 		],
 	}
@@ -123,21 +148,15 @@ export function NetworkHistoryChart({ rxPoints, txPoints }: { rxPoints: ChartPoi
 				label: "rx",
 				data: rxPoints,
 				borderColor: "rgb(59, 130, 246)",
-				backgroundColor: "rgba(59, 130, 246, 0.15)",
-				borderWidth: 2,
-				pointRadius: 2,
-				pointHoverRadius: 4,
-				tension: 0.2,
+				backgroundColor: areaFill("rgb(59, 130, 246)", 0.18),
+				...areaLineStyle,
 			},
 			{
 				label: "tx",
 				data: txPoints,
 				borderColor: "rgb(16, 185, 129)",
-				backgroundColor: "rgba(16, 185, 129, 0.15)",
-				borderWidth: 2,
-				pointRadius: 2,
-				pointHoverRadius: 4,
-				tension: 0.2,
+				backgroundColor: areaFill("rgb(16, 185, 129)", 0.18),
+				...areaLineStyle,
 			},
 		],
 	}
