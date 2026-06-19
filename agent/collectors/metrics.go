@@ -26,12 +26,29 @@ type metricsState struct {
 	prevNetAt   time.Time
 	ifaceNames  map[string]struct{}
 	ifacesAt    time.Time
+	diskParts   []psdisk.PartitionStat
+	diskPartsAt time.Time
 }
 
 // ifaceRedetectInterval bounds how long a detected interface set is reused before
 // being re-evaluated, so interfaces that appear after startup (VPN, hot-plugged NIC,
-// or a boot race where none were up yet) are eventually picked up.
+// or a boot race where none were up yet) are eventually picked up. The same interval
+// is reused to cache the mounted-filesystem list (cheap to reuse, slow to enumerate).
 const ifaceRedetectInterval = 5 * time.Minute
+
+// networkFsTypes are remote/network filesystems excluded from disk metrics: probing
+// their usage can block (a slow/unreachable NFS/CIFS server) and they are not local
+// capacity. This keeps the high-frequency metrics path from stalling.
+var networkFsTypes = map[string]struct{}{
+	"nfs": {}, "nfs4": {}, "cifs": {}, "smb": {}, "smbfs": {},
+	"fuse.sshfs": {}, "fuse.glusterfs": {}, "glusterfs": {}, "ceph": {},
+	"afs": {}, "9p": {},
+}
+
+func isNetworkFs(fstype string) bool {
+	_, ok := networkFsTypes[strings.ToLower(fstype)]
+	return ok
+}
 
 var hostMetricsState metricsState
 
@@ -47,7 +64,7 @@ func CollectMetrics() common.HostMetricsResponse {
 
 	metrics.CPUPercent = collectCPUPercentLocked()
 	collectMemoryMetrics(&metrics)
-	collectDiskMetrics(&metrics)
+	collectDiskMetricsLocked(now, &metrics)
 	collectLoadMetrics(&metrics)
 	collectNetworkMetricsLocked(now, &metrics)
 
@@ -95,34 +112,68 @@ func collectMemoryMetrics(metrics *common.HostMetricsResponse) {
 	metrics.MemoryUsedPercent = round2(vm.UsedPercent)
 }
 
-func collectDiskMetrics(metrics *common.HostMetricsResponse) {
-	if usage, err := psdisk.Usage("/"); err == nil {
-		metrics.DiskTotalBytes = usage.Total
-		metrics.DiskUsedBytes = usage.Used
-		metrics.DiskUsedPercent = round2(usage.UsedPercent)
-		// seed the max with root so a Partitions() failure still yields the root value
-		metrics.DiskMaxUsedPercent = metrics.DiskUsedPercent
-		metrics.DiskMaxMount = "/"
-	}
-
-	// Highest used% across all real (physical) mounted filesystems, so a full
-	// secondary partition (e.g. /data) is caught, not just root. Partitions(false)
-	// excludes pseudo filesystems (tmpfs, overlay, proc, ...).
-	parts, err := psdisk.Partitions(false)
-	if err != nil {
-		return
-	}
+// collectDiskMetricsLocked sets root usage (DiskUsedPercent) and the highest used%
+// across all real local mounted filesystems (DiskMaxUsedPercent/DiskMaxMount), so a
+// full secondary partition (e.g. /data) is caught and named, not just root. The
+// partition list is cached and root is read once via the same loop. Must be called
+// with hostMetricsState.mu held.
+func collectDiskMetricsLocked(now time.Time, metrics *common.HostMetricsResponse) {
+	parts := diskPartitionsLocked(now)
+	rootSeen := false
 	for _, p := range parts {
 		usage, err := psdisk.Usage(p.Mountpoint)
 		if err != nil || usage.Total == 0 {
 			continue
 		}
 		used := round2(usage.UsedPercent)
+		if p.Mountpoint == "/" {
+			metrics.DiskTotalBytes = usage.Total
+			metrics.DiskUsedBytes = usage.Used
+			metrics.DiskUsedPercent = used
+			rootSeen = true
+		}
 		if used > metrics.DiskMaxUsedPercent {
 			metrics.DiskMaxUsedPercent = used
 			metrics.DiskMaxMount = p.Mountpoint
 		}
 	}
+
+	// Fallback: if root was not in the (filtered/empty) partition list, read it
+	// directly so DiskUsedPercent and the max are still populated.
+	if !rootSeen {
+		if usage, err := psdisk.Usage("/"); err == nil {
+			used := round2(usage.UsedPercent)
+			metrics.DiskTotalBytes = usage.Total
+			metrics.DiskUsedBytes = usage.Used
+			metrics.DiskUsedPercent = used
+			if used > metrics.DiskMaxUsedPercent {
+				metrics.DiskMaxUsedPercent = used
+				metrics.DiskMaxMount = "/"
+			}
+		}
+	}
+}
+
+// diskPartitionsLocked returns the local mounted filesystems, cached for
+// ifaceRedetectInterval and excluding network/remote filesystems. Must be called
+// with hostMetricsState.mu held.
+func diskPartitionsLocked(now time.Time) []psdisk.PartitionStat {
+	if hostMetricsState.diskPartsAt.IsZero() || now.Sub(hostMetricsState.diskPartsAt) >= ifaceRedetectInterval {
+		// Partitions(false) already excludes pseudo filesystems (tmpfs, overlay, proc).
+		parts, err := psdisk.Partitions(false)
+		if err == nil {
+			local := make([]psdisk.PartitionStat, 0, len(parts))
+			for _, p := range parts {
+				if isNetworkFs(p.Fstype) {
+					continue
+				}
+				local = append(local, p)
+			}
+			hostMetricsState.diskParts = local
+			hostMetricsState.diskPartsAt = now
+		}
+	}
+	return hostMetricsState.diskParts
 }
 
 func collectLoadMetrics(metrics *common.HostMetricsResponse) {

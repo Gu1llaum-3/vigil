@@ -31,7 +31,7 @@ var defaultBodies = map[EventKind]*template.Template{
 	EventContainerImageUpdateAvailable: template.Must(template.New("").Funcs(template.FuncMap{"join": strings.Join}).Parse(
 		`Container "{{.Resource.Name}}" on agent "{{index .Details "agent_name"}}" uses {{index .Details "current_ref"}}. Newer versions available{{if index .Details "update_targets"}}: {{join (index .Details "update_targets") ", "}}{{end}}`)),
 	EventHostMetricExceeded: template.Must(template.New("").Parse(
-		`{{index .Details "metric"}} usage on "{{.Resource.Name}}" is {{printf "%.1f" (index .Details "value")}}{{index .Details "unit"}} ({{.Current}} threshold {{printf "%.0f" (index .Details "threshold")}}{{index .Details "unit"}})`)),
+		`{{index .Details "metric"}} usage on "{{.Resource.Name}}" is {{printf "%.1f" (index .Details "value")}}{{index .Details "unit"}}{{if index .Details "mount"}} on {{index .Details "mount"}}{{end}} ({{.Current}} threshold {{printf "%.0f" (index .Details "threshold")}}{{index .Details "unit"}})`)),
 	EventHostMetricRecovered: template.Must(template.New("").Parse(
 		`{{index .Details "metric"}} usage on "{{.Resource.Name}}" recovered ({{printf "%.1f" (index .Details "value")}}{{index .Details "unit"}})`)),
 }

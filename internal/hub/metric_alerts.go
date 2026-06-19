@@ -158,11 +158,11 @@ func (e *metricAlertEvaluator) evaluate(agentID string, metrics common.HostMetri
 		if !changed {
 			continue
 		}
-		e.dispatch(agentID, metric, value, unit, prev, next, th)
+		e.dispatch(agentID, metric, value, unit, prev, next, th, metrics)
 	}
 }
 
-func (e *metricAlertEvaluator) dispatch(agentID string, metric metricKind, value float64, unit string, prev, next alertTier, th metricThreshold) {
+func (e *metricAlertEvaluator) dispatch(agentID string, metric metricKind, value float64, unit string, prev, next alertTier, th metricThreshold, metrics common.HostMetricsResponse) {
 	var evt notifications.Event
 	switch {
 	case next > prev: // escalation (→warning, →critical)
@@ -172,18 +172,25 @@ func (e *metricAlertEvaluator) dispatch(agentID string, metric metricKind, value
 			threshold = th.critical
 			severity = "critical"
 		}
+		details := map[string]any{
+			"metric":    string(metric),
+			"value":     value,
+			"threshold": threshold,
+			"tier":      next.String(),
+			"unit":      unit,
+		}
+		// Disk alerts fire on the highest-used filesystem, which may not be root; name
+		// it so the notification matches the breached partition rather than the root
+		// usage shown elsewhere.
+		if metric == metricDisk {
+			details["mount"] = diskMountLabel(metrics)
+		}
 		evt = notifications.Event{
 			Kind:     notifications.EventHostMetricExceeded,
 			Severity: severity,
 			Previous: prev.String(),
 			Current:  next.String(),
-			Details: map[string]any{
-				"metric":    string(metric),
-				"value":     value,
-				"threshold": threshold,
-				"tier":      next.String(),
-				"unit":      unit,
-			},
+			Details:  details,
 		}
 	case next == tierNone: // full recovery
 		evt = notifications.Event{
@@ -315,6 +322,15 @@ func metricValue(metric metricKind, m common.HostMetricsResponse) (float64, stri
 	default:
 		return 0, ""
 	}
+}
+
+// diskMountLabel returns the filesystem the disk alert refers to: the busiest mount
+// reported by the agent, or root for legacy agents / the root-usage fallback.
+func diskMountLabel(m common.HostMetricsResponse) string {
+	if m.DiskMaxUsedPercent > 0 && m.DiskMaxMount != "" {
+		return m.DiskMaxMount
+	}
+	return "/"
 }
 
 // computeTier returns the breach tier for value, applying hysteresis on the way
