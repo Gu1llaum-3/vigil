@@ -28,11 +28,6 @@ func CollectSystem() (hostname string, primaryIP string, osInfo common.OSInfo, k
 	return hostname, primaryIP, osInfo, kernel, arch, uptimeSecs, resources, network, nil
 }
 
-// OSFamily returns the OS family (Debian or RedHat) based on /etc/os-release.
-func OSFamily() string {
-	return collectOSInfo().Family
-}
-
 func collectOSInfo() common.OSInfo {
 	f, err := os.Open("/etc/os-release")
 	if err != nil {

@@ -51,15 +51,6 @@ func Get(kind string) (Provider, bool) {
 	return p, ok
 }
 
-// Kinds returns all registered provider kinds.
-func Kinds() []string {
-	kinds := make([]string, 0, len(registry))
-	for k := range registry {
-		kinds = append(kinds, k)
-	}
-	return kinds
-}
-
 // configString reads a string value from a config map.
 func configString(raw map[string]any, key string) (string, bool) {
 	v, ok := raw[key]
