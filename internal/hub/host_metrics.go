@@ -65,6 +65,15 @@ func (h *Hub) startMetricsTicker(ctx context.Context, interval time.Duration) {
 	}
 }
 
+// agentLogName returns a human-readable label for an agent record (its
+// hostname-derived "name"), falling back to the record id when no name is set yet.
+func agentLogName(rec *core.Record) string {
+	if name := rec.GetString("name"); name != "" {
+		return name
+	}
+	return rec.Id
+}
+
 func (h *Hub) collectAllHostMetrics(ctx context.Context) (refreshed, failed int) {
 	agents, err := h.FindRecordsByFilter("agents", "status = 'connected'", "", 0, 0)
 	if err != nil {
@@ -75,6 +84,7 @@ func (h *Hub) collectAllHostMetrics(ctx context.Context) (refreshed, failed int)
 	results := make(chan result, len(agents))
 	for _, agent := range agents {
 		agentID := agent.Id
+		agentName := agentLogName(agent)
 		connVal, ok := h.agentConns.Load(agentID)
 		if !ok {
 			results <- result{}
@@ -87,12 +97,12 @@ func (h *Hub) collectAllHostMetrics(ctx context.Context) (refreshed, failed int)
 		}
 		go func() {
 			if err := h.collectAndPersistHostMetrics(ctx, agentID, conn); err != nil {
-				slog.Warn("Metrics collection failed", "agent", agentID, "err", err)
+				slog.Warn("Metrics collection failed", "agent", agentName, "id", agentID, "err", err)
 				results <- result{}
 				return
 			}
 			if err := h.collectAndPersistContainerMetrics(ctx, agentID, conn); err != nil {
-				slog.Warn("Container metrics collection failed", "agent", agentID, "err", err)
+				slog.Warn("Container metrics collection failed", "agent", agentName, "id", agentID, "err", err)
 				results <- result{}
 				return
 			}

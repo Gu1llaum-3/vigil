@@ -101,6 +101,16 @@ type AgentRecord struct {
 	Fingerprint string `db:"fingerprint"`
 	Status      string `db:"status"`
 	Version     string `db:"version"`
+	Name        string `db:"name"`
+}
+
+// logName returns a human-readable label for the agent (its hostname-derived name),
+// falling back to the record id when no name is set yet.
+func (a AgentRecord) logName() string {
+	if a.Name != "" {
+		return a.Name
+	}
+	return a.Id
 }
 
 // verifyWsConn verifies the WebSocket connection using the agent's fingerprint.
@@ -140,7 +150,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	if info, infoErr := wsConn.GetAgentInfo(ctx); infoErr == nil {
 		acr.hub.updateAgentInfo(agentRec.Id, info)
 	} else {
-		slog.Warn("Failed to fetch agent info", "agent", agentRec.Id, "err", infoErr)
+		slog.Warn("Failed to fetch agent info", "agent", agentRec.logName(), "id", agentRec.Id, "err", infoErr)
 	}
 
 	// Collect initial host snapshot.
@@ -149,7 +159,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	if snapshot, snapshotErr := wsConn.GetHostSnapshot(snapshotCtx); snapshotErr == nil {
 		acr.hub.upsertHostSnapshot(agentRec.Id, snapshot)
 	} else {
-		slog.Warn("Failed to fetch host snapshot", "agent", agentRec.Id, "err", snapshotErr)
+		slog.Warn("Failed to fetch host snapshot", "agent", agentRec.logName(), "id", agentRec.Id, "err", snapshotErr)
 	}
 
 	// Collect initial lightweight host metrics so the monitoring views populate immediately.
@@ -158,7 +168,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	if metrics, metricsErr := wsConn.GetHostMetrics(metricsCtx); metricsErr == nil {
 		acr.hub.persistHostMetrics(agentRec.Id, metrics)
 	} else {
-		slog.Warn("Failed to fetch host metrics", "agent", agentRec.Id, "err", metricsErr)
+		slog.Warn("Failed to fetch host metrics", "agent", agentRec.logName(), "id", agentRec.Id, "err", metricsErr)
 	}
 
 	containerMetricsCtx, containerMetricsCancel := context.WithTimeout(context.Background(), containerMetricsRequestTimeout)
@@ -166,7 +176,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	if metrics, metricsErr := wsConn.GetContainerMetrics(containerMetricsCtx); metricsErr == nil {
 		acr.hub.insertContainerMetricSample(agentRec.Id, metrics)
 	} else {
-		slog.Warn("Failed to fetch container metrics", "agent", agentRec.Id, "err", metricsErr)
+		slog.Warn("Failed to fetch container metrics", "agent", agentRec.logName(), "id", agentRec.Id, "err", metricsErr)
 	}
 
 	// Keep the connection alive and detect disconnection.
@@ -197,7 +207,7 @@ func (acr *agentConnectRequest) sendResponseError(res http.ResponseWriter, code 
 // getAgentsByToken retrieves all agent records for a given token.
 func getAgentsByToken(token string, h *Hub) []AgentRecord {
 	var records []AgentRecord
-	_ = h.DB().NewQuery("SELECT id, token, fingerprint, status, version FROM agents WHERE token = {:token}").
+	_ = h.DB().NewQuery("SELECT id, token, fingerprint, status, version, name FROM agents WHERE token = {:token}").
 		Bind(dbx.Params{"token": token}).
 		All(&records)
 	return records
