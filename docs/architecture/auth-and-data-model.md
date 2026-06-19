@@ -78,6 +78,16 @@ The collection is tied to the user that created the enrollment token.
 - same metrics fields as `host_metric_samples`
 - unique index on `agent`
 - written only by the hub after each successful metrics poll
+- migration `24_add_metric_alert_columns.go` adds `load1`/`load5`/`load15`/`disk_max_used_percent` to both `host_metric_samples` and `host_metric_current`
+
+### `metric_alerts`
+
+- created by migration `25_create_metric_alerts.go`
+- host metric-threshold alert definitions; one row per `(agent, metric)` (unique index)
+- `agent` empty = **global default**; `agent` set = **per-agent override** (override wins over default at evaluation)
+- fields: `metric` (select `cpu`/`memory`/`disk`/`loadavg`), `enabled`, `warning_value`, `critical_value`, `hysteresis`
+- admin-only: collection rules are `null`; access gated by `requireAdminRole` on `/api/app/metric-alerts`
+- evaluated in-memory by `internal/hub/metric_alerts.go` (edge-trigger + hysteresis); emits `host.metric_exceeded` / `host.metric_normal` events routed through `notification_rules`
 
 ### `monitor_groups`
 

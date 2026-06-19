@@ -220,7 +220,7 @@ Each collector is a focused function that gathers one domain of host data:
 - `repositories_redhat.go` — DNF/YUM repository sources
 - `reboot.go` — reboot-required detection
 - `docker.go` — read-only Docker inventory (container state, image refs, image IDs, repo digests, exit code for terminal states)
-- `metrics.go` — lightweight host monitoring metrics (CPU, memory, root disk, network throughput)
+- `metrics.go` — lightweight host monitoring metrics (CPU, memory, root disk, network throughput, 1/5/15-min load average, and the max used% across all real mounted filesystems). The load and max-disk fields back the host metric-threshold alerts; they are append-only CBOR fields, so older hubs ignore them and the hub degrades gracefully for older agents that omit them.
 - `container_metrics.go` — lightweight running-container monitoring metrics gathered from `docker stats --no-stream`
 
 All collectors in this package use the `//go:build linux` build tag and are Linux-only. A non-Linux stub (`collectors_stub.go` or equivalent) provides no-op implementations so the agent compiles on other platforms without errors.

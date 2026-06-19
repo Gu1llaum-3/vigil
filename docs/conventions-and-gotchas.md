@@ -297,6 +297,18 @@ Rules:
   to the `ping` binary via `setcap` so the ping monitor still works without root —
   do not "fix" a ping failure by reverting the image to root
 
+## Host Metric Alerts: Direct Call, In-Memory Edge State, Hysteresis
+
+Metric-threshold alerts (CPU/RAM/disk/loadavg) are evaluated in
+`internal/hub/metric_alerts.go` and follow the same rules as the notification dispatcher:
+
+- The evaluator is invoked by a **direct call** to `h.evaluateMetricAlerts(...)` at the
+  end of `persistHostMetrics` — NOT via a hook on `host_metric_samples`/`host_metric_current`
+  (high-frequency collections; a hook there repeats the monitor-scheduler infinite-loop mistake).
+- The threshold **cache** is kept in sync via `OnRecordAfter{Create,Update,Delete}Success("metric_alerts")`. Hooks here are fine because `metric_alerts` is a low-frequency, admin-edited collection.
+- Anti-spam is **edge-triggered with hysteresis**, not a time throttle: `computeTier` only leaves a tier once the value drops below `threshold − hysteresis`, so a value hovering at the threshold does not flap. The fired tier lives in an **in-memory** `map[agent]map[metric]tier` (lost on restart → re-evaluated next cycle). `throttle_seconds` on a rule is a complementary control, not a substitute for edge detection.
+- New `HostMetricsResponse` fields are **append-only** (CBOR keyed by field name). Legacy agents omit `load*`/`disk_max_used_percent`; the evaluator degrades gracefully (falls back to root disk; load 0 never breaches).
+
 ## Good Default Verification Habit
 
 For most non-trivial changes, the safe baseline is:
