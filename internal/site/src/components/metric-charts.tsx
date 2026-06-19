@@ -21,7 +21,7 @@ export type ChartPoint = { x: number; y: number }
 
 // areaFill builds a scriptable vertical gradient (color → transparent) for the
 // filled area under a line, matching the Beszel-style area look.
-function areaFill(color: string, topOpacity = 0.35) {
+export function areaFill(color: string, topOpacity = 0.35) {
 	const rgba = (alpha: number) => color.replace("rgb(", "rgba(").replace(")", `, ${alpha})`)
 	return (ctx: ScriptableContext<"line">) => {
 		const { chartArea, ctx: canvas } = ctx.chart
