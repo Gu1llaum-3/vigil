@@ -214,6 +214,24 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 							</div>
 						)}
 
+						{form.enabled && (
+							<div className="px-4 pb-5 tabular-nums text-muted-foreground">
+								<ThresholdSlider
+									label={<Trans>Trigger after</Trans>}
+									// Stored in seconds; shown and edited in whole minutes (0 = fire immediately).
+									value={Math.round(form.duration_seconds / 60)}
+									unit={t` min`}
+									max={15}
+									step={1}
+									onChange={(v) => patch(metric, { duration_seconds: v * 60 })}
+									onCommit={(v) => save(metric, { duration_seconds: v * 60 })}
+								/>
+								<p className="mt-1 text-xs">
+									<Trans>How long the value must stay over the threshold before alerting (0 = immediately).</Trans>
+								</p>
+							</div>
+						)}
+
 						{perHost && !hasOverride && (
 							<div className="border-t border-muted-foreground/10 px-4 py-2 text-xs text-muted-foreground">
 								<Trans>Inherits the global default</Trans>

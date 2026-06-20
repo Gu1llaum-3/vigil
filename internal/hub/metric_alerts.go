@@ -63,6 +63,20 @@ type metricThreshold struct {
 	warning    float64
 	critical   float64
 	hysteresis float64
+	// duration is the "sustained for" delay: a cold-start breach (none → warning/critical)
+	// only fires once the value has stayed over the threshold continuously for this long.
+	// Zero = fire immediately. Escalation (warning→critical) and recovery are not delayed.
+	duration time.Duration
+}
+
+// pendingStreak records an in-progress cold-start breach: since is when the streak began,
+// lastSeen is the time of the most recent in-breach observation. A gap between lastSeen
+// and the next observation larger than the tolerance means the breach was not continuous,
+// so the streak is restarted (an agent that went offline mid-window must not fire on a
+// single sample when it returns).
+type pendingStreak struct {
+	since    time.Time
+	lastSeen time.Time
 }
 
 // metricAlertEvaluator holds the threshold cache and the in-memory edge-trigger
@@ -81,6 +95,14 @@ type metricAlertEvaluator struct {
 	// (otherwise a min_severity=critical rule would miss the recovery). In-memory only;
 	// a restart falls back to the restored current tier (see transition).
 	peak map[string]map[metricKind]alertTier
+	// pending tracks, per (agent, metric), the cold-start breach streak used to enforce
+	// the "sustained for" duration before firing. In-memory only; a restart restarts the
+	// streak clock (conservative — at worst delays a fresh alert).
+	pending map[string]map[metricKind]pendingStreak
+	// pollInterval is the expected gap between metric polls (METRICS_INTERVAL); it sets
+	// the tolerance for detecting a break in a breach streak (an agent that went offline
+	// or a long collection gap must not count as continuous breaching).
+	pollInterval time.Duration
 
 	// cores caches each agent's CPU core count (from its snapshot) so the loadavg metric
 	// can be normalized to load-per-core — a single global threshold then means the same
@@ -92,13 +114,27 @@ type metricAlertEvaluator struct {
 
 func newMetricAlertEvaluator(h *Hub) *metricAlertEvaluator {
 	return &metricAlertEvaluator{
-		hub:      h,
-		global:   map[metricKind]metricThreshold{},
-		perAgent: map[string]map[metricKind]metricThreshold{},
-		state:    map[string]map[metricKind]alertTier{},
-		peak:     map[string]map[metricKind]alertTier{},
-		cores:    map[string]int{},
+		hub:          h,
+		global:       map[metricKind]metricThreshold{},
+		perAgent:     map[string]map[metricKind]metricThreshold{},
+		state:        map[string]map[metricKind]alertTier{},
+		peak:         map[string]map[metricKind]alertTier{},
+		pending:      map[string]map[metricKind]pendingStreak{},
+		cores:        map[string]int{},
+		pollInterval: defaultMetricsInterval,
 	}
+}
+
+// maxStreakGap is the tolerated gap between consecutive in-breach observations before a
+// streak is considered broken. Allowing ~2 missed/failed polls keeps a transient
+// collection hiccup from resetting a legitimate streak, while an offline agent (gap of
+// many intervals) correctly restarts it.
+func (e *metricAlertEvaluator) maxStreakGap() time.Duration {
+	iv := e.pollInterval
+	if iv <= 0 {
+		iv = defaultMetricsInterval
+	}
+	return 3 * iv
 }
 
 // load (re)builds the threshold cache from the metric_alerts collection.
@@ -117,6 +153,7 @@ func (e *metricAlertEvaluator) load() {
 			warning:    numberAsFloat64(rec.Get("warning_value")),
 			critical:   numberAsFloat64(rec.Get("critical_value")),
 			hysteresis: numberAsFloat64(rec.Get("hysteresis")),
+			duration:   time.Duration(numberAsFloat64(rec.Get("duration_seconds"))) * time.Second,
 		}
 		if th.hysteresis <= 0 {
 			th.hysteresis = defaultHysteresisFor(metric)
@@ -134,6 +171,14 @@ func (e *metricAlertEvaluator) load() {
 	e.global = global
 	e.perAgent = perAgent
 	e.mu.Unlock()
+
+	// A threshold/duration change invalidates in-flight "sustained for" streaks: a streak
+	// started under the old config must not be measured against the new one. Reset them so
+	// the sustained window restarts cleanly from the next breach. Fired tiers (state/peak)
+	// are left intact — clearing them would re-fire active alerts.
+	e.stateMu.Lock()
+	e.pending = map[string]map[metricKind]pendingStreak{}
+	e.stateMu.Unlock()
 }
 
 // thresholdFor resolves the effective threshold for (agent, metric). A per-agent
@@ -186,7 +231,7 @@ func (e *metricAlertEvaluator) evaluate(agentID string, metrics common.HostMetri
 		if value == 0 && zeroIsMissing(metric) {
 			continue
 		}
-		prev, next, peak, changed := e.transition(agentID, metric, value, th)
+		prev, next, peak, changed := e.transition(agentID, metric, value, th, time.Now())
 		if !changed {
 			continue
 		}
@@ -349,11 +394,46 @@ func (e *metricAlertEvaluator) agentName(agentID string) string {
 // one lock so concurrent polls for the same agent cannot both observe the same prev and
 // dispatch twice. peak is what a recovery should be notified at: it survives a silent
 // critical→warning downgrade and is reset once the metric returns to normal.
-func (e *metricAlertEvaluator) transition(agentID string, metric metricKind, value float64, th metricThreshold) (prev, next, peak alertTier, changed bool) {
+// gateEntry applies the "sustained for" duration to a cold-start escalation. Only a
+// none→breach transition is delayed: while prev is none and a positive duration is set,
+// the breach must persist for `duration` before it commits; until then the committed tier
+// stays none. Escalation from an already-firing tier, downgrades, and recovery all commit
+// immediately. The streak is restarted if the gap since the last in-breach observation
+// exceeds maxGap, so a discontinuous breach (e.g. an agent offline mid-window then back)
+// cannot fire on a single sample. It is pure for unit testing; the returned streak is the
+// one to persist (zero `since` = clear it).
+func gateEntry(prev, target alertTier, streak pendingStreak, now time.Time, duration, maxGap time.Duration) (commit alertTier, next pendingStreak) {
+	if prev != tierNone || duration <= 0 || target == tierNone {
+		return target, pendingStreak{} // immediate; no pending streak
+	}
+	if streak.since.IsZero() || now.Sub(streak.lastSeen) > maxGap {
+		return tierNone, pendingStreak{since: now, lastSeen: now} // (re)start the streak
+	}
+	if now.Sub(streak.since) >= duration {
+		return target, pendingStreak{} // sustained long enough → fire, clear streak
+	}
+	return tierNone, pendingStreak{since: streak.since, lastSeen: now} // keep waiting
+}
+
+func (e *metricAlertEvaluator) transition(agentID string, metric metricKind, value float64, th metricThreshold, now time.Time) (prev, next, peak alertTier, changed bool) {
 	e.stateMu.Lock()
 	defer e.stateMu.Unlock()
 	prev = e.state[agentID][metric]
-	next = computeTier(prev, value, th)
+	target := computeTier(prev, value, th)
+
+	// Apply the sustained-"for" gate to a cold-start breach, tracking the streak.
+	next, streak := gateEntry(prev, target, e.pending[agentID][metric], now, th.duration, e.maxStreakGap())
+	if streak.since.IsZero() {
+		if byMetric, ok := e.pending[agentID]; ok {
+			delete(byMetric, metric)
+		}
+	} else {
+		if e.pending[agentID] == nil {
+			e.pending[agentID] = map[metricKind]pendingStreak{}
+		}
+		e.pending[agentID][metric] = streak
+	}
+
 	// The peak is at least the current tier (covers a restart that restored the tier
 	// but not the peak).
 	peak = e.peak[agentID][metric]
@@ -393,6 +473,9 @@ func (e *metricAlertEvaluator) clearState(agentID string, metric metricKind) {
 		delete(byMetric, metric)
 	}
 	if byMetric, ok := e.peak[agentID]; ok {
+		delete(byMetric, metric)
+	}
+	if byMetric, ok := e.pending[agentID]; ok {
 		delete(byMetric, metric)
 	}
 }

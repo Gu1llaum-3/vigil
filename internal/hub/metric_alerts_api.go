@@ -17,21 +17,25 @@ type metricAlertPayload struct {
 	WarningValue  float64 `json:"warning_value"`
 	CriticalValue float64 `json:"critical_value"`
 	Hysteresis    float64 `json:"hysteresis"`
-	Created       string  `json:"created"`
-	Updated       string  `json:"updated"`
+	// DurationSeconds is the "sustained for" delay before a cold-start breach fires
+	// (0 = immediate).
+	DurationSeconds float64 `json:"duration_seconds"`
+	Created         string  `json:"created"`
+	Updated         string  `json:"updated"`
 }
 
 func metricAlertResponse(rec *core.Record) metricAlertPayload {
 	return metricAlertPayload{
-		ID:            rec.Id,
-		Agent:         rec.GetString("agent"),
-		Metric:        rec.GetString("metric"),
-		Enabled:       rec.GetBool("enabled"),
-		WarningValue:  numberAsFloat64(rec.Get("warning_value")),
-		CriticalValue: numberAsFloat64(rec.Get("critical_value")),
-		Hysteresis:    numberAsFloat64(rec.Get("hysteresis")),
-		Created:       rec.GetString("created"),
-		Updated:       rec.GetString("updated"),
+		ID:              rec.Id,
+		Agent:           rec.GetString("agent"),
+		Metric:          rec.GetString("metric"),
+		Enabled:         rec.GetBool("enabled"),
+		WarningValue:    numberAsFloat64(rec.Get("warning_value")),
+		CriticalValue:   numberAsFloat64(rec.Get("critical_value")),
+		Hysteresis:      numberAsFloat64(rec.Get("hysteresis")),
+		DurationSeconds: numberAsFloat64(rec.Get("duration_seconds")),
+		Created:         rec.GetString("created"),
+		Updated:         rec.GetString("updated"),
 	}
 }
 
@@ -58,6 +62,9 @@ func validateMetricAlertPayload(body metricAlertPayload) error {
 	}
 	if minThreshold > 0 && body.Hysteresis >= minThreshold {
 		return errors.New("resolve margin must be smaller than the threshold")
+	}
+	if body.DurationSeconds < 0 {
+		return errors.New("duration must be non-negative")
 	}
 	return nil
 }
@@ -136,6 +143,7 @@ func (h *Hub) upsertMetricAlert(e *core.RequestEvent) error {
 		rec.Set("warning_value", body.WarningValue)
 		rec.Set("critical_value", body.CriticalValue)
 		rec.Set("hysteresis", body.Hysteresis)
+		rec.Set("duration_seconds", body.DurationSeconds)
 
 		saveErr = h.Save(rec)
 		if saveErr == nil {
