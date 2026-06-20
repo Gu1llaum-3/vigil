@@ -4,6 +4,7 @@ package hub
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/pocketbase/pocketbase/core"
@@ -53,6 +54,39 @@ func TestMetricAlertEmptyAgentUpsert(t *testing.T) {
 	}
 }
 
+// TestLoadReadsDuration confirms the duration_seconds column round-trips into the
+// threshold cache (so the sustained-"for" delay is actually applied at evaluation).
+func TestLoadReadsDuration(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanupTestHub(hub, testApp)
+
+	col, err := hub.FindCollectionByNameOrId(metricAlertsCollection)
+	if err != nil {
+		t.Fatalf("collection: %v", err)
+	}
+	rec := core.NewRecord(col)
+	rec.Set("metric", "cpu")
+	rec.Set("enabled", true)
+	rec.Set("warning_value", 80)
+	rec.Set("hysteresis", 5)
+	rec.Set("duration_seconds", 120)
+	if err := hub.Save(rec); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	hub.metricAlerts.load()
+
+	th, ok := hub.metricAlerts.thresholdFor("", metricCPU)
+	if !ok {
+		t.Fatal("threshold not loaded")
+	}
+	if th.duration != 2*time.Minute {
+		t.Fatalf("duration not loaded: got %v, want 2m", th.duration)
+	}
+}
+
 // TestValidateMetricAlertPayload locks the payload rules, including the new guard that
 // an enabled alert must have at least one positive threshold (otherwise it is shown as
 // active in the UI yet can never fire — a silent no-op).
@@ -98,7 +132,7 @@ func TestEdgeStatePersistsAcrossReload(t *testing.T) {
 
 	// Drive the in-memory state to a fired tier, then write the current row (which
 	// folds the alert_tiers snapshot into the same write).
-	if _, _, _, changed := hub.metricAlerts.transition(agentID, metricCPU, 50, th); !changed {
+	if _, _, _, changed := hub.metricAlerts.transition(agentID, metricCPU, 50, th, time.Now()); !changed {
 		t.Fatal("expected the metric to fire")
 	}
 	hub.upsertHostMetricCurrent(agentID, common.HostMetricsResponse{CPUPercent: 50})

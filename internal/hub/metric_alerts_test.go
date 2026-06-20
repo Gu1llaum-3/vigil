@@ -6,6 +6,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
@@ -126,7 +127,7 @@ func TestTransitionAtomic(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, _, _, changed := e.transition("a1", metricCPU, 90, th); changed {
+			if _, _, _, changed := e.transition("a1", metricCPU, 90, th, time.Now()); changed {
 				atomic.AddInt64(&changes, 1)
 			}
 		}()
@@ -185,16 +186,16 @@ func TestTransitionTracksPeak(t *testing.T) {
 	}
 	th := metricThreshold{enabled: true, warning: 80, critical: 95, hysteresis: 5}
 
-	if _, next, _, _ := e.transition("a", metricCPU, 96, th); next != tierCritical {
+	if _, next, _, _ := e.transition("a", metricCPU, 96, th, time.Now()); next != tierCritical {
 		t.Fatalf("expected critical, got %v", next)
 	}
 	// drop into the warning band (below critical-hysteresis, above warning-hysteresis):
 	// a silent downgrade to warning, but the episode peak must remain critical.
-	if _, next, peak, _ := e.transition("a", metricCPU, 88, th); next != tierWarning || peak != tierCritical {
+	if _, next, peak, _ := e.transition("a", metricCPU, 88, th, time.Now()); next != tierWarning || peak != tierCritical {
 		t.Fatalf("downgrade: next=%v peak=%v (want warning/critical)", next, peak)
 	}
 	// full recovery reports the peak (critical), not the downgraded warning tier.
-	prev, next, peak, changed := e.transition("a", metricCPU, 10, th)
+	prev, next, peak, changed := e.transition("a", metricCPU, 10, th, time.Now())
 	if !changed || next != tierNone || peak != tierCritical {
 		t.Fatalf("recovery: changed=%v next=%v peak=%v (want true/normal/critical)", changed, next, peak)
 	}
@@ -203,7 +204,7 @@ func TestTransitionTracksPeak(t *testing.T) {
 		t.Fatalf("recovery event: ok=%v sev=%q (want critical)", ok, evt.Severity)
 	}
 	// the peak must be cleared after recovery so the next episode starts fresh.
-	if _, _, peak, _ := e.transition("a", metricCPU, 82, th); peak != tierWarning {
+	if _, _, peak, _ := e.transition("a", metricCPU, 82, th, time.Now()); peak != tierWarning {
 		t.Fatalf("new episode peak=%v, want warning (peak not reset)", peak)
 	}
 }
@@ -222,6 +223,109 @@ func TestLoadPerCore(t *testing.T) {
 	}
 	if _, ok := loadPerCore(5, 0); ok {
 		t.Fatal("unknown core count must report ok=false")
+	}
+}
+
+// TestGateEntry locks the sustained-"for" gating logic: only a cold-start breach (none →
+// breach) is delayed; escalation, downgrade and recovery commit immediately; and a gap in
+// observations larger than maxGap restarts the streak.
+func TestGateEntry(t *testing.T) {
+	base := time.Unix(1_700_000_000, 0)
+	dur := 2 * time.Minute
+	gap := 3 * time.Minute
+	streak := func(since, last time.Time) pendingStreak { return pendingStreak{since: since, lastSeen: last} }
+
+	// cold-start, no streak yet → start streak (since=lastSeen=now), do not fire
+	if commit, s := gateEntry(tierNone, tierWarning, pendingStreak{}, base, dur, gap); commit != tierNone || s.since != base || s.lastSeen != base {
+		t.Fatalf("cold-start begin: commit=%v streak=%+v", commit, s)
+	}
+	// cold-start, within the window → keep waiting, preserve since, advance lastSeen
+	if commit, s := gateEntry(tierNone, tierWarning, streak(base, base), base.Add(time.Minute), dur, gap); commit != tierNone || s.since != base || s.lastSeen != base.Add(time.Minute) {
+		t.Fatalf("within window: commit=%v streak=%+v", commit, s)
+	}
+	// cold-start, sustained past the window → fire, clear streak
+	if commit, s := gateEntry(tierNone, tierWarning, streak(base, base.Add(time.Minute)), base.Add(dur), dur, gap); commit != tierWarning || !s.since.IsZero() {
+		t.Fatalf("sustained: commit=%v streak=%+v", commit, s)
+	}
+	// gap larger than maxGap since lastSeen → restart streak (do NOT fire on a single late
+	// sample, even though now-since would exceed the duration)
+	if commit, s := gateEntry(tierNone, tierWarning, streak(base, base), base.Add(2*time.Hour), dur, gap); commit != tierNone || s.since != base.Add(2*time.Hour) {
+		t.Fatalf("gap must restart streak: commit=%v streak=%+v", commit, s)
+	}
+	// breach cleared before the window → target none commits immediately, streak cleared
+	if commit, s := gateEntry(tierNone, tierNone, streak(base, base), base.Add(time.Minute), dur, gap); commit != tierNone || !s.since.IsZero() {
+		t.Fatalf("cleared early: commit=%v streak=%+v", commit, s)
+	}
+	// duration 0 → fire immediately (legacy behavior)
+	if commit, _ := gateEntry(tierNone, tierWarning, pendingStreak{}, base, 0, gap); commit != tierWarning {
+		t.Fatalf("no duration must fire immediately, got %v", commit)
+	}
+	// already firing → escalation is immediate (not gated)
+	if commit, _ := gateEntry(tierWarning, tierCritical, pendingStreak{}, base, dur, gap); commit != tierCritical {
+		t.Fatalf("escalation must be immediate, got %v", commit)
+	}
+	// already firing → recovery is immediate
+	if commit, _ := gateEntry(tierWarning, tierNone, pendingStreak{}, base, dur, gap); commit != tierNone {
+		t.Fatalf("recovery must be immediate, got %v", commit)
+	}
+}
+
+// TestTransitionSustainedFor drives transition() over time with a "for" duration: a breach
+// must persist for the duration before firing, a transient spike that clears must NOT
+// fire, and an agent that goes offline mid-window must NOT fire on a single sample when it
+// returns (the streak restarts after a gap).
+func TestTransitionSustainedFor(t *testing.T) {
+	th := metricThreshold{enabled: true, warning: 80, critical: 95, hysteresis: 5, duration: 2 * time.Minute}
+	base := time.Unix(1_700_000_000, 0)
+
+	newEval := func() *metricAlertEvaluator {
+		return &metricAlertEvaluator{
+			state:        map[string]map[metricKind]alertTier{},
+			peak:         map[string]map[metricKind]alertTier{},
+			pending:      map[string]map[metricKind]pendingStreak{},
+			pollInterval: time.Minute, // maxStreakGap = 3m
+		}
+	}
+
+	// Sustained breach fires only after the window.
+	e := newEval()
+	if _, _, _, changed := e.transition("a", metricCPU, 90, th, base); changed {
+		t.Fatal("first breach poll must not fire (pending)")
+	}
+	if _, _, _, changed := e.transition("a", metricCPU, 90, th, base.Add(time.Minute)); changed {
+		t.Fatal("still within the for-window must not fire")
+	}
+	_, next, _, changed := e.transition("a", metricCPU, 90, th, base.Add(2*time.Minute))
+	if !changed || next != tierWarning {
+		t.Fatalf("sustained breach must fire warning: changed=%v next=%v", changed, next)
+	}
+
+	// Transient spike that clears before the window never fires.
+	e2 := newEval()
+	if _, _, _, changed := e2.transition("b", metricCPU, 99, th, base); changed {
+		t.Fatal("spike start must not fire")
+	}
+	if _, _, _, changed := e2.transition("b", metricCPU, 10, th, base.Add(30*time.Second)); changed {
+		t.Fatal("spike cleared before window must not fire")
+	}
+	// after the original window elapses, still nothing (streak was reset)
+	if _, _, _, changed := e2.transition("b", metricCPU, 10, th, base.Add(3*time.Minute)); changed {
+		t.Fatal("no alert should remain after a transient spike")
+	}
+
+	// Agent offline mid-window then returns: the gap (>> maxStreakGap) restarts the streak,
+	// so a single breaching sample on return must NOT fire.
+	e3 := newEval()
+	if _, _, _, changed := e3.transition("c", metricCPU, 90, th, base); changed {
+		t.Fatal("breach start must not fire")
+	}
+	// returns 2h later, still breaching → streak restarts, no immediate fire
+	if _, _, _, changed := e3.transition("c", metricCPU, 90, th, base.Add(2*time.Hour)); changed {
+		t.Fatal("single sample after an offline gap must not fire (streak restarted)")
+	}
+	// but it now fires once sustained for the full window from the restart
+	if _, next, _, changed := e3.transition("c", metricCPU, 90, th, base.Add(2*time.Hour+2*time.Minute)); !changed || next != tierWarning {
+		t.Fatalf("must fire after a fresh sustained window post-gap: changed=%v next=%v", changed, next)
 	}
 }
 

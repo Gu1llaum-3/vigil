@@ -13,6 +13,10 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/components/metric-thresholds.tsx
+msgid " min"
+msgstr " min"
+
 #. placeholder {0}: auditedContainers.length
 #. placeholder {0}: containers.length
 #: src/components/routes/host-detail.tsx
@@ -1188,6 +1192,10 @@ msgstr "Hosts needing attention"
 #: src/components/routes/home.tsx
 msgid "Hosts overview"
 msgstr "Hosts overview"
+
+#: src/components/metric-thresholds.tsx
+msgid "How long the value must stay over the threshold before alerting (0 = immediately)."
+msgstr "How long the value must stay over the threshold before alerting (0 = immediately)."
 
 #: src/components/add-agent.tsx
 msgid "Hub URL"
@@ -2596,6 +2604,10 @@ msgstr "Total hosts"
 #: src/components/routes/settings/general.tsx
 msgid "Translations are managed from the project's locale catalogs."
 msgstr "Translations are managed from the project's locale catalogs."
+
+#: src/components/metric-thresholds.tsx
+msgid "Trigger after"
+msgstr "Trigger after"
 
 #: src/components/routes/host-detail.tsx
 #: src/components/routes/monitor-detail.tsx

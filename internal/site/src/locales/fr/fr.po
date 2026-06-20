@@ -18,6 +18,10 @@ msgstr ""
 "X-Crowdin-File: /main/internal/site/src/locales/en/en.po\n"
 "X-Crowdin-File-ID: 32\n"
 
+#: src/components/metric-thresholds.tsx
+msgid " min"
+msgstr " min"
+
 #. placeholder {0}: auditedContainers.length
 #. placeholder {0}: containers.length
 #: src/components/routes/host-detail.tsx
@@ -1193,6 +1197,10 @@ msgstr "Hôtes à traiter"
 #: src/components/routes/home.tsx
 msgid "Hosts overview"
 msgstr "Vue d'ensemble des hôtes"
+
+#: src/components/metric-thresholds.tsx
+msgid "How long the value must stay over the threshold before alerting (0 = immediately)."
+msgstr "Durée pendant laquelle la valeur doit rester au-dessus du seuil avant d'alerter (0 = immédiatement)."
 
 #: src/components/add-agent.tsx
 msgid "Hub URL"
@@ -2601,6 +2609,10 @@ msgstr "Total des hôtes"
 #: src/components/routes/settings/general.tsx
 msgid "Translations are managed from the project's locale catalogs."
 msgstr "Les traductions sont gérées depuis les catalogues de localisation du projet."
+
+#: src/components/metric-thresholds.tsx
+msgid "Trigger after"
+msgstr "Déclencher après"
 
 #: src/components/routes/host-detail.tsx
 #: src/components/routes/monitor-detail.tsx

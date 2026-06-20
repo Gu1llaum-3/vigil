@@ -101,6 +101,9 @@ func (h *Hub) StartHub() error {
 		goSafe("snapshot ticker", func() { h.startSnapshotTicker(ctx, snapshotInterval) })
 		metricsInterval := parseMetricsInterval()
 		slog.Info("Metrics ticker started", "interval", metricsInterval)
+		// Tell the metric-alert evaluator the poll cadence so it can detect breaks in a
+		// sustained-"for" breach streak (e.g. an agent that went offline mid-window).
+		h.metricAlerts.pollInterval = metricsInterval
 		goSafe("metrics ticker", func() { h.startMetricsTicker(ctx, metricsInterval) })
 		if err := h.registerScheduledJobs(); err != nil {
 			return err

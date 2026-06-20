@@ -86,7 +86,7 @@ The collection is tied to the user that created the enrollment token.
 - created by migration `25_create_metric_alerts.go`
 - host metric-threshold alert definitions; one row per `(agent, metric)` (unique index)
 - `agent` empty = **global default**; `agent` set = **per-agent override** (override always wins at evaluation, including when disabled — a disabled override **mutes** that metric for that host and does not fall back to the global; re-inherit by deleting the row)
-- fields: `metric` (select `cpu`/`memory`/`disk`/`loadavg`), `enabled`, `warning_value`, `critical_value`, `hysteresis`
+- fields: `metric` (select `cpu`/`memory`/`disk`/`loadavg`), `enabled`, `warning_value`, `critical_value`, `hysteresis`, `duration_seconds` (sustained-"for" entry delay, migration `29`; `0` = immediate)
 - `cpu`/`memory`/`disk` thresholds are percentages; **`loadavg` is load-per-core on the 5-minute load** (`Load5` ÷ CPU core count hub-side, so one global threshold is meaningful on any host size; `1.0` = fully utilized; the 5-min window avoids 1-min spikes). Migration `28_reset_loadavg_alerts.go` cleared old absolute loadavg rows.
 - the API rejects `hysteresis ≥ threshold` (otherwise the dead band would extend below 0 and a fired alert could never recover)
 - admin-only: collection rules are `null`; access gated by `requireAdminRole` on `/api/app/metric-alerts`

@@ -12,6 +12,8 @@ export interface MetricAlert {
 	warning_value: number
 	critical_value: number
 	hysteresis: number
+	/** "Sustained for" delay in seconds before a cold-start breach fires (0 = immediate). */
+	duration_seconds: number
 }
 
 /**
@@ -44,6 +46,7 @@ export function emptyMetricAlert(agent: string, metric: MetricAlertMetric): Metr
 		warning_value: info.warning,
 		critical_value: info.critical,
 		hysteresis: info.hysteresis,
+		duration_seconds: 0,
 	}
 }
 
