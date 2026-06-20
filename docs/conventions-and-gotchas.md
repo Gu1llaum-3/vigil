@@ -255,6 +255,13 @@ Current dispatch points:
 
 When adding new notification triggers, follow this pattern and do not use `OnRecordAfterUpdate` hooks on high-frequency collections.
 
+## Image Audit: Be Gentle With Registries, Keep Last Good On Transient Failure
+
+The image-audit job (`internal/hub/image_audits_runner.go`) talks to external registries, which throttle aggressively. Two rules avoid the recurring `context deadline exceeded`:
+
+- **Never hit one registry host concurrently, but don't park a worker on it either.** `runImageAuditPool` groups targets by `registryHost(ref)` and runs each host's group sequentially in one goroutine, N host-groups in parallel — so distinct registries run in parallel without queueing behind a busy host (the head-of-line trap of gating a worker pool *and* a per-host lock). This single mechanism owns the per-host serialization; do **not** re-add a per-host lock in the registry client (it would be redundant machinery). Consecutive containers on the same host are paced by `imageAuditPerHostDelay` (between containers, not between a container's internal — already serial — calls). Each call gets its **own** `imageAuditPerCallTimeout` — never put many sequential registry calls under one shared short budget (that was the original bug: `ListTags` + `ResolvedDigest` + `HeadDigest` + retries all racing one 20s deadline). Do **not** retry timeouts; do **not** memoize a per-caller ctx-cancellation in the ListTags cache (it would poison siblings).
+- **A transient failure must not overwrite a good result.** `decideAuditPersistence` keeps the last `up_to_date`/`update_available` status across timeout/network/registry errors, tracking `consecutive_failures` and escalating to `check_failed` only after `imageAuditFailureGraceCycles`. Don't go back to unconditionally writing `status=check_failed` in `upsertContainerImageAudit`.
+
 ## Never Inline Secrets Into Generated Service Files
 
 The install/packaging scripts must not interpolate `KEY`/`TOKEN`/`HUB_URL` (or any
