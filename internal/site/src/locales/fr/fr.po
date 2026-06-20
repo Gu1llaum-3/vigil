@@ -101,8 +101,12 @@ msgid "0 means instant down. Default is 3."
 msgstr "0 = arrêt immédiat. Valeur par défaut : 3."
 
 #: src/components/metric-thresholds.tsx
-msgid "1-minute load (≈ number of cores)"
-msgstr "Charge sur 1 minute (≈ nombre de cœurs)"
+#~ msgid "1-minute load (≈ number of cores)"
+#~ msgstr "Charge sur 1 minute (≈ nombre de cœurs)"
+
+#: src/components/metric-thresholds.tsx
+msgid "1-minute load per CPU core (1.0 = fully utilized)"
+msgstr "Charge sur 1 minute par cœur CPU (1.0 = pleine utilisation)"
 
 #: src/components/routes/settings/purge.tsx
 msgid "A background job runs daily and deletes monitoring events and notification logs older than the configured retention window."

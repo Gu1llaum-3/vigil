@@ -136,31 +136,31 @@ func TestMetricAlertEventSeverity(t *testing.T) {
 	m := common.HostMetricsResponse{}
 
 	// escalation none→warning
-	if evt, ok := metricAlertEvent("a", "host", metricCPU, 82, "%", tierNone, tierWarning, tierWarning, th, m); !ok ||
+	if evt, ok := metricAlertEvent("a", "host", metricCPU, 82, "%", tierNone, tierWarning, tierWarning, th, 0, m); !ok ||
 		evt.Kind != notifications.EventHostMetricExceeded || evt.Severity != "warning" {
 		t.Fatalf("escalation→warning: ok=%v kind=%v sev=%q", ok, evt.Kind, evt.Severity)
 	}
 	// escalation warning→critical
-	if evt, ok := metricAlertEvent("a", "host", metricCPU, 97, "%", tierWarning, tierCritical, tierCritical, th, m); !ok || evt.Severity != "critical" {
+	if evt, ok := metricAlertEvent("a", "host", metricCPU, 97, "%", tierWarning, tierCritical, tierCritical, th, 0, m); !ok || evt.Severity != "critical" {
 		t.Fatalf("escalation→critical: ok=%v sev=%q", ok, evt.Severity)
 	}
 	// recovery from warning carries "warning"
-	if evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", tierWarning, tierNone, tierWarning, th, m); !ok ||
+	if evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", tierWarning, tierNone, tierWarning, th, 0, m); !ok ||
 		evt.Kind != notifications.EventHostMetricRecovered || evt.Severity != "warning" {
 		t.Fatalf("recovery-from-warning: ok=%v kind=%v sev=%q", ok, evt.Kind, evt.Severity)
 	}
 	// recovery whose episode peaked at critical carries "critical" (even if the immediate
 	// previous tier had been downgraded to warning)
-	if evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", tierWarning, tierNone, tierCritical, th, m); !ok || evt.Severity != "critical" {
+	if evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", tierWarning, tierNone, tierCritical, th, 0, m); !ok || evt.Severity != "critical" {
 		t.Fatalf("recovery-peaked-critical: ok=%v sev=%q", ok, evt.Severity)
 	}
 	// downgrade critical→warning stays silent
-	if _, ok := metricAlertEvent("a", "host", metricCPU, 88, "%", tierCritical, tierWarning, tierCritical, th, m); ok {
+	if _, ok := metricAlertEvent("a", "host", metricCPU, 88, "%", tierCritical, tierWarning, tierCritical, th, 0, m); ok {
 		t.Fatal("critical→warning downgrade must not emit an event")
 	}
 	// disk escalation names the busiest mount
 	dm := common.HostMetricsResponse{DiskMaxUsedPercent: 92, DiskMaxMount: "/data"}
-	if evt, ok := metricAlertEvent("a", "host", metricDisk, 92, "%", tierNone, tierWarning, tierWarning, th, dm); !ok || evt.Details["mount"] != "/data" {
+	if evt, ok := metricAlertEvent("a", "host", metricDisk, 92, "%", tierNone, tierWarning, tierWarning, th, 0, dm); !ok || evt.Details["mount"] != "/data" {
 		t.Fatalf("disk mount label: ok=%v mount=%v", ok, evt.Details["mount"])
 	}
 }
@@ -188,13 +188,30 @@ func TestTransitionTracksPeak(t *testing.T) {
 	if !changed || next != tierNone || peak != tierCritical {
 		t.Fatalf("recovery: changed=%v next=%v peak=%v (want true/normal/critical)", changed, next, peak)
 	}
-	evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", prev, next, peak, th, common.HostMetricsResponse{})
+	evt, ok := metricAlertEvent("a", "host", metricCPU, 10, "%", prev, next, peak, th, 0, common.HostMetricsResponse{})
 	if !ok || evt.Severity != "critical" {
 		t.Fatalf("recovery event: ok=%v sev=%q (want critical)", ok, evt.Severity)
 	}
 	// the peak must be cleared after recovery so the next episode starts fresh.
 	if _, _, peak, _ := e.transition("a", metricCPU, 82, th); peak != tierWarning {
 		t.Fatalf("new episode peak=%v, want warning (peak not reset)", peak)
+	}
+}
+
+// TestLoadPerCore locks the loadavg normalization: the same per-core threshold means
+// the same thing on a 1-core and a 16-core host, and an unknown core count is reported.
+func TestLoadPerCore(t *testing.T) {
+	if v, ok := loadPerCore(8, 8); !ok || v != 1.0 {
+		t.Fatalf("8 load / 8 cores = 1.0/core: got %v ok=%v", v, ok)
+	}
+	if v, ok := loadPerCore(1.5, 1); !ok || v != 1.5 {
+		t.Fatalf("1.5 load / 1 core = 1.5/core: got %v ok=%v", v, ok)
+	}
+	if v, ok := loadPerCore(24, 16); !ok || v != 1.5 {
+		t.Fatalf("24 load / 16 cores = 1.5/core: got %v ok=%v", v, ok)
+	}
+	if _, ok := loadPerCore(5, 0); ok {
+		t.Fatal("unknown core count must report ok=false")
 	}
 }
 

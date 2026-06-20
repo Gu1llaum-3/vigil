@@ -32,6 +32,12 @@ func (h *Hub) upsertHostSnapshot(agentId string, snapshot common.HostSnapshotRes
 	if err != nil {
 		slog.Warn("Failed to save host snapshot", "agent", agentId, "err", err)
 	}
+
+	// Keep the metric-alert evaluator's core-count cache fresh so loadavg stays
+	// normalized per-core (the threshold means the same thing on every host size).
+	if h.metricAlerts != nil {
+		h.metricAlerts.setCores(agentId, snapshot.Resources.CPUCores)
+	}
 }
 
 // collectAllSnapshots triggers snapshot collection for all connected agents and returns (refreshed, failed) counts.
