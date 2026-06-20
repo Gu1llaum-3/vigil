@@ -189,6 +189,11 @@ func (h *Hub) applyOverrideToAuditRecords(agentID, containerName, newPolicy stri
 			rec.Set("status", imageAuditStatusUnknown)
 			rec.Set("checked_at", now)
 		}
+		// Clear transient-failure tracking so a stale "last check errored" hint does not
+		// linger on a row whose status was just reset by the override.
+		rec.Set("consecutive_failures", 0)
+		rec.Set("last_check_error", "")
+		rec.Set("last_check_error_at", "")
 		_ = h.SaveNoValidate(rec)
 	}
 }

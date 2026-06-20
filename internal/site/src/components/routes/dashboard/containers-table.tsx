@@ -48,6 +48,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "@/components/ui/use-toast"
 import { $router, Link } from "@/components/router"
+import { StaleCheckHint } from "@/components/stale-check-hint"
 import { useAuditLabel } from "@/lib/audit-status"
 import { isAdmin, pb } from "@/lib/api"
 import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
@@ -280,6 +281,7 @@ function ImageAuditBadge({ container }: { container: ContainerFleetEntry }) {
 			<Badge variant="outline" className={cn("text-[10px]", cls)}>
 				{label}
 			</Badge>
+			<StaleCheckHint audit={audit} className="text-[10px]" />
 			{showLineTarget && (
 				<Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 font-mono text-[10px] text-amber-300">
 					{lineLatestTag}

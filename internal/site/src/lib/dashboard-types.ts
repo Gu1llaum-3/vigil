@@ -99,6 +99,10 @@ export interface ContainerImageAudit {
 	major_update_available?: boolean
 	checked_at: string
 	error?: string
+	/** >0 with a good status = last good result shown while recent checks failed transiently. */
+	consecutive_failures?: number
+	last_check_error?: string
+	last_check_error_at?: string
 }
 
 export interface HostSnapshot {

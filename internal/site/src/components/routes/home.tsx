@@ -5,6 +5,7 @@ import { RefreshCwIcon } from "lucide-react"
 import { memo, useCallback, useEffect, useRef, useState } from "react"
 import { $router, Link } from "@/components/router"
 import Spinner from "@/components/spinner"
+import { StaleCheckHint } from "@/components/stale-check-hint"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -349,6 +350,7 @@ export default memo(function Home() {
 										<Trans>Audit failed</Trans>
 									</Badge>
 								)}
+								<StaleCheckHint audit={container.image_audit} className="text-[10px]" />
 							</div>
 						</Link>
 					))}

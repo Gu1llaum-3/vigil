@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
+import { StaleCheckHint } from "@/components/stale-check-hint"
 import { type AuditBucket, classifyAuditBucket, useAuditLabel } from "@/lib/audit-status"
 import { isAdmin, isReadOnlyUser, pb } from "@/lib/api"
 import type { ContainerFleetEntry, ContainerImageAudit, DashboardResponse } from "@/lib/dashboard-types"
@@ -208,6 +209,7 @@ function AuditRow({
 						{audit.error}
 					</div>
 				)}
+				<StaleCheckHint audit={audit} className="mt-0.5 text-xs" />
 			</div>
 			<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
 				{bucket !== "up_to_date" && bucket !== "disabled" && statusLabel && (
