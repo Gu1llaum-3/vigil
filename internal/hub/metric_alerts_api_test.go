@@ -141,13 +141,13 @@ func TestEvaluateLoadavgRecoversAtZero(t *testing.T) {
 	hub.metricAlerts.setCores(agentID, 1)
 
 	// Fire the warning tier.
-	hub.metricAlerts.evaluate(agentID, common.HostMetricsResponse{Load1: 5})
+	hub.metricAlerts.evaluate(agentID, common.HostMetricsResponse{Load5: 5})
 	if got := hub.metricAlerts.snapshotTiers(agentID)["loadavg"]; got != int(tierWarning) {
 		t.Fatalf("loadavg should have fired warning, got tier %d", got)
 	}
 
 	// Host goes genuinely idle: load 0.00 must recover, not be treated as "no reading".
-	hub.metricAlerts.evaluate(agentID, common.HostMetricsResponse{Load1: 0})
+	hub.metricAlerts.evaluate(agentID, common.HostMetricsResponse{Load5: 0})
 	if _, stuck := hub.metricAlerts.snapshotTiers(agentID)["loadavg"]; stuck {
 		t.Fatal("loadavg at 0 on an idle host must recover, not stay fired")
 	}
@@ -180,26 +180,26 @@ func TestEvaluateLoadavgNormalizedByCores(t *testing.T) {
 
 	// 1-core host at load 1.5 → 1.5/core → warning.
 	hub.metricAlerts.setCores("small", 1)
-	hub.metricAlerts.evaluate("small", common.HostMetricsResponse{Load1: 1.5})
+	hub.metricAlerts.evaluate("small", common.HostMetricsResponse{Load5: 1.5})
 	if got := hub.metricAlerts.snapshotTiers("small")["loadavg"]; got != int(tierWarning) {
 		t.Fatalf("1-core load 1.5 should be warning, got tier %d", got)
 	}
 
 	// 16-core host at the SAME raw load 1.5 → ~0.09/core → no alert (core-independent).
 	hub.metricAlerts.setCores("big", 16)
-	hub.metricAlerts.evaluate("big", common.HostMetricsResponse{Load1: 1.5})
+	hub.metricAlerts.evaluate("big", common.HostMetricsResponse{Load5: 1.5})
 	if _, fired := hub.metricAlerts.snapshotTiers("big")["loadavg"]; fired {
 		t.Fatal("16-core host at load 1.5 must not alert (per-core normalization)")
 	}
 
 	// 16-core host at load 40 → 2.5/core → critical.
-	hub.metricAlerts.evaluate("big", common.HostMetricsResponse{Load1: 40})
+	hub.metricAlerts.evaluate("big", common.HostMetricsResponse{Load5: 40})
 	if got := hub.metricAlerts.snapshotTiers("big")["loadavg"]; got != int(tierCritical) {
 		t.Fatalf("16-core load 40 (=2.5/core) should be critical, got tier %d", got)
 	}
 
 	// Unknown core count (no snapshot, no cache) → skipped, never alerted.
-	hub.metricAlerts.evaluate("ghost", common.HostMetricsResponse{Load1: 99})
+	hub.metricAlerts.evaluate("ghost", common.HostMetricsResponse{Load5: 99})
 	if _, fired := hub.metricAlerts.snapshotTiers("ghost")["loadavg"]; fired {
 		t.Fatal("host with unknown cores must be skipped, not alerted")
 	}

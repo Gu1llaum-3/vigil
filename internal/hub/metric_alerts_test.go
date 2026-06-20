@@ -73,6 +73,16 @@ func TestMetricValueDiskFallback(t *testing.T) {
 	}
 }
 
+// TestMetricValueLoadUsesLoad5 locks that loadavg alerting uses the 5-minute load (the
+// industry-standard window for sustained-load alerts; less flappy than the 1-minute),
+// not Load1.
+func TestMetricValueLoadUsesLoad5(t *testing.T) {
+	m := common.HostMetricsResponse{Load1: 9, Load5: 3, Load15: 1}
+	if v, _ := metricValue(metricLoadAvg, m); v != 3 {
+		t.Fatalf("loadavg metric must use Load5 (3), got %v", v)
+	}
+}
+
 // TestComputeTierNeverTrapsAlert is the #1 regression: when the stored hysteresis is
 // ≥ the threshold (e.g. a loadavg row at warning 2 / hysteresis 5), the dead band must
 // still be clamped above 0 so a fired alert can recover when the metric drops.
