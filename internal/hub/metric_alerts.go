@@ -267,10 +267,10 @@ func metricAlertEvent(agentID, agentName string, metric metricKind, value float6
 		if metric == metricDisk {
 			d["mount"] = diskMountLabel(metrics)
 		}
-		// loadavg is reported per-core; carry the raw load and core count so the message
-		// can show the absolute figure too ("load 12.4 across 8 cores").
+		// loadavg is reported per-core; carry the raw 5-minute load and core count so the
+		// message can show the absolute figure too ("load 12.4 across 8 cores").
 		if metric == metricLoadAvg {
-			d["load_raw"] = metrics.Load1
+			d["load_raw"] = metrics.Load5
 			d["cores"] = cores
 		}
 	}
@@ -459,7 +459,9 @@ func metricValue(metric metricKind, m common.HostMetricsResponse) (float64, stri
 		}
 		return m.DiskUsedPercent, "%"
 	case metricLoadAvg:
-		return m.Load1, ""
+		// Use the 5-minute load (sustained load) for alerting, not the 1-minute, which
+		// is too spiky for alerts — the standard window used by Datadog/Nagios/Zabbix.
+		return m.Load5, ""
 	default:
 		return 0, ""
 	}

@@ -101,7 +101,7 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 		cpu: { label: t`CPU usage`, hint: t`Average CPU utilization` },
 		memory: { label: t`Memory usage`, hint: t`Average memory utilization` },
 		disk: { label: t`Disk usage`, hint: t`Highest filesystem usage` },
-		loadavg: { label: t`Load average`, hint: t`1-minute load per CPU core (1.0 = fully utilized)` },
+		loadavg: { label: t`Load average`, hint: t`5-minute load per CPU core (1.0 = fully utilized)` },
 	}
 
 	const reload = () => {
