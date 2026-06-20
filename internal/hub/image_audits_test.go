@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
+	"github.com/pocketbase/dbx"
+	"github.com/pocketbase/pocketbase/core"
 	"github.com/stretchr/testify/require"
 )
 
@@ -360,17 +362,17 @@ func TestResolveImageAuditPinnedTagTracksPatchLineAndShowsNewMajor(t *testing.T)
 
 func TestResolveImageAuditUpToDatePatchLineStillShowsNewMajor(t *testing.T) {
 	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
-		tags:        map[string][]string{"ghcr.io/mealie-recipes/mealie": {"v2.2.5", "v2.8.0", "v3.15.2"}},
-		headDigests: map[string]string{"ghcr.io/mealie-recipes/mealie:v2.2.5": "sha256:current"},
+		tags:            map[string][]string{"ghcr.io/mealie-recipes/mealie": {"v2.2.5", "v2.8.0", "v3.15.2"}},
+		headDigests:     map[string]string{"ghcr.io/mealie-recipes/mealie:v2.2.5": "sha256:current"},
 		resolvedDigests: map[string]string{"ghcr.io/mealie-recipes/mealie:v2.2.5|amd64": "sha256:current"},
 	}, imageAuditTarget{
-		CurrentRef: "ghcr.io/mealie-recipes/mealie:v2.2.5",
-		Registry:   "ghcr.io",
-		Repository: "mealie-recipes/mealie",
-		Tag:        "v2.2.5",
+		CurrentRef:   "ghcr.io/mealie-recipes/mealie:v2.2.5",
+		Registry:     "ghcr.io",
+		Repository:   "mealie-recipes/mealie",
+		Tag:          "v2.2.5",
 		LocalDigest:  "sha256:current",
 		Architecture: "amd64",
-		Policy:     imageAuditPolicySemverMinor,
+		Policy:       imageAuditPolicySemverMinor,
 	})
 	require.Equal(t, imageAuditStatusUpToDate, result.Status)
 	require.Equal(t, imageAuditStatusUpToDate, result.LineStatus)
@@ -383,8 +385,8 @@ func TestResolveImageAuditUpToDatePatchLineStillShowsNewMajor(t *testing.T) {
 
 func TestResolveImageAuditFloatingMinorTagUsesResolvedDigestForUpToDate(t *testing.T) {
 	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
-		tags: map[string][]string{"docker.io/library/nginx": {"1.29", "1.29.8", "1.30.0"}},
-		headDigests: map[string]string{"docker.io/library/nginx:1.29.8": "sha256:head-current"},
+		tags:            map[string][]string{"docker.io/library/nginx": {"1.29", "1.29.8", "1.30.0"}},
+		headDigests:     map[string]string{"docker.io/library/nginx:1.29.8": "sha256:head-current"},
 		resolvedDigests: map[string]string{"docker.io/library/nginx:1.29|amd64": "sha256:current"},
 	}, imageAuditTarget{
 		CurrentRef:   "docker.io/library/nginx:1.29",
@@ -405,8 +407,8 @@ func TestResolveImageAuditFloatingMinorTagUsesResolvedDigestForUpToDate(t *testi
 
 func TestResolveImageAuditPinnedTagDetectsRebuiltDigest(t *testing.T) {
 	result := resolveImageAudit(context.Background(), mockImageRegistryClient{
-		tags: map[string][]string{"docker.io/library/nginx": {"1.2.5", "1.8.0", "2.0.0"}},
-		headDigests: map[string]string{"docker.io/library/nginx:1.2.5": "sha256:remote-rebuilt"},
+		tags:            map[string][]string{"docker.io/library/nginx": {"1.2.5", "1.8.0", "2.0.0"}},
+		headDigests:     map[string]string{"docker.io/library/nginx:1.2.5": "sha256:remote-rebuilt"},
 		resolvedDigests: map[string]string{"docker.io/library/nginx:1.2.5|amd64": "sha256:remote-rebuilt"},
 	}, imageAuditTarget{
 		CurrentRef:   "docker.io/library/nginx:1.2.5",
@@ -438,11 +440,11 @@ func TestResolveImageAuditRegistryFailure(t *testing.T) {
 
 func TestBuildImageNotificationTargets(t *testing.T) {
 	result := imageAuditResult{
-		Target: imageAuditTarget{Tag: "1.2.5"},
-		LineStatus: imageAuditLineStatusPatchAvailable,
+		Target:        imageAuditTarget{Tag: "1.2.5"},
+		LineStatus:    imageAuditLineStatusPatchAvailable,
 		LineLatestTag: "1.2.7",
-		SameMajorTag: "1.3.0",
-		NewMajorTag: "2.0.0",
+		SameMajorTag:  "1.3.0",
+		NewMajorTag:   "2.0.0",
 	}
 
 	targets := buildImageNotificationTargets(result)
@@ -456,11 +458,11 @@ func TestBuildImageNotificationTargets(t *testing.T) {
 
 func TestBuildImageNotificationTargetsIgnoresRebuiltOnlyChange(t *testing.T) {
 	result := imageAuditResult{
-		Target: imageAuditTarget{Tag: "1.2.5"},
-		LineStatus: imageAuditLineStatusTagRebuilt,
+		Target:        imageAuditTarget{Tag: "1.2.5"},
+		LineStatus:    imageAuditLineStatusTagRebuilt,
 		LineLatestTag: "1.2.5",
-		SameMajorTag: "1.2.5",
-		NewMajorTag: "",
+		SameMajorTag:  "1.2.5",
+		NewMajorTag:   "",
 	}
 
 	targets := buildImageNotificationTargets(result)
@@ -489,14 +491,14 @@ func TestUpsertContainerImageAuditNotifiesOnlyWhenSignatureChanges(t *testing.T)
 			CurrentRef:    "docker.io/library/nginx:1.2.5",
 			Tag:           "1.2.5",
 		},
-		Status:        imageAuditStatusUpdateAvailable,
-		LineStatus:    imageAuditLineStatusPatchAvailable,
-		LineLatestTag: "1.2.7",
-		SameMajorTag:  "1.3.0",
-		OverallTag:    "2.0.0",
-		NewMajorTag:   "2.0.0",
+		Status:         imageAuditStatusUpdateAvailable,
+		LineStatus:     imageAuditLineStatusPatchAvailable,
+		LineLatestTag:  "1.2.7",
+		SameMajorTag:   "1.3.0",
+		OverallTag:     "2.0.0",
+		NewMajorTag:    "2.0.0",
 		HasMajorUpdate: true,
-		CheckedAt:     time.Now().UTC(),
+		CheckedAt:      time.Now().UTC(),
 	}
 
 	notified, err := hub.upsertContainerImageAudit(result)
@@ -557,7 +559,7 @@ func TestImageAuditEventSeverity(t *testing.T) {
 
 func TestRenderContainerImageUpdateNotificationMessage(t *testing.T) {
 	title, body, err := notifications.RenderMessage(notifications.Event{
-		Kind: notifications.EventContainerImageUpdateAvailable,
+		Kind:     notifications.EventContainerImageUpdateAvailable,
 		Resource: notifications.ResourceRef{Name: "web"},
 		Details: map[string]any{
 			"agent_name":     "host-1",
@@ -569,4 +571,139 @@ func TestRenderContainerImageUpdateNotificationMessage(t *testing.T) {
 	require.Equal(t, `Container image update available for "web"`, title)
 	require.Contains(t, body, `Container "web" on agent "host-1" uses docker.io/library/nginx:1.2.5.`)
 	require.Contains(t, body, `patch line 1.2.7, same major 1.3.0, new major 2.0.0`)
+}
+
+// ── transient-failure preservation (Commit 2) ────────────────────────────────
+
+func transientFail() imageAuditResult {
+	return imageAuditResult{Status: imageAuditStatusCheckFailed, ErrorKind: imageAuditErrorTimeout, Error: "context deadline exceeded"}
+}
+
+func TestDecideAuditPersistence(t *testing.T) {
+	good := imageAuditStatusUpdateAvailable
+
+	// success → written as-is, counter reset
+	d := decideAuditPersistence(imageAuditResult{Status: imageAuditStatusUpToDate}, good, 2)
+	require.False(t, d.preserveSuccess)
+	require.Equal(t, imageAuditStatusUpToDate, d.status)
+	require.Equal(t, 0, d.failures)
+	require.Equal(t, "", d.lastCheckError)
+
+	// definitive error (auth) → written as-is (not preserved), counter reset
+	authFail := imageAuditResult{Status: imageAuditStatusCheckFailed, ErrorKind: imageAuditErrorAuth, Error: "401"}
+	d = decideAuditPersistence(authFail, good, 1)
+	require.False(t, d.preserveSuccess)
+	require.Equal(t, imageAuditStatusCheckFailed, d.status)
+
+	// transient failure with prior good, within grace → preserve last good
+	d = decideAuditPersistence(transientFail(), good, 0)
+	require.True(t, d.preserveSuccess)
+	require.Equal(t, good, d.status)
+	require.Equal(t, 1, d.failures)
+	require.NotEmpty(t, d.lastCheckError)
+
+	// transient failure reaching the grace limit → escalate to check_failed
+	d = decideAuditPersistence(transientFail(), good, imageAuditFailureGraceCycles-1)
+	require.False(t, d.preserveSuccess)
+	require.Equal(t, imageAuditStatusCheckFailed, d.status)
+	require.Equal(t, imageAuditFailureGraceCycles, d.failures)
+
+	// transient failure with no prior good state → check_failed immediately
+	d = decideAuditPersistence(transientFail(), "", 0)
+	require.False(t, d.preserveSuccess)
+	require.Equal(t, imageAuditStatusCheckFailed, d.status)
+	require.Equal(t, 1, d.failures)
+
+	// prior status "unknown" carries no data worth preserving → NOT preserved
+	d = decideAuditPersistence(transientFail(), imageAuditStatusUnknown, 0)
+	require.False(t, d.preserveSuccess, "unknown must not be preserved across transient failures")
+	require.Equal(t, imageAuditStatusCheckFailed, d.status)
+
+	// already-failing host keeps failing: stays check_failed and the counter keeps climbing
+	d = decideAuditPersistence(transientFail(), imageAuditStatusCheckFailed, 4)
+	require.False(t, d.preserveSuccess)
+	require.Equal(t, imageAuditStatusCheckFailed, d.status)
+	require.Equal(t, 5, d.failures, "consecutive_failures must keep incrementing while already failed")
+
+	// a definitive client (4xx) error is not transient → check_failed immediately, even
+	// with a prior good status (not masked behind the grace window)
+	clientFail := imageAuditResult{Status: imageAuditStatusCheckFailed, ErrorKind: imageAuditErrorClient, Error: "400 Bad Request"}
+	d = decideAuditPersistence(clientFail, good, 0)
+	require.False(t, d.preserveSuccess, "client errors must surface immediately")
+	require.Equal(t, imageAuditStatusCheckFailed, d.status)
+	require.Equal(t, 0, d.failures, "definitive errors reset the transient counter")
+}
+
+func TestUpsertPreservesLastGoodOnTransientFailure(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanupTestHub(hub, testApp)
+
+	target := imageAuditTarget{AgentID: "agent1", ContainerID: "c1", ContainerName: "freshrss", CurrentRef: "lscr.io/x/freshrss:1.2.3"}
+	good := imageAuditResult{Target: target, Status: imageAuditStatusUpdateAvailable, LatestTag: "1.3.0", LatestDigest: "sha256:new", CheckedAt: time.Now().UTC()}
+	if _, err := hub.upsertContainerImageAudit(good); err != nil {
+		t.Fatalf("seed good: %v", err)
+	}
+
+	get := func() *core.Record {
+		rec, e := hub.FindFirstRecordByFilter(containerImageAuditsCollection, "agent = {:a} && container_id = {:c}", dbx.Params{"a": "agent1", "c": "c1"})
+		if e != nil {
+			t.Fatalf("find: %v", e)
+		}
+		return rec
+	}
+
+	// Stamp notification state + details on the seeded good record so we can assert the
+	// preserve path leaves them untouched (no re-notify on recovery; no clobbered data).
+	seed := get()
+	seed.Set("last_notified_signature", "SENTINEL")
+	seed.Set("details", map[string]any{"line_status": "patch_available"})
+	require.NoError(t, hub.SaveNoValidate(seed))
+
+	// Two transient failures: status stays update_available, latest_tag preserved.
+	fail := imageAuditResult{Target: target, Status: imageAuditStatusCheckFailed, ErrorKind: imageAuditErrorTimeout, Error: "context deadline exceeded", CheckedAt: time.Now().UTC()}
+	for i := 1; i <= 2; i++ {
+		if _, err := hub.upsertContainerImageAudit(fail); err != nil {
+			t.Fatalf("transient %d: %v", i, err)
+		}
+		rec := get()
+		require.Equal(t, imageAuditStatusUpdateAvailable, rec.GetString("status"), "status must be preserved on transient failure %d", i)
+		require.Equal(t, "1.3.0", rec.GetString("latest_tag"), "latest_tag preserved")
+		require.EqualValues(t, i, int(numberAsFloat64(rec.Get("consecutive_failures"))))
+		require.NotEmpty(t, rec.GetString("last_check_error"))
+		require.NotEmpty(t, rec.GetString("last_check_error_at"), "errored-at timestamp must be stamped on preserve")
+		// preserve must not touch notification state, the error field, or details
+		require.Equal(t, "SENTINEL", rec.GetString("last_notified_signature"), "notification state must survive preserve (no re-notify)")
+		require.Empty(t, rec.GetString("error"), "the error field must not be clobbered by a transient failure")
+		var details map[string]any
+		require.NoError(t, rec.UnmarshalJSONField("details", &details))
+		require.Equal(t, "patch_available", details["line_status"], "details must not be clobbered on preserve")
+	}
+
+	// Third consecutive transient failure → escalate to check_failed.
+	if _, err := hub.upsertContainerImageAudit(fail); err != nil {
+		t.Fatalf("transient 3: %v", err)
+	}
+	require.Equal(t, imageAuditStatusCheckFailed, get().GetString("status"), "must escalate after grace cycles")
+
+	// Recovery resets the counter and clears the soft error.
+	recover := imageAuditResult{Target: target, Status: imageAuditStatusUpToDate, CheckedAt: time.Now().UTC()}
+	if _, err := hub.upsertContainerImageAudit(recover); err != nil {
+		t.Fatalf("recover: %v", err)
+	}
+	rec := get()
+	require.Equal(t, imageAuditStatusUpToDate, rec.GetString("status"))
+	require.EqualValues(t, 0, int(numberAsFloat64(rec.Get("consecutive_failures"))))
+	require.Empty(t, rec.GetString("last_check_error"))
+	require.Empty(t, rec.GetString("last_check_error_at"), "errored-at timestamp must clear on recovery")
+
+	// A definitive (auth) failure after a good result surfaces immediately — not masked by
+	// the transient grace window.
+	authFail := imageAuditResult{Target: target, Status: imageAuditStatusCheckFailed, ErrorKind: imageAuditErrorAuth, Error: "401 Unauthorized", CheckedAt: time.Now().UTC()}
+	if _, err := hub.upsertContainerImageAudit(authFail); err != nil {
+		t.Fatalf("auth fail: %v", err)
+	}
+	require.Equal(t, imageAuditStatusCheckFailed, get().GetString("status"), "definitive auth error must surface immediately")
 }

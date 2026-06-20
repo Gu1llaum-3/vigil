@@ -1330,6 +1330,10 @@ msgstr "Language"
 msgid "Last check"
 msgstr "Last check"
 
+#: src/components/stale-check-hint.tsx
+msgid "last check errored"
+msgstr "last check errored"
+
 #: src/components/routes/images.tsx
 msgid "Last check:"
 msgstr "Last check:"
@@ -2511,6 +2515,10 @@ msgstr "Test sent"
 #: src/components/routes/settings/jobs.tsx
 msgid "The job ran successfully."
 msgstr "The job ran successfully."
+
+#: src/components/stale-check-hint.tsx
+msgid "The last image check failed; showing the last successful result."
+msgstr "The last image check failed; showing the last successful result."
 
 #: src/components/login/forgot-pass-form.tsx
 msgid "Then log into the backend and reset your user account password in the users table."

@@ -12,6 +12,7 @@ import {
 	NetworkHistoryChart,
 } from "@/components/metric-charts"
 import { $router, Link } from "@/components/router"
+import { StaleCheckHint } from "@/components/stale-check-hint"
 import Spinner from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -450,6 +451,7 @@ function ImageAuditPane({ container, onChanged }: { container: ContainerFleetEnt
 						<span className="text-xs text-muted-foreground">
 							<Trans>Checked</Trans>: {formatDateTime(audit.checked_at)}
 						</span>
+						<StaleCheckHint audit={audit} className="text-xs" />
 					</div>
 					{audit.error && (
 						<p className="text-xs text-red-400">

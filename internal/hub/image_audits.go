@@ -67,6 +67,11 @@ type ContainerImageAudit struct {
 	HasMajorUpdate bool   `json:"major_update_available,omitempty"`
 	CheckedAt      string `json:"checked_at"`
 	Error          string `json:"error,omitempty"`
+	// ConsecutiveFailures > 0 with a good Status means the last good result is being
+	// shown while recent checks failed transiently; LastCheckError is the soft error.
+	ConsecutiveFailures int    `json:"consecutive_failures,omitempty"`
+	LastCheckError      string `json:"last_check_error,omitempty"`
+	LastCheckErrorAt    string `json:"last_check_error_at,omitempty"`
 }
 
 type imageAuditTarget struct {
@@ -442,6 +447,57 @@ func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 	return payload, nil
 }
 
+// imageAuditFailureGraceCycles is how many consecutive transient failures are tolerated
+// (keeping the last good status) before a container is surfaced as check_failed.
+const imageAuditFailureGraceCycles = 3
+
+// isTransientAuditError reports whether an error kind is a transient reachability problem
+// (registry slow/throttled/unreachable) rather than a definitive answer (auth, not-found).
+func isTransientAuditError(kind string) bool {
+	switch kind {
+	case imageAuditErrorTimeout, imageAuditErrorNetwork, imageAuditErrorRegistry:
+		return true
+	}
+	return false
+}
+
+// isGoodAuditStatus reports whether a stored status carries a successful, data-bearing
+// result worth preserving across a transient failure. `unknown` is excluded: it carries
+// no latest_* data to protect, so preserving it across failures would only delay
+// surfacing a real reachability problem.
+func isGoodAuditStatus(s string) bool {
+	switch s {
+	case imageAuditStatusUpToDate, imageAuditStatusUpdateAvailable:
+		return true
+	}
+	return false
+}
+
+// auditPersistenceDecision describes how a fresh result merges onto the previous record.
+type auditPersistenceDecision struct {
+	preserveSuccess bool   // keep prior status/latest_*/details and skip notification churn
+	status          string // effective status to write when !preserveSuccess
+	failures        int    // new consecutive_failures counter
+	lastCheckError  string // value for last_check_error ("" clears it)
+}
+
+// decideAuditPersistence keeps the last good result visible across transient registry
+// failures (so a one-off timeout doesn't flip a healthy image to "check failed"),
+// escalating to check_failed only after imageAuditFailureGraceCycles consecutive
+// failures or when there is no prior good state. Success and definitive errors are
+// written as-is and reset the failure counter. Pure, for unit testing.
+func decideAuditPersistence(result imageAuditResult, prevStatus string, prevFailures int) auditPersistenceDecision {
+	transient := result.Status == imageAuditStatusCheckFailed && isTransientAuditError(result.ErrorKind)
+	if !transient {
+		return auditPersistenceDecision{preserveSuccess: false, status: result.Status, failures: 0, lastCheckError: ""}
+	}
+	failures := prevFailures + 1
+	if isGoodAuditStatus(prevStatus) && failures < imageAuditFailureGraceCycles {
+		return auditPersistenceDecision{preserveSuccess: true, status: prevStatus, failures: failures, lastCheckError: result.Error}
+	}
+	return auditPersistenceDecision{preserveSuccess: false, status: imageAuditStatusCheckFailed, failures: failures, lastCheckError: result.Error}
+}
+
 func (h *Hub) upsertContainerImageAudit(result imageAuditResult) (bool, error) {
 	rec, err := h.FindFirstRecordByFilter(
 		containerImageAuditsCollection,
@@ -461,7 +517,11 @@ func (h *Hub) upsertContainerImageAudit(result imageAuditResult) (bool, error) {
 	}
 
 	prevSignature := rec.GetString("last_notified_signature")
+	decision := decideAuditPersistence(result, rec.GetString("status"), int(numberAsFloat64(rec.Get("consecutive_failures"))))
+	checkedAt := result.CheckedAt.UTC().Format(time.RFC3339)
 
+	// Always-current fields come from the agent snapshot and are valid regardless of
+	// registry reachability.
 	rec.Set("container_name", result.Target.ContainerName)
 	rec.Set("image_ref", result.Target.CurrentRef)
 	rec.Set("registry", result.Target.Registry)
@@ -470,11 +530,29 @@ func (h *Hub) upsertContainerImageAudit(result imageAuditResult) (bool, error) {
 	rec.Set("local_image_id", result.Target.LocalImageID)
 	rec.Set("local_digest", result.Target.LocalDigest)
 	rec.Set("policy", result.Target.Policy)
-	rec.Set("status", result.Status)
+	rec.Set("checked_at", checkedAt)
+	rec.Set("consecutive_failures", decision.failures)
+	rec.Set("last_check_error", decision.lastCheckError)
+	if decision.lastCheckError != "" {
+		rec.Set("last_check_error_at", checkedAt)
+	} else {
+		rec.Set("last_check_error_at", "")
+	}
+
+	if decision.preserveSuccess {
+		// Transient failure with a prior good result: keep the last successful status,
+		// latest_* and details visible (only the soft last_check_error indicator changes),
+		// and leave the notification state untouched so recovery does not re-notify.
+		if err := h.SaveNoValidate(rec); err != nil {
+			return false, err
+		}
+		return false, nil
+	}
+
+	rec.Set("status", decision.status)
 	rec.Set("latest_image_id", result.LatestImageID)
 	rec.Set("latest_tag", result.LatestTag)
 	rec.Set("latest_digest", result.LatestDigest)
-	rec.Set("checked_at", result.CheckedAt.UTC().Format(time.RFC3339))
 	rec.Set("error", result.Error)
 	rec.Set("details", map[string]any{
 		"current_ref":            result.Target.CurrentRef,
@@ -502,7 +580,7 @@ func (h *Hub) upsertContainerImageAudit(result imageAuditResult) (bool, error) {
 		h.emitContainerImageAuditNotification(rec, result, targets)
 		notified = true
 		rec.Set("last_notified_signature", signature)
-		rec.Set("last_notified_at", result.CheckedAt.UTC().Format(time.RFC3339))
+		rec.Set("last_notified_at", checkedAt)
 	} else if created && prevSignature == "" {
 		rec.Set("last_notified_signature", prevSignature)
 	}
@@ -891,25 +969,28 @@ func containerImageAuditFromRecord(rec *core.Record) *ContainerImageAudit {
 	}
 	details := auditDetailsMap(rec.Get("details"))
 	return &ContainerImageAudit{
-		Status:         status,
-		Policy:         rec.GetString("policy"),
-		Registry:       rec.GetString("registry"),
-		Repository:     rec.GetString("repository"),
-		Tag:            rec.GetString("tag"),
-		CurrentRef:     rec.GetString("image_ref"),
-		LocalImageID:   rec.GetString("local_image_id"),
-		LocalDigest:    rec.GetString("local_digest"),
-		LatestImageID:  rec.GetString("latest_image_id"),
-		LatestTag:      rec.GetString("latest_tag"),
-		LatestDigest:   rec.GetString("latest_digest"),
-		LineStatus:     stringDetail(details, "line_status"),
-		LineLatestTag:  firstNonEmpty(stringDetail(details, "line_latest_tag"), rec.GetString("latest_tag")),
-		SameMajorTag:   stringDetail(details, "same_major_latest_tag"),
-		OverallTag:     stringDetail(details, "overall_latest_tag"),
-		NewMajorTag:    stringDetail(details, "new_major_tag"),
-		HasMajorUpdate: boolDetail(details, "major_update_available"),
-		CheckedAt:      rec.GetString("checked_at"),
-		Error:          rec.GetString("error"),
+		Status:              status,
+		Policy:              rec.GetString("policy"),
+		Registry:            rec.GetString("registry"),
+		Repository:          rec.GetString("repository"),
+		Tag:                 rec.GetString("tag"),
+		CurrentRef:          rec.GetString("image_ref"),
+		LocalImageID:        rec.GetString("local_image_id"),
+		LocalDigest:         rec.GetString("local_digest"),
+		LatestImageID:       rec.GetString("latest_image_id"),
+		LatestTag:           rec.GetString("latest_tag"),
+		LatestDigest:        rec.GetString("latest_digest"),
+		LineStatus:          stringDetail(details, "line_status"),
+		LineLatestTag:       firstNonEmpty(stringDetail(details, "line_latest_tag"), rec.GetString("latest_tag")),
+		SameMajorTag:        stringDetail(details, "same_major_latest_tag"),
+		OverallTag:          stringDetail(details, "overall_latest_tag"),
+		NewMajorTag:         stringDetail(details, "new_major_tag"),
+		HasMajorUpdate:      boolDetail(details, "major_update_available"),
+		CheckedAt:           rec.GetString("checked_at"),
+		Error:               rec.GetString("error"),
+		ConsecutiveFailures: int(numberAsFloat64(rec.Get("consecutive_failures"))),
+		LastCheckError:      rec.GetString("last_check_error"),
+		LastCheckErrorAt:    rec.GetString("last_check_error_at"),
 	}
 }
 

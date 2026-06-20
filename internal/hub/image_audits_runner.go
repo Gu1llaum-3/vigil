@@ -8,23 +8,38 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 )
 
 var retryAfter = time.After
 
 const (
-	// imageAuditParallelism is the maximum number of containers audited
-	// concurrently. Registries throttle aggressively under bursty traffic, so
-	// keep this conservative.
+	// imageAuditParallelism is the maximum number of registry HOSTS audited
+	// concurrently. runImageAuditPool processes each host's containers sequentially in
+	// one goroutine, so a single registry is never hit concurrently; this bounds how many
+	// distinct registries run in parallel.
 	imageAuditParallelism = 4
 
-	// imageAuditMaxRetries is the number of additional attempts beyond the
-	// first try when a registry call hits a transient error.
-	imageAuditMaxRetries = 5
+	// imageAuditMaxRetries is the number of additional attempts beyond the first
+	// try when a registry call hits a transient error. Kept small: retries share
+	// the per-container budget and a retry storm is what caused the timeouts.
+	imageAuditMaxRetries = 2
 
-	imageAuditPerContainerTimeout = 20 * time.Second
-	imageAuditRetryDelay          = 250 * time.Millisecond
+	// imageAuditPerContainerTimeout is a generous safety net so one container
+	// cannot run forever; the real per-operation bound is imageAuditPerCallTimeout.
+	imageAuditPerContainerTimeout = 90 * time.Second
+
+	imageAuditRetryDelay    = 250 * time.Millisecond
+	imageAuditMaxRetryDelay = 2 * time.Second
+)
+
+// Tunable as vars so tests can shrink them. imageAuditPerCallTimeout bounds a single
+// registry call (so a slow ListTags cannot starve the following HeadDigest);
+// imageAuditPerHostDelay paces consecutive CONTAINERS audited on the same registry host.
+var (
+	imageAuditPerCallTimeout = 30 * time.Second
+	imageAuditPerHostDelay   = 300 * time.Millisecond
 )
 
 // Error kinds surfaced through imageAuditResult.ErrorKind. These help the UI
@@ -35,7 +50,10 @@ const (
 	imageAuditErrorTimeout  = "timeout"
 	imageAuditErrorNetwork  = "network"
 	imageAuditErrorRegistry = "registry_error"
-	imageAuditErrorOther    = "unknown"
+	// imageAuditErrorClient is a definitive 4xx client error (bad request, unprocessable,
+	// gone, …) other than auth/not-found/rate-limit — not transient, not retryable.
+	imageAuditErrorClient = "client_error"
+	imageAuditErrorOther  = "unknown"
 )
 
 // classifyRegistryError maps a registry call error into a stable error kind.
@@ -53,9 +71,17 @@ func classifyRegistryError(err error) string {
 			return imageAuditErrorAuth
 		case 404:
 			return imageAuditErrorNotFound
+		case 408, 425, 429:
+			// 408 Request Timeout / 425 Too Early / 429 Too Many Requests are transient
+			// (the server is asking us to come back), so they recover on a later attempt.
+			return imageAuditErrorRegistry
 		}
 		if terr.StatusCode >= 500 {
 			return imageAuditErrorRegistry
+		}
+		if terr.StatusCode >= 400 {
+			// definitive client error (400/410/422/…): surface it, do not treat as transient
+			return imageAuditErrorClient
 		}
 		return imageAuditErrorRegistry
 	}
@@ -73,10 +99,12 @@ func classifyRegistryError(err error) string {
 }
 
 // isRetryableRegistryError returns true for errors that warrant a backoff and
-// retry. Auth and not-found are not retried; transient network/5xx are.
+// retry. Auth and not-found are not retried; transient network/5xx are. Timeouts
+// are NOT retried: a retry would only consume more of the shared budget, and the
+// next audit cycle re-checks anyway.
 func isRetryableRegistryError(err error) bool {
 	switch classifyRegistryError(err) {
-	case imageAuditErrorNetwork, imageAuditErrorRegistry, imageAuditErrorTimeout:
+	case imageAuditErrorNetwork, imageAuditErrorRegistry:
 		return true
 	default:
 		return false
@@ -94,6 +122,30 @@ type cachingRegistryClient struct {
 	tags   map[string]*tagsCacheEntry
 }
 
+// registryHost extracts the registry host from an image reference or repository path
+// ("lscr.io/linuxserver/freshrss" → "lscr.io", "postgres:18" → "index.docker.io"), so
+// all Docker Hub repos are grouped under one host. Falls back to the raw string if
+// unparseable.
+func registryHost(ref string) string {
+	if r, err := name.ParseReference(ref); err == nil {
+		return r.Context().RegistryStr()
+	}
+	if repo, err := name.NewRepository(ref); err == nil {
+		return repo.RegistryStr()
+	}
+	return ref
+}
+
+// withCallTimeout runs fn with a fresh per-call timeout derived from ctx, so a slow
+// ListTags cannot starve the following HeadDigest. Per-registry-host serialization +
+// inter-container pacing are handled once, in runImageAuditPool (one sequential goroutine
+// per host), so no per-call host lock is needed here.
+func withCallTimeout[T any](ctx context.Context, fn func(context.Context) (T, error)) (T, error) {
+	callCtx, cancel := context.WithTimeout(ctx, imageAuditPerCallTimeout)
+	defer cancel()
+	return fn(callCtx)
+}
+
 type tagsCacheEntry struct {
 	ready chan struct{}
 	tags  []string
@@ -109,13 +161,17 @@ func newCachingRegistryClient(inner imageRegistryClient) *cachingRegistryClient 
 
 func (c *cachingRegistryClient) HeadDigest(ctx context.Context, imageRef string) (string, error) {
 	return retryRegistryCall(ctx, func() (string, error) {
-		return c.inner.HeadDigest(ctx, imageRef)
+		return withCallTimeout(ctx, func(callCtx context.Context) (string, error) {
+			return c.inner.HeadDigest(callCtx, imageRef)
+		})
 	})
 }
 
 func (c *cachingRegistryClient) ResolvedDigest(ctx context.Context, imageRef, architecture string) (string, error) {
 	return retryRegistryCall(ctx, func() (string, error) {
-		return c.inner.ResolvedDigest(ctx, imageRef, architecture)
+		return withCallTimeout(ctx, func(callCtx context.Context) (string, error) {
+			return c.inner.ResolvedDigest(callCtx, imageRef, architecture)
+		})
 	})
 }
 
@@ -137,11 +193,20 @@ func (c *cachingRegistryClient) ListTags(ctx context.Context, repository string)
 	c.tagsMu.Unlock()
 
 	tags, err := retryRegistrySlice(ctx, func() ([]string, error) {
-		return c.inner.ListTags(ctx, repository)
+		return withCallTimeout(ctx, func(callCtx context.Context) ([]string, error) {
+			return c.inner.ListTags(callCtx, repository)
+		})
 	})
 	c.tagsMu.Lock()
 	entry.tags = tags
 	entry.err = err
+	// A per-caller context cancellation/deadline is specific to THIS caller's budget, not
+	// a property of the repository — do not memoize it, or the next caller in the cycle
+	// (and any same-repo sibling) would inherit a failure it never actually hit. Drop the
+	// entry so a subsequent call re-fetches with its own budget.
+	if err != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+		delete(c.tags, repository)
+	}
 	close(entry.ready)
 	c.tagsMu.Unlock()
 	return tags, err
@@ -167,7 +232,9 @@ func retryRegistryCall(ctx context.Context, fn func() (string, error)) (string, 
 			return "", ctx.Err()
 		case <-retryAfter(delay):
 		}
-		delay *= 2
+		if delay *= 2; delay > imageAuditMaxRetryDelay {
+			delay = imageAuditMaxRetryDelay
+		}
 	}
 	return "", lastErr
 }
@@ -192,7 +259,9 @@ func retryRegistrySlice(ctx context.Context, fn func() ([]string, error)) ([]str
 			return nil, ctx.Err()
 		case <-retryAfter(delay):
 		}
-		delay *= 2
+		if delay *= 2; delay > imageAuditMaxRetryDelay {
+			delay = imageAuditMaxRetryDelay
+		}
 	}
 	return nil, lastErr
 }
@@ -205,24 +274,60 @@ func runImageAuditPool(ctx context.Context, registryClient imageRegistryClient, 
 		parallelism = imageAuditParallelism
 	}
 	results := make([]imageAuditResult, len(targets))
+
+	// Group target indices by registry host and process each host's group sequentially in
+	// its own goroutine, with `parallelism` host-groups running concurrently. This keeps
+	// one in-flight request per registry (the gentleness goal) WITHOUT parking a worker
+	// slot while blocked on a per-host lock — distinct registries genuinely run in
+	// parallel instead of queueing behind a busy host (e.g. Docker-Hub-heavy fleets).
+	groups := map[string][]int{}
+	order := make([]string, 0)
+	for i, target := range targets {
+		host := registryHost(firstNonEmpty(target.CurrentRef, target.Registry))
+		if _, ok := groups[host]; !ok {
+			order = append(order, host)
+		}
+		groups[host] = append(groups[host], i)
+	}
+
+	auditOne := func(i int) {
+		auditCtx, cancel := context.WithTimeout(ctx, imageAuditPerContainerTimeout)
+		defer cancel()
+		resolved := resolveImageAudit(auditCtx, registryClient, targets[i])
+		if resolved.Error != "" && resolved.ErrorKind == "" {
+			// resolveImageAudit doesn't currently classify errors itself;
+			// fall back to a best-effort classification from the message.
+			resolved.ErrorKind = classifyRegistryErrorMessage(resolved.Error)
+		}
+		results[i] = resolved
+	}
+
 	sem := make(chan struct{}, parallelism)
 	var wg sync.WaitGroup
-	for i, target := range targets {
+	for _, host := range order {
+		idxs := groups[host]
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(i int, target imageAuditTarget) {
+		go func(idxs []int) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			auditCtx, cancel := context.WithTimeout(ctx, imageAuditPerContainerTimeout)
-			defer cancel()
-			resolved := resolveImageAudit(auditCtx, registryClient, target)
-			if resolved.Error != "" && resolved.ErrorKind == "" {
-				// resolveImageAudit doesn't currently classify errors itself;
-				// fall back to a best-effort classification from the message.
-				resolved.ErrorKind = classifyRegistryErrorMessage(resolved.Error)
+			for n, i := range idxs {
+				if ctx.Err() != nil {
+					return
+				}
+				// Pace consecutive requests to the same host (gentle on rate limits),
+				// but only BETWEEN containers — the calls within one container are already
+				// causally serial, so they don't need spacing.
+				if n > 0 {
+					select {
+					case <-retryAfter(imageAuditPerHostDelay):
+					case <-ctx.Done():
+						return
+					}
+				}
+				auditOne(i)
 			}
-			results[i] = resolved
-		}(i, target)
+		}(idxs)
 	}
 	wg.Wait()
 	return results

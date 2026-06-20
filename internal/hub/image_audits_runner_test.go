@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -148,17 +149,38 @@ func TestRetryRegistryCallUsesConfiguredRetryBudget(t *testing.T) {
 	}
 	defer func() { retryAfter = oldRetryAfter }()
 
+	// Budget = 1 initial attempt + imageAuditMaxRetries retries; succeed on the last.
+	wantCalls := 1 + imageAuditMaxRetries
 	var calls int
 	out, err := retryRegistryCall(context.Background(), func() (string, error) {
 		calls++
-		if calls < 6 {
+		if calls < wantCalls {
 			return "", &transport.Error{StatusCode: http.StatusBadGateway}
 		}
 		return "ok", nil
 	})
 	require.NoError(t, err)
 	require.Equal(t, "ok", out)
-	require.Equal(t, 6, calls)
+	require.Equal(t, wantCalls, calls)
+}
+
+func TestRetryRegistryCallDoesNotRetryTimeouts(t *testing.T) {
+	// A timeout must not be retried: retrying only burns the shared budget.
+	var calls int
+	_, err := retryRegistryCall(context.Background(), func() (string, error) {
+		calls++
+		return "", context.DeadlineExceeded
+	})
+	require.Error(t, err)
+	require.Equal(t, 1, calls, "timeouts must not be retried")
+
+	calls = 0
+	_, err = retryRegistryCall(context.Background(), func() (string, error) {
+		calls++
+		return "", &timeoutNetErr{}
+	})
+	require.Error(t, err)
+	require.Equal(t, 1, calls, "net timeouts must not be retried")
 }
 
 func TestRetryRegistryCallDoesNotRetryAuthFailures(t *testing.T) {
@@ -182,19 +204,86 @@ func TestRetryRegistryCallStopsOnContextCancellation(t *testing.T) {
 }
 
 func TestRunImageAuditPoolRespectsParallelism(t *testing.T) {
-	// Track concurrent in-flight ListTags calls.
+	// Distinct registry hosts run in parallel up to the parallelism limit.
 	var inflight, peak atomic.Int32
-	tags := []string{"1.0.0", "1.0.1", "1.1.0"}
-	headDigests := map[string]string{"docker.io/library/x:1.0.1": "sha256:new"}
 	inner := slowMockClient{
-		tags:        tags,
-		headDigests: headDigests,
-		inflight:    &inflight,
-		peak:        &peak,
-		delay:       30 * time.Millisecond,
+		tags:     []string{"1.0.0", "1.0.1", "1.1.0"},
+		inflight: &inflight,
+		peak:     &peak,
+		delay:    30 * time.Millisecond,
 	}
 
 	targets := make([]imageAuditTarget, 12)
+	for i := range targets {
+		host := fmt.Sprintf("reg%d.example.com", i) // 12 distinct hosts
+		targets[i] = imageAuditTarget{
+			AgentID:     "a",
+			ContainerID: fmt.Sprintf("c%d", i),
+			Tag:         "1.0.0",
+			Registry:    host,
+			Repository:  "app",
+			CurrentRef:  host + "/app:1.0.0",
+			Policy:      imageAuditPolicySemverMinor,
+		}
+	}
+
+	results := runImageAuditPool(context.Background(), inner, targets, 3)
+	require.Len(t, results, 12)
+	require.LessOrEqual(t, peak.Load(), int32(3), "must not exceed parallelism limit")
+	require.Greater(t, peak.Load(), int32(1), "distinct hosts should parallelize")
+}
+
+func TestRunImageAuditPoolPacesSameHost(t *testing.T) {
+	// The inter-container delay is applied BETWEEN consecutive containers on the same host
+	// (not before the first, not between distinct hosts, not between a container's internal
+	// calls). Assert deterministically by counting retryAfter invocations.
+	var delays atomic.Int32
+	oldRetryAfter := retryAfter
+	retryAfter = func(time.Duration) <-chan time.Time {
+		delays.Add(1)
+		ch := make(chan time.Time, 1)
+		ch <- time.Now()
+		return ch
+	}
+	defer func() { retryAfter = oldRetryAfter }()
+
+	inner := slowMockClient{tags: []string{"1.0.0"}, inflight: new(atomic.Int32), peak: new(atomic.Int32)}
+
+	mk := func(id, host string) imageAuditTarget {
+		return imageAuditTarget{
+			AgentID: "a", ContainerID: id, Tag: "1.0.0", Registry: host, Repository: "app",
+			CurrentRef: host + "/app:1.0.0", Policy: imageAuditPolicySemverMinor,
+		}
+	}
+
+	// 3 containers on ONE host → 2 inter-container delays (no delay before the first); no
+	// registry call errors, so retryAfter is only invoked by the pacing logic.
+	delays.Store(0)
+	runImageAuditPool(context.Background(), inner, []imageAuditTarget{
+		mk("c0", "reg.example.com"), mk("c1", "reg.example.com"), mk("c2", "reg.example.com"),
+	}, 4)
+	require.EqualValues(t, 2, delays.Load(), "N same-host containers must pace N-1 times")
+
+	// 3 containers on DISTINCT hosts → each is the first in its group → 0 delays.
+	delays.Store(0)
+	runImageAuditPool(context.Background(), inner, []imageAuditTarget{
+		mk("c0", "a.example.com"), mk("c1", "b.example.com"), mk("c2", "c.example.com"),
+	}, 4)
+	require.EqualValues(t, 0, delays.Load(), "distinct hosts must not be paced")
+}
+
+func TestRunImageAuditPoolSerializesSameHost(t *testing.T) {
+	// All targets on the same registry host must be audited one at a time, even with
+	// parallelism > 1, so the host is never hit concurrently.
+	var inflight, peak atomic.Int32
+	inner := slowMockClient{
+		tags:     []string{"1.0.0", "1.0.1"},
+		inflight: &inflight,
+		peak:     &peak,
+		delay:    20 * time.Millisecond,
+	}
+
+	targets := make([]imageAuditTarget, 6)
 	for i := range targets {
 		targets[i] = imageAuditTarget{
 			AgentID:     "a",
@@ -207,10 +296,9 @@ func TestRunImageAuditPoolRespectsParallelism(t *testing.T) {
 		}
 	}
 
-	results := runImageAuditPool(context.Background(), inner, targets, 3)
-	require.Len(t, results, 12)
-	require.LessOrEqual(t, peak.Load(), int32(3), "must not exceed parallelism limit")
-	require.Greater(t, peak.Load(), int32(1), "should actually parallelize")
+	results := runImageAuditPool(context.Background(), inner, targets, 4)
+	require.Len(t, results, 6)
+	require.EqualValues(t, 1, peak.Load(), "same-host targets must never run concurrently")
 }
 
 // ── test helpers ─────────────────────────────────────────────────────────────
@@ -316,4 +404,157 @@ func (s slowMockClient) ListTags(_ context.Context, _ string) ([]string, error) 
 	defer s.trackInflight()()
 	time.Sleep(s.delay)
 	return s.tags, nil
+}
+
+// ── per-host serialization / throttle / per-call timeout (Commit 1) ───────────
+
+// hostTrackingClient records, per registry host, concurrent in-flight calls and the
+// global peak, and can block each call (respecting ctx) to exercise timing.
+type hostTrackingClient struct {
+	mu          sync.Mutex
+	inflight    map[string]int
+	peakPerHost map[string]int
+	globalIn    int
+	globalPeak  int
+	starts      []time.Time
+
+	sleep     time.Duration // per-call hold (HeadDigest/ResolvedDigest)
+	listBlock time.Duration // ListTags hold (for the per-call timeout test)
+}
+
+func newHostTrackingClient() *hostTrackingClient {
+	return &hostTrackingClient{inflight: map[string]int{}, peakPerHost: map[string]int{}}
+}
+
+func (c *hostTrackingClient) track(ctx context.Context, ref string, block time.Duration) error {
+	host := registryHost(ref)
+	c.mu.Lock()
+	c.inflight[host]++
+	c.globalIn++
+	if c.inflight[host] > c.peakPerHost[host] {
+		c.peakPerHost[host] = c.inflight[host]
+	}
+	if c.globalIn > c.globalPeak {
+		c.globalPeak = c.globalIn
+	}
+	c.starts = append(c.starts, time.Now())
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		c.inflight[host]--
+		c.globalIn--
+		c.mu.Unlock()
+	}()
+	if block <= 0 {
+		block = c.sleep
+	}
+	if block > 0 {
+		select {
+		case <-time.After(block):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
+}
+
+func (c *hostTrackingClient) HeadDigest(ctx context.Context, ref string) (string, error) {
+	if err := c.track(ctx, ref, 0); err != nil {
+		return "", err
+	}
+	return "sha256:head", nil
+}
+func (c *hostTrackingClient) ResolvedDigest(ctx context.Context, ref, _ string) (string, error) {
+	if err := c.track(ctx, ref, 0); err != nil {
+		return "", err
+	}
+	return "sha256:resolved", nil
+}
+func (c *hostTrackingClient) ListTags(ctx context.Context, repo string) ([]string, error) {
+	if err := c.track(ctx, repo, c.listBlock); err != nil {
+		return nil, err
+	}
+	return []string{"1.0.0"}, nil
+}
+
+func withAuditTunables(t *testing.T, perCall, perHostDelay time.Duration) {
+	t.Helper()
+	oc, od := imageAuditPerCallTimeout, imageAuditPerHostDelay
+	imageAuditPerCallTimeout, imageAuditPerHostDelay = perCall, perHostDelay
+	t.Cleanup(func() { imageAuditPerCallTimeout, imageAuditPerHostDelay = oc, od })
+}
+
+// Per-host serialization and inter-container pacing are now properties of
+// runImageAuditPool (one sequential goroutine per host), covered by
+// TestRunImageAuditPoolSerializesSameHost and TestRunImageAuditPoolPacesSameHost. The
+// caching client itself only provides the per-call timeout (below) and the ListTags memo.
+
+func TestCachingClientPerCallTimeoutIsIsolated(t *testing.T) {
+	// Each call gets its own timeout: a slow ListTags times out on its own without
+	// starving a fast HeadDigest of the same host.
+	withAuditTunables(t, 50*time.Millisecond, 0)
+	inner := newHostTrackingClient()
+	inner.listBlock = 500 * time.Millisecond // exceeds the per-call timeout
+	client := newCachingRegistryClient(inner)
+
+	_, err := client.ListTags(context.Background(), "docker.io/library/postgres")
+	require.Error(t, err, "slow ListTags must hit its own per-call timeout")
+	require.True(t, errors.Is(err, context.DeadlineExceeded))
+
+	digest, err := client.HeadDigest(context.Background(), "docker.io/library/postgres:18")
+	require.NoError(t, err, "fast HeadDigest must succeed despite the slow ListTags")
+	require.Equal(t, "sha256:head", digest)
+}
+
+// ── review fixes: classifier taxonomy + singleflight ctx handling ─────────────
+
+func TestClassifyRegistryClientVsTransient(t *testing.T) {
+	// 4xx-other (definitive client errors) must be classified as client_error, which is
+	// neither transient (not preserved) nor retryable. 429 stays transient/registry.
+	require.Equal(t, imageAuditErrorClient, classifyRegistryError(&transport.Error{StatusCode: 400}))
+	require.Equal(t, imageAuditErrorClient, classifyRegistryError(&transport.Error{StatusCode: 422}))
+	require.Equal(t, imageAuditErrorClient, classifyRegistryError(&transport.Error{StatusCode: 410}))
+	require.Equal(t, imageAuditErrorRegistry, classifyRegistryError(&transport.Error{StatusCode: 429}))
+	require.Equal(t, imageAuditErrorRegistry, classifyRegistryError(&transport.Error{StatusCode: 503}))
+	// 408 Request Timeout / 425 Too Early are transient, not definitive client errors.
+	require.Equal(t, imageAuditErrorRegistry, classifyRegistryError(&transport.Error{StatusCode: 408}))
+	require.Equal(t, imageAuditErrorRegistry, classifyRegistryError(&transport.Error{StatusCode: 425}))
+
+	require.False(t, isTransientAuditError(imageAuditErrorClient), "client errors must not be preserved")
+	require.False(t, isRetryableRegistryError(&transport.Error{StatusCode: 400}), "client errors must not be retried")
+	require.True(t, isTransientAuditError(imageAuditErrorRegistry))
+}
+
+// ctxOnceClient returns the given error on the first ListTags then succeeds, counting calls.
+type ctxOnceClient struct {
+	calls    *atomic.Int32
+	firstErr error
+	tags     []string
+}
+
+func (c ctxOnceClient) HeadDigest(context.Context, string) (string, error) { return "sha256:x", nil }
+func (c ctxOnceClient) ResolvedDigest(context.Context, string, string) (string, error) {
+	return "sha256:x", nil
+}
+func (c ctxOnceClient) ListTags(context.Context, string) ([]string, error) {
+	if c.calls.Add(1) == 1 {
+		return nil, c.firstErr
+	}
+	return c.tags, nil
+}
+
+func TestCachingClientDoesNotCacheContextErrors(t *testing.T) {
+	withAuditTunables(t, 5*time.Second, 0)
+	var calls atomic.Int32
+	client := newCachingRegistryClient(ctxOnceClient{calls: &calls, firstErr: context.DeadlineExceeded, tags: []string{"1.0.0"}})
+
+	// First caller hits a per-caller deadline; it must NOT poison the shared cache.
+	_, err := client.ListTags(context.Background(), "docker.io/library/x")
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+
+	// Next caller in the cycle re-fetches and succeeds (entry was dropped, not memoized).
+	tags, err := client.ListTags(context.Background(), "docker.io/library/x")
+	require.NoError(t, err)
+	require.Equal(t, []string{"1.0.0"}, tags)
+	require.EqualValues(t, 2, calls.Load(), "ctx-error result must not be cached")
 }
