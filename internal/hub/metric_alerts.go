@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/json"
 	"log/slog"
 	"math"
 	"sync"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -79,6 +81,13 @@ type metricAlertEvaluator struct {
 	// (otherwise a min_severity=critical rule would miss the recovery). In-memory only;
 	// a restart falls back to the restored current tier (see transition).
 	peak map[string]map[metricKind]alertTier
+
+	// cores caches each agent's CPU core count (from its snapshot) so the loadavg metric
+	// can be normalized to load-per-core — a single global threshold then means the same
+	// thing on a 1-core and a 64-core host. Populated on snapshot upsert and lazily from
+	// the stored snapshot on a cache miss.
+	coresMu sync.RWMutex
+	cores   map[string]int
 }
 
 func newMetricAlertEvaluator(h *Hub) *metricAlertEvaluator {
@@ -88,6 +97,7 @@ func newMetricAlertEvaluator(h *Hub) *metricAlertEvaluator {
 		perAgent: map[string]map[metricKind]metricThreshold{},
 		state:    map[string]map[metricKind]alertTier{},
 		peak:     map[string]map[metricKind]alertTier{},
+		cores:    map[string]int{},
 	}
 }
 
@@ -155,6 +165,18 @@ func (e *metricAlertEvaluator) evaluate(agentID string, metrics common.HostMetri
 			continue
 		}
 		value, unit := metricValue(metric, metrics)
+		// loadavg is normalized to load-per-core so a single global threshold means the
+		// same thing on every host (1.0 = fully utilized). If the core count is unknown
+		// (no snapshot yet), skip rather than alert on a raw, host-size-dependent value.
+		cores := 0
+		if metric == metricLoadAvg {
+			cores = e.coresFor(agentID)
+			perCore, ok := loadPerCore(value, cores)
+			if !ok {
+				continue
+			}
+			value, unit = perCore, "/core"
+		}
 		// A failed or partial collection leaves a metric at exactly 0. For metrics that
 		// are never genuinely 0 on a live host (memory %, root disk %, and CPU %, which
 		// also reads 0 on the first post-connect sample before it has a baseline), treat
@@ -168,7 +190,7 @@ func (e *metricAlertEvaluator) evaluate(agentID string, metrics common.HostMetri
 		if !changed {
 			continue
 		}
-		evt, ok := metricAlertEvent(agentID, e.agentName(agentID), metric, value, unit, prev, next, peak, th, metrics)
+		evt, ok := metricAlertEvent(agentID, e.agentName(agentID), metric, value, unit, prev, next, peak, th, cores, metrics)
 		if !ok {
 			continue
 		}
@@ -182,11 +204,77 @@ func zeroIsMissing(metric metricKind) bool {
 	return metric != metricLoadAvg
 }
 
+// loadPerCore normalizes a raw load average by the CPU core count so a single global
+// threshold expressed as load-per-core (1.0 == fully utilized) is meaningful across
+// heterogeneous hosts. ok is false when the core count is unknown (no snapshot yet) so
+// the caller can skip the metric rather than alert on an unnormalized value.
+func loadPerCore(load float64, cores int) (float64, bool) {
+	if cores <= 0 {
+		return 0, false
+	}
+	return load / float64(cores), true
+}
+
+// coresFor returns an agent's CPU core count, cached. On a miss it reads the agent's
+// stored snapshot once and caches the result (0 if unknown).
+func (e *metricAlertEvaluator) coresFor(agentID string) int {
+	e.coresMu.RLock()
+	c, ok := e.cores[agentID]
+	e.coresMu.RUnlock()
+	if ok {
+		return c
+	}
+	c = e.loadCoresFromSnapshot(agentID)
+	e.coresMu.Lock()
+	e.cores[agentID] = c
+	e.coresMu.Unlock()
+	return c
+}
+
+// setCores updates the cached core count for an agent (called when a fresh snapshot is
+// stored). A non-positive value is ignored so a partial snapshot cannot wipe a known count.
+func (e *metricAlertEvaluator) setCores(agentID string, cores int) {
+	if cores <= 0 {
+		return
+	}
+	e.coresMu.Lock()
+	e.cores[agentID] = cores
+	e.coresMu.Unlock()
+}
+
+func (e *metricAlertEvaluator) loadCoresFromSnapshot(agentID string) int {
+	rec, err := e.hub.FindFirstRecordByFilter("host_snapshots", "agent = {:agent}", dbx.Params{"agent": agentID})
+	if err != nil {
+		return 0
+	}
+	var snap common.HostSnapshotResponse
+	if json.Unmarshal([]byte(rec.GetString("data")), &snap) != nil {
+		return 0
+	}
+	return snap.Resources.CPUCores
+}
+
 // metricAlertEvent builds the notification event for a tier transition, or returns
 // ok=false when the transition is silent (a critical→warning downgrade). It is pure so
 // the severity/details logic can be unit-tested without a hub. OccurredAt is stamped by
 // the caller (dispatch).
-func metricAlertEvent(agentID, agentName string, metric metricKind, value float64, unit string, prev, next, peak alertTier, th metricThreshold, metrics common.HostMetricsResponse) (notifications.Event, bool) {
+func metricAlertEvent(agentID, agentName string, metric metricKind, value float64, unit string, prev, next, peak alertTier, th metricThreshold, cores int, metrics common.HostMetricsResponse) (notifications.Event, bool) {
+	// addContext augments a details map with metric-specific fields used by the message
+	// templates and the in-app feed.
+	addContext := func(d map[string]any) {
+		// Disk alerts fire on the highest-used filesystem, which may not be root; name it
+		// so the notification matches the breached partition, not the root usage.
+		if metric == metricDisk {
+			d["mount"] = diskMountLabel(metrics)
+		}
+		// loadavg is reported per-core; carry the raw load and core count so the message
+		// can show the absolute figure too ("load 12.4 across 8 cores").
+		if metric == metricLoadAvg {
+			d["load_raw"] = metrics.Load1
+			d["cores"] = cores
+		}
+	}
+
 	var evt notifications.Event
 	switch {
 	case next > prev: // escalation (→warning, →critical)
@@ -203,12 +291,7 @@ func metricAlertEvent(agentID, agentName string, metric metricKind, value float6
 			"tier":      next.String(),
 			"unit":      unit,
 		}
-		// Disk alerts fire on the highest-used filesystem, which may not be root; name
-		// it so the notification matches the breached partition rather than the root
-		// usage shown elsewhere.
-		if metric == metricDisk {
-			details["mount"] = diskMountLabel(metrics)
-		}
+		addContext(details)
 		evt = notifications.Event{
 			Kind:     notifications.EventHostMetricExceeded,
 			Severity: severity,
@@ -221,16 +304,18 @@ func metricAlertEvent(agentID, agentName string, metric metricKind, value float6
 		// default "info" nor the possibly-downgraded immediate tier, so a rule with
 		// min_severity≥warning (incl. =critical after a critical→warning decline) still
 		// delivers the matching recovery instead of leaving the alert stuck "active".
+		details := map[string]any{
+			"metric": string(metric),
+			"value":  value,
+			"unit":   unit,
+		}
+		addContext(details)
 		evt = notifications.Event{
 			Kind:     notifications.EventHostMetricRecovered,
 			Severity: peak.String(),
 			Previous: prev.String(),
 			Current:  next.String(),
-			Details: map[string]any{
-				"metric": string(metric),
-				"value":  value,
-				"unit":   unit,
-			},
+			Details:  details,
 		}
 	default: // downgrade critical→warning: stay in alert, stay silent in v1
 		return notifications.Event{}, false

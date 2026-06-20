@@ -28,7 +28,9 @@ export const metricAlertInfo: Record<
 	cpu: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
 	memory: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
 	disk: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
-	loadavg: { unit: "", max: 16, step: 0.5, warning: 4, critical: 8, hysteresis: 0.5 },
+	// loadavg is normalized to load-per-core hub-side, so the threshold is "load per CPU
+	// core" (1.0 = fully utilized) and is comparable across hosts of any size.
+	loadavg: { unit: "/core", max: 4, step: 0.25, warning: 1, critical: 2, hysteresis: 0.5 },
 }
 
 export function emptyMetricAlert(agent: string, metric: MetricAlertMetric): MetricAlert {
