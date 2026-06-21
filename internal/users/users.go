@@ -29,6 +29,26 @@ func (um *UserManager) InitializeUserRole(e *core.RecordEvent) error {
 	return e.Next()
 }
 
+// enforcedRole returns the role to persist on a request-driven user creation. Only a
+// trusted creator (superuser or an admin user) may set a privileged role; any other
+// creator (self-service API create, OAuth sign-up) is clamped to "user" regardless of
+// the submitted value, preventing privilege escalation via a crafted payload.
+func enforcedRole(trusted bool, submitted string) string {
+	if trusted {
+		return submitted
+	}
+	return "user"
+}
+
+// EnforceUserRoleOnCreate clamps the role on REQUEST-driven user creation. Programmatic
+// creates (e.g. the first-user bootstrap) don't go through this request hook and keep
+// their explicit role.
+func (um *UserManager) EnforceUserRoleOnCreate(e *core.RecordRequestEvent) error {
+	trusted := e.Auth != nil && (e.Auth.IsSuperuser() || e.Auth.GetString("role") == "admin")
+	e.Record.Set("role", enforcedRole(trusted, e.Record.GetString("role")))
+	return e.Next()
+}
+
 // Initialize user settings with defaults if not set
 func (um *UserManager) InitializeUserSettings(e *core.RecordEvent) error {
 	record := e.Record

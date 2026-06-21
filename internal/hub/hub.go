@@ -133,6 +133,9 @@ func (h *Hub) StartHub() error {
 	// handle default values for user / user_settings creation
 	h.App.OnRecordCreate("users").BindFunc(h.um.InitializeUserRole)
 	h.App.OnRecordCreate("user_settings").BindFunc(h.um.InitializeUserSettings)
+	// security: a non-admin/non-superuser request must not be able to self-assign a
+	// privileged role via a crafted create payload (self-service API / OAuth sign-up).
+	h.App.OnRecordCreateRequest("users").BindFunc(h.um.EnforceUserRoleOnCreate)
 
 	// Stop monitor goroutine when the record is deleted (cascade from user action)
 	h.App.OnRecordAfterDeleteSuccess("monitors").BindFunc(func(e *core.RecordEvent) error {
