@@ -1431,6 +1431,10 @@ msgstr "Leave blank to keep current"
 msgid "Load average"
 msgstr "Load average"
 
+#: src/components/metric-charts.tsx
+msgid "Load average (per core)"
+msgstr "Load average (per core)"
+
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Loading credentials…"
 msgstr "Loading credentials…"

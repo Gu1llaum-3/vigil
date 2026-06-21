@@ -224,6 +224,92 @@ export function NetworkHistoryChart({ rxPoints, txPoints }: { rxPoints: ChartPoi
 	)
 }
 
+// LoadHistoryChart plots the 1/5/15-minute load averages as three lines (no fill, to keep
+// three overlapping series readable). Values are already normalized to load-per-core by the
+// caller so 1.0 = fully utilized — the same scale the load alert threshold uses.
+export function LoadHistoryChart({
+	oneMin,
+	fiveMin,
+	fifteenMin,
+}: {
+	oneMin: ChartPoint[]
+	fiveMin: ChartPoint[]
+	fifteenMin: ChartPoint[]
+}) {
+	const lineStyle = { borderWidth: 1.5, fill: false as const, pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 8, cubicInterpolationMode: "monotone" as const }
+	const fmt = (v: number) => `${v.toFixed(2)}/core`
+	const data = {
+		datasets: [
+			// 5 min is the line the alert evaluates, so it gets the prominent color.
+			{ label: "5m", data: fiveMin, borderColor: "rgb(59, 130, 246)", ...lineStyle },
+			{ label: "1m", data: oneMin, borderColor: "rgb(148, 163, 184)", ...lineStyle },
+			{ label: "15m", data: fifteenMin, borderColor: "rgb(16, 185, 129)", ...lineStyle },
+		],
+	}
+	const options: ChartOptions<"line"> = {
+		responsive: true,
+		maintainAspectRatio: false,
+		interaction: { mode: "index", intersect: false },
+		plugins: {
+			legend: { display: true, position: "bottom" },
+			tooltip: {
+				callbacks: {
+					title(items) {
+						const raw = items[0]?.parsed?.x
+						return typeof raw === "number" ? formatChartTime(raw) : ""
+					},
+					label(context) {
+						const raw = context.parsed?.y
+						return typeof raw === "number" ? `${context.dataset.label}: ${fmt(raw)}` : ""
+					},
+				},
+			},
+		},
+		scales: {
+			x: {
+				type: "linear",
+				grid: { display: false },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatChartTime(value) : value
+					},
+				},
+			},
+			y: {
+				beginAtZero: true,
+				grid: { color: "rgba(148, 163, 184, 0.15)" },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? value.toFixed(2) : value
+					},
+				},
+			},
+		},
+	}
+
+	const hasData = oneMin.length > 0 || fiveMin.length > 0 || fifteenMin.length > 0
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="text-base">
+					<Trans>Load average (per core)</Trans>
+				</CardTitle>
+			</CardHeader>
+			<CardContent>
+				{!hasData ? (
+					<div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border/60 text-sm text-muted-foreground">
+						<Trans>No metrics yet.</Trans>
+					</div>
+				) : (
+					<div className="h-64">
+						<Line data={data} options={options} />
+					</div>
+				)}
+			</CardContent>
+		</Card>
+	)
+}
+
 export function MetricCard({
 	title,
 	value,

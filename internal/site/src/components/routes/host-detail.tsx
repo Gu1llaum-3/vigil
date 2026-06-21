@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
 	buildTimeSeries,
 	MetricBar,
+	LoadHistoryChart,
 	MetricCard,
 	MetricHistoryChart,
 	type MetricsRange,
@@ -212,6 +213,21 @@ export default function HostDetailPage() {
 		() => buildTimeSeries(metricsHistory, (point) => point.disk_used_percent),
 		[metricsHistory]
 	)
+	// Normalize load to per-core (load ÷ cores) so the chart uses the same scale as the
+	// load alert (1.0 = fully utilized). Fall back to 1 if the core count is unknown.
+	const loadCores = host?.resources?.cpu_cores && host.resources.cpu_cores > 0 ? host.resources.cpu_cores : 1
+	const load1History = useMemo(
+		() => buildTimeSeries(metricsHistory, (point) => point.load1 / loadCores),
+		[metricsHistory, loadCores]
+	)
+	const load5History = useMemo(
+		() => buildTimeSeries(metricsHistory, (point) => point.load5 / loadCores),
+		[metricsHistory, loadCores]
+	)
+	const load15History = useMemo(
+		() => buildTimeSeries(metricsHistory, (point) => point.load15 / loadCores),
+		[metricsHistory, loadCores]
+	)
 	const visibleContainerIDList = useMemo(() => hostContainers.map((container) => container.id), [hostContainers])
 	const latestContainerMetrics = useMemo(() => {
 		const metricsByVisibleID = new Map<string, ContainerMetricsHistoryPoint["containers"][number]>()
@@ -398,6 +414,7 @@ export default function HostDetailPage() {
 							formatter={(value) => formatPercent(value)}
 							color="rgb(59, 130, 246)"
 						/>
+						<LoadHistoryChart oneMin={load1History} fiveMin={load5History} fifteenMin={load15History} />
 						<MetricHistoryChart
 							title={<Trans>Memory usage</Trans>}
 							points={memoryHistory}

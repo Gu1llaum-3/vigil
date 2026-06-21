@@ -139,6 +139,9 @@ export interface HostMetrics {
 	disk_used_percent: number
 	network_rx_bps: number
 	network_tx_bps: number
+	load1: number
+	load5: number
+	load15: number
 	collected_at: string
 }
 
