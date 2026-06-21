@@ -567,7 +567,9 @@ const RuleDialog = memo(
 							<Trans>Define when and where notifications are sent.</Trans>
 						</DialogDescription>
 					</DialogHeader>
-					<div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
+					{/* px-1 so focus rings (drawn outside the control) are not clipped by the
+					    overflow-y-auto scroll container — overflow-y also clips the x axis. */}
+					<div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto px-1">
 						<div className="space-y-1">
 							<Label>{t`Name`}</Label>
 							<Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t`Critical alerts`} />
