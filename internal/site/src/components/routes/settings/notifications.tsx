@@ -567,7 +567,9 @@ const RuleDialog = memo(
 							<Trans>Define when and where notifications are sent.</Trans>
 						</DialogDescription>
 					</DialogHeader>
-					<div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
+					{/* px-1 so focus rings (drawn outside the control) are not clipped by the
+					    overflow-y-auto scroll container — overflow-y also clips the x axis. */}
+					<div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto px-1">
 						<div className="space-y-1">
 							<Label>{t`Name`}</Label>
 							<Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t`Critical alerts`} />
@@ -579,16 +581,18 @@ const RuleDialog = memo(
 						<Separator />
 						<div className="space-y-2">
 							<Label>{t`Events`}</Label>
-							<div className="grid grid-cols-2 gap-2">
+							<div className="grid grid-cols-2 gap-x-3 gap-y-2">
 								{ALL_EVENTS.map((ev) => (
-									<label key={ev} className="flex items-center gap-2 cursor-pointer">
+									<label key={ev} className="flex min-w-0 items-start gap-2 cursor-pointer">
 										<input
 											type="checkbox"
 											checked={events.includes(ev)}
 											onChange={() => toggleEvent(ev)}
-											className="accent-primary"
+											className="mt-0.5 shrink-0 accent-primary"
 										/>
-										<span className="text-sm font-mono">{ev}</span>
+										<span className="min-w-0 text-sm">
+											<BellEventLabel event={ev} />
+										</span>
 									</label>
 								))}
 							</div>
