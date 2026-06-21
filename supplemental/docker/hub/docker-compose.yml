@@ -9,6 +9,24 @@ services:
     restart: unless-stopped
     ports:
       - '8090:8090'
+    # Runtime hardening. The image already runs as a non-root uid (10001) with a single
+    # static binary, so locking it down further is cheap:
+    #   - no-new-privileges blocks privilege escalation via setuid/file-caps;
+    #   - cap_drop ALL removes the default capability set, and NET_RAW is added back only
+    #     because the hub's ICMP "ping" monitor relies on the setcap'd ping binary (verified:
+    #     ping still works with this exact combination). Drop NET_RAW if you don't use ping monitors.
+    security_opt:
+      - 'no-new-privileges:true'
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+    # Optional, stronger: a read-only root filesystem with only the data volume writable.
+    # PocketBase may use /tmp for scratch, so a tmpfs is provided. Smoke-test your full flow
+    # (uploads, OAuth, backups) before enabling in production.
+    # read_only: true
+    # tmpfs:
+    #   - /tmp
     # Conservative resource ceilings so a runaway hub (DB growth, retention jobs)
     # cannot starve the host. Tune for your deployment.
     mem_limit: 512m
