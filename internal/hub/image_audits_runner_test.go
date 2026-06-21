@@ -525,6 +525,18 @@ func TestClassifyRegistryClientVsTransient(t *testing.T) {
 	require.True(t, isTransientAuditError(imageAuditErrorRegistry))
 }
 
+func TestClassifyRegistryErrorMessage(t *testing.T) {
+	// The string fallback stays symmetric with classifyRegistryError: definitive client
+	// errors map to client_error, not the generic "unknown".
+	require.Equal(t, imageAuditErrorAuth, classifyRegistryErrorMessage("UNAUTHORIZED: authentication required"))
+	require.Equal(t, imageAuditErrorNotFound, classifyRegistryErrorMessage("manifest unknown"))
+	require.Equal(t, imageAuditErrorTimeout, classifyRegistryErrorMessage("context deadline exceeded"))
+	require.Equal(t, imageAuditErrorNetwork, classifyRegistryErrorMessage("dial tcp: connection refused"))
+	require.Equal(t, imageAuditErrorClient, classifyRegistryErrorMessage("400 Bad Request"))
+	require.Equal(t, imageAuditErrorClient, classifyRegistryErrorMessage("422 Unprocessable Entity"))
+	require.Equal(t, imageAuditErrorOther, classifyRegistryErrorMessage("something weird"))
+}
+
 // ctxOnceClient returns the given error on the first ListTags then succeeds, counting calls.
 type ctxOnceClient struct {
 	calls    *atomic.Int32

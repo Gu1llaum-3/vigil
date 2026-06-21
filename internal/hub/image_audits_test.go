@@ -547,6 +547,7 @@ func TestImageAuditEventSeverity(t *testing.T) {
 	}{
 		{"major triggers warning", imageAuditResult{HasMajorUpdate: true}, "warning"},
 		{"auth failure triggers warning", imageAuditResult{ErrorKind: imageAuditErrorAuth}, "warning"},
+		{"definitive client error triggers warning", imageAuditResult{ErrorKind: imageAuditErrorClient}, "warning"},
 		{"patch only is info", imageAuditResult{LineStatus: imageAuditLineStatusPatchAvailable}, "info"},
 		{"transient registry error stays info", imageAuditResult{ErrorKind: imageAuditErrorRegistry}, "info"},
 	}
