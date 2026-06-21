@@ -329,10 +329,10 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `KEY` | Hub's public key for identity verification | Recommended |
 | `KEY_FILE` | Path to a file containing the hub's public key | Alt. to `KEY` |
 | `HUB_CA_FILE` | PEM bundle to trust for the hub TLS certificate (private CA / self-signed hub / pinning) | No |
-| `HUB_TLS_INSECURE` | `true` disables hub TLS certificate verification (dev only; enables MITM/token theft) | No |
+| `HUB_TLS_INSECURE` | `true` disables hub TLS certificate verification. **Development only** — a MITM can then steal the agent token *and* capture the (static, replayable) hub-identity signature, defeating both auth directions. Never set in production; use `HUB_CA_FILE` for private CAs instead. | No |
 | `LOG_LEVEL` | `debug`, `warn`, `error` | No |
 
-The agent verifies the hub's TLS certificate against the system trust store by default. Use `HUB_CA_FILE` for a private CA / self-signed hub; `HUB_TLS_INSECURE=true` disables verification entirely (development only).
+The agent verifies the hub's TLS certificate against the system trust store by default. Use `HUB_CA_FILE` for a private CA / self-signed hub; `HUB_TLS_INSECURE=true` disables verification entirely (development only). Because the hub-identity challenge is a static signature over the token (see `docs/architecture/hub-agent-architecture.md`, "Known limitation — static challenge"), `HUB_TLS_INSECURE` is the realistic way an attacker captures a replayable hub signature — so keeping TLS verification on is the primary mitigation until the nonce-based handshake lands.
 
 Without `KEY`/`KEY_FILE`, the agent skips hub identity verification. Acceptable for development; use in production only in trusted network environments.
 

@@ -54,6 +54,21 @@ Important fields include:
 - `capabilities`
 - `metadata`
 
+**Tenancy / authorization (by design):** Vigil is single-tenant — every authenticated user
+sees the whole fleet (`listRule`/`viewRule` only require authentication), and any non-readonly
+user (`user` **or** `admin`) can update or delete any agent record. There is intentionally **no
+per-owner scoping** on the `agents` collection: `created_by` records the enrollment-token owner,
+which is not a reliable "owner" signal because enrollment tokens are deliberately shareable
+(multiple agents per token). Treat the `user` role as a **fleet operator**, not a tenant.
+
+The one sensitive field, `token`, is **not** writable or readable through the generic collection
+API: migration `27_hide_agent_token.go` marks it `hidden`, and PocketBase strips hidden fields
+from both input and output for non-superusers. Tokens are therefore only obtained via
+`GET /api/app/agent-tokens` and rotated via `POST /api/app/agents/{id}/rotate-token` (both gated
+to non-readonly users). If you need stricter isolation (e.g. agents managed only by admins),
+tighten the collection `updateRule`/`deleteRule` to `@request.auth.role = "admin"` — this is a
+deliberate hardening choice, not the current default.
+
 ### `agent_enrollment_tokens`
 
 - stores user-owned enrollment tokens
