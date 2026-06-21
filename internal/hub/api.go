@@ -65,6 +65,10 @@ func (h *Hub) registerMiddlewares(se *core.ServeEvent) {
 		e.Request.Header.Set("Authorization", token)
 		return e.Next()
 	}
+	// authenticate with a Vigil API key (Authorization: Bearer vk_...) for non-browser
+	// clients (scripts, the MCP server). Runs before the other auth middlewares; it is a
+	// no-op for normal JWT requests.
+	se.Router.BindFunc(h.authenticateApiKey)
 	// authenticate with trusted header (AUTO_LOGIN)
 	if autoLogin, _ := utils.GetEnv("AUTO_LOGIN"); autoLogin != "" {
 		se.Router.BindFunc(func(e *core.RequestEvent) error {
@@ -165,6 +169,11 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 		total, err := e.App.CountRecords("users")
 		return e.JSON(http.StatusOK, map[string]bool{"firstRun": err == nil && total == 0})
 	})
+	// per-user API keys for programmatic / MCP access (managed only via a real user session,
+	// never via an API key itself)
+	apiAuth.GET("/api-keys", h.listApiKeys)
+	apiAuth.POST("/api-keys", h.createApiKey)
+	apiAuth.DELETE("/api-keys/{id}", h.deleteApiKey)
 	// get version and public key
 	apiAuth.GET("/info", h.getInfo)
 	// check for updates
