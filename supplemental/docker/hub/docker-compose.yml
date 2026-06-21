@@ -1,8 +1,10 @@
 services:
   vigil:
-    # Published by CI to GHCR. Pin an explicit version in production (e.g. :0.2.0)
-    # rather than relying on :latest, which moves with every stable release.
-    image: 'ghcr.io/gu1llaum-3/vigil:latest'
+    # Published by CI to GHCR. Pinned to an explicit version so the running image does not
+    # silently change identity on `docker compose pull` (a floating :latest moves with every
+    # release). Bump this to the version you are deploying; for the strongest guarantee pin
+    # by digest instead (image: 'ghcr.io/gu1llaum-3/vigil@sha256:<digest>').
+    image: 'ghcr.io/gu1llaum-3/vigil:v0.2.0-beta.14'
     container_name: 'vigil'
     restart: unless-stopped
     ports:
