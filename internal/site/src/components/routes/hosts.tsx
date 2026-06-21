@@ -10,10 +10,20 @@ import { type HostsFilters, defaultHostsFilters } from "./dashboard/hosts-filter
 import { HostsTable } from "./dashboard/hosts-table"
 import { useHostsOverviewData } from "./dashboard/use-hosts-overview-data"
 
+// initialHostsFilters seeds the compliance filter from a ?filter= query param so a
+// dashboard KPI card can deep-link into a pre-filtered hosts view (e.g. ?filter=security).
+function initialHostsFilters(): HostsFilters {
+	const f = new URLSearchParams(window.location.search).get("filter")
+	if (f === "security" || f === "reboot" || f === "stale" || f === "unknown") {
+		return { ...defaultHostsFilters, compliance: new Set([f]) }
+	}
+	return defaultHostsFilters
+}
+
 export default memo(function HostsPage() {
 	const { t } = useLingui()
 	const { hosts, loading, refetch } = useHostsOverviewData()
-	const [filters, setFilters] = useState<HostsFilters>(defaultHostsFilters)
+	const [filters, setFilters] = useState<HostsFilters>(initialHostsFilters)
 	const [refreshing, setRefreshing] = useState(false)
 
 	useEffect(() => {
