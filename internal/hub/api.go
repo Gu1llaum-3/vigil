@@ -373,11 +373,14 @@ func (h *Hub) getAgentEnrollmentToken(e *core.RequestEvent) error {
 	}
 
 	if enable == "1" {
+		// Always invalidate any prior in-memory token for this user first, so re-issuing
+		// (e.g. the "Regenerate" action with an empty token) revokes a leaked value rather
+		// than leaving the old ephemeral token valid until it expires.
+		tokenMap.RemovebyValue(userID)
 		if token == "" {
 			token = uuid.New().String()
 		}
 		if permanent == "1" {
-			tokenMap.RemovebyValue(userID)
 			if err := upsertPermanent(token); err != nil {
 				return err
 			}

@@ -2170,6 +2170,10 @@ msgstr "Refresh inventory"
 #~ msgid "Refresh snapshots"
 #~ msgstr "Refresh snapshots"
 
+#: src/components/routes/settings/agents.tsx
+msgid "Regenerate (revokes the current token)"
+msgstr "Regenerate (revokes the current token)"
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "regex"
 msgstr "regex"

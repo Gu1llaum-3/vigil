@@ -162,10 +162,11 @@ const SectionEnrollmentToken = memo(() => {
 	const [checked, setChecked] = useState(false)
 	const [isPermanent, setIsPermanent] = useState(false)
 
-	async function updateToken(enable: number = -1, permanent: number = -1) {
+	async function updateToken(enable: number = -1, permanent: number = -1, forceNew: boolean = false) {
 		const data = await pb.send(`/api/app/agent-enrollment-token`, {
 			query: {
-				token,
+				// sending an empty token makes the hub mint a fresh one, revoking the old value
+				token: forceNew ? "" : token,
 				enable,
 				permanent,
 			},
@@ -206,9 +207,19 @@ const SectionEnrollmentToken = memo(() => {
 								</span>
 							</div>
 							{checked && (
-								<Button variant="ghost" size="icon" onClick={() => copyToClipboard(token)}>
-									<CopyIcon className="w-4 h-4" />
-								</Button>
+								<>
+									<Button
+										variant="ghost"
+										size="icon"
+										title={t`Regenerate (revokes the current token)`}
+										onClick={() => updateToken(1, isPermanent ? 1 : 0, true)}
+									>
+										<RotateCwIcon className="w-4 h-4" />
+									</Button>
+									<Button variant="ghost" size="icon" onClick={() => copyToClipboard(token)}>
+										<CopyIcon className="w-4 h-4" />
+									</Button>
+								</>
 							)}
 						</div>
 
