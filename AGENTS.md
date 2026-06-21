@@ -306,7 +306,8 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `USER_CREATION` | Allow OAuth2 user self-registration | — |
 | `MFA_OTP` | Enable MFA/OTP (`true` = all users, `superusers` = superusers only) | — |
 | `AUTO_LOGIN` | Trusted email — auto-authenticate this user | — |
-| `TRUSTED_AUTH_HEADER` | HTTP header containing a trusted user email. **Spoofable** — only enable when the hub is reachable solely through a reverse proxy that sets this header and strips it from inbound requests. | — |
+| `TRUSTED_AUTH_HEADER` | HTTP header containing a trusted user email. The value is attacker-controlled, so it is only honored when the request's real TCP peer (`RemoteAddr`, **not** `X-Forwarded-For`) is in `TRUSTED_PROXY_IPS`. **Fail-safe:** if `TRUSTED_PROXY_IPS` is empty/unset the header is ignored entirely (a startup warning is logged). Still strip the header from inbound requests at the proxy. | — |
+| `TRUSTED_PROXY_IPS` | Comma/whitespace-separated allowlist of reverse-proxy IPs and CIDRs (IPv4/IPv6) permitted to use `TRUSTED_AUTH_HEADER`. A bare IP is treated as a `/32` (or `/128`). Required for `TRUSTED_AUTH_HEADER` to take effect. | — |
 | `MONITOR_BLOCK_PRIVATE_TARGETS` | Also block private/ULA ranges for HTTP/TCP monitor targets (loopback/link-local/cloud-metadata are always blocked). For hardened/multi-tenant hubs. | — |
 | `MONITOR_ALLOW_PRIVATE_TARGETS` | Disable the monitor SSRF guard entirely (allow loopback/link-local/private). Trusted single-tenant only. | — |
 | `HEARTBEAT_URL` | External monitoring endpoint to ping periodically | — |

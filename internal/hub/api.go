@@ -2,6 +2,9 @@ package hub
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -69,11 +72,82 @@ func (h *Hub) registerMiddlewares(se *core.ServeEvent) {
 		})
 	}
 	// authenticate with trusted header (TRUSTED_AUTH_HEADER)
+	//
+	// security: the header value is fully attacker-controlled, so it may only be honored
+	// for requests that actually originate from a trusted reverse proxy. We gate it on the
+	// real TCP peer (RemoteAddr — not X-Forwarded-For, which is itself spoofable) being in
+	// the TRUSTED_PROXY_IPS allowlist. Fail-safe: if the allowlist is empty (or unset), the
+	// header is ignored entirely, so a misconfiguration can never open an auth bypass.
 	if trustedHeader, _ := utils.GetEnv("TRUSTED_AUTH_HEADER"); trustedHeader != "" {
+		rawAllow, _ := utils.GetEnv("TRUSTED_PROXY_IPS")
+		allowed, err := parseTrustedProxies(rawAllow)
+		if err != nil {
+			slog.Warn("TRUSTED_PROXY_IPS has invalid entries; they were ignored", "err", err)
+		}
+		if len(allowed) == 0 {
+			slog.Warn("TRUSTED_AUTH_HEADER is set but TRUSTED_PROXY_IPS is empty; the trusted header will be IGNORED (fail-safe). Set TRUSTED_PROXY_IPS to your reverse proxy IP/CIDR to enable header auth.")
+		}
 		se.Router.BindFunc(func(e *core.RequestEvent) error {
+			if !remoteIPAllowed(allowed, e.Request.RemoteAddr) {
+				return e.Next()
+			}
 			return authorizeRequestWithEmail(e, e.Request.Header.Get(trustedHeader))
 		})
 	}
+}
+
+// parseTrustedProxies parses a comma/whitespace separated list of IPs and CIDRs into
+// networks. A bare IP becomes a /32 (IPv4) or /128 (IPv6) host network. Invalid entries
+// are skipped (and reported via the returned error) so a single typo does not silently
+// disable the whole allowlist — the valid entries are still returned.
+func parseTrustedProxies(raw string) ([]*net.IPNet, error) {
+	var nets []*net.IPNet
+	var bad []string
+	for _, field := range strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' || r == '\n' }) {
+		entry := strings.TrimSpace(field)
+		if entry == "" {
+			continue
+		}
+		if _, ipNet, err := net.ParseCIDR(entry); err == nil {
+			nets = append(nets, ipNet)
+			continue
+		}
+		if ip := net.ParseIP(entry); ip != nil {
+			bits := 32
+			if ip.To4() == nil {
+				bits = 128
+			}
+			nets = append(nets, &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)})
+			continue
+		}
+		bad = append(bad, entry)
+	}
+	if len(bad) > 0 {
+		return nets, fmt.Errorf("invalid trusted proxy entries: %s", strings.Join(bad, ", "))
+	}
+	return nets, nil
+}
+
+// remoteIPAllowed reports whether the connecting peer (RemoteAddr, either "ip:port" or a
+// bare "ip") falls within any of the allowed networks. An empty allowlist denies all.
+func remoteIPAllowed(allowed []*net.IPNet, remoteAddr string) bool {
+	if len(allowed) == 0 || remoteAddr == "" {
+		return false
+	}
+	host := remoteAddr
+	if h, _, err := net.SplitHostPort(remoteAddr); err == nil {
+		host = h
+	}
+	ip := net.ParseIP(strings.TrimSpace(host))
+	if ip == nil {
+		return false
+	}
+	for _, n := range allowed {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // registerApiRoutes registers custom API routes under /api/app/*.

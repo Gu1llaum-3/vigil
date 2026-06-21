@@ -265,6 +265,7 @@ Important variables:
 - `MFA_OTP`
 - `AUTO_LOGIN`
 - `TRUSTED_AUTH_HEADER`
+- `TRUSTED_PROXY_IPS`
 
 Behavior notes:
 
@@ -272,7 +273,17 @@ Behavior notes:
 - `USER_CREATION=true` allows OAuth user self-registration
 - `MFA_OTP=true` or `superusers` enables OTP requirements
 - `AUTO_LOGIN` enables trusted automatic login for a specific email
-- `TRUSTED_AUTH_HEADER` trusts an upstream auth header containing a user email
+- `TRUSTED_AUTH_HEADER` trusts an upstream auth header containing a user email — but
+  **only** when the request's real TCP peer (`RemoteAddr`, registered in
+  `internal/hub/api.go` `registerMiddlewares`) matches the `TRUSTED_PROXY_IPS` allowlist.
+  The header value is fully attacker-controlled, so this peer check is what prevents a
+  direct caller from impersonating any user. `X-Forwarded-For` is intentionally **not**
+  used for the gate because it is itself spoofable.
+- `TRUSTED_PROXY_IPS` is the comma/whitespace-separated allowlist of reverse-proxy IPs and
+  CIDRs (IPv4/IPv6; a bare IP becomes `/32` or `/128`). **Fail-safe:** if it is empty or
+  unset while `TRUSTED_AUTH_HEADER` is configured, the header is ignored entirely and a
+  warning is logged at startup — a misconfiguration can never open an auth bypass. The
+  parsing/matching helpers (`parseTrustedProxies`, `remoteIPAllowed`) are unit-tested.
 
 ## Agent Authentication Model
 
