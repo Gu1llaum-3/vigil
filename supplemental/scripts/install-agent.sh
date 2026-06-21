@@ -233,6 +233,7 @@ detect_mips_endianness() {
 UNINSTALL=false
 GITHUB_URL="https://github.com"
 GITHUB_PROXY_URL=""
+INSECURE_MIRROR=false
 KEY=""
 TOKEN=""
 HUB_URL=""
@@ -254,6 +255,10 @@ case "$1" in
   printf "                          VALUE can be true or false; the flag is accepted for compatibility.\n"
   printf "  --mirror [URL]        : Use GitHub proxy to resolve network timeout issues in mainland China\n"
   printf "                          URL: optional custom proxy URL (default: https://gh.github.com)\n"
+  printf "  --insecure-mirror     : With --mirror, allow the checksum to come from the mirror when\n"
+  printf "                          github.com is unreachable. Reduces integrity (the mirror then\n"
+  printf "                          provides both the binary and its checksum). Use only if you trust\n"
+  printf "                          the mirror and github.com is fully blocked.\n"
   print_supported_targets
   printf "  -h, --help            : Display this help message\n"
   exit 0
@@ -330,6 +335,9 @@ while [ $# -gt 0 ]; do
       GITHUB_PROXY_URL="https://gh.github.com"
       GITHUB_URL="$GITHUB_PROXY_URL"
     fi
+    ;;
+  --insecure-mirror)
+    INSECURE_MIRROR=true
     ;;
   --auto-update*)
     # Check if there's a value after the = sign
@@ -706,12 +714,36 @@ fi
 echo "Downloading vigil-agent v${INSTALL_VERSION}..."
 
 # Download checksums file
+#
+# Security: the checksum is the only integrity control on the downloaded binary, so it must
+# come from a trusted source. When --mirror is used the binary is fetched from an arbitrary
+# third-party host; fetching the checksum from that same host would let a malicious mirror
+# serve a backdoored binary together with a matching checksum and defeat verification. We
+# therefore always fetch the checksum from the canonical GitHub host (a tiny file), even
+# under --mirror — only the larger binary goes through the mirror below.
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR" || exit 1
-CHECKSUM=$(curl -fsSL "$GITHUB_URL/Gu1llaum-3/vigil/releases/download/v${INSTALL_VERSION}/vigil_${INSTALL_VERSION}_checksums.txt" | grep "$FILE_NAME" | cut -d' ' -f1)
+CHECKSUM_NAME="vigil_${INSTALL_VERSION}_checksums.txt"
+CANONICAL_CHECKSUM_URL="https://github.com/Gu1llaum-3/vigil/releases/download/v${INSTALL_VERSION}/${CHECKSUM_NAME}"
+CHECKSUM=$(curl -fsSL "$CANONICAL_CHECKSUM_URL" | grep "$FILE_NAME" | cut -d' ' -f1)
+
+# Fall back to the mirror's checksum only when github.com is unreachable AND the operator
+# explicitly accepted the reduced integrity guarantee via --insecure-mirror.
+if { [ -z "$CHECKSUM" ] || ! echo "$CHECKSUM" | grep -qE "^[a-fA-F0-9]{64}$"; } && [ -n "$GITHUB_PROXY_URL" ] && [ "$INSECURE_MIRROR" = "true" ]; then
+  echo "WARNING: could not fetch the checksum from the canonical GitHub host (github.com)." >&2
+  echo "WARNING: --insecure-mirror is set, falling back to the mirror's checksum." >&2
+  echo "WARNING: integrity is NOT guaranteed — the mirror provides both the binary and its checksum." >&2
+  CHECKSUM=$(curl -fsSL "$GITHUB_URL/Gu1llaum-3/vigil/releases/download/v${INSTALL_VERSION}/${CHECKSUM_NAME}" | grep "$FILE_NAME" | cut -d' ' -f1)
+fi
+
 if [ -z "$CHECKSUM" ] || ! echo "$CHECKSUM" | grep -qE "^[a-fA-F0-9]{64}$"; then
-  echo "Failed to get checksum or invalid checksum format"
-  echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
+  echo "Failed to get a valid checksum from the canonical GitHub host (github.com)."
+  if [ -n "$GITHUB_PROXY_URL" ]; then
+    echo "github.com must be reachable for the checksum even when --mirror is used (only the larger binary goes through the mirror)."
+    echo "If github.com is fully blocked and you trust the mirror, re-run with --insecure-mirror to accept the mirror's checksum (reduced integrity)."
+  else
+    echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
+  fi
   rm -rf "$TEMP_DIR"
   exit 1
 fi

@@ -139,6 +139,7 @@ Purpose:
 Integrity and secret handling:
 
 - both scripts download the release archive named `vigil_${OS}_${ARCH}.tar.gz` and verify its SHA-256 against the published `vigil_${VERSION}_checksums.txt` before installing; a mismatch aborts the install
+- the checksums file is **always** fetched from the canonical `github.com` host, even when `--mirror` routes the (larger) binary through a proxy. This prevents a malicious mirror from serving a backdoored binary together with a matching checksum — the integrity reference never comes from the same untrusted host as the artifact. If `github.com` is fully unreachable the install aborts with guidance unless the operator passes `--insecure-mirror`, which trusts the mirror's checksum and prints a loud reduced-integrity warning. (Advanced users can additionally verify the cosign signature on `checksums.txt` out-of-band — see below.)
 - `install-hub.sh` installs the `vigil` binary and a `vigil` system user; `install-agent.sh` installs the `vigil-agent` binary
 - secrets (`KEY`/`TOKEN`/`HUB_URL`) are never inlined into generated service definitions — systemd uses an `EnvironmentFile=`, and the OpenRC/procd/FreeBSD paths source a root-only, shell-escaped env file (see `docs/conventions-and-gotchas.md`)
 

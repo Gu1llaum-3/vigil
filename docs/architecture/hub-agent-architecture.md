@@ -147,6 +147,20 @@ If verification succeeds:
 - the agent marks `hubVerified = true`
 - the agent responds with its stable fingerprint
 
+> **Known limitation — static challenge (deferred hardening).** The hub signs the agent's
+> *token* itself (`challenge := []byte(token)` in `internal/hub/ws/handlers.go GetFingerprint`),
+> not a fresh per-connection nonce. Because ED25519 is deterministic and enrollment tokens are
+> intentionally shared across agents, the resulting signature is constant for a given (hub key,
+> token) pair, so it is replayable: anyone who already knows the token and has observed one valid
+> signature (a compromised sibling agent on the same token, or a one-time capture via a
+> `HUB_TLS_INSECURE` MITM) can replay it to impersonate the hub to other agents on that token.
+> Impact is bounded — the agent's handler set is read-only (snapshot/metrics), so an impersonator
+> can pull inventory but cannot drive arbitrary commands. The proper fix (agent-generated nonce
+> per connection, hub signs `nonce || token || fingerprint`, with version-skew handling for the
+> agent auto-update window) is deferred to a dedicated branch. **Mitigation today:** never run
+> agents with `HUB_TLS_INSECURE=true` outside development — it is the realistic path to capturing
+> a replayable signature; always verify the hub TLS certificate (system trust or `HUB_CA_FILE`).
+
 ### Step 4: Hub Matches Or Creates Agent Record
 
 The hub then:
