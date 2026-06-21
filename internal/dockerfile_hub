@@ -1,4 +1,8 @@
-FROM --platform=$BUILDPLATFORM node:22-alpine AS web-builder
+# Base images are pinned by immutable @sha256 digest (the tag is kept for readability) so
+# builds are reproducible and a re-pointed or poisoned upstream tag cannot be pulled
+# silently. To update: re-resolve with `docker buildx imagetools inspect <image:tag>
+# --format '{{.Manifest.Digest}}'` (or let Dependabot's docker ecosystem bump the digests).
+FROM --platform=$BUILDPLATFORM node:22-alpine@sha256:ab07539e0988b63558ff621f5fbe1077054c39d9809112974fb79993949d41cd AS web-builder
 
 WORKDIR /src/internal/site
 
@@ -8,7 +12,7 @@ RUN npm ci
 COPY internal/site ./
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.26.2-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.2-alpine@sha256:f85330846cde1e57ca9ec309382da3b8e6ae3ab943d2739500e08c86393a21b1 AS builder
 
 WORKDIR /src
 
@@ -34,7 +38,7 @@ RUN set -eu; \
 	if [ "$TARGETARCH" = "arm" ]; then GOARM="${TARGETVARIANT#v}"; fi; \
 	CGO_ENABLED=0 GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM="$GOARM" go build -ldflags "-w -s" -o /out/vigil ./internal/cmd/hub
 
-FROM alpine:3.21
+FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
 
 # iputils provides the `ping` binary used by the hub ping monitor; libcap lets us
 # grant it CAP_NET_RAW so it still works when the container runs as a non-root user
