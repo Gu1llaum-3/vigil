@@ -281,6 +281,11 @@ func TestUpdateAgent(t *testing.T) {
 }
 
 func TestUpdateAgentDispatchesOnlineNotificationOnReconnect(t *testing.T) {
+	// This test delivers to a loopback httptest server; disable the notification SSRF
+	// guard (which otherwise blocks loopback targets) since we are testing dispatch, not
+	// the guard. allowAll is read live at dial time, so this takes effect immediately.
+	t.Setenv("MONITOR_ALLOW_PRIVATE_TARGETS", "true")
+
 	hub, testApp, err := createTestHub(t)
 	require.NoError(t, err)
 	defer cleanupTestHub(hub, testApp)

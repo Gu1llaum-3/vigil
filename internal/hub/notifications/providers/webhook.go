@@ -18,7 +18,7 @@ type WebhookProvider struct {
 // NewWebhookProvider creates a WebhookProvider with a 10s timeout.
 func NewWebhookProvider() *WebhookProvider {
 	return &WebhookProvider{
-		client: &http.Client{Timeout: 10 * time.Second},
+		client: newGuardedHTTPClient(10 * time.Second),
 	}
 }
 

@@ -15,10 +15,10 @@ type GChatProvider struct {
 }
 
 func NewGChatProvider() *GChatProvider {
-	return &GChatProvider{client: &http.Client{Timeout: 10 * time.Second}}
+	return &GChatProvider{client: newGuardedHTTPClient(10 * time.Second)}
 }
 
-func (p *GChatProvider) Kind() string                { return "gchat" }
+func (p *GChatProvider) Kind() string                  { return "gchat" }
 func (p *GChatProvider) SensitiveConfigKeys() []string { return []string{"url"} }
 
 func (p *GChatProvider) ValidateConfig(raw map[string]any) error {

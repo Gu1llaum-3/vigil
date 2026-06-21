@@ -15,10 +15,10 @@ type NtfyProvider struct {
 }
 
 func NewNtfyProvider() *NtfyProvider {
-	return &NtfyProvider{client: &http.Client{Timeout: 10 * time.Second}}
+	return &NtfyProvider{client: newGuardedHTTPClient(10 * time.Second)}
 }
 
-func (p *NtfyProvider) Kind() string                { return "ntfy" }
+func (p *NtfyProvider) Kind() string                  { return "ntfy" }
 func (p *NtfyProvider) SensitiveConfigKeys() []string { return []string{"token"} }
 
 func (p *NtfyProvider) ValidateConfig(raw map[string]any) error {

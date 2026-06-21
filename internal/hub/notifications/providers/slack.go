@@ -15,10 +15,10 @@ type SlackProvider struct {
 }
 
 func NewSlackProvider() *SlackProvider {
-	return &SlackProvider{client: &http.Client{Timeout: 10 * time.Second}}
+	return &SlackProvider{client: newGuardedHTTPClient(10 * time.Second)}
 }
 
-func (p *SlackProvider) Kind() string                { return "slack" }
+func (p *SlackProvider) Kind() string                  { return "slack" }
 func (p *SlackProvider) SensitiveConfigKeys() []string { return []string{"url"} }
 
 func (p *SlackProvider) ValidateConfig(raw map[string]any) error {

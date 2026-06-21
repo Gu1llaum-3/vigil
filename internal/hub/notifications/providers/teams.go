@@ -16,10 +16,10 @@ type TeamsProvider struct {
 }
 
 func NewTeamsProvider() *TeamsProvider {
-	return &TeamsProvider{client: &http.Client{Timeout: 10 * time.Second}}
+	return &TeamsProvider{client: newGuardedHTTPClient(10 * time.Second)}
 }
 
-func (p *TeamsProvider) Kind() string                { return "teams" }
+func (p *TeamsProvider) Kind() string                  { return "teams" }
 func (p *TeamsProvider) SensitiveConfigKeys() []string { return []string{"url"} }
 
 func (p *TeamsProvider) ValidateConfig(raw map[string]any) error {
