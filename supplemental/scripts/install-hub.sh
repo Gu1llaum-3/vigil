@@ -157,6 +157,8 @@ fi
 # Define default values
 PORT=8090
 GITHUB_URL="https://github.com"
+GITHUB_PROXY_URL=""
+INSECURE_MIRROR=false
 AUTO_UPDATE_FLAG="false"
 UNINSTALL=false
 VERSION="latest"
@@ -176,6 +178,9 @@ while [ $# -gt 0 ]; do
       printf "  -p <port>    : Specify a port number (default: 8090)\n"
       printf "  -v <version> : Install a specific version (default: latest)\n"
       printf "  -c, --mirror [URL] : Use a GitHub mirror/proxy URL (default: https://gh.github.com)\n"
+      printf "  --insecure-mirror : With --mirror, allow the checksum to come from the mirror when\n"
+      printf "                      github.com is unreachable (reduced integrity). Use only if you\n"
+      printf "                      trust the mirror and github.com is fully blocked.\n"
       printf "  --auto-update : Enable automatic daily updates (disabled by default)\n"
       printf "  -h, --help   : Display this help message\n"
       exit 0
@@ -193,11 +198,17 @@ while [ $# -gt 0 ]; do
     -c | --mirror)
       shift
       if [ -n "$1" ] && ! echo "$1" | grep -q '^-'; then
-        GITHUB_URL="$(ensure_trailing_slash "$1")https://github.com"
+        GITHUB_PROXY_URL="$(ensure_trailing_slash "$1")https://github.com"
+        GITHUB_URL="$GITHUB_PROXY_URL"
         shift
       else
-        GITHUB_URL="https://gh.github.com"
+        GITHUB_PROXY_URL="https://gh.github.com"
+        GITHUB_URL="$GITHUB_PROXY_URL"
       fi
+      ;;
+    --insecure-mirror)
+      INSECURE_MIRROR=true
+      shift
       ;;
     --auto-update)
       AUTO_UPDATE_FLAG="true"
@@ -363,11 +374,35 @@ ARCHIVE_PATH="$TEMP_DIR/$FILE_NAME"
 RELEASE_BASE="$GITHUB_URL/Gu1llaum-3/vigil/releases/download/v${INSTALL_VERSION}"
 DOWNLOAD_URL="$RELEASE_BASE/$FILE_NAME"
 
-# Fetch and validate the published SHA-256 checksum for this artifact
-CHECKSUM=$(curl -fsSL "$RELEASE_BASE/vigil_${INSTALL_VERSION}_checksums.txt" | grep "$FILE_NAME" | cut -d' ' -f1)
+# Fetch and validate the published SHA-256 checksum for this artifact.
+#
+# Security: the checksum is the only integrity control on the downloaded binary, so it must
+# come from a trusted source. When --mirror is used the binary is fetched from an arbitrary
+# third-party host; fetching the checksum from that same host would let a malicious mirror
+# serve a backdoored binary together with a matching checksum and defeat verification. We
+# therefore always fetch the checksum from the canonical GitHub host (a tiny file), even
+# under --mirror — only the larger binary goes through the mirror below.
+CHECKSUM_NAME="vigil_${INSTALL_VERSION}_checksums.txt"
+CANONICAL_CHECKSUM_URL="https://github.com/Gu1llaum-3/vigil/releases/download/v${INSTALL_VERSION}/${CHECKSUM_NAME}"
+CHECKSUM=$(curl -fsSL "$CANONICAL_CHECKSUM_URL" | grep "$FILE_NAME" | cut -d' ' -f1)
+
+# Fall back to the mirror's checksum only when github.com is unreachable AND the operator
+# explicitly accepted the reduced integrity guarantee via --insecure-mirror.
+if { [ -z "$CHECKSUM" ] || ! echo "$CHECKSUM" | grep -qE "^[a-fA-F0-9]{64}$"; } && [ -n "$GITHUB_PROXY_URL" ] && [ "$INSECURE_MIRROR" = "true" ]; then
+  echo "WARNING: could not fetch the checksum from the canonical GitHub host (github.com)." >&2
+  echo "WARNING: --insecure-mirror is set, falling back to the mirror's checksum." >&2
+  echo "WARNING: integrity is NOT guaranteed — the mirror provides both the binary and its checksum." >&2
+  CHECKSUM=$(curl -fsSL "$RELEASE_BASE/${CHECKSUM_NAME}" | grep "$FILE_NAME" | cut -d' ' -f1)
+fi
+
 if [ -z "$CHECKSUM" ] || ! echo "$CHECKSUM" | grep -qE "^[a-fA-F0-9]{64}$"; then
-  echo "Failed to get checksum or invalid checksum format for $FILE_NAME."
-  echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
+  echo "Failed to get a valid checksum from the canonical GitHub host (github.com)."
+  if [ -n "$GITHUB_PROXY_URL" ]; then
+    echo "github.com must be reachable for the checksum even when --mirror is used (only the larger binary goes through the mirror)."
+    echo "If github.com is fully blocked and you trust the mirror, re-run with --insecure-mirror to accept the mirror's checksum (reduced integrity)."
+  else
+    echo "Try again with --mirror (or --mirror <url>) if GitHub is not reachable."
+  fi
   rm -rf "$TEMP_DIR"
   exit 1
 fi
