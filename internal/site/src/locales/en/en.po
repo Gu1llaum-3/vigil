@@ -426,8 +426,8 @@ msgid "Checks loaded"
 msgstr "Checks loaded"
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Choose which system events appear in the navbar bell and unread counter."
-msgstr "Choose which system events appear in the navbar bell and unread counter."
+#~ msgid "Choose which system events appear in the navbar bell and unread counter."
+#~ msgstr "Choose which system events appear in the navbar bell and unread counter."
 
 #: src/components/routes/monitors.tsx
 msgid "Click \"Add monitor\" to start monitoring your services."
@@ -478,8 +478,8 @@ msgid "Configure automatic retention for monitoring and notification history, th
 msgstr "Configure automatic retention for monitoring and notification history, then run manual cleanups when needed."
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
-msgstr "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
+#~ msgid "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
+#~ msgstr "Configure notification channels and routing rules. Notifications are sent when monitors, agents, or container images change state."
 
 #: src/components/login/auth-form.tsx
 msgid "Confirm password"
@@ -773,6 +773,10 @@ msgstr "Delete notification delivery logs older than the chosen number of days, 
 msgid "Deletes old probe and notification history based on retention settings."
 msgstr "Deletes old probe and notification history based on retention settings."
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Delivery destinations (email, webhooks, chat services). A rule sends to these."
+msgstr "Delivery destinations (email, webhooks, chat services). A rule sends to these."
+
 #: src/components/routes/monitors.tsx
 msgid "Destination"
 msgstr "Destination"
@@ -959,6 +963,10 @@ msgstr "Expand all"
 #: src/components/routes/settings/agents.tsx
 msgid "Expires after one hour or on hub restart."
 msgstr "Expires after one hour or on hub restart."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "External notifications"
+msgstr "External notifications"
 
 #: src/lib/api.ts
 msgid "Failed to authenticate"
@@ -1257,6 +1265,10 @@ msgstr "Image update"
 #: src/components/routes/images.tsx
 msgid "Image updates"
 msgstr "Image updates"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "In-app bell"
+msgstr "In-app bell"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Info and above"
@@ -1791,12 +1803,12 @@ msgid "Notification"
 msgstr "Notification"
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Notification bell"
-msgstr "Notification bell"
+#~ msgid "Notification bell"
+#~ msgstr "Notification bell"
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Notification delivery destinations (email, webhooks, chat services)."
-msgstr "Notification delivery destinations (email, webhooks, chat services)."
+#~ msgid "Notification delivery destinations (email, webhooks, chat services)."
+#~ msgstr "Notification delivery destinations (email, webhooks, chat services)."
 
 #: src/components/notification-log-toasts.tsx
 msgid "Notification delivery failed"
@@ -2267,8 +2279,8 @@ msgid "Rotate token"
 msgstr "Rotate token"
 
 #: src/components/routes/settings/notifications.tsx
-msgid "Routing rules: which events trigger which channels."
-msgstr "Routing rules: which events trigger which channels."
+#~ msgid "Routing rules: which events trigger which channels."
+#~ msgstr "Routing rules: which events trigger which channels."
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
@@ -2390,6 +2402,10 @@ msgstr "Security"
 #: src/components/routes/dashboard/kpi-cards.tsx
 msgid "Security updates"
 msgstr "Security updates"
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Send alerts outside the app (email, Slack, Teams, Ntfy, …). Add destinations (channels), then route events to them (rules). Independent from the in-app bell above."
+msgstr "Send alerts outside the app (email, Slack, Teams, Ntfy, …). Add destinations (channels), then route events to them (rules). Independent from the in-app bell above."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Send test"
@@ -2519,6 +2535,10 @@ msgstr "The job ran successfully."
 #: src/components/stale-check-hint.tsx
 msgid "The last image check failed; showing the last successful result."
 msgstr "The last image check failed; showing the last successful result."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "The same events reach you two independent ways: the in-app bell, and external channels (email, Slack, Ntfy, …). Configure each below — turning one on does not affect the other."
+msgstr "The same events reach you two independent ways: the in-app bell, and external channels (email, Slack, Ntfy, …). Configure each below — turning one on does not affect the other."
 
 #: src/components/login/forgot-pass-form.tsx
 msgid "Then log into the backend and reset your user account password in the users table."
@@ -2748,6 +2768,14 @@ msgstr "Warnings"
 #: src/components/routes/settings/agents.tsx
 msgid "When enabled, this token allows agents to self-register without prior creation."
 msgstr "When enabled, this token allows agents to self-register without prior creation."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Which events get sent to which channels (with optional severity and throttle)."
+msgstr "Which events get sent to which channels (with optional severity and throttle)."
+
+#: src/components/routes/settings/notifications.tsx
+msgid "Which system events show in the navbar bell and the Notifications page. In-app only — this sends nothing to external channels."
+msgstr "Which system events show in the navbar bell and the Notifications page. In-app only — this sends nothing to external channels."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "You can select multiple channels for the same rule."
