@@ -249,6 +249,15 @@ msgstr "All severities"
 msgid "All statuses"
 msgstr "All statuses"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "API key revoked"
+msgstr "API key revoked"
+
+#: src/components/routes/settings/api-keys.tsx
+#: src/components/routes/settings/layout.tsx
+msgid "API keys"
+msgstr "API keys"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "App Token"
 msgstr "App Token"
@@ -568,6 +577,10 @@ msgstr "Containers were detected, but image audit results have not been generate
 msgid "Copied to clipboard"
 msgstr "Copied to clipboard"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Copy"
+msgstr "Copy"
+
 #: src/components/add-agent.tsx
 msgid "Copy a Docker-based install snippet for a new agent. The dialog uses the hub public key and the current enrollment token."
 msgstr "Copy a Docker-based install snippet for a new agent. The dialog uses the hub public key and the current enrollment token."
@@ -609,6 +622,10 @@ msgstr "Copy the install script command or a raw binary launch command for a new
 msgid "Copy YAML"
 msgstr "Copy YAML"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Copy your API key now"
+msgstr "Copy your API key now"
+
 #: src/components/routes/monitors.tsx
 msgid "Count"
 msgstr "Count"
@@ -628,6 +645,10 @@ msgstr "CPU now"
 #: src/components/routes/host-detail.tsx
 msgid "CPU usage"
 msgstr "CPU usage"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Create"
+msgstr "Create"
 
 #: src/components/login/auth-form.tsx
 msgid "Create account"
@@ -834,6 +855,10 @@ msgstr "DNS server (optional)"
 msgid "Docker"
 msgstr "Docker"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Done"
+msgstr "Done"
+
 #: src/components/routes/monitors.tsx
 msgid "down"
 msgstr "down"
@@ -846,6 +871,10 @@ msgstr "Down"
 #: src/components/routes/settings/jobs.tsx
 msgid "Duration"
 msgstr "Duration"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "e.g. mcp-server, reporting-script"
+msgstr "e.g. mcp-server, reporting-script"
 
 #: src/components/routes/settings/agents.tsx
 msgid "Each agent authenticates with a token and establishes a stable fingerprint on first connection. Use an enrollment token to allow new agents to self-register."
@@ -972,6 +1001,10 @@ msgstr "External notifications"
 msgid "Failed to authenticate"
 msgstr "Failed to authenticate"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Failed to create API key"
+msgstr "Failed to create API key"
+
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Failed to delete credential"
 msgstr "Failed to delete credential"
@@ -983,6 +1016,10 @@ msgstr "Failed to delete group"
 #: src/components/routes/monitors.tsx
 msgid "Failed to delete monitor"
 msgstr "Failed to delete monitor"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Failed to load API keys"
+msgstr "Failed to load API keys"
 
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Failed to load credentials"
@@ -1003,6 +1040,10 @@ msgstr "Failed to move monitor"
 #: src/components/metric-thresholds.tsx
 msgid "Failed to reset"
 msgstr "Failed to reset"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Failed to revoke API key"
+msgstr "Failed to revoke API key"
 
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
@@ -1094,6 +1135,10 @@ msgstr "Gateway"
 #: src/components/routes/settings/layout.tsx
 msgid "General"
 msgstr "General"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Give the key a name so you can recognize it later."
+msgstr "Give the key a name so you can recognize it later."
 
 #: src/components/routes/hosts.tsx
 msgid "Global alert thresholds"
@@ -1383,6 +1428,10 @@ msgstr "Last Success"
 #~ msgid "Last upgrade"
 #~ msgstr "Last upgrade"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Last used"
+msgstr "Last used"
+
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
 msgid "Latency"
@@ -1494,6 +1543,10 @@ msgstr "Login attempt failed"
 msgid "Logs"
 msgstr "Logs"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Long-lived read-only tokens for scripts and integrations (e.g. the MCP server). A key acts as you and can read everything you can; it cannot make changes. The token is shown only once at creation."
+msgstr "Long-lived read-only tokens for scripts and integrations (e.g. the MCP server). A key acts as you and can read everything you can; it cannot make changes. The token is shown only once at creation."
+
 #: src/components/routes/settings/layout.tsx
 msgid "Manage display preferences."
 msgstr "Manage display preferences."
@@ -1602,6 +1655,7 @@ msgid "My Slack alerts"
 msgstr "My Slack alerts"
 
 #: src/components/routes/monitors.tsx
+#: src/components/routes/settings/api-keys.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Name"
@@ -1640,9 +1694,21 @@ msgstr "Network now"
 msgid "Network throughput"
 msgstr "Network throughput"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "never"
+msgstr "never"
+
 #: src/components/routes/settings/jobs.tsx
 msgid "Never"
 msgstr "Never"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "New API key"
+msgstr "New API key"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "New key"
+msgstr "New key"
 
 #: src/components/routes/images.tsx
 msgid "new major"
@@ -1668,6 +1734,10 @@ msgstr "No agents configured"
 #: src/components/routes/dashboard/empty-state.tsx
 msgid "No agents connected"
 msgstr "No agents connected"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "No API keys yet."
+msgstr "No API keys yet."
 
 #: src/components/routes/settings/notifications.tsx
 msgid "No channels configured yet."
@@ -2282,6 +2352,10 @@ msgstr "Review recent notification deliveries and inspect provider errors."
 msgid "Review system events from monitors, agents, and container image audits."
 msgstr "Review system events from monitors, agents, and container image audits."
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Revoke"
+msgstr "Revoke"
+
 #: src/components/routes/settings/agents.tsx
 msgid "Rotate token"
 msgstr "Rotate token"
@@ -2561,6 +2635,10 @@ msgstr "This application supports OpenID Connect and many OAuth2 authentication 
 msgid "This group contains {0} monitor(s). They will be moved to No group."
 msgstr "This group contains {0} monitor(s). They will be moved to No group."
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "This is the only time the full token is shown. Store it somewhere safe — you cannot see it again."
+msgstr "This is the only time the full token is shown. Store it somewhere safe — you cannot see it again."
+
 #: src/components/routes/settings/purge.tsx
 msgid "This will delete notification logs older than {notificationDays} days."
 msgstr "This will delete notification logs older than {notificationDays} days."
@@ -2614,6 +2692,7 @@ msgid "To (comma-separated)"
 msgstr "To (comma-separated)"
 
 #: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/api-keys.tsx
 msgid "Token"
 msgstr "Token"
 

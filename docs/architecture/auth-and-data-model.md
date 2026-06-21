@@ -77,6 +77,14 @@ deliberate hardening choice, not the current default.
 
 The collection is tied to the user that created the enrollment token.
 
+### `user_api_keys`
+
+- created by migration `31_create_user_api_keys.go`
+- long-lived bearer tokens (`vk_…`) for non-browser clients (scripts, the MCP server) to call `/api/app/*` as the owning user
+- only the **SHA-256 hash** of the token is stored (`token_hash`, hidden); the plaintext is returned **once** at creation
+- fields: `name`, `created_by` (relation→users), `prefix` (display head), `scope` (`read` / `read-write`), `last_used_at`, `expires_at`
+- the `authenticateApiKey` middleware (`internal/hub/api_keys.go`) resolves the bearer token to the user, enforces the scope (a `read` key may only use safe HTTP methods, on every route), and hands `RequireAuth` a freshly minted JWT; key management (`/api/app/api-keys`) is refused when the request itself authenticated via a key, so a key cannot mint more keys
+
 ### `host_metric_samples`
 
 - created by migration `21_create_host_metrics.go`
