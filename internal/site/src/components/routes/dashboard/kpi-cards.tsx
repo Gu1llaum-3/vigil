@@ -36,6 +36,14 @@ export const KpiCards = memo(function KpiCards({ summary, hasContainerWarnings, 
 		: hasContainerWarnings
 			? "warning"
 			: "success"
+	// Deep-link the containers card into the matching pre-filtered view: prioritize
+	// error/warning issues, else fall back to image updates, else the unfiltered list.
+	const containersFilter =
+		(summary.containers_in_error ?? 0) > 0 || (summary.containers_in_warning ?? 0) > 0
+			? "?filter=issues"
+			: (summary.containers_with_image_updates ?? 0) > 0
+				? "?filter=updates"
+				: ""
 	const cards: KpiCardDef[] = [
 		{
 			key: "hosts",
@@ -47,7 +55,7 @@ export const KpiCards = memo(function KpiCards({ summary, hasContainerWarnings, 
 		},
 		{
 			key: "security",
-			href: getPagePath($router, "hosts"),
+			href: `${getPagePath($router, "hosts")}?filter=security`,
 			label: <Trans>Security updates</Trans>,
 			value: summary.total_security_updates,
 			icon: <ShieldAlertIcon className="size-4" />,
@@ -63,7 +71,7 @@ export const KpiCards = memo(function KpiCards({ summary, hasContainerWarnings, 
 		},
 		{
 			key: "reboot",
-			href: getPagePath($router, "hosts"),
+			href: `${getPagePath($router, "hosts")}?filter=reboot`,
 			label: <Trans>Reboot required</Trans>,
 			value: summary.hosts_needing_reboot,
 			icon: <AlertTriangleIcon className="size-4" />,
@@ -71,7 +79,7 @@ export const KpiCards = memo(function KpiCards({ summary, hasContainerWarnings, 
 		},
 		{
 			key: "docker",
-			href: getPagePath($router, "containers"),
+			href: `${getPagePath($router, "containers")}${containersFilter}`,
 			label: <Trans>Containers</Trans>,
 			value: `${summary.running_containers}/${summary.total_containers}`,
 			icon: <BoxIcon className="size-4" />,
