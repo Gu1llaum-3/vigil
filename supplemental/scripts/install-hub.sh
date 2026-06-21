@@ -128,24 +128,13 @@ detect_architecture() {
   echo "$arch"
 }
 
-# Build sudo args by properly quoting everything
-build_sudo_args() {
-  QUOTED_ARGS=""
-  while [ $# -gt 0 ]; do
-    if [ -n "$QUOTED_ARGS" ]; then
-      QUOTED_ARGS="$QUOTED_ARGS "
-    fi
-    QUOTED_ARGS="$QUOTED_ARGS'$(echo "$1" | sed "s/'/'\\\\''/g")'"
-    shift
-  done
-  echo "$QUOTED_ARGS"
-}
-
 # Check if running as root and re-execute with sudo if needed
 if [ "$(id -u)" != "0" ]; then
   if command -v sudo >/dev/null 2>&1; then
-    SUDO_ARGS=$(build_sudo_args "$@")
-    eval "exec sudo $0 $SUDO_ARGS"
+    # Re-exec under sudo. "$@" is still the original, unparsed argument list here, so the
+    # shell preserves each argument's quoting exactly — no eval, no word-splitting, and no
+    # risk from a script path ($0) that contains spaces or shell metacharacters.
+    exec sudo "$0" "$@"
   else
     echo "This script must be run as root. Please either:"
     echo "1. Run this script as root (su root)"
@@ -337,7 +326,10 @@ fi
 echo "Creating the directory for the Vigil Hub..."
 mkdir -p "$HUB_DIR/vigil_data"
 chown -R vigil:vigil "$HUB_DIR"
-chmod 755 "$HUB_DIR"
+# Lock down the hub directory so local users cannot traverse into vigil_data, which holds
+# the ED25519 hub private key (id_ed25519) and the AES credentials key (credentials.key).
+chmod 750 "$HUB_DIR"
+chmod 700 "$HUB_DIR/vigil_data"
 
 # Download and install the Vigil Hub
 echo "Downloading and installing the Vigil Hub..."
@@ -505,8 +497,27 @@ After=network.target
 ExecStart=$BIN_PATH serve --http "0.0.0.0:$PORT"
 WorkingDirectory=$HUB_DIR
 User=vigil
+Group=vigil
 Restart=always
 RestartSec=5
+
+# Security/sandboxing settings (the hub is the internet-facing component and holds the
+# private keys, so it gets at least the same hardening as the agent unit). ProtectSystem=strict
+# makes the filesystem read-only except ReadWritePaths, which must include the data dir.
+NoNewPrivileges=yes
+PrivateTmp=yes
+LockPersonality=yes
+ProtectClock=yes
+ProtectHome=read-only
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectSystem=strict
+ReadWritePaths=$HUB_DIR
+RemoveIPC=yes
+RestrictSUIDSGID=true
 
 [Install]
 WantedBy=multi-user.target
@@ -540,7 +551,15 @@ Wants=vigil-hub.service
 
 [Service]
 Type=oneshot
+# Run the self-updater as the unprivileged service account, not root. The binary lives in
+# $HUB_DIR (owned by vigil), so vigil can replace it; ReadWritePaths grants exactly that.
+User=vigil
+Group=vigil
 ExecStart=$BIN_PATH update
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=$HUB_DIR
 EOF
 
     # Create systemd timer for the daily update
