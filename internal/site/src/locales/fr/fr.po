@@ -1436,6 +1436,10 @@ msgstr "Laisser vide pour conserver l'actuel"
 msgid "Load average"
 msgstr "Charge moyenne"
 
+#: src/components/metric-charts.tsx
+msgid "Load average (per core)"
+msgstr "Charge moyenne (par cœur)"
+
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Loading credentials…"
 msgstr "Chargement des identifiants…"

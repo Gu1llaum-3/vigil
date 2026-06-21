@@ -186,6 +186,19 @@ func metricsAt(t, start time.Time) map[string]float64 {
 		tx = 12_000 + 10_000*math.Abs(math.Cos(mins/5))
 	}
 
+	// Raw load average (demo host has 8 cores; the UI divides by cores). Base sits low
+	// (~1.5-3 raw → ~0.2-0.4/core) with a spike up to ~8 raw (~1.0/core, crossing the
+	// default warning line) during the periodic CPU spike. load1 is noisiest, load15
+	// smoothest, mirroring how real load averages lag.
+	loadBase := 1.6 + 1.1*math.Sin(mins/37) + 0.5*math.Sin(mins/11)
+	loadSpike := 0.0
+	if int(mins)%173 < 5 {
+		loadSpike = 6
+	}
+	load1 := clamp(loadBase+loadSpike+0.4*math.Sin(mins/2), 0.05, 40)
+	load5 := clamp(loadBase+0.7*loadSpike, 0.05, 40)
+	load15 := clamp(loadBase*0.9+0.3*loadSpike, 0.05, 40)
+
 	return map[string]float64{
 		"cpu_percent":         round2(cpu),
 		"memory_total_bytes":  ramBytes,
@@ -196,6 +209,9 @@ func metricsAt(t, start time.Time) map[string]float64 {
 		"disk_used_percent":   diskUsedPerc,
 		"network_rx_bps":      round2(rx),
 		"network_tx_bps":      round2(tx),
+		"load1":               round2(load1),
+		"load5":               round2(load5),
+		"load15":              round2(load15),
 	}
 }
 
