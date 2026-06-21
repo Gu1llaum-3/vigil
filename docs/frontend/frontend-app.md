@@ -89,6 +89,18 @@ This file is the main bridge between the frontend and backend. It handles patter
 
 If a frontend change touches auth, current user state, or app-level requests, inspect `api.ts` first.
 
+### Auth token storage (known limitation)
+
+The PocketBase JS client uses the default `LocalAuthStore`, which persists the session JWT
+(including admin tokens) in `localStorage` under `pb_auth`. Because that is JavaScript-readable,
+any XSS in the app origin could exfiltrate a valid session token. Moving to an HttpOnly cookie
+would require a custom/async auth store, server-set cookies, CSRF protection, and cookie-based
+auth for the realtime (SSE) channel — a substantial, regression-prone change. It is deliberately
+**deferred**: the primary mitigation is preventing XSS in the first place, which the default
+nonce-based CSP now enforces (`internal/hub/server_production.go`; `script-src` is locked to
+`'self'` + a per-request nonce, with no `'unsafe-inline'`). Revisit HttpOnly-cookie auth if the
+threat model tightens.
+
 ## Auth Flow
 
 The login UI is organized under `internal/site/src/components/login/`.

@@ -302,6 +302,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | Variable | Description | Default |
 |---|---|---|
 | `APP_URL` | Public URL of the hub | `http://localhost:8090` |
+| `CSP` | Custom `Content-Security-Policy` for the app HTML, used verbatim and taking full control (you own `frame-ancestors`; `X-Frame-Options` is then dropped). When unset, the hub serves a **nonce-based default CSP** (script-src locked to `'self'` + a per-request nonce on the inline bootstrap scripts; `style-src` allows inline; `img-src` allows `https:`/`data:` so OAuth avatars load). `X-Content-Type-Options: nosniff` and `Referrer-Policy` are always sent. | built-in default |
 | `DISABLE_PASSWORD_AUTH` | Disable email/password login | — |
 | `USER_CREATION` | Allow OAuth2 user self-registration | — |
 | `MFA_OTP` | Enable MFA/OTP (`true` = all users, `superusers` = superusers only) | — |

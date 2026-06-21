@@ -16,10 +16,10 @@ type GotifyProvider struct {
 }
 
 func NewGotifyProvider() *GotifyProvider {
-	return &GotifyProvider{client: &http.Client{Timeout: 10 * time.Second}}
+	return &GotifyProvider{client: newGuardedHTTPClient(10 * time.Second)}
 }
 
-func (p *GotifyProvider) Kind() string                { return "gotify" }
+func (p *GotifyProvider) Kind() string                  { return "gotify" }
 func (p *GotifyProvider) SensitiveConfigKeys() []string { return []string{"token"} }
 
 func (p *GotifyProvider) ValidateConfig(raw map[string]any) error {

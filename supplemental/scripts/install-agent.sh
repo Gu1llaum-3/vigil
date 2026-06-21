@@ -265,24 +265,13 @@ case "$1" in
   ;;
 esac
 
-# Build sudo args by properly quoting everything
-build_sudo_args() {
-  QUOTED_ARGS=""
-  while [ $# -gt 0 ]; do
-    if [ -n "$QUOTED_ARGS" ]; then
-      QUOTED_ARGS="$QUOTED_ARGS "
-    fi
-    QUOTED_ARGS="$QUOTED_ARGS'$(echo "$1" | sed "s/'/'\\\\''/g")'"
-    shift
-  done
-  echo "$QUOTED_ARGS"
-}
-
 # Check if running as root and re-execute with sudo if needed
 if [ "$(id -u)" != "0" ]; then
   if command -v sudo >/dev/null 2>&1; then
-    SUDO_ARGS=$(build_sudo_args "$@")
-    eval "exec sudo $0 $SUDO_ARGS"
+    # Re-exec under sudo. "$@" is still the original, unparsed argument list here, so the
+    # shell preserves each argument's quoting exactly — no eval, no word-splitting, and no
+    # risk from a script path ($0) that contains spaces or shell metacharacters.
+    exec sudo "$0" "$@"
   else
     echo "This script must be run as root. Please either:"
     echo "1. Run this script as root (su root)"

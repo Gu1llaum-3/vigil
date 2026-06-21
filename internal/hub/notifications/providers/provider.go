@@ -3,8 +3,21 @@ package providers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
+
+	"github.com/Gu1llaum-3/vigil/internal/netguard"
 )
+
+// newGuardedHTTPClient builds the HTTP client used by every outbound provider. The
+// destination URL is user-supplied, so the client dials through the shared SSRF guard to
+// refuse loopback/link-local/cloud-metadata targets (defeating SSRF against the hub host).
+// Private/LAN ranges are intentionally allowed — internal Slack/Mattermost/webhook
+// endpoints are a primary use case — unless MONITOR_ALLOW_PRIVATE_TARGETS disabled the
+// guard entirely.
+func newGuardedHTTPClient(timeout time.Duration) *http.Client {
+	return netguard.NewGuardedClient(timeout, false)
+}
 
 // Channel holds the persisted configuration for a notification channel.
 type Channel struct {

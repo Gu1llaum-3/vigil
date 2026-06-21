@@ -46,7 +46,7 @@ msgstr "{0, plural, one {# hôte} other {# hôtes}}"
 #. placeholder {0}: container.repo_digests.length
 #: src/components/routes/container-detail.tsx
 msgid "{0, plural, one {Repo digest} other {Repo digests}}"
-msgstr ""
+msgstr "{0, plural, one {Empreinte de dépôt} other {Empreintes de dépôt}}"
 
 #. placeholder {0}: result.items.length
 #: src/components/routes/settings/notifications/history.tsx
@@ -333,7 +333,7 @@ msgstr "Retour"
 
 #: src/components/routes/container-detail.tsx
 msgid "Back to containers"
-msgstr ""
+msgstr "Retour aux conteneurs"
 
 #: src/components/routes/host-detail.tsx
 msgid "Back to hosts"
@@ -518,7 +518,7 @@ msgstr "Conteneur"
 
 #: src/components/routes/container-detail.tsx
 msgid "Container details"
-msgstr ""
+msgstr "Détails du conteneur"
 
 #: src/components/routes/home.tsx
 #~ msgid "Container fleet"
@@ -542,7 +542,7 @@ msgstr "Images conteneur"
 
 #: src/components/routes/container-detail.tsx
 msgid "Container not found."
-msgstr ""
+msgstr "Conteneur introuvable."
 
 #: src/components/routes/host-detail.tsx
 msgid "Container runtime usage"
@@ -1220,7 +1220,7 @@ msgstr "URL du hub"
 
 #: src/components/routes/container-detail.tsx
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: src/components/routes/settings/jobs.tsx
 msgid "Idle"
@@ -1254,7 +1254,7 @@ msgstr "Override d'audit d'image"
 
 #: src/components/routes/container-detail.tsx
 msgid "Image ID"
-msgstr ""
+msgstr "ID de l'image"
 
 #: src/components/routes/container-detail.tsx
 msgid "Image ref"
@@ -1293,7 +1293,7 @@ msgstr "Non sécurisé"
 
 #: src/components/routes/container-detail.tsx
 msgid "Inspect"
-msgstr ""
+msgstr "Inspecter"
 
 #: src/components/routes/host-detail.tsx
 msgid "Installed"
@@ -1361,7 +1361,7 @@ msgstr "Dernier message"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 msgid "Last metrics"
-msgstr ""
+msgstr "Dernières métriques"
 
 #: src/components/routes/home.tsx
 msgid "Last refresh"
@@ -1515,7 +1515,7 @@ msgstr "Mémoire"
 
 #: src/components/routes/container-detail.tsx
 msgid "Memory now"
-msgstr ""
+msgstr "Mémoire actuelle"
 
 #: src/components/metric-thresholds.tsx
 #: src/components/routes/container-detail.tsx
@@ -1584,7 +1584,7 @@ msgstr "Sonde mise à jour"
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Monitoring"
-msgstr ""
+msgstr "Surveillance"
 
 #: src/components/app-sidebar.tsx
 #: src/components/command-palette.tsx
@@ -1724,7 +1724,7 @@ msgstr "Aucun hôte ne correspond au filtre actuel."
 
 #: src/components/routes/container-detail.tsx
 msgid "No image audit data for this container yet."
-msgstr ""
+msgstr "Aucune donnée d'audit d'image pour ce conteneur pour l'instant."
 
 #: src/components/routes/host-detail.tsx
 msgid "No image audit data for this host."
@@ -2175,6 +2175,10 @@ msgstr "Actualiser l'inventaire"
 #~ msgid "Refresh snapshots"
 #~ msgstr "Actualiser les instantanés"
 
+#: src/components/routes/settings/agents.tsx
+msgid "Regenerate (revokes the current token)"
+msgstr "Régénérer (révoque le token actuel)"
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "regex"
 msgstr "regex"
@@ -2465,7 +2469,7 @@ msgstr "État"
 
 #: src/components/routes/container-detail.tsx
 msgid "State detail"
-msgstr ""
+msgstr "Détail de l'état"
 
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
