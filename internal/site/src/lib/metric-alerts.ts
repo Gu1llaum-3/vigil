@@ -25,14 +25,18 @@ export interface MetricAlert {
  */
 export const metricAlertInfo: Record<
 	MetricAlertMetric,
-	{ unit: string; max: number; step: number; warning: number; critical: number; hysteresis: number }
+	{ unit: string; max: number; step: number; warning: number; critical: number; hysteresis: number; durationSeconds: number }
 > = {
-	cpu: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
-	memory: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
-	disk: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5 },
+	// CPU% is a near-instantaneous sample (unlike loadavg, which is already a 5-min
+	// average), so it defaults to a 2-minute "sustained for" delay to avoid firing on
+	// transient spikes. The user can still change it.
+	cpu: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5, durationSeconds: 120 },
+	memory: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5, durationSeconds: 0 },
+	disk: { unit: "%", max: 100, step: 1, warning: 80, critical: 90, hysteresis: 5, durationSeconds: 0 },
 	// loadavg is normalized to load-per-core hub-side, so the threshold is "load per CPU
-	// core" (1.0 = fully utilized) and is comparable across hosts of any size.
-	loadavg: { unit: "/core", max: 4, step: 0.25, warning: 1, critical: 2, hysteresis: 0.5 },
+	// core" (1.0 = fully utilized) and is comparable across hosts of any size. It is already
+	// a 5-min average, so it fires immediately (durationSeconds: 0).
+	loadavg: { unit: "/core", max: 4, step: 0.25, warning: 1, critical: 2, hysteresis: 0.5, durationSeconds: 0 },
 }
 
 export function emptyMetricAlert(agent: string, metric: MetricAlertMetric): MetricAlert {
@@ -46,7 +50,7 @@ export function emptyMetricAlert(agent: string, metric: MetricAlertMetric): Metr
 		warning_value: info.warning,
 		critical_value: info.critical,
 		hysteresis: info.hysteresis,
-		duration_seconds: 0,
+		duration_seconds: info.durationSeconds,
 	}
 }
 
