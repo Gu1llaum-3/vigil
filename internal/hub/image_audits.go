@@ -629,7 +629,9 @@ func imageAuditEventSeverity(result imageAuditResult) string {
 	if result.HasMajorUpdate {
 		return "warning"
 	}
-	if result.ErrorKind == imageAuditErrorAuth {
+	// Definitive, operator-actionable failures (bad credentials, malformed/removed image)
+	// warrant a warning, not info — info would bury them next to routine update notices.
+	if result.ErrorKind == imageAuditErrorAuth || result.ErrorKind == imageAuditErrorClient {
 		return "warning"
 	}
 	return "info"

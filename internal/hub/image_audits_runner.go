@@ -346,6 +346,9 @@ func classifyRegistryErrorMessage(msg string) string {
 		return imageAuditErrorTimeout
 	case strings.Contains(lower, "no such host") || strings.Contains(lower, "connection refused"):
 		return imageAuditErrorNetwork
+	case strings.Contains(lower, "bad request") || strings.Contains(lower, "unprocessable") || strings.Contains(lower, " gone"):
+		// definitive 4xx client errors, kept symmetric with classifyRegistryError
+		return imageAuditErrorClient
 	default:
 		return imageAuditErrorOther
 	}
