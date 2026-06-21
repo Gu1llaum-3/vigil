@@ -400,6 +400,10 @@ func TestTrustedHeaderMiddleware(t *testing.T) {
 	}()
 
 	t.Setenv("TRUSTED_AUTH_HEADER", "X-App-Trusted")
+	// httptest.NewRequest sets RemoteAddr to 192.0.2.1:1234, so allowlist that peer to
+	// exercise the trusted path; without an allowlist the header is ignored (covered by
+	// TestTrustedHeaderMiddlewareRequiresAllowlist).
+	t.Setenv("TRUSTED_PROXY_IPS", "192.0.2.1")
 
 	testAppFactory := func(t testing.TB) *pbTests.TestApp {
 		hub, _ := appTests.NewTestHub(t.TempDir())
@@ -447,6 +451,44 @@ func TestTrustedHeaderMiddleware(t *testing.T) {
 	for _, scenario := range scenarios {
 		scenario.Test(t)
 	}
+}
+
+// TestTrustedHeaderMiddlewareRequiresAllowlist locks the fail-safe: with TRUSTED_AUTH_HEADER
+// set but no TRUSTED_PROXY_IPS allowlist, the trusted header must be ignored entirely so a
+// direct caller cannot impersonate a user by sending the header.
+func TestTrustedHeaderMiddlewareRequiresAllowlist(t *testing.T) {
+	var hubs []*appTests.TestHub
+	defer func() {
+		for _, hub := range hubs {
+			hub.Cleanup()
+		}
+	}()
+
+	t.Setenv("TRUSTED_AUTH_HEADER", "X-App-Trusted")
+	// deliberately do NOT set TRUSTED_PROXY_IPS
+
+	testAppFactory := func(t testing.TB) *pbTests.TestApp {
+		hub, _ := appTests.NewTestHub(t.TempDir())
+		hubs = append(hubs, hub)
+		hub.StartHub()
+		return hub.TestApp
+	}
+
+	scenario := appTests.ApiScenario{
+		Name:   "GET /info - trusted header is ignored without an allowlist",
+		Method: http.MethodGet,
+		URL:    "/api/app/info",
+		Headers: map[string]string{
+			"X-App-Trusted": "user@test.com",
+		},
+		ExpectedStatus:  401,
+		ExpectedContent: []string{"requires valid"},
+		TestAppFactory:  testAppFactory,
+		BeforeTestFunc: func(t testing.TB, app *pbTests.TestApp, e *core.ServeEvent) {
+			appTests.CreateUser(app, "user@test.com", "password123")
+		},
+	}
+	scenario.Test(t)
 }
 
 func TestUpdateEndpoint(t *testing.T) {
