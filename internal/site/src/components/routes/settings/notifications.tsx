@@ -719,10 +719,13 @@ const SectionBellPreferences = memo(() => {
 		<div>
 			<div className="mb-3">
 				<h3 className="text-xl font-medium">
-					<Trans>Notification bell</Trans>
+					<Trans>In-app bell</Trans>
 				</h3>
 				<p className="mt-0.5 text-sm text-muted-foreground">
-					<Trans>Choose which system events appear in the navbar bell and unread counter.</Trans>
+					<Trans>
+						Which system events show in the navbar bell and the Notifications page. In-app only — this sends
+						nothing to external channels.
+					</Trans>
 				</p>
 			</div>
 			<div className="rounded-md border p-3">
@@ -831,11 +834,11 @@ const SectionChannels = memo(
 			<div>
 				<div className="flex items-center justify-between mb-3">
 					<div>
-						<h3 className="text-xl font-medium">
+						<h4 className="text-lg font-medium">
 							<Trans>Channels</Trans>
-						</h3>
+						</h4>
 						<p className="text-sm text-muted-foreground mt-0.5">
-							<Trans>Notification delivery destinations (email, webhooks, chat services).</Trans>
+							<Trans>Delivery destinations (email, webhooks, chat services). A rule sends to these.</Trans>
 						</p>
 					</div>
 					<Button size="sm" onClick={openCreate}>
@@ -988,11 +991,11 @@ const SectionRules = memo(
 			<div>
 				<div className="flex items-center justify-between mb-3">
 					<div>
-						<h3 className="text-xl font-medium">
+						<h4 className="text-lg font-medium">
 							<Trans>Rules</Trans>
-						</h3>
+						</h4>
 						<p className="text-sm text-muted-foreground mt-0.5">
-							<Trans>Routing rules: which events trigger which channels.</Trans>
+							<Trans>Which events get sent to which channels (with optional severity and throttle).</Trans>
 						</p>
 					</div>
 					<Button size="sm" onClick={openCreate}>
@@ -1120,8 +1123,8 @@ const NotificationsSettings = memo(() => {
 				</h3>
 				<p className="text-sm text-muted-foreground leading-relaxed">
 					<Trans>
-						Configure notification channels and routing rules. Notifications are sent when monitors, agents, or
-						container images change state.
+						The same events reach you two independent ways: the in-app bell, and external channels (email,
+						Slack, Ntfy, …). Configure each below — turning one on does not affect the other.
 					</Trans>
 				</p>
 			</div>
@@ -1135,12 +1138,29 @@ const NotificationsSettings = memo(() => {
 						<Trans>History</Trans>
 					</TabsTrigger>
 				</TabsList>
-				<TabsContent value="config" className="space-y-6">
+				<TabsContent value="config" className="space-y-8">
+					{/* Circuit 1 — in-app only */}
 					<SectionBellPreferences />
-					<Separator className="my-6" />
-					<SectionChannels channels={channels} onChannelsChange={setChannels} />
-					<Separator className="my-6" />
-					<SectionRules rules={rules} channels={channels} onRulesChange={setRules} />
+
+					{/* Circuit 2 — external delivery (channels + rules) */}
+					<div>
+						<div className="mb-3">
+							<h3 className="text-xl font-medium">
+								<Trans>External notifications</Trans>
+							</h3>
+							<p className="mt-0.5 text-sm text-muted-foreground">
+								<Trans>
+									Send alerts outside the app (email, Slack, Teams, Ntfy, …). Add destinations (channels), then
+									route events to them (rules). Independent from the in-app bell above.
+								</Trans>
+							</p>
+						</div>
+						<div className="space-y-6 rounded-lg border border-border/60 p-4">
+							<SectionChannels channels={channels} onChannelsChange={setChannels} />
+							<Separator />
+							<SectionRules rules={rules} channels={channels} onRulesChange={setRules} />
+						</div>
+					</div>
 				</TabsContent>
 				<TabsContent value="history">
 					<NotificationHistory rules={rules} channels={channels} />
