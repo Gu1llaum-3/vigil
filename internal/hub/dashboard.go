@@ -82,7 +82,7 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 	// Fetch all agents
 	agentRecords, err := h.FindAllRecords("agents")
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return e.InternalServerError("Internal server error", err)
 	}
 
 	// Index agents by ID

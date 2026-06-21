@@ -365,7 +365,7 @@ func (h *Hub) loadHostsOverview() ([]HostOverviewRecord, error) {
 func (h *Hub) getHostsOverview(e *core.RequestEvent) error {
 	hosts, err := h.loadHostsOverview()
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return e.InternalServerError("Internal server error", err)
 	}
 	return e.JSON(http.StatusOK, hosts)
 }
@@ -409,7 +409,7 @@ func (h *Hub) getHostMetricsHistory(e *core.RequestEvent) error {
 		dbx.Params{"agent": agentID, "since": since},
 	)
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return e.InternalServerError("Internal server error", err)
 	}
 	history := make([]common.HostMetricsResponse, 0, len(records))
 	for _, rec := range records {

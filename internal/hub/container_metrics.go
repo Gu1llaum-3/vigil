@@ -123,7 +123,7 @@ func (h *Hub) getHostContainerMetricsHistory(e *core.RequestEvent) error {
 		dbx.Params{"agent": agentID, "since": since},
 	)
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return e.InternalServerError("Internal server error", err)
 	}
 	history := make([]ContainerMetricHistoryPoint, 0, len(records))
 	for _, rec := range records {
@@ -148,7 +148,7 @@ func (h *Hub) getContainerMetricsHistoryByName(e *core.RequestEvent) error {
 		dbx.Params{"agent": agentID, "since": since},
 	)
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return e.InternalServerError("Internal server error", err)
 	}
 	series := make([]ContainerMetricSeriesPoint, 0, len(records))
 	for _, rec := range records {
@@ -175,7 +175,7 @@ func (h *Hub) getContainerMetricsLatestByName(e *core.RequestEvent) error {
 		dbx.Params{"agent": agentID},
 	)
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return e.InternalServerError("Internal server error", err)
 	}
 	if len(records) == 0 {
 		return e.JSON(http.StatusOK, nil)
@@ -202,7 +202,7 @@ func (h *Hub) getHostContainerMetricsLatest(e *core.RequestEvent) error {
 		dbx.Params{"agent": agentID},
 	)
 	if err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return e.InternalServerError("Internal server error", err)
 	}
 	if len(records) == 0 {
 		return e.JSON(http.StatusOK, nil)
