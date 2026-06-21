@@ -1,6 +1,8 @@
 package hub
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"net/url"
 	"strings"
@@ -41,4 +43,42 @@ func getPublicAppInfo(hub *Hub) PublicAppInfo {
 		info.OAUTH_DISABLE_POPUP = true
 	}
 	return info
+}
+
+// securityNonce returns a fresh base64 CSP nonce (128 bits of entropy).
+func securityNonce() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(b), nil
+}
+
+// addScriptNonce tags the index.html's inline <script> blocks with the CSP nonce so they
+// are allowed under a script-src 'nonce-…' policy. Only bare "<script>" tags are inline
+// scripts; the bundled module script ("<script type=…") is served from 'self' and is left
+// untouched.
+func addScriptNonce(html, nonce string) string {
+	return strings.ReplaceAll(html, "<script>", "<script nonce=\""+nonce+"\">")
+}
+
+// defaultContentSecurityPolicy returns the baseline CSP applied when the operator has not
+// set a custom CSP env var. Scripts are locked to same-origin plus the per-request nonce
+// (the inline bootstrap scripts carry it); styles allow inline (the index ships an inline
+// <style> and UI libs set style attributes); images allow https + data so OAuth-provider
+// avatars load; everything else is same-origin, framing is same-origin only, and plugins
+// are disabled.
+func defaultContentSecurityPolicy(nonce string) string {
+	return strings.Join([]string{
+		"default-src 'self'",
+		"script-src 'self' 'nonce-" + nonce + "'",
+		"style-src 'self' 'unsafe-inline'",
+		"img-src 'self' data: https:",
+		"font-src 'self' data:",
+		"connect-src 'self'",
+		"frame-ancestors 'self'",
+		"base-uri 'self'",
+		"form-action 'self'",
+		"object-src 'none'",
+	}, "; ")
 }
