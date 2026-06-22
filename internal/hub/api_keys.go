@@ -17,6 +17,9 @@ const (
 	userApiKeysCollection = "user_api_keys"
 	apiKeyTokenPrefix     = "vk_"
 	apiKeyRandomLen       = 40
+	// mcpPathPrefix is exempt from the read-scope HTTP-method guard (MCP is POST-based
+	// JSON-RPC; scope is enforced per-tool inside the MCP layer instead).
+	mcpPathPrefix = "/api/mcp"
 )
 
 // hashApiKey returns the hex SHA-256 of a token. API keys are high-entropy random strings,
@@ -56,8 +59,11 @@ func (h *Hub) authenticateApiKey(e *core.RequestEvent) error {
 		scope = "read"
 	}
 	// Enforce scope at the auth point: a read-only key may only perform safe methods. This
-	// covers every route (incl. the generic /api/collections API), not just /api/app.
-	if scope == "read" && e.Request.Method != http.MethodGet && e.Request.Method != http.MethodHead {
+	// covers every route (incl. the generic /api/collections API), not just /api/app. The
+	// MCP endpoint is exempt because it is JSON-RPC over POST: there, scope is enforced
+	// per-tool (a read key may only call read-only tools), not per HTTP method.
+	if scope == "read" && e.Request.Method != http.MethodGet && e.Request.Method != http.MethodHead &&
+		!strings.HasPrefix(e.Request.URL.Path, mcpPathPrefix) {
 		return e.ForbiddenError("This API key is read-only.", nil)
 	}
 	e.Auth = user
