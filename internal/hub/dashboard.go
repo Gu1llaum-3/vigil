@@ -79,10 +79,21 @@ type ContainerFleetEntry struct {
 
 // getDashboard returns an aggregated view of all host snapshots.
 func (h *Hub) getDashboard(e *core.RequestEvent) error {
+	data, err := h.buildDashboard()
+	if err != nil {
+		return e.InternalServerError("Internal server error", err)
+	}
+	return e.JSON(http.StatusOK, data)
+}
+
+// buildDashboard computes the aggregated fleet view (summary + hosts + packages +
+// repositories + containers). Shared by the /dashboard HTTP handler and the MCP
+// fleet_summary tool; the "summary" entry is a DashboardSummary.
+func (h *Hub) buildDashboard() (map[string]any, error) {
 	// Fetch all agents
 	agentRecords, err := h.FindAllRecords("agents")
 	if err != nil {
-		return e.InternalServerError("Internal server error", err)
+		return nil, err
 	}
 
 	// Index agents by ID
@@ -272,13 +283,13 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 		repositories = append(repositories, *v)
 	}
 
-	return e.JSON(http.StatusOK, map[string]any{
+	return map[string]any{
 		"summary":      summary,
 		"hosts":        hosts,
 		"packages":     packages,
 		"repositories": repositories,
 		"containers":   containers,
-	})
+	}, nil
 }
 
 // containerSeverityLevel classifies a single container for dashboard counters.

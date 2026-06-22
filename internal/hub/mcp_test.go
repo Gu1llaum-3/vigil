@@ -57,6 +57,32 @@ func TestMcpEndpoint(t *testing.T) {
 			ExpectedContent: []string{"requires valid"},
 			TestAppFactory:  testAppFactory,
 		},
+		{
+			Name:   "tools/list exposes the read-only tool set (stateless)",
+			Method: http.MethodPost,
+			URL:    "/api/mcp",
+			Headers: map[string]string{
+				"Authorization": readToken,
+				"Accept":        "application/json, text/event-stream",
+			},
+			Body:            strings.NewReader(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`),
+			ExpectedStatus:  200,
+			ExpectedContent: []string{"fleet_summary", "list_hosts", "get_host", "list_monitors", "get_monitor", "monitor_events"},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:   "tools/call fleet_summary returns a summary",
+			Method: http.MethodPost,
+			URL:    "/api/mcp",
+			Headers: map[string]string{
+				"Authorization": readToken,
+				"Accept":        "application/json, text/event-stream",
+			},
+			Body:            strings.NewReader(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"fleet_summary","arguments":{}}}`),
+			ExpectedStatus:  200,
+			ExpectedContent: []string{"total_hosts"},
+			TestAppFactory:  testAppFactory,
+		},
 	}
 
 	for _, scenario := range scenarios {

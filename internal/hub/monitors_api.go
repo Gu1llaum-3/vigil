@@ -247,32 +247,50 @@ func (h *Hub) loadRecentChecks(m *core.Record, limit int) ([]MonitorCheckPoint, 
 
 // getMonitor returns a single monitor with its current status and metrics.
 func (h *Hub) getMonitor(e *core.RequestEvent) error {
-	id := e.Request.PathValue("id")
-	rec, err := h.FindRecordById("monitors", id)
+	rec, err := h.buildMonitorDetail(e.Request.PathValue("id"))
 	if err != nil {
 		return e.NotFoundError("Monitor not found", nil)
 	}
+	return e.JSON(http.StatusOK, rec)
+}
 
+// buildMonitorDetail returns a single monitor with its current status, metrics and recent
+// checks. Shared by the /monitors/{id} handler and the MCP get_monitor tool.
+func (h *Hub) buildMonitorDetail(id string) (MonitorRecord, error) {
+	rec, err := h.FindRecordById("monitors", id)
+	if err != nil {
+		return MonitorRecord{}, err
+	}
 	metrics, _ := h.loadMonitorMetrics(rec)
 	recentChecks, _ := h.loadRecentChecks(rec, 10)
-	return e.JSON(http.StatusOK, monitorToRecord(rec, h.Settings().Meta.AppURL, metrics, recentChecks))
+	return monitorToRecord(rec, h.Settings().Meta.AppURL, metrics, recentChecks), nil
 }
 
 // getMonitors returns all groups with their monitors.
 func (h *Hub) getMonitors(e *core.RequestEvent) error {
-	groups, err := h.FindRecordsByFilter("monitor_groups", "", "weight,name", 0, 0)
+	result, err := h.buildMonitorsResponse()
 	if err != nil {
 		return err
 	}
+	return e.JSON(http.StatusOK, result)
+}
+
+// buildMonitorsResponse builds all groups with their monitors and aggregated metrics.
+// Shared by the /monitors handler and the MCP list_monitors tool.
+func (h *Hub) buildMonitorsResponse() ([]*MonitorGroupResponse, error) {
+	groups, err := h.FindRecordsByFilter("monitor_groups", "", "weight,name", 0, 0)
+	if err != nil {
+		return nil, err
+	}
 	monitors, err := h.FindRecordsByFilter("monitors", "", "name", 0, 0)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Aggregate metrics for all monitors in a single query rather than one per monitor.
 	metricsByMonitor, err := h.loadAllMonitorMetrics()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	appURL := h.Settings().Meta.AppURL
@@ -315,7 +333,7 @@ func (h *Hub) getMonitors(e *core.RequestEvent) error {
 		result = append(result, ungrouped)
 	}
 
-	return e.JSON(http.StatusOK, result)
+	return result, nil
 }
 
 // createMonitor creates a new monitor.
@@ -416,6 +434,49 @@ func (h *Hub) deleteMonitor(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, map[string]bool{"ok": true})
 }
 
+// MonitorEventEntry is a single monitor check result in the event history.
+type MonitorEventEntry struct {
+	ID        string `json:"id"`
+	Status    int    `json:"status"`
+	LatencyMs int    `json:"latency_ms"`
+	Msg       string `json:"msg"`
+	CheckedAt string `json:"checked_at"`
+}
+
+// loadMonitorEvents returns up to limit recent events for a monitor, newest first,
+// optionally bounded by since/until. Shared by the /monitors/{id}/events handler and the
+// MCP monitor_events tool.
+func (h *Hub) loadMonitorEvents(id string, limit int, since, until *time.Time) ([]MonitorEventEntry, error) {
+	filter := "monitor = {:id}"
+	params := dbx.Params{"id": id}
+	if since != nil {
+		filter += " && checked_at >= {:since}"
+		params["since"] = since.UTC()
+	}
+	if until != nil {
+		filter += " && checked_at <= {:until}"
+		params["until"] = until.UTC()
+	}
+	events, err := h.FindRecordsByFilter("monitor_events", filter, "-checked_at", limit, 0, params)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]MonitorEventEntry, 0, len(events))
+	for _, ev := range events {
+		entry := MonitorEventEntry{
+			ID:        ev.Id,
+			Status:    ev.GetInt("status"),
+			LatencyMs: ev.GetInt("latency_ms"),
+			Msg:       ev.GetString("msg"),
+		}
+		if !ev.GetDateTime("checked_at").IsZero() {
+			entry.CheckedAt = ev.GetDateTime("checked_at").Time().UTC().Format(time.RFC3339)
+		}
+		result = append(result, entry)
+	}
+	return result, nil
+}
+
 // getMonitorEvents returns recent events for a given monitor.
 func (h *Hub) getMonitorEvents(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
@@ -432,57 +493,25 @@ func (h *Hub) getMonitorEvents(e *core.RequestEvent) error {
 		limit = parsed
 	}
 
-	filter := "monitor = {:id}"
-	params := dbx.Params{"id": id}
+	var sincePtr, untilPtr *time.Time
 	if rawSince := query.Get("since"); rawSince != "" {
 		since, err := time.Parse(time.RFC3339, rawSince)
 		if err != nil {
 			return e.BadRequestError("Invalid since timestamp", err)
 		}
-		filter += " && checked_at >= {:since}"
-		params["since"] = since.UTC()
+		sincePtr = &since
 	}
 	if rawUntil := query.Get("until"); rawUntil != "" {
 		until, err := time.Parse(time.RFC3339, rawUntil)
 		if err != nil {
 			return e.BadRequestError("Invalid until timestamp", err)
 		}
-		filter += " && checked_at <= {:until}"
-		params["until"] = until.UTC()
+		untilPtr = &until
 	}
 
-	events, err := h.FindRecordsByFilter(
-		"monitor_events",
-		filter,
-		"-checked_at",
-		limit,
-		0,
-		params,
-	)
+	result, err := h.loadMonitorEvents(id, limit, sincePtr, untilPtr)
 	if err != nil {
 		return err
-	}
-
-	type EventEntry struct {
-		ID        string `json:"id"`
-		Status    int    `json:"status"`
-		LatencyMs int    `json:"latency_ms"`
-		Msg       string `json:"msg"`
-		CheckedAt string `json:"checked_at"`
-	}
-
-	result := make([]EventEntry, 0, len(events))
-	for _, ev := range events {
-		entry := EventEntry{
-			ID:        ev.Id,
-			Status:    ev.GetInt("status"),
-			LatencyMs: ev.GetInt("latency_ms"),
-			Msg:       ev.GetString("msg"),
-		}
-		if !ev.GetDateTime("checked_at").IsZero() {
-			entry.CheckedAt = ev.GetDateTime("checked_at").Time().UTC().Format(time.RFC3339)
-		}
-		result = append(result, entry)
 	}
 	return e.JSON(http.StatusOK, result)
 }

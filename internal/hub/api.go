@@ -11,7 +11,6 @@ import (
 
 	app "github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/internal/ghupdate"
-	"github.com/Gu1llaum-3/vigil/internal/hub/mcp"
 	"github.com/Gu1llaum-3/vigil/internal/hub/utils"
 	"github.com/blang/semver"
 	"github.com/google/uuid"
@@ -180,7 +179,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	// authenticated by an API key (the global authenticateApiKey middleware + RequireAuth).
 	// Delegates to the MCP SDK's http.Handler. MCP uses GET (SSE), POST (messages) and
 	// DELETE (session end) on the same path.
-	mcpHandler := mcp.Handler(app.Version)
+	mcpHandler := h.mcpHandler()
 	mcpRoute := func(e *core.RequestEvent) error {
 		mcpHandler.ServeHTTP(e.Response, e.Request)
 		return nil
