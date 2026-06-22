@@ -41,7 +41,9 @@ export default memo(function ApiKeysSettings() {
 	async function load() {
 		try {
 			const data = await pb.send<ApiKey[]>("/api/app/api-keys", { method: "GET" })
-			setKeys(data)
+			// pb.send retombe sur {} si la réponse n'est pas du JSON parsable (ex. route
+			// non servie par le backend → fallback HTML du SPA) : on ne garde qu'un tableau.
+			setKeys(Array.isArray(data) ? data : [])
 		} catch (e) {
 			toast({ title: t`Failed to load API keys`, description: String(e), variant: "destructive" })
 		} finally {
