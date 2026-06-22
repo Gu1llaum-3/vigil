@@ -52,6 +52,11 @@ Use this folder when you need implementation context, extension guidance, or tas
 
 - `development/workflow-and-testing.md`
 
+### I need to connect an AI assistant / build an integration (MCP, API keys)
+
+- `integrations/mcp.md`
+- `architecture/auth-and-data-model.md` (API keys)
+
 ### I need to turn Vigil into a derived product
 
 - `customization/renaming-and-derived-projects.md`
@@ -78,6 +83,8 @@ Use this folder when you need implementation context, extension guidance, or tas
   - Derived-project and renaming guidance.
 - `operations/`
   - Deployment, packaging, and release guidance.
+- `integrations/`
+  - Connecting external clients: the MCP server and API keys.
 - `troubleshooting/`
   - Common failure modes.
 - `ai/`

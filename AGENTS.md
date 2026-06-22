@@ -50,6 +50,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 - If the task is “change build, dev, or test workflow”, read `docs/development/workflow-and-testing.md`.
 - If the task is “rename or derive a new product from Vigil”, read `docs/customization/renaming-and-derived-projects.md`.
 - If the task is “deployment, packaging, or release work”, read `docs/operations/deployment-and-packaging.md`.
+- If the task is “change the MCP server, its tools, or API-key auth”, read `docs/integrations/mcp.md`, `internal/hub/mcp_server.go`, `internal/hub/api_keys.go`, and `docs/architecture/auth-and-data-model.md`.
 
 ---
 

@@ -323,6 +323,10 @@ msgstr "Rétention automatique"
 msgid "Automatic retention settings have been updated."
 msgstr "Les paramètres de rétention automatique ont été mis à jour."
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Available tools"
+msgstr "Outils disponibles"
+
 #: src/components/metric-thresholds.tsx
 msgid "Average CPU utilization"
 msgstr "Utilisation moyenne du CPU"
@@ -452,6 +456,10 @@ msgstr "Cliquez sur \"Ajouter une sonde\" pour commencer à surveiller vos servi
 msgid "Click to copy"
 msgstr "Cliquez pour copier"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Client configuration (.mcp.json)"
+msgstr "Configuration client (.mcp.json)"
+
 #: src/components/routes/monitors.tsx
 msgid "Collapse all"
 msgstr "Tout replier"
@@ -502,6 +510,10 @@ msgstr "Confirmer le mot de passe"
 #: src/components/routes/settings/purge.tsx
 msgid "Confirm Purge"
 msgstr "Confirmer la purge"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Connect an AI assistant (MCP)"
+msgstr "Connecter un assistant IA (MCP)"
 
 #: src/components/routes/dashboard/empty-state.tsx
 msgid "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
@@ -931,6 +943,10 @@ msgstr "Activez le jeton d'enrôlement pour générer des commandes d'installati
 #: src/components/routes/settings/notifications.tsx
 msgid "Enabled"
 msgstr "Activé"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Endpoint"
+msgstr "Endpoint"
 
 #: src/components/add-agent.tsx
 #: src/components/command-palette.tsx
@@ -2273,6 +2289,10 @@ msgstr "Identifiants registres"
 msgid "Remove"
 msgstr "Supprimer"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Replace vk_… with a key created above. The assistant can read your data but cannot change anything."
+msgstr "Remplacez vk_… par une clé créée ci-dessus. L'assistant peut lire vos données mais ne peut rien modifier."
+
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "Repos"
 #~ msgstr "Dépôts"
@@ -2839,6 +2859,10 @@ msgstr "Voir tous les hôtes"
 #: src/components/navbar.tsx
 msgid "View all notifications"
 msgstr "Voir toutes les notifications"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Vigil exposes a read-only Model Context Protocol server, so an AI assistant (Claude Desktop, Claude Code, …) can query your fleet — hosts, monitors, uptime and response-time reports. Create a key above, then add this server to your MCP client."
+msgstr "Vigil expose un serveur Model Context Protocol en lecture seule, pour qu'un assistant IA (Claude Desktop, Claude Code, …) puisse interroger votre flotte — hôtes, sondes, rapports d'uptime et de temps de réponse. Créez une clé ci-dessus, puis ajoutez ce serveur à votre client MCP."
 
 #: src/components/routes/home.tsx
 msgid "Warning"

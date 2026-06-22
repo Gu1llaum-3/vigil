@@ -14,9 +14,27 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
+import { prependBasePath } from "@/components/router"
 import { pb } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
 import { copyToClipboard } from "@/lib/utils"
+
+// The MCP endpoint is served at the same origin as the app (PocketBase serves /api there),
+// honoring any base path the app is mounted under.
+const mcpEndpoint = window.location.origin + prependBasePath("/api/mcp")
+const mcpConfig = JSON.stringify(
+	{ mcpServers: { vigil: { type: "http", url: mcpEndpoint, headers: { Authorization: "Bearer vk_…" } } } },
+	null,
+	2
+)
+const mcpTools = [
+	["fleet_summary", "Fleet overview: host/monitor/container counts, updates, reboots"],
+	["list_hosts", "All hosts with status and current CPU / memory / disk / network"],
+	["get_host", "One host's full detail (OS, packages, repos, Docker, metrics)"],
+	["list_monitors", "All monitors with status, 24h/30d uptime and average latency"],
+	["get_monitor", "One monitor's detail and recent checks"],
+	["monitor_events", "A monitor's check history for uptime / response-time reports"],
+] as const
 
 interface ApiKey {
 	id: string
@@ -155,6 +173,69 @@ export default memo(function ApiKeysSettings() {
 					</TableBody>
 				</Table>
 			)}
+
+			{/* MCP integration */}
+			<div className="mt-8 border-t border-border/60 pt-6">
+				<h3 className="text-lg font-medium">
+					<Trans>Connect an AI assistant (MCP)</Trans>
+				</h3>
+				<p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+					<Trans>
+						Vigil exposes a read-only Model Context Protocol server, so an AI assistant (Claude Desktop, Claude
+						Code, …) can query your fleet — hosts, monitors, uptime and response-time reports. Create a key above,
+						then add this server to your MCP client.
+					</Trans>
+				</p>
+
+				<div className="mt-4 grid gap-1.5">
+					<Label>
+						<Trans>Endpoint</Trans>
+					</Label>
+					<div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 p-2">
+						<code className="min-w-0 flex-1 overflow-auto font-mono text-sm">{mcpEndpoint}</code>
+						<Button variant="ghost" size="icon" onClick={() => copyToClipboard(mcpEndpoint)} title={t`Copy`}>
+							<CopyIcon className="size-4" />
+						</Button>
+					</div>
+				</div>
+
+				<div className="mt-4 grid gap-1.5">
+					<Label>
+						<Trans>Client configuration (.mcp.json)</Trans>
+					</Label>
+					<div className="relative rounded-md border border-border/60 bg-muted/40 p-3">
+						<Button
+							variant="ghost"
+							size="icon"
+							className="absolute top-2 right-2"
+							onClick={() => copyToClipboard(mcpConfig)}
+							title={t`Copy`}
+						>
+							<CopyIcon className="size-4" />
+						</Button>
+						<pre className="overflow-auto text-xs leading-relaxed">
+							<code>{mcpConfig}</code>
+						</pre>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						<Trans>Replace vk_… with a key created above. The assistant can read your data but cannot change anything.</Trans>
+					</p>
+				</div>
+
+				<div className="mt-4 grid gap-1.5">
+					<Label>
+						<Trans>Available tools</Trans>
+					</Label>
+					<ul className="grid gap-1 text-sm text-muted-foreground">
+						{mcpTools.map(([name, desc]) => (
+							<li key={name} className="flex gap-2">
+								<code className="shrink-0 font-mono text-xs text-foreground">{name}</code>
+								<span className="text-xs">— {desc}</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			</div>
 
 			{/* Create dialog */}
 			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
