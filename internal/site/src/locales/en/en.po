@@ -2456,6 +2456,10 @@ msgstr "Schedule"
 msgid "Schedule updated"
 msgstr "Schedule updated"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Scope"
+msgstr "Scope"
+
 #: src/components/navbar.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx

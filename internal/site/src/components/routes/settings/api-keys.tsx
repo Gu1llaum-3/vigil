@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
 import { prependBasePath } from "@/components/router"
-import { pb } from "@/lib/api"
+import { apiDelete, apiGet, apiPost } from "@/lib/api"
 import { formatDateTime } from "@/lib/format"
 import { copyToClipboard } from "@/lib/utils"
 
@@ -58,9 +58,9 @@ export default memo(function ApiKeysSettings() {
 
 	async function load() {
 		try {
-			const data = await pb.send<ApiKey[]>("/api/app/api-keys", { method: "GET" })
-			// pb.send retombe sur {} si la réponse n'est pas du JSON parsable (ex. route
-			// non servie par le backend → fallback HTML du SPA) : on ne garde qu'un tableau.
+			const data = await apiGet<ApiKey[]>("/api/app/api-keys")
+			// pb.send falls back to {} when the response isn't parseable JSON (e.g. the route
+			// isn't served by the backend → the SPA HTML fallback): keep only an array.
 			setKeys(Array.isArray(data) ? data : [])
 		} catch (e) {
 			toast({ title: t`Failed to load API keys`, description: String(e), variant: "destructive" })
@@ -80,11 +80,7 @@ export default memo(function ApiKeysSettings() {
 		setCreating(true)
 		try {
 			// v1 issues read-only keys; read-write is a future option.
-			const res = await pb.send<{ token: string }>("/api/app/api-keys", {
-				method: "POST",
-				body: JSON.stringify({ name: newName.trim(), scope: "read" }),
-				headers: { "Content-Type": "application/json" },
-			})
+			const res = await apiPost<{ token: string }>("/api/app/api-keys", { name: newName.trim(), scope: "read" })
 			setFreshToken(res.token)
 			setNewName("")
 			setDialogOpen(false)
@@ -98,7 +94,7 @@ export default memo(function ApiKeysSettings() {
 
 	async function revokeKey(id: string) {
 		try {
-			await pb.send(`/api/app/api-keys/${id}`, { method: "DELETE" })
+			await apiDelete(`/api/app/api-keys/${id}`)
 			await load()
 			toast({ title: t`API key revoked` })
 		} catch (err) {
@@ -145,6 +141,9 @@ export default memo(function ApiKeysSettings() {
 								<Trans>Token</Trans>
 							</TableHead>
 							<TableHead>
+								<Trans>Scope</Trans>
+							</TableHead>
+							<TableHead>
 								<Trans>Last used</Trans>
 							</TableHead>
 							<TableHead className="w-10" />
@@ -155,6 +154,7 @@ export default memo(function ApiKeysSettings() {
 							<TableRow key={k.id}>
 								<TableCell className="font-medium">{k.name}</TableCell>
 								<TableCell className="font-mono text-xs text-muted-foreground">{k.prefix}…</TableCell>
+								<TableCell className="text-xs text-muted-foreground">{k.scope || "read"}</TableCell>
 								<TableCell className="text-sm text-muted-foreground">
 									{k.last_used_at ? formatDateTime(k.last_used_at) : <Trans>never</Trans>}
 								</TableCell>

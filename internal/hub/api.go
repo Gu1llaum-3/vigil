@@ -181,7 +181,10 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	// DELETE (session end) on the same path.
 	mcpHandler := h.mcpHandler()
 	mcpRoute := func(e *core.RequestEvent) error {
-		mcpHandler.ServeHTTP(e.Response, e.Request)
+		// Carry the API-key scope so mcpHandler serves the matching (read-only vs read-write)
+		// tool set — the per-tool scope gate.
+		scope, _ := e.Get(apiKeyScopeContextKey).(string)
+		mcpHandler.ServeHTTP(e.Response, mcpRequestWithScope(e.Request, scope))
 		return nil
 	}
 	apiMcp := se.Router.Group("/api")

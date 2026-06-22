@@ -45,6 +45,8 @@ func TestApiKeyAuthentication(t *testing.T) {
 
 	readToken := createTestApiKey(t, hub, user.Id, "read")
 	rwToken := createTestApiKey(t, hub, user.Id, "read-write")
+	userJWT, err := user.NewAuthToken()
+	require.NoError(t, err)
 
 	testAppFactory := func(t testing.TB) *pbTests.TestApp { return hub.TestApp }
 
@@ -56,6 +58,45 @@ func TestApiKeyAuthentication(t *testing.T) {
 			Headers:         map[string]string{"Authorization": readToken},
 			ExpectedStatus:  200,
 			ExpectedContent: []string{"\"key\":", "\"v\":"},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:            "read key authenticates with a lowercase bearer scheme",
+			Method:          http.MethodGet,
+			URL:             "/api/app/info",
+			Headers:         map[string]string{"Authorization": "bearer " + readToken},
+			ExpectedStatus:  200,
+			ExpectedContent: []string{"\"key\":"},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:            "create with a malformed expires_at is rejected",
+			Method:          http.MethodPost,
+			URL:             "/api/app/api-keys",
+			Headers:         map[string]string{"Authorization": userJWT},
+			Body:            jsonReader(map[string]any{"name": "k", "expires_at": "not-a-date"}),
+			ExpectedStatus:  400,
+			ExpectedContent: []string{"Invalid expires_at"},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:            "create with a past expires_at is rejected",
+			Method:          http.MethodPost,
+			URL:             "/api/app/api-keys",
+			Headers:         map[string]string{"Authorization": userJWT},
+			Body:            jsonReader(map[string]any{"name": "k", "expires_at": "2000-01-01T00:00:00Z"}),
+			ExpectedStatus:  400,
+			ExpectedContent: []string{"future"},
+			TestAppFactory:  testAppFactory,
+		},
+		{
+			Name:            "create with a valid name succeeds and returns the token once",
+			Method:          http.MethodPost,
+			URL:             "/api/app/api-keys",
+			Headers:         map[string]string{"Authorization": userJWT},
+			Body:            jsonReader(map[string]any{"name": "mcp"}),
+			ExpectedStatus:  200,
+			ExpectedContent: []string{"\"token\":\"vk_", "\"scope\":\"read\""},
 			TestAppFactory:  testAppFactory,
 		},
 		{

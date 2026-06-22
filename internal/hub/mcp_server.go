@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,24 +10,52 @@ import (
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// mcpHandler returns the Streamable HTTP handler mounted at /api/mcp. The server instance is
-// reused across sessions; all tools are stateless reads. Authentication and the API-key
-// scope are enforced upstream by the router middleware (a valid Bearer key is required).
-func (h *Hub) mcpHandler() http.Handler {
-	srv := h.newMCPServer()
-	// Stateless: the tools are read-only and hold no per-session state, so we don't track
-	// Mcp-Session-Id server-side — each request is handled with a default session. Simpler
-	// and avoids server-side session storage.
-	opts := &mcpsdk.StreamableHTTPOptions{Stateless: true}
-	return mcpsdk.NewStreamableHTTPHandler(func(*http.Request) *mcpsdk.Server { return srv }, opts)
+// mcpScopeKey carries the resolved API-key scope through the request context so the MCP
+// handler can pick the tool set. (A plain struct key avoids collisions with other context values.)
+type mcpScopeKey struct{}
+
+// mcpRequestWithScope returns a copy of r tagged with the API-key scope. The /api/mcp route
+// handler calls this so mcpHandler can serve a read-only vs read-write tool set.
+func mcpRequestWithScope(r *http.Request, scope string) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), mcpScopeKey{}, scope))
 }
 
-// newMCPServer builds the Vigil MCP server with its read-only tool set. Tools are thin
-// wrappers over the same data builders the REST handlers use, so there is no duplicated
-// query logic. (Write tools — create/update/delete monitor — are a later, separately-gated
-// phase.)
-func (h *Hub) newMCPServer() *mcpsdk.Server {
+// mcpHandler returns the Streamable HTTP handler mounted at /api/mcp. It builds the read-only
+// and read-write tool sets once and, per request, serves the one matching the caller's API-key
+// scope — so a read-scoped key is never even offered a mutating tool (the per-tool scope gate).
+// Stateless: the tools hold no per-session state.
+func (h *Hub) mcpHandler() http.Handler {
+	readSrv := h.newMCPServer(false)
+	writeSrv := h.newMCPServer(true)
+	opts := &mcpsdk.StreamableHTTPOptions{Stateless: true}
+	return mcpsdk.NewStreamableHTTPHandler(func(r *http.Request) *mcpsdk.Server {
+		if scope, _ := r.Context().Value(mcpScopeKey{}).(string); scope == apiScopeReadWrite {
+			return writeSrv
+		}
+		return readSrv
+	}, opts)
+}
+
+// newMCPServer builds a Vigil MCP server. Read-only tools are always registered; write tools
+// (none yet — create/update/delete monitor is a planned phase) are registered only when
+// includeWrite is true. A read-scoped key is served the includeWrite=false server, so it
+// cannot reach a mutating tool even though the HTTP-method guard exempts /api/mcp.
+func (h *Hub) newMCPServer(includeWrite bool) *mcpsdk.Server {
 	s := mcpsdk.NewServer(&mcpsdk.Implementation{Name: "vigil", Title: "Vigil", Version: app.Version}, nil)
+	h.registerMCPReadTools(s)
+	if includeWrite {
+		// Phase 5: register read-write tools here (ReadOnlyHint:false). Exposed only to
+		// read-write keys, so the read/read-write distinction is enforced by tool visibility.
+		h.registerMCPWriteTools(s)
+	}
+	return s
+}
+
+// registerMCPWriteTools registers the mutating tools. Empty for now (v1 is read-only); the
+// hook exists so write tools are added in exactly one scope-gated place.
+func (h *Hub) registerMCPWriteTools(_ *mcpsdk.Server) {}
+
+func (h *Hub) registerMCPReadTools(s *mcpsdk.Server) {
 	readOnly := &mcpsdk.ToolAnnotations{ReadOnlyHint: true}
 
 	type emptyInput struct{}
@@ -40,7 +69,10 @@ func (h *Hub) newMCPServer() *mcpsdk.Server {
 		if err != nil {
 			return nil, DashboardSummary{}, err
 		}
-		summary, _ := data["summary"].(DashboardSummary)
+		summary, ok := data["summary"].(DashboardSummary)
+		if !ok {
+			return nil, DashboardSummary{}, fmt.Errorf("dashboard summary unavailable")
+		}
 		return nil, summary, nil
 	})
 
@@ -146,6 +178,4 @@ func (h *Hub) newMCPServer() *mcpsdk.Server {
 		}
 		return nil, eventsOutput{Events: events}, nil
 	})
-
-	return s
 }

@@ -65,7 +65,10 @@ All tools are **read-only** (`readOnlyHint`):
 ## Notes & security
 
 - **Read-only.** There are no write tools yet (creating/modifying/deleting monitors is a
-  planned, separately-gated `read-write` scope). A read key is refused on any write request.
+  planned `read-write` scope). Scope is enforced by tool visibility: a `read` key is served
+  only read-only tools, so even when write tools ship they are invisible/uncallable to a read
+  key. Keys also authenticate only the Vigil app API (`/api/app/*` and `/api/mcp`), never the
+  raw PocketBase collection API.
 - **Auth is the API key.** The MCP endpoint requires a valid `Authorization: Bearer vk_…`;
   an unknown or expired key returns 401. Treat the token like a password.
 - **Stateless.** The server keeps no per-session state; each request is independent.
@@ -77,7 +80,8 @@ All tools are **read-only** (`readOnlyHint`):
 - Endpoint + tools: `internal/hub/mcp_server.go` (uses `github.com/modelcontextprotocol/go-sdk`),
   mounted at `/api/mcp` in `internal/hub/api.go`.
 - Auth: the `authenticateApiKey` middleware in `internal/hub/api_keys.go` (the `/api/mcp` path
-  is exempt from the read-scope HTTP-method guard; scope is enforced per-tool).
+  is exempt from the read-scope HTTP-method guard since MCP is POST-based; scope is instead
+  enforced per-tool — `mcpHandler` serves a read-only vs read-write tool set by the key's scope).
 - Tools reuse the same data builders as the REST handlers (`buildDashboard`,
   `buildMonitorsResponse`, `buildMonitorDetail`, `loadMonitorEvents`, `buildHostDetail`), so
   there is no duplicated query logic.
