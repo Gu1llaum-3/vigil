@@ -27,6 +27,8 @@ const mcpConfig = JSON.stringify(
 	null,
 	2
 )
+// One-line Claude Code equivalent of the config above.
+const mcpCommand = `claude mcp add --transport http vigil ${mcpEndpoint} --header "Authorization: Bearer vk_…"`
 const mcpTools = [
 	["fleet_summary", "Fleet overview: host/monitor/container counts, updates, reboots"],
 	["list_hosts", "All hosts with status and current CPU / memory / disk / network"],
@@ -191,8 +193,8 @@ export default memo(function ApiKeysSettings() {
 					<Label>
 						<Trans>Endpoint</Trans>
 					</Label>
-					<div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 p-2">
-						<code className="min-w-0 flex-1 overflow-auto font-mono text-sm">{mcpEndpoint}</code>
+					<div className="flex min-w-0 items-center gap-2 rounded-md border border-border/60 bg-muted/40 p-2">
+						<code className="min-w-0 flex-1 overflow-x-auto font-mono text-sm">{mcpEndpoint}</code>
 						<Button variant="ghost" size="icon" onClick={() => copyToClipboard(mcpEndpoint)} title={t`Copy`}>
 							<CopyIcon className="size-4" />
 						</Button>
@@ -201,9 +203,35 @@ export default memo(function ApiKeysSettings() {
 
 				<div className="mt-4 grid gap-1.5">
 					<Label>
-						<Trans>Client configuration (.mcp.json)</Trans>
+						<Trans>Quick add (Claude Code)</Trans>
 					</Label>
-					<div className="relative rounded-md border border-border/60 bg-muted/40 p-3">
+					<div className="relative min-w-0 rounded-md border border-border/60 bg-muted/40 p-3">
+						<Button
+							variant="ghost"
+							size="icon"
+							className="absolute top-2 right-2"
+							onClick={() => copyToClipboard(mcpCommand)}
+							title={t`Copy`}
+						>
+							<CopyIcon className="size-4" />
+						</Button>
+						{/* whitespace-pre-wrap + break-words so the long one-liner wraps on narrow/mobile
+						    screens (at spaces, breaking a token only if it can't fit) instead of
+						    overflowing the card and the page. */}
+						<pre className="whitespace-pre-wrap break-words pr-8 text-xs leading-relaxed">
+							<code>{mcpCommand}</code>
+						</pre>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						<Trans>Replace vk_… with a key created above. Other clients (Claude Desktop) can use the JSON below.</Trans>
+					</p>
+				</div>
+
+				<div className="mt-4 grid gap-1.5">
+					<Label>
+						<Trans>Manual configuration (.mcp.json)</Trans>
+					</Label>
+					<div className="relative min-w-0 rounded-md border border-border/60 bg-muted/40 p-3">
 						<Button
 							variant="ghost"
 							size="icon"
@@ -213,7 +241,8 @@ export default memo(function ApiKeysSettings() {
 						>
 							<CopyIcon className="size-4" />
 						</Button>
-						<pre className="overflow-auto text-xs leading-relaxed">
+						{/* JSON keeps its structure: scroll within the card rather than wrap. */}
+						<pre className="overflow-x-auto pr-8 text-xs leading-relaxed">
 							<code>{mcpConfig}</code>
 						</pre>
 					</div>
