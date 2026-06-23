@@ -2,7 +2,7 @@ import { t } from "@lingui/core/macro"
 import { Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath, redirectPage } from "@nanostores/router"
-import { BellIcon, BotIcon, Clock3Icon, KeyRoundIcon, SettingsIcon, Trash2Icon } from "lucide-react"
+import { BellIcon, BotIcon, Clock3Icon, KeyRoundIcon, KeySquareIcon, SettingsIcon, Trash2Icon } from "lucide-react"
 import { lazy, useEffect } from "react"
 import { PageHeader } from "@/components/page-header"
 import { $router } from "@/components/router.tsx"
@@ -18,6 +18,7 @@ const notificationsSettingsImport = () => import("./notifications.tsx")
 const jobsSettingsImport = () => import("./jobs.tsx")
 const purgeSettingsImport = () => import("./purge.tsx")
 const registryCredentialsSettingsImport = () => import("./registry-credentials.tsx")
+const apiKeysSettingsImport = () => import("./api-keys.tsx")
 
 const GeneralSettings = lazy(generalSettingsImport)
 const AgentsSettings = lazy(agentsSettingsImport)
@@ -25,6 +26,7 @@ const NotificationsSettings = lazy(notificationsSettingsImport)
 const JobsSettings = lazy(jobsSettingsImport)
 const PurgeSettings = lazy(purgeSettingsImport)
 const RegistryCredentialsSettings = lazy(registryCredentialsSettingsImport)
+const ApiKeysSettings = lazy(apiKeysSettingsImport)
 
 export async function saveSettings(newSettings: Partial<UserSettings>) {
 	try {
@@ -92,6 +94,12 @@ export default function SettingsLayout() {
 			preload: registryCredentialsSettingsImport,
 		},
 		{
+			title: t`API keys`,
+			href: getPagePath($router, "settings", { name: "api-keys" }),
+			icon: KeySquareIcon,
+			preload: apiKeysSettingsImport,
+		},
+		{
 			title: t`Purge`,
 			href: getPagePath($router, "settings", { name: "purge" }),
 			icon: Trash2Icon,
@@ -146,6 +154,8 @@ function SettingsContent({ name }: { name: string }) {
 			return <JobsSettings />
 		case "registry-credentials":
 			return <RegistryCredentialsSettings />
+		case "api-keys":
+			return <ApiKeysSettings />
 		case "purge":
 			return <PurgeSettings />
 	}
