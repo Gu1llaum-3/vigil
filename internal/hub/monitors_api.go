@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 // MonitorGroupResponse is a group with its monitors, returned by the API.
@@ -224,38 +223,6 @@ func monitorToRecord(m *core.Record, appURL string, metrics *MonitorMetrics, rec
 // recentChecksLimit is how many recent check points each monitor exposes (sparkline depth).
 const recentChecksLimit = 10
 
-// loadRecentChecksForMonitors returns the most recent `limit` check points per monitor
-// (oldest-first within each), for ALL monitors, in a single windowed query — avoiding the
-// N+1 of calling loadRecentChecks once per monitor.
-func (h *Hub) loadRecentChecksForMonitors(limit int) (map[string][]MonitorCheckPoint, error) {
-	type row struct {
-		Monitor   string         `db:"monitor"`
-		Status    int            `db:"status"`
-		CheckedAt types.DateTime `db:"checked_at"`
-	}
-	var rows []row
-	err := h.DB().NewQuery(`
-		SELECT monitor, status, checked_at FROM (
-			SELECT monitor, status, checked_at,
-				ROW_NUMBER() OVER (PARTITION BY monitor ORDER BY checked_at DESC) AS rn
-			FROM monitor_events
-		) WHERE rn <= {:limit}
-		ORDER BY monitor, checked_at ASC
-	`).Bind(dbx.Params{"limit": limit}).All(&rows)
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[string][]MonitorCheckPoint)
-	for _, r := range rows {
-		cp := MonitorCheckPoint{Status: r.Status}
-		if !r.CheckedAt.IsZero() {
-			cp.CheckedAt = r.CheckedAt.Time().UTC().Format(time.RFC3339)
-		}
-		out[r.Monitor] = append(out[r.Monitor], cp)
-	}
-	return out, nil
-}
-
 func (h *Hub) loadRecentChecks(m *core.Record, limit int) ([]MonitorCheckPoint, error) {
 	events, err := h.FindRecordsByFilter(
 		"monitor_events",
@@ -328,12 +295,6 @@ func (h *Hub) buildMonitorsResponse() ([]*MonitorGroupResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Likewise, load the recent checks for every monitor in one windowed query rather than
-	// one query per monitor (the old N+1, which the MCP list_monitors tool would also hit).
-	recentByMonitor, err := h.loadRecentChecksForMonitors(recentChecksLimit)
-	if err != nil {
-		return nil, err
-	}
 
 	appURL := h.Settings().Meta.AppURL
 
@@ -362,7 +323,13 @@ func (h *Hub) buildMonitorsResponse() ([]*MonitorGroupResponse, error) {
 		if metrics != nil && m.GetString("type") == "push" {
 			metrics.AvgLatency24hMs = nil
 		}
-		mr := monitorToRecord(m, appURL, metrics, recentByMonitor[m.Id])
+		// One indexed lookup per monitor (WHERE monitor=? ORDER BY checked_at DESC LIMIT N)
+		// — each is a sub-ms seek on the (monitor, checked_at) index. NOTE: a single windowed
+		// query (ROW_NUMBER OVER PARTITION BY monitor) is NOT faster here — SQLite can't push
+		// the per-partition LIMIT into the scan, so it full-scans monitor_events. Keep the
+		// per-monitor seeks.
+		recentChecks, _ := h.loadRecentChecks(m, recentChecksLimit)
+		mr := monitorToRecord(m, appURL, metrics, recentChecks)
 		if gr, ok := groupMap[mr.Group]; ok {
 			gr.Monitors = append(gr.Monitors, mr)
 		} else {

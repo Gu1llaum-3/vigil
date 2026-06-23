@@ -27,6 +27,9 @@ func mcpRequestWithScope(r *http.Request, scope string) *http.Request {
 func (h *Hub) mcpHandler() http.Handler {
 	readSrv := h.newMCPServer(false)
 	writeSrv := h.newMCPServer(true)
+	// Stateless is required for the per-request scope selection below: it makes the SDK call
+	// getServer on every request. With sessions, getServer is skipped after init and the
+	// server (read vs read-write) would be frozen for the session — do not disable it.
 	opts := &mcpsdk.StreamableHTTPOptions{Stateless: true}
 	return mcpsdk.NewStreamableHTTPHandler(func(r *http.Request) *mcpsdk.Server {
 		if scope, _ := r.Context().Value(mcpScopeKey{}).(string); scope == apiScopeReadWrite {
