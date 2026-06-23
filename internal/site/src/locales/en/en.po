@@ -452,8 +452,8 @@ msgid "Click to copy"
 msgstr "Click to copy"
 
 #: src/components/routes/settings/api-keys.tsx
-msgid "Client configuration (.mcp.json)"
-msgstr "Client configuration (.mcp.json)"
+#~ msgid "Client configuration (.mcp.json)"
+#~ msgstr "Client configuration (.mcp.json)"
 
 #: src/components/routes/monitors.tsx
 msgid "Collapse all"
@@ -1567,6 +1567,10 @@ msgstr "Long-lived read-only tokens for scripts and integrations (e.g. the MCP s
 msgid "Manage display preferences."
 msgstr "Manage display preferences."
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Manual configuration (.mcp.json)"
+msgstr "Manual configuration (.mcp.json)"
+
 #: src/components/routes/settings/purge.tsx
 msgid "Manual Purge"
 msgstr "Manual Purge"
@@ -2217,6 +2221,10 @@ msgstr "Purge old probe history?"
 msgid "Purge Older Records"
 msgstr "Purge Older Records"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Quick add (Claude Code)"
+msgstr "Quick add (Claude Code)"
+
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "RAM"
 #~ msgstr "RAM"
@@ -2283,6 +2291,10 @@ msgstr "Registry credentials"
 #: src/components/routes/notifications.tsx
 msgid "Remove"
 msgstr "Remove"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Replace vk_… with a key created above. Other clients (Claude Desktop) can use the JSON below."
+msgstr "Replace vk_… with a key created above. Other clients (Claude Desktop) can use the JSON below."
 
 #: src/components/routes/settings/api-keys.tsx
 msgid "Replace vk_… with a key created above. The assistant can read your data but cannot change anything."

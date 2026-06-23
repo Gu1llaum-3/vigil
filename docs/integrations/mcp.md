@@ -27,8 +27,18 @@ assistant**, with a ready-to-copy configuration.
 
 ## 3. Configure your MCP client
 
-Add the server to your client's MCP configuration (`.mcp.json`, or the client's UI). It is a
-remote **HTTP** server authenticated with a bearer token:
+It is a remote **HTTP** server authenticated with a bearer token.
+
+**Claude Code (quickest — one command):**
+
+```bash
+claude mcp add --transport http vigil https://<your-hub>/api/mcp --header "Authorization: Bearer vk_your_key_here"
+```
+
+Add `--scope user` to make it available in all your projects, or `--scope project` to write it
+to the project's shared `.mcp.json` (avoid that if the key would be committed).
+
+**Or configure it manually** (Claude Desktop, or any client — add under `mcpServers`):
 
 ```json
 {
@@ -42,9 +52,7 @@ remote **HTTP** server authenticated with a bearer token:
 }
 ```
 
-- **Claude Code**: add the block above to your project's `.mcp.json` (or run the equivalent
-  `claude mcp add` command), then restart.
-- **Claude Desktop**: add it under `mcpServers` in the app's MCP config and restart.
+Then restart the client.
 
 Once connected, ask things like *"summarize my Vigil fleet"*, *"which monitors are down?"*,
 or *"what's the 30-day uptime and average response time of each monitor?"*.
