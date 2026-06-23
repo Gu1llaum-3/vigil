@@ -164,7 +164,10 @@ func diskPartitionsLocked(now time.Time) []psdisk.PartitionStat {
 		if err == nil {
 			local := make([]psdisk.PartitionStat, 0, len(parts))
 			for _, p := range parts {
-				if isNetworkFs(p.Fstype) {
+				// Exclude network filesystems (can block on probe) and pseudo/read-only-image
+				// filesystems — notably squashfs snap images which are always ~100% full and
+				// would otherwise trigger false disk alerts.
+				if isNetworkFs(p.Fstype) || isPseudoFs(p.Fstype) {
 					continue
 				}
 				local = append(local, p)

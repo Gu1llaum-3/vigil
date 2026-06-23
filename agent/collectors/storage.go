@@ -11,13 +11,8 @@ import (
 	"github.com/Gu1llaum-3/vigil/internal/common"
 )
 
-var skipFSTypes = map[string]bool{
-	"proc": true, "sysfs": true, "devtmpfs": true, "devpts": true,
-	"tmpfs": true, "cgroup": true, "cgroup2": true, "pstore": true,
-	"securityfs": true, "debugfs": true, "tracefs": true, "hugetlbfs": true,
-	"mqueue": true, "fusectl": true, "overlay": true, "squashfs": true,
-	"efivarfs": true, "bpf": true, "autofs": true, "configfs": true,
-}
+// skipFSTypes (the pseudo/virtual filesystem exclusion set) lives in fstypes.go so it can
+// be shared with the metrics collector and unit-tested on any OS.
 
 // CollectStorage returns a list of mounted physical filesystems with usage stats.
 func CollectStorage() ([]common.StorageMount, error) {
@@ -38,7 +33,7 @@ func CollectStorage() ([]common.StorageMount, error) {
 		mountpoint := fields[1]
 		fsType := fields[2]
 
-		if skipFSTypes[fsType] {
+		if isPseudoFs(fsType) {
 			continue
 		}
 		if strings.HasPrefix(device, "tmpfs") || strings.HasPrefix(mountpoint, "/sys") ||
