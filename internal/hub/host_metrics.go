@@ -371,10 +371,19 @@ func (h *Hub) getHostsOverview(e *core.RequestEvent) error {
 }
 
 func (h *Hub) getHostDetail(e *core.RequestEvent) error {
-	agentID := e.Request.PathValue("id")
-	agent, err := h.FindRecordById("agents", agentID)
+	rec, err := h.buildHostDetail(e.Request.PathValue("id"))
 	if err != nil {
 		return e.NotFoundError("Host not found", nil)
+	}
+	return e.JSON(http.StatusOK, rec)
+}
+
+// buildHostDetail assembles a host's overview record (agent identity + latest snapshot +
+// latest metrics). Shared by the /hosts/{id} handler and the MCP get_host tool.
+func (h *Hub) buildHostDetail(agentID string) (HostOverviewRecord, error) {
+	agent, err := h.FindRecordById("agents", agentID)
+	if err != nil {
+		return HostOverviewRecord{}, err
 	}
 
 	var snapshotPtr *common.HostSnapshotResponse
@@ -391,7 +400,7 @@ func (h *Hub) getHostDetail(e *core.RequestEvent) error {
 		metricsPtr = &metrics
 	}
 
-	return e.JSON(http.StatusOK, buildHostOverviewRecord(agent, snapshotPtr, metricsPtr))
+	return buildHostOverviewRecord(agent, snapshotPtr, metricsPtr), nil
 }
 
 func (h *Hub) getHostMetricsHistory(e *core.RequestEvent) error {

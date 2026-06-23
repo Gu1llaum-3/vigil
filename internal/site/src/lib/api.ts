@@ -11,6 +11,28 @@ export const pb = new PocketBase(basePath)
 export const isAdmin = () => pb.authStore.record?.role === "admin"
 export const isReadOnlyUser = () => pb.authStore.record?.role === "readonly"
 
+/** Thin JSON helpers over pb.send for the custom /api/app/* endpoints. */
+export function apiGet<T>(path: string): Promise<T> {
+	return pb.send(path, { method: "GET" }) as Promise<T>
+}
+export function apiPost<T>(path: string, body: unknown): Promise<T> {
+	return pb.send(path, {
+		method: "POST",
+		body: JSON.stringify(body),
+		headers: { "Content-Type": "application/json" },
+	}) as Promise<T>
+}
+export function apiPatch<T>(path: string, body: unknown): Promise<T> {
+	return pb.send(path, {
+		method: "PATCH",
+		body: JSON.stringify(body),
+		headers: { "Content-Type": "application/json" },
+	}) as Promise<T>
+}
+export async function apiDelete(path: string): Promise<void> {
+	await pb.send(path, { method: "DELETE" })
+}
+
 export const verifyAuth = () => {
 	pb.collection("users")
 		.authRefresh()

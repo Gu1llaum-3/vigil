@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
-import { isAdmin, pb } from "@/lib/api"
+import { apiDelete, apiGet, apiPatch, apiPost, isAdmin } from "@/lib/api"
 
 const REDACTED = "**REDACTED**"
 
@@ -29,30 +29,6 @@ interface RegistryCredential {
 	password: string
 	created: string
 	updated: string
-}
-
-function apiGet<T>(path: string): Promise<T> {
-	return pb.send(path, { method: "GET" }) as Promise<T>
-}
-
-function apiPost<T>(path: string, body: unknown): Promise<T> {
-	return pb.send(path, {
-		method: "POST",
-		body: JSON.stringify(body),
-		headers: { "Content-Type": "application/json" },
-	}) as Promise<T>
-}
-
-function apiPatch<T>(path: string, body: unknown): Promise<T> {
-	return pb.send(path, {
-		method: "PATCH",
-		body: JSON.stringify(body),
-		headers: { "Content-Type": "application/json" },
-	}) as Promise<T>
-}
-
-async function apiDelete(path: string): Promise<void> {
-	await pb.send(path, { method: "DELETE" })
 }
 
 const RegistryCredentialsPage = memo(() => {

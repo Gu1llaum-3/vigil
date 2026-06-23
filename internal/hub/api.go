@@ -174,6 +174,24 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.GET("/api-keys", h.listApiKeys)
 	apiAuth.POST("/api-keys", h.createApiKey)
 	apiAuth.DELETE("/api-keys/{id}", h.deleteApiKey)
+
+	// MCP endpoint (Streamable HTTP) at /api/mcp — a top-level public integration surface,
+	// authenticated by an API key (the global authenticateApiKey middleware + RequireAuth).
+	// Delegates to the MCP SDK's http.Handler. MCP uses GET (SSE), POST (messages) and
+	// DELETE (session end) on the same path.
+	mcpHandler := h.mcpHandler()
+	mcpRoute := func(e *core.RequestEvent) error {
+		// Carry the API-key scope so mcpHandler serves the matching (read-only vs read-write)
+		// tool set — the per-tool scope gate.
+		scope, _ := e.Get(apiKeyScopeContextKey).(string)
+		mcpHandler.ServeHTTP(e.Response, mcpRequestWithScope(e.Request, scope))
+		return nil
+	}
+	apiMcp := se.Router.Group("/api")
+	apiMcp.Bind(apis.RequireAuth())
+	apiMcp.GET("/mcp", mcpRoute)
+	apiMcp.POST("/mcp", mcpRoute)
+	apiMcp.DELETE("/mcp", mcpRoute)
 	// get version and public key
 	apiAuth.GET("/info", h.getInfo)
 	// check for updates

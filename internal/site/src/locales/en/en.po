@@ -318,6 +318,10 @@ msgstr "Automatic Retention"
 msgid "Automatic retention settings have been updated."
 msgstr "Automatic retention settings have been updated."
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Available tools"
+msgstr "Available tools"
+
 #: src/components/metric-thresholds.tsx
 msgid "Average CPU utilization"
 msgstr "Average CPU utilization"
@@ -447,6 +451,10 @@ msgstr "Click \"Add monitor\" to start monitoring your services."
 msgid "Click to copy"
 msgstr "Click to copy"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Client configuration (.mcp.json)"
+msgstr "Client configuration (.mcp.json)"
+
 #: src/components/routes/monitors.tsx
 msgid "Collapse all"
 msgstr "Collapse all"
@@ -497,6 +505,10 @@ msgstr "Confirm password"
 #: src/components/routes/settings/purge.tsx
 msgid "Confirm Purge"
 msgstr "Confirm Purge"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Connect an AI assistant (MCP)"
+msgstr "Connect an AI assistant (MCP)"
 
 #: src/components/routes/dashboard/empty-state.tsx
 msgid "Connect your first agent to start collecting patch audit data. The dashboard will appear once snapshots are available."
@@ -926,6 +938,10 @@ msgstr "Enable the enrollment token to generate ready-to-use install commands."
 #: src/components/routes/settings/notifications.tsx
 msgid "Enabled"
 msgstr "Enabled"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Endpoint"
+msgstr "Endpoint"
 
 #: src/components/add-agent.tsx
 #: src/components/command-palette.tsx
@@ -2268,6 +2284,10 @@ msgstr "Registry credentials"
 msgid "Remove"
 msgstr "Remove"
 
+#: src/components/routes/settings/api-keys.tsx
+msgid "Replace vk_… with a key created above. The assistant can read your data but cannot change anything."
+msgstr "Replace vk_… with a key created above. The assistant can read your data but cannot change anything."
+
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "Repos"
 #~ msgstr "Repos"
@@ -2435,6 +2455,10 @@ msgstr "Schedule"
 #: src/components/routes/settings/jobs.tsx
 msgid "Schedule updated"
 msgstr "Schedule updated"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Scope"
+msgstr "Scope"
 
 #: src/components/navbar.tsx
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
@@ -2834,6 +2858,10 @@ msgstr "View all hosts"
 #: src/components/navbar.tsx
 msgid "View all notifications"
 msgstr "View all notifications"
+
+#: src/components/routes/settings/api-keys.tsx
+msgid "Vigil exposes a read-only Model Context Protocol server, so an AI assistant (Claude Desktop, Claude Code, …) can query your fleet — hosts, monitors, uptime and response-time reports. Create a key above, then add this server to your MCP client."
+msgstr "Vigil exposes a read-only Model Context Protocol server, so an AI assistant (Claude Desktop, Claude Code, …) can query your fleet — hosts, monitors, uptime and response-time reports. Create a key above, then add this server to your MCP client."
 
 #: src/components/routes/home.tsx
 msgid "Warning"
