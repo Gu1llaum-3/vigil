@@ -44,6 +44,60 @@ const areaLineStyle = {
 	cubicInterpolationMode: "monotone" as const,
 }
 
+// buildLineChartOptions is the shared Chart.js options for the time-series line
+// charts: linear time x-axis, zero-based y-axis, index-mode tooltip. `formatter`
+// formats both the y ticks and the tooltip value; `legend` toggles the bottom
+// legend and (when on) prefixes each tooltip with the dataset label.
+function buildLineChartOptions(formatter: (value: number) => string, legend = false): ChartOptions<"line"> {
+	return {
+		responsive: true,
+		maintainAspectRatio: false,
+		interaction: { mode: "index", intersect: false },
+		plugins: {
+			legend: { display: legend, position: "bottom" },
+			tooltip: {
+				callbacks: {
+					title(items) {
+						const raw = items[0]?.parsed?.x
+						return typeof raw === "number" ? formatChartTime(raw) : ""
+					},
+					label(context) {
+						const raw = context.parsed?.y
+						if (typeof raw !== "number") return ""
+						return legend ? `${context.dataset.label}: ${formatter(raw)}` : formatter(raw)
+					},
+				},
+			},
+		},
+		scales: {
+			x: {
+				type: "linear",
+				grid: { display: false },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatChartTime(value) : value
+					},
+				},
+			},
+			y: {
+				beginAtZero: true,
+				grid: { color: "rgba(148, 163, 184, 0.15)" },
+				ticks: {
+					callback(value) {
+						return typeof value === "number" ? formatter(value) : value
+					},
+				},
+			},
+		},
+	}
+}
+
+// seriesColor returns a deterministic, well-spread hue per series index
+// (golden-angle spacing) so any number of host lines stay visually distinct.
+function seriesColor(index: number): string {
+	return `hsl(${(index * 137.508) % 360}, 65%, 55%)`
+}
+
 export function buildSeries<T>(history: T[], xSelector: (point: T) => number, ySelector: (point: T) => number) {
 	return history
 		.map((point) => {
@@ -80,46 +134,7 @@ export function MetricHistoryChart({
 			},
 		],
 	}
-	const options: ChartOptions<"line"> = {
-		responsive: true,
-		maintainAspectRatio: false,
-		interaction: { mode: "index", intersect: false },
-		plugins: {
-			legend: { display: false },
-			tooltip: {
-				callbacks: {
-					title(items) {
-						const raw = items[0]?.parsed?.x
-						return typeof raw === "number" ? formatChartTime(raw) : ""
-					},
-					label(context) {
-						const raw = context.parsed?.y
-						return typeof raw === "number" ? formatter(raw) : ""
-					},
-				},
-			},
-		},
-		scales: {
-			x: {
-				type: "linear",
-				grid: { display: false },
-				ticks: {
-					callback(value) {
-						return typeof value === "number" ? formatChartTime(value) : value
-					},
-				},
-			},
-			y: {
-				beginAtZero: true,
-				grid: { color: "rgba(148, 163, 184, 0.15)" },
-				ticks: {
-					callback(value) {
-						return typeof value === "number" ? formatter(value) : value
-					},
-				},
-			},
-		},
-	}
+	const options = buildLineChartOptions(formatter)
 
 	return (
 		<Card>
@@ -236,7 +251,14 @@ export function LoadHistoryChart({
 	fiveMin: ChartPoint[]
 	fifteenMin: ChartPoint[]
 }) {
-	const lineStyle = { borderWidth: 1.5, fill: false as const, pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 8, cubicInterpolationMode: "monotone" as const }
+	const lineStyle = {
+		borderWidth: 1.5,
+		fill: false as const,
+		pointRadius: 0,
+		pointHoverRadius: 4,
+		pointHitRadius: 8,
+		cubicInterpolationMode: "monotone" as const,
+	}
 	const fmt = (v: number) => `${v.toFixed(2)}/core`
 	const data = {
 		datasets: [
@@ -307,6 +329,50 @@ export function LoadHistoryChart({
 				)}
 			</CardContent>
 		</Card>
+	)
+}
+
+export type FleetSeries = { id: string; name: string; points: ChartPoint[] }
+
+// FleetMetricChart renders one metric as a line per host (no fill, for legibility
+// with many series). The page owns the surrounding card/controls.
+export function FleetMetricChart({
+	series,
+	formatter,
+}: {
+	series: FleetSeries[]
+	formatter: (value: number) => string
+}) {
+	const lineStyle = {
+		borderWidth: 1.5,
+		fill: false as const,
+		pointRadius: 0,
+		pointHoverRadius: 4,
+		pointHitRadius: 8,
+		cubicInterpolationMode: "monotone" as const,
+	}
+	const data = {
+		datasets: series.map((s, i) => ({
+			label: s.name,
+			data: s.points,
+			borderColor: seriesColor(i),
+			...lineStyle,
+		})),
+	}
+	const options = buildLineChartOptions(formatter, true)
+
+	const hasData = series.some((s) => s.points.length > 0)
+	if (!hasData) {
+		return (
+			<div className="flex h-[420px] items-center justify-center rounded-md border border-dashed border-border/60 text-sm text-muted-foreground">
+				<Trans>No metrics yet.</Trans>
+			</div>
+		)
+	}
+	return (
+		<div className="h-[420px]">
+			<Line data={data} options={options} />
+		</div>
 	)
 }
 

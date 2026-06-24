@@ -660,6 +660,7 @@ msgid "Count"
 msgstr "Count"
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/fleet-metrics.tsx
 #: src/components/routes/host-detail.tsx
 msgid "CPU"
 msgstr "CPU"
@@ -858,6 +859,7 @@ msgid "Disabled"
 msgstr "Disabled"
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/fleet-metrics.tsx
 msgid "Disk"
 msgstr "Disk"
 
@@ -1069,6 +1071,10 @@ msgstr "Failed to load credentials"
 #: src/components/routes/settings/jobs.tsx
 msgid "Failed to load jobs"
 msgstr "Failed to load jobs"
+
+#: src/components/routes/fleet-metrics.tsx
+msgid "Failed to load metrics."
+msgstr "Failed to load metrics."
 
 #: src/components/routes/settings/purge.tsx
 msgid "Failed to load purge settings"
@@ -1534,6 +1540,10 @@ msgstr "Leave as-is to keep the existing value."
 msgid "Leave blank to keep current"
 msgstr "Leave blank to keep current"
 
+#: src/components/routes/fleet-metrics.tsx
+msgid "Load (5m)"
+msgstr "Load (5m)"
+
 #: src/components/metric-thresholds.tsx
 msgid "Load average"
 msgstr "Load average"
@@ -1623,6 +1633,7 @@ msgid "Mark all as read"
 msgstr "Mark all as read"
 
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/fleet-metrics.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Memory"
 msgstr "Memory"
@@ -1652,6 +1663,11 @@ msgstr "Method (default POST)"
 #: src/components/routes/settings/notifications.tsx
 #~ msgid "Metric thresholds"
 #~ msgstr "Metric thresholds"
+
+#: src/components/app-sidebar.tsx
+#: src/components/routes/fleet-metrics.tsx
+msgid "Metrics"
+msgstr "Metrics"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Minimum severity"

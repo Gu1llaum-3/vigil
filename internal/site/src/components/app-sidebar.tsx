@@ -1,7 +1,16 @@
 import { Trans } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath } from "@nanostores/router"
-import { ActivityIcon, BellIcon, BoxesIcon, HomeIcon, ImageIcon, ServerIcon, SettingsIcon } from "lucide-react"
+import {
+	ActivityIcon,
+	BellIcon,
+	BoxesIcon,
+	ChartLineIcon,
+	HomeIcon,
+	ImageIcon,
+	ServerIcon,
+	SettingsIcon,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Logo } from "@/components/logo"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -160,6 +169,12 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
 			icon: ActivityIcon,
 			activeRoutes: ["monitors", "monitor"],
 			count: downMonitorCount,
+		},
+		{
+			label: <Trans>Metrics</Trans>,
+			href: getPagePath($router, "metrics"),
+			icon: ChartLineIcon,
+			activeRoutes: ["metrics"],
 		},
 		{
 			label: <Trans>Notifications</Trans>,
