@@ -40,6 +40,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 - If the task is “change the agent handshake or connection lifecycle”, read `docs/architecture/hub-agent-architecture.md` and `docs/agent/agent-runtime.md`.
 - If the task is “change the frontend app shell or settings UI”, read `docs/frontend/frontend-app.md`.
 - If the task is “change the dashboard home page, snapshot data, or chart display”, read `docs/frontend/frontend-app.md` and `docs/backend/hub-backend.md`.
+- If the task is “change the fleet Metrics page or the `/api/app/fleet-metrics` endpoint”, read `docs/backend/hub-backend.md` and `docs/frontend/frontend-app.md`.
 - If the task is “change snapshot collection or the host_snapshots collection”, read `docs/architecture/hub-agent-architecture.md`, `docs/agent/agent-runtime.md`, and `docs/backend/hub-backend.md`.
 - If the task is “add or change a monitor type, monitor scheduler behavior, or monitor API”, read `docs/backend/hub-backend.md` (Monitor Scheduler section) and `docs/architecture/auth-and-data-model.md`.
 - If the task is “change the monitors page, monitor groups UI, or push heartbeat flow”, read `docs/frontend/frontend-app.md` (Monitors Route section) and `docs/backend/hub-backend.md`.

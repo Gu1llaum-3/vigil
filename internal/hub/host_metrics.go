@@ -431,6 +431,97 @@ func (h *Hub) getHostMetricsHistory(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, history)
 }
 
+// fleetMetricFields maps a fleet-metrics metric key to the host_metric_samples
+// column it reads. cpu/memory/disk are percentages; load is the raw 5-min load.
+var fleetMetricFields = map[string]string{
+	"cpu":    "cpu_percent",
+	"memory": "memory_used_percent",
+	"disk":   "disk_used_percent",
+	"load":   "load5",
+}
+
+// FleetMetricPoint is one (time, value) sample for a host in a fleet-metrics series.
+type FleetMetricPoint struct {
+	CollectedAt string  `json:"collected_at"`
+	Value       float64 `json:"value"`
+}
+
+// FleetMetricSeries is one host's time series for the requested metric.
+type FleetMetricSeries struct {
+	ID     string             `json:"id"`
+	Name   string             `json:"name"`
+	Points []FleetMetricPoint `json:"points"`
+}
+
+// getFleetMetrics returns one metric's history for every host over the range, as a
+// per-host series for a multi-line chart. Built on the same host_metric_samples
+// table as the single-host history, with one query across all agents.
+func (h *Hub) getFleetMetrics(e *core.RequestEvent) error {
+	metric := e.Request.PathValue("metric")
+	field, ok := fleetMetricFields[metric]
+	if !ok {
+		return e.BadRequestError("Unknown metric", nil)
+	}
+	since := time.Now().UTC().Add(-parseMetricsHistoryRange(e.Request.URL.Query().Get("range")))
+	records, err := h.FindRecordsByFilter(
+		hostMetricSamplesCollection,
+		"collected_at >= {:since}",
+		"collected_at",
+		0,
+		0,
+		dbx.Params{"since": since},
+	)
+	if err != nil {
+		return e.InternalServerError("Internal server error", err)
+	}
+
+	names := make(map[string]string)
+	if agents, aerr := h.FindAllRecords("agents"); aerr == nil {
+		for _, a := range agents {
+			names[a.Id] = a.GetString("name")
+		}
+	} else {
+		// Non-fatal: series fall back to the agent id for their display name.
+		slog.Warn("fleet metrics: failed to load agent names", "err", aerr)
+	}
+
+	return e.JSON(http.StatusOK, buildFleetMetricSeries(records, field, names))
+}
+
+// buildFleetMetricSeries groups collected_at-ordered samples into one series per
+// agent (in first-appearance order), reading `field` for each point's value and
+// falling back to the agent id when no name is known.
+func buildFleetMetricSeries(records []*core.Record, field string, names map[string]string) []FleetMetricSeries {
+	order := make([]string, 0)
+	byAgent := make(map[string]*FleetMetricSeries)
+	for _, rec := range records {
+		agentID := rec.GetString("agent")
+		if agentID == "" {
+			continue
+		}
+		series, seen := byAgent[agentID]
+		if !seen {
+			name := names[agentID]
+			if name == "" {
+				name = agentID
+			}
+			series = &FleetMetricSeries{ID: agentID, Name: name, Points: []FleetMetricPoint{}}
+			byAgent[agentID] = series
+			order = append(order, agentID)
+		}
+		series.Points = append(series.Points, FleetMetricPoint{
+			CollectedAt: rec.GetDateTime("collected_at").Time().UTC().Format(time.RFC3339),
+			Value:       numberAsFloat64(rec.Get(field)),
+		})
+	}
+
+	result := make([]FleetMetricSeries, 0, len(order))
+	for _, agentID := range order {
+		result = append(result, *byAgent[agentID])
+	}
+	return result
+}
+
 func parseMetricsHistoryRange(raw string) time.Duration {
 	switch raw {
 	case "1h":

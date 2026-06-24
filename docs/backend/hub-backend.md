@@ -101,6 +101,7 @@ Examples of route responsibilities in this file include:
 - `GET /api/app/hosts-overview` — lightweight per-host monitoring overview combining agent identity, latest snapshot, and latest host metrics; implemented in `internal/hub/host_metrics.go`
 - `GET /api/app/hosts/:id` — dedicated host detail payload for one host; implemented in `internal/hub/host_metrics.go`
 - `GET /api/app/hosts/:id/metrics` — historical host metrics for charts; implemented in `internal/hub/host_metrics.go`
+- `GET /api/app/fleet-metrics/:metric?range=` — one metric (`cpu`/`memory`/`disk`/`load`) across **all** hosts, as one time series per host, for the fleet Metrics page; implemented in `internal/hub/host_metrics.go` (`getFleetMetrics` → `buildFleetMetricSeries`). Reads the same `host_metric_samples` table as the single-host history with one `collected_at >= since` query, grouped by agent. Known limitations: `load` is the raw 5-min load (not per-core like the host-detail chart), and the response is not downsampled (one row per sample per host — heavy for very large fleets over `7d`).
 - `GET /api/app/hosts/:id/container-metrics` — historical running-container metrics for host detail charts; implemented in `internal/hub/container_metrics.go`
 - `POST /api/app/refresh-snapshots` — triggers on-demand snapshot collection from all connected agents (auth required, non-readonly); implemented in `internal/hub/snapshots.go`
 

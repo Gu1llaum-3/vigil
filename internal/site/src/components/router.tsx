@@ -10,6 +10,7 @@ const routes = {
 	monitors: "/monitors",
 	monitor: "/monitors/:id",
 	images: "/images",
+	metrics: "/metrics",
 	settings: `/settings/:name?`,
 	forgot_password: `/forgot-password`,
 	request_otp: `/request-otp`,

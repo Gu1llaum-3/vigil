@@ -25,6 +25,7 @@ const HostDetailPage = lazy(() => import("@/components/routes/host-detail.tsx"))
 const ContainersPage = lazy(() => import("@/components/routes/containers.tsx"))
 const ContainerDetailPage = lazy(() => import("@/components/routes/container-detail.tsx"))
 const ImagesPage = lazy(() => import("@/components/routes/images.tsx"))
+const FleetMetricsPage = lazy(() => import("@/components/routes/fleet-metrics.tsx"))
 const CopyToClipboardDialog = lazy(() => import("@/components/copy-to-clipboard.tsx"))
 
 const App = memo(() => {
@@ -64,6 +65,8 @@ const App = memo(() => {
 		return <MonitorDetailPage />
 	} else if (page.route === "images") {
 		return <ImagesPage />
+	} else if (page.route === "metrics") {
+		return <FleetMetricsPage />
 	} else if (page.route === "settings") {
 		return <Settings />
 	}
