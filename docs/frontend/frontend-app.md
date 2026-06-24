@@ -331,8 +331,8 @@ The dashboard is now a summary surface rather than the primary exploration surfa
 Components:
 
 - `kpi-cards.tsx` — summary metric cards (host connectivity ratio, monitor up/total ratio, pending updates, etc.)
-- `hosts-table.tsx` — monitoring-first per-host overview table, reused by `/hosts` and the dashboard home route
-- `hosts-filter-sheet.tsx` — Radix `Sheet`-based multi-facet filter panel for the hosts table (exports `HostsFilters`, `defaultHostsFilters`, `applyHostsFilters`, `countHostsFilters`, and the `HostsFilterSheet` component)
+- `hosts-table.tsx` — monitoring-first per-host overview table, reused by `/hosts` and the dashboard home route. Host free-text `tags` render as chips under the name, are matched by the text search, and feed a `tags` facet in the filter sheet (options derived from the tags present across hosts)
+- `hosts-filter-sheet.tsx` — Radix `Sheet`-based multi-facet filter panel for the hosts table (exports `HostsFilters`, `defaultHostsFilters`, `applyHostsFilters`, `countHostsFilters`, and the `HostsFilterSheet` component). Facets: connection, compliance, features (docker), and `tags` (OR-matched; takes an `availableTags` prop)
 - `containers-table.tsx` — running Docker container inventory plus read-only image audit badges, reused by `/containers` and host detail pages
 - `containers-filter-sheet.tsx` — equivalent multi-facet filter panel for the containers table
 - `charts.tsx` — bar/doughnut charts using `chart.js` and `react-chartjs-2`
@@ -396,6 +396,8 @@ Handles agent-related administration such as:
 The navbar also exposes a lightweight installation dialog that fetches the hub public key and the current enrollment token, then provides ready-to-copy Docker and binary installation commands for new agents.
 
 The agents settings table prefers the persisted agent hostname (`agents.name`) over the record id. If more than one agent shares the same hostname, the UI appends a short fingerprint suffix for display-only disambiguation.
+
+The agents table shows each agent's `tags` as chips and exposes an "Edit tags" action (per-row dropdown) opening a dialog to add/remove free-text tags, saved with a direct `pb.collection("agents").update(id, { tags })` (non-readonly users; the agents `updateRule` permits it).
 
 ## Notifications Route
 

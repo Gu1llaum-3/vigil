@@ -131,8 +131,13 @@ msgid "Active"
 msgstr "Active"
 
 #: src/components/routes/settings/notifications.tsx
+#: src/components/tags-dialog.tsx
 msgid "Add"
 msgstr "Add"
+
+#: src/components/tags-dialog.tsx
+msgid "Add a tag…"
+msgstr "Add a tag…"
 
 #: src/components/add-agent.tsx
 #: src/components/navbar.tsx
@@ -162,6 +167,10 @@ msgstr "Add monitor here"
 #: src/components/routes/settings/notifications.tsx
 msgid "Add rule"
 msgstr "Add rule"
+
+#: src/components/routes/host-detail.tsx
+msgid "Add tags"
+msgstr "Add tags"
 
 #: src/components/routes/images.tsx
 msgid "Adjust or reset the current filters to see audited container images."
@@ -378,6 +387,7 @@ msgstr "Blue line for successful checks, red background for down periods."
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
 #: src/components/routes/settings/registry-credentials.tsx
+#: src/components/tags-dialog.tsx
 msgid "Cancel"
 msgstr "Cancel"
 
@@ -928,6 +938,13 @@ msgstr "Edit rule"
 msgid "Edit Schedule"
 msgstr "Edit Schedule"
 
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
+#: src/components/routes/settings/agents.tsx
+#: src/components/tags-dialog.tsx
+msgid "Edit tags"
+msgstr "Edit tags"
+
 #: src/components/login/auth-form.tsx
 #: src/components/login/forgot-pass-form.tsx
 #: src/components/login/otp-forms.tsx
@@ -978,6 +995,7 @@ msgstr "Ephemeral"
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/notifications/history.tsx
+#: src/components/tags-dialog.tsx
 msgid "Error"
 msgstr "Error"
 
@@ -1214,6 +1232,10 @@ msgstr "Home"
 #: src/components/routes/host-detail.tsx
 msgid "Host"
 msgstr "Host"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Host actions"
+msgstr "Host actions"
 
 #: src/components/notification-log-toasts.tsx
 msgid "Host back online"
@@ -1899,6 +1921,10 @@ msgstr "No rules configured. Add a rule to start routing notifications."
 msgid "No storage data."
 msgstr "No storage data."
 
+#: src/components/tags-dialog.tsx
+msgid "No tags yet"
+msgstr "No tags yet"
+
 #: src/components/navbar.tsx
 msgid "No unread notifications"
 msgstr "No unread notifications"
@@ -2316,6 +2342,10 @@ msgstr "Registry credentials"
 msgid "Remove"
 msgstr "Remove"
 
+#: src/components/tags-dialog.tsx
+msgid "Remove tag"
+msgstr "Remove tag"
+
 #: src/components/routes/settings/api-keys.tsx
 msgid "Replace vk_… with a key created above. Other clients (Claude Desktop) can use the JSON below."
 msgstr "Replace vk_… with a key created above. Other clients (Claude Desktop) can use the JSON below."
@@ -2465,6 +2495,7 @@ msgstr "Same major"
 #: src/components/routes/settings/jobs.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/registry-credentials.tsx
+#: src/components/tags-dialog.tsx
 msgid "Save"
 msgstr "Save"
 
@@ -2661,6 +2692,12 @@ msgstr "Tag include (regex)"
 #: src/lib/audit-status.ts
 msgid "Tag rebuilt"
 msgstr "Tag rebuilt"
+
+#: src/components/routes/dashboard/hosts-filter-sheet.tsx
+#: src/components/routes/settings/agents.tsx
+#: src/components/tags-dialog.tsx
+msgid "Tags"
+msgstr "Tags"
 
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Tags matching this regex are skipped (applied after include)."

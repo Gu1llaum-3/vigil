@@ -57,6 +57,7 @@ Important variables:
 - `KEY_FILE`
 - `DATA_DIR`
 - `LOG_LEVEL`
+- `TAGS`
 
 Behavior notes:
 
@@ -64,6 +65,7 @@ Behavior notes:
 - `KEY_FILE` is an alternative to `KEY`
 - missing key material means hub signature verification is skipped
 - `LOG_LEVEL` configures runtime logging verbosity
+- `TAGS` is a comma-separated list of free-text host tags reported in `GetAgentInfo` (`parseTags` trims/dedupes); the hub applies them only at first enrollment, so the UI remains the source of truth afterward
 
 ## Data Directory Selection
 

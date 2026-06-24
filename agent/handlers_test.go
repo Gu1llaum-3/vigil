@@ -6,10 +6,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/Gu1llaum-3/vigil/internal/common"
 )
 
 // MockHandler for testing
@@ -131,4 +131,19 @@ func TestGetAgentInfoHandlerIncludesHostname(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, response)
 	assert.Equal(t, hostname, response["metadata"].(map[string]any)["hostname"])
+}
+
+func TestParseTags(t *testing.T) {
+	cases := map[string][]string{
+		"":                      {},
+		"   ":                   {},
+		"prod":                  {"prod"},
+		"prod,eu-west":          {"prod", "eu-west"},
+		" prod , eu-west , db ": {"prod", "eu-west", "db"},
+		"prod,,db":              {"prod", "db"}, // empty segments dropped
+		"prod,prod,eu,prod":     {"prod", "eu"}, // de-duplicated, order preserved
+	}
+	for raw, want := range cases {
+		assert.Equal(t, want, parseTags(raw), "parseTags(%q)", raw)
+	}
 }

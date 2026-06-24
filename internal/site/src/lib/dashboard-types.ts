@@ -166,6 +166,7 @@ export interface HostsOverviewRecord extends HostSnapshot {
 	status: string
 	last_seen: string
 	version: string
+	tags?: string[]
 	metrics?: HostMetrics | null
 }
 

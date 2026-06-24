@@ -27,16 +27,18 @@ export type HostsFilters = {
 	connection: HostsConnection
 	compliance: Set<HostsCompliance>
 	features: Set<HostsFeature>
+	tags: Set<string>
 }
 
 export const defaultHostsFilters: HostsFilters = {
 	connection: "all",
 	compliance: new Set(),
 	features: new Set(),
+	tags: new Set(),
 }
 
 export function countHostsFilters(f: HostsFilters): number {
-	return (f.connection !== "all" ? 1 : 0) + f.compliance.size + f.features.size
+	return (f.connection !== "all" ? 1 : 0) + f.compliance.size + f.features.size + f.tags.size
 }
 
 function hostMatchesCompliance(h: HostsOverviewRecord, flag: HostsCompliance): boolean {
@@ -78,6 +80,18 @@ export function applyHostsFilters(hosts: HostsOverviewRecord[], filters: HostsFi
 
 		if (filters.features.has("docker") && h.docker?.state !== "available") return false
 
+		if (filters.tags.size > 0) {
+			const hostTags = new Set(h.tags ?? [])
+			let matchesAny = false
+			for (const tag of filters.tags) {
+				if (hostTags.has(tag)) {
+					matchesAny = true
+					break
+				}
+			}
+			if (!matchesAny) return false
+		}
+
 		return true
 	})
 }
@@ -87,9 +101,16 @@ interface HostsFilterSheetProps {
 	onFiltersChange: (next: HostsFilters) => void
 	search: string
 	onSearchChange: (value: string) => void
+	availableTags: string[]
 }
 
-export function HostsFilterSheet({ filters, onFiltersChange, search, onSearchChange }: HostsFilterSheetProps) {
+export function HostsFilterSheet({
+	filters,
+	onFiltersChange,
+	search,
+	onSearchChange,
+	availableTags,
+}: HostsFilterSheetProps) {
 	const { t } = useLingui()
 	const groupId = useId()
 	const activeCount = countHostsFilters(filters)
@@ -113,6 +134,13 @@ export function HostsFilterSheet({ filters, onFiltersChange, search, onSearchCha
 		onFiltersChange({ ...filters, features: next })
 	}
 
+	function toggleTag(tag: string, checked: boolean) {
+		const next = new Set(filters.tags)
+		if (checked) next.add(tag)
+		else next.delete(tag)
+		onFiltersChange({ ...filters, tags: next })
+	}
+
 	function reset() {
 		onFiltersChange(defaultHostsFilters)
 		onSearchChange("")
@@ -125,6 +153,11 @@ export function HostsFilterSheet({ filters, onFiltersChange, search, onSearchCha
 		{ value: "unknown", label: t`Unknown` },
 		{ value: "clean", label: t`Compliant` },
 	]
+
+	// Show the union of tags present on hosts and tags currently selected, so a tag
+	// that's still in the filter but no longer on any host keeps a checkbox to clear
+	// it (otherwise the facet would vanish and silently filter the table to empty).
+	const tagOptions = Array.from(new Set([...availableTags, ...filters.tags])).sort()
 
 	return (
 		<Sheet>
@@ -234,6 +267,33 @@ export function HostsFilterSheet({ filters, onFiltersChange, search, onSearchCha
 							</label>
 						</div>
 					</div>
+
+					{tagOptions.length > 0 && (
+						<div className="space-y-3">
+							<p className="text-sm font-medium leading-none">
+								<Trans>Tags</Trans>
+							</p>
+							<div className="space-y-2">
+								{tagOptions.map((tag) => {
+									const id = `${groupId}-tag-${tag}`
+									const checked = filters.tags.has(tag)
+									return (
+										<label
+											key={tag}
+											htmlFor={id}
+											className={cn(
+												"flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/50",
+												checked && "bg-accent/40"
+											)}
+										>
+											<Checkbox id={id} checked={checked} onCheckedChange={(value) => toggleTag(tag, value === true)} />
+											<span className="text-sm">{tag}</span>
+										</label>
+									)
+								})}
+							</div>
+						</div>
+					)}
 				</div>
 
 				<SheetFooter className="flex-row gap-2 border-t border-border/60 p-4">

@@ -421,7 +421,7 @@ func TestUpdateAgentInfoPersistsHostname(t *testing.T) {
 		Metadata: map[string]any{
 			"hostname": "vector",
 		},
-	})
+	}, false)
 
 	updatedRecord, err := testApp.FindRecordById("agents", agentRecord.Id)
 	require.NoError(t, err)
@@ -445,11 +445,53 @@ func TestUpdateAgentInfoKeepsExistingNameWhenHostnameMissing(t *testing.T) {
 	hub.updateAgentInfo(agentRecord.Id, common.AgentInfoResponse{
 		Capabilities: map[string]any{"ws": true},
 		Metadata:     map[string]any{},
-	})
+	}, false)
 
 	updatedRecord, err := testApp.FindRecordById("agents", agentRecord.Id)
 	require.NoError(t, err)
 	assert.Equal(t, "existing-name", updatedRecord.GetString("name"))
+}
+
+// TestUpdateAgentInfoSeedsTagsOnlyAtFirstEnrollment locks the tag-seeding rule:
+// env-declared tags are applied only at first enrollment and only when the host
+// has none yet, so reconnects and pre-set UI tags are never overwritten.
+func TestUpdateAgentInfoSeedsTagsOnlyAtFirstEnrollment(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	info := common.AgentInfoResponse{
+		Capabilities: map[string]any{},
+		Metadata:     map[string]any{},
+		Tags:         []string{"prod", "eu-west"},
+	}
+
+	t.Run("first enrollment, no existing tags → seeded", func(t *testing.T) {
+		rec, err := createTestRecord(testApp, "agents", map[string]any{"name": "a1", "token": "t1"})
+		require.NoError(t, err)
+		hub.updateAgentInfo(rec.Id, info, true)
+		updated, err := testApp.FindRecordById("agents", rec.Id)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"prod", "eu-west"}, updated.GetStringSlice("tags"))
+	})
+
+	t.Run("first enrollment, existing tags → not overwritten", func(t *testing.T) {
+		rec, err := createTestRecord(testApp, "agents", map[string]any{"name": "a2", "token": "t2", "tags": []string{"ui"}})
+		require.NoError(t, err)
+		hub.updateAgentInfo(rec.Id, info, true)
+		updated, err := testApp.FindRecordById("agents", rec.Id)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ui"}, updated.GetStringSlice("tags"))
+	})
+
+	t.Run("reconnect (not first enrollment) → not seeded", func(t *testing.T) {
+		rec, err := createTestRecord(testApp, "agents", map[string]any{"name": "a3", "token": "t3"})
+		require.NoError(t, err)
+		hub.updateAgentInfo(rec.Id, info, false)
+		updated, err := testApp.FindRecordById("agents", rec.Id)
+		require.NoError(t, err)
+		assert.Empty(t, updated.GetStringSlice("tags"))
+	})
 }
 
 func TestFindOrUpsertAgentAllowsEnrollmentTokenReuse(t *testing.T) {
@@ -477,8 +519,9 @@ func TestFindOrUpsertAgentAllowsEnrollmentTokenReuse(t *testing.T) {
 		agentSemVer:       semver.MustParse("1.0.0"),
 	}
 
-	newAgent, err := acr.findOrUpsertAgent(getAgentsByToken(sharedToken, hub), "new-fingerprint")
+	newAgent, firstEnroll, err := acr.findOrUpsertAgent(getAgentsByToken(sharedToken, hub), "new-fingerprint")
 	require.NoError(t, err)
+	assert.True(t, firstEnroll, "creating a new record is a first enrollment")
 	assert.NotEmpty(t, newAgent.Id)
 	assert.Equal(t, "new-fingerprint", newAgent.Fingerprint)
 
@@ -488,6 +531,35 @@ func TestFindOrUpsertAgentAllowsEnrollmentTokenReuse(t *testing.T) {
 	fingerprints := []string{agentRecords[0].Fingerprint, agentRecords[1].Fingerprint}
 	assert.Contains(t, fingerprints, "existing-fingerprint")
 	assert.Contains(t, fingerprints, "new-fingerprint")
+}
+
+// TestFindOrUpsertAgentReconnectIsNotFirstEnrollment pins the load-bearing rule
+// that a matching-fingerprint reconnect is NOT a first enrollment — so env-declared
+// TAGS are never re-seeded over UI-managed tags on reconnect.
+func TestFindOrUpsertAgentReconnectIsNotFirstEnrollment(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	const token = "agent-token-1"
+	_, err = createTestRecord(testApp, "agents", map[string]any{
+		"name":        "known-agent",
+		"token":       token,
+		"fingerprint": "known-fingerprint",
+		"status":      "offline",
+	})
+	require.NoError(t, err)
+
+	acr := &agentConnectRequest{
+		hub:         hub,
+		token:       token,
+		agentSemVer: semver.MustParse("1.0.0"),
+	}
+
+	rec, firstEnroll, err := acr.findOrUpsertAgent(getAgentsByToken(token, hub), "known-fingerprint")
+	require.NoError(t, err)
+	assert.False(t, firstEnroll, "a matching-fingerprint reconnect is not a first enrollment")
+	assert.NotEmpty(t, rec.Id)
 }
 
 // TestAgentConnect tests the agentConnect function with various scenarios
