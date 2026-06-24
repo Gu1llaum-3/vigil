@@ -10,18 +10,21 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table"
-import { ChevronDownIcon, XIcon } from "lucide-react"
+import { ChevronDownIcon, MoreHorizontalIcon, TagIcon, XIcon } from "lucide-react"
 import { memo, useEffect, useMemo, useState } from "react"
 import { getPagePath } from "@nanostores/router"
 import { $router, Link } from "@/components/router"
+import { TagsDialog } from "@/components/tags-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CopyButton } from "@/components/ui/copy-button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { MetricBar } from "@/components/metric-charts"
+import { isReadOnlyUser } from "@/lib/api"
 import { formatBytesPerSecond } from "@/lib/format"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import {
@@ -77,6 +80,44 @@ function InfoBtn({ rows }: { rows: Array<{ label: string; value: string | number
 	)
 }
 
+// Per-row quick actions on the hosts table — currently editing tags without
+// leaving the overview. Reuses the shared TagsDialog; non-readonly only.
+function HostRowActions({ host }: { host: HostsOverviewRecord }) {
+	const { t } = useLingui()
+	const [tagsOpen, setTagsOpen] = useState(false)
+	return (
+		<>
+			<TagsDialog
+				agentId={host.id}
+				currentTags={host.tags ?? []}
+				title={host.name || host.hostname || host.id}
+				open={tagsOpen}
+				onClose={() => setTagsOpen(false)}
+			/>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon"
+						data-nolink
+						className="ml-1 size-6 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<span className="sr-only">{t`Host actions`}</span>
+						<MoreHorizontalIcon className="size-4" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onSelect={() => setTagsOpen(true)}>
+						<TagIcon className="me-2.5 size-4" />
+						<Trans>Edit tags</Trans>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</>
+	)
+}
+
 function SortBtn({ column, children }: { column: Column<HostsOverviewRecord, unknown>; children: React.ReactNode }) {
 	const sorted = column.getIsSorted()
 	return (
@@ -107,6 +148,7 @@ interface HostsTableProps {
 
 export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersChange }: HostsTableProps) {
 	const { t } = useLingui()
+	const readOnly = isReadOnlyUser()
 	const [sorting, setSorting] = useState<SortingState>([{ id: "connection", desc: true }])
 	const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
 	const [search, setSearch] = useState("")
@@ -120,11 +162,17 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 		if (!search) return result
 		const q = search.toLowerCase()
 		return result.filter((h) =>
-			[h.name, h.hostname, h.primary_ip, h.network?.gateway, h.os?.name, h.kernel, h.version].some((v) =>
-				v?.toLowerCase().includes(q)
+			[h.name, h.hostname, h.primary_ip, h.network?.gateway, h.os?.name, h.kernel, h.version, ...(h.tags ?? [])].some(
+				(v) => v?.toLowerCase().includes(q)
 			)
 		)
 	}, [hosts, filters, search])
+
+	const availableTags = useMemo(() => {
+		const tags = new Set<string>()
+		for (const h of hosts) for (const tag of h.tags ?? []) tags.add(tag)
+		return Array.from(tags).sort()
+	}, [hosts])
 
 	function handleSearch(value: string) {
 		setSearch(value)
@@ -193,6 +241,15 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 									!(h.hostname && h.hostname !== h.name) && <span>—</span>
 								)}
 							</div>
+							{h.tags && h.tags.length > 0 && (
+								<div className="mt-1 flex flex-wrap gap-1">
+									{h.tags.map((tag) => (
+										<Badge key={tag} variant="secondary" className="px-1.5 py-0 text-[10px] font-normal">
+											{tag}
+										</Badge>
+									))}
+								</div>
+							)}
 						</div>
 						<InfoBtn
 							rows={[
@@ -203,6 +260,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 								{ label: t`Last metrics`, value: h.metrics?.collected_at || "—" },
 							]}
 						/>
+						{!readOnly && <HostRowActions host={h} />}
 					</div>
 				),
 			},
@@ -269,7 +327,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 				),
 			},
 		],
-		[t]
+		[t, readOnly]
 	)
 
 	const table = useReactTable({
@@ -299,6 +357,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					onFiltersChange={onFiltersChange}
 					search={search}
 					onSearchChange={handleSearch}
+					availableTags={availableTags}
 				/>
 				<div className="ml-auto flex shrink-0 items-center gap-2">
 					<span className="text-xs text-muted-foreground">
@@ -322,7 +381,11 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 				</div>
 			</div>
 
-			{(search || filters.connection !== "all" || filters.compliance.size > 0 || filters.features.size > 0) && (
+			{(search ||
+				filters.connection !== "all" ||
+				filters.compliance.size > 0 ||
+				filters.features.size > 0 ||
+				filters.tags.size > 0) && (
 				<div className="flex flex-wrap gap-1.5">
 					{search && <FilterPill label={`"${search}"`} onRemove={() => handleSearch("")} />}
 					{filters.connection !== "all" && (
@@ -350,6 +413,17 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 								const next = new Set(filters.features)
 								next.delete(flag)
 								onFiltersChange({ ...filters, features: next })
+							}}
+						/>
+					))}
+					{[...filters.tags].map((tag) => (
+						<FilterPill
+							key={tag}
+							label={tag}
+							onRemove={() => {
+								const next = new Set(filters.tags)
+								next.delete(tag)
+								onFiltersChange({ ...filters, tags: next })
 							}}
 						/>
 					))}

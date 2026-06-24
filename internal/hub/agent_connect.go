@@ -136,7 +136,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 		return err
 	}
 
-	agentRec, err := acr.findOrUpsertAgent(agentRecords, agentFingerprint.Fingerprint)
+	agentRec, firstEnroll, err := acr.findOrUpsertAgent(agentRecords, agentFingerprint.Fingerprint)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if info, infoErr := wsConn.GetAgentInfo(ctx); infoErr == nil {
-		acr.hub.updateAgentInfo(agentRec.Id, info)
+		acr.hub.updateAgentInfo(agentRec.Id, info, firstEnroll)
 	} else {
 		slog.Warn("Failed to fetch agent info", "agent", agentRec.logName(), "id", agentRec.Id, "err", infoErr)
 	}
@@ -214,7 +214,11 @@ func getAgentsByToken(token string, h *Hub) []AgentRecord {
 }
 
 // findOrUpsertAgent validates an agent fingerprint or creates a new agent record.
-func (acr *agentConnectRequest) findOrUpsertAgent(agentRecords []AgentRecord, fingerprint string) (AgentRecord, error) {
+// The returned bool reports whether this is the agent's *first enrollment* — a
+// brand-new record (enrollment token) OR a pre-created record associating its
+// fingerprint for the first time. The caller uses it to seed agent-declared tags
+// once at enrollment, never on a reconnect.
+func (acr *agentConnectRequest) findOrUpsertAgent(agentRecords []AgentRecord, fingerprint string) (AgentRecord, bool, error) {
 	version := acr.agentSemVer.String()
 
 	// Match existing agent by fingerprint
@@ -222,17 +226,18 @@ func (acr *agentConnectRequest) findOrUpsertAgent(agentRecords []AgentRecord, fi
 		if rec.Fingerprint == fingerprint {
 			// Matching fingerprint - update status, version, and last_seen
 			if err := acr.hub.UpdateAgent(&rec, fingerprint, "connected", version); err != nil {
-				return rec, err
+				return rec, false, err
 			}
-			return rec, nil
+			return rec, false, nil
 		}
 		if rec.Fingerprint == "" {
-			// First connection: store the fingerprint
+			// First connection of a pre-created agent: store the fingerprint. This is
+			// still a first enrollment, so env-declared tags may be seeded.
 			if err := acr.hub.UpdateAgent(&rec, fingerprint, "connected", version); err != nil {
-				return rec, err
+				return rec, false, err
 			}
 			rec.Fingerprint = fingerprint
-			return rec, nil
+			return rec, true, nil
 		}
 	}
 
@@ -240,17 +245,17 @@ func (acr *agentConnectRequest) findOrUpsertAgent(agentRecords []AgentRecord, fi
 	if acr.isEnrollmentToken && acr.userId != "" {
 		newRec := AgentRecord{Token: acr.token}
 		if err := acr.hub.CreateAgent(&newRec, fingerprint, acr.userId, version); err != nil {
-			return newRec, err
+			return newRec, false, err
 		}
 		newRec.Fingerprint = fingerprint
-		return newRec, nil
+		return newRec, true, nil
 	}
 
 	if len(agentRecords) == 1 {
-		return agentRecords[0], errors.New("fingerprint mismatch")
+		return agentRecords[0], false, errors.New("fingerprint mismatch")
 	}
 
-	return AgentRecord{}, errors.New("no matching agent record")
+	return AgentRecord{}, false, errors.New("no matching agent record")
 }
 
 // UpdateAgent updates an agent's fingerprint, status, version, and last_seen.
@@ -383,8 +388,9 @@ func (h *Hub) setAgentStatus(agentId, status string) {
 	h.notifier.Dispatch(evt)
 }
 
-// updateAgentInfo persists capabilities and metadata returned by GetAgentInfo.
-func (h *Hub) updateAgentInfo(agentId string, info common.AgentInfoResponse) {
+// updateAgentInfo persists capabilities and metadata returned by GetAgentInfo, and
+// (at first enrollment only) seeds the agent's tags from the TAGS env it declared.
+func (h *Hub) updateAgentInfo(agentId string, info common.AgentInfoResponse, firstEnroll bool) {
 	rec, err := h.FindRecordById("agents", agentId)
 	if err != nil {
 		return
@@ -394,5 +400,11 @@ func (h *Hub) updateAgentInfo(agentId string, info common.AgentInfoResponse) {
 	}
 	rec.Set("capabilities", info.Capabilities)
 	rec.Set("metadata", info.Metadata)
+	// Seed agent-declared tags only at first enrollment, and only when the host has
+	// none yet — so the UI stays the source of truth on reconnects and pre-set tags
+	// (e.g. assigned in the UI before the agent first connected) are never clobbered.
+	if firstEnroll && len(info.Tags) > 0 && len(rec.GetStringSlice("tags")) == 0 {
+		rec.Set("tags", info.Tags)
+	}
 	_ = h.SaveNoValidate(rec)
 }

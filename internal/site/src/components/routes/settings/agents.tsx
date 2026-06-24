@@ -9,11 +9,14 @@ import {
 	KeyIcon,
 	MoreHorizontalIcon,
 	RotateCwIcon,
+	TagIcon,
 	Trash2Icon,
 	XIcon,
 } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { $router } from "@/components/router"
+import { TagsDialog } from "@/components/tags-dialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
@@ -32,7 +35,7 @@ import { copyToClipboard, getHubURL } from "@/lib/utils"
 import type { AgentRecord } from "@/types"
 
 const pbAgentOptions = {
-	fields: "id,name,token,fingerprint,status,version,last_seen",
+	fields: "id,name,token,fingerprint,status,version,last_seen,tags",
 }
 
 function sortAgents(agents: AgentRecord[]) {
@@ -116,8 +119,11 @@ const SettingsAgentsPage = memo(() => {
 						}
 						return current
 					})
-					// Tokens are not part of the (hidden-field) realtime payload; refresh the
-					// token map after any change (covers create and token rotation).
+					// Tokens are not part of the (hidden-field) realtime payload, so refresh the
+					// token map after any change. This covers new agents AND token rotation done
+					// in another session (a rotation is an `update`, and since the token field is
+					// hidden we can't tell it apart from other updates — so refetch on all events
+					// rather than risk showing a stale, no-longer-valid token cross-session).
 					fetchTokens()
 				},
 				pbAgentOptions
@@ -299,6 +305,11 @@ const SectionTable = memo(({ agents = [], tokens = {} }: { agents: AgentRecord[]
 				Icon: FingerprintIcon,
 				w: "18em",
 			},
+			{
+				label: t`Tags`,
+				Icon: TagIcon,
+				w: "14em",
+			},
 		],
 		[t]
 	)
@@ -310,7 +321,7 @@ const SectionTable = memo(({ agents = [], tokens = {} }: { agents: AgentRecord[]
 					<tr className="border-border/50">
 						{headerCols.map((col, i) => (
 							<TableHead key={col.label} style={{ minWidth: col.w }}>
-								{i === 0 || i === 2 || i === 3 ? (
+								{i === 0 || i === 2 || i === 3 || i === 4 ? (
 									<span className="flex items-center gap-2">
 										<col.Icon className="size-4" />
 										{col.label}
@@ -341,6 +352,19 @@ const SectionTable = memo(({ agents = [], tokens = {} }: { agents: AgentRecord[]
 							</TableCell>
 							<TableCell className="font-mono text-[0.95em] py-2">{tokens[agent.id] ?? ""}</TableCell>
 							<TableCell className="font-mono text-[0.95em] py-2">{agent.fingerprint}</TableCell>
+							<TableCell className="py-2">
+								{agent.tags && agent.tags.length > 0 ? (
+									<span className="flex flex-wrap gap-1">
+										{agent.tags.map((tag) => (
+											<Badge key={tag} variant="secondary" className="px-1.5 py-0 text-xs font-normal">
+												{tag}
+											</Badge>
+										))}
+									</span>
+								) : (
+									<span className="text-muted-foreground">—</span>
+								)}
+							</TableCell>
 							{!isReadOnly && (
 								<TableCell className="py-2 px-4 xl:px-2">
 									<ActionsButtonTable agent={agent} token={tokens[agent.id] ?? ""} />
@@ -382,49 +406,61 @@ async function deleteAgent(agent: AgentRecord) {
 		})
 	}
 }
-
 const ActionsButtonTable = memo(({ agent, token }: { agent: AgentRecord; token: string }) => {
 	const envVar = `HUB_URL=${getHubURL()}\nTOKEN=${token}`
 	const copyEnv = () => copyToClipboard(envVar)
 	const copyYaml = () => copyToClipboard(envVar.replaceAll("=", ": "))
+	const [tagsOpen, setTagsOpen] = useState(false)
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size={"icon"} data-nolink>
-					<span className="sr-only">
-						<Trans>Open menu</Trans>
-					</span>
-					<MoreHorizontalIcon className="w-5" />
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end">
-				<DropdownMenuItem onClick={copyYaml}>
-					<CopyIcon className="me-2.5 size-4" />
-					<Trans>Copy YAML</Trans>
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={copyEnv}>
-					<CopyIcon className="me-2.5 size-4" />
-					<Trans context="Environment variables">Copy env</Trans>
-				</DropdownMenuItem>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem onSelect={() => updateAgent(agent, true)}>
-					<RotateCwIcon className="me-2.5 size-4" />
-					<Trans>Rotate token</Trans>
-				</DropdownMenuItem>
-				{agent.fingerprint && (
-					<DropdownMenuItem onSelect={() => updateAgent(agent, false, true)}>
-						<Trash2Icon className="me-2.5 size-4" />
-						<Trans>Reset fingerprint</Trans>
+		<>
+			<TagsDialog
+				agentId={agent.id}
+				currentTags={agent.tags ?? []}
+				open={tagsOpen}
+				onClose={() => setTagsOpen(false)}
+			/>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button variant="ghost" size={"icon"} data-nolink>
+						<span className="sr-only">
+							<Trans>Open menu</Trans>
+						</span>
+						<MoreHorizontalIcon className="w-5" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onClick={copyYaml}>
+						<CopyIcon className="me-2.5 size-4" />
+						<Trans>Copy YAML</Trans>
 					</DropdownMenuItem>
-				)}
-				<DropdownMenuSeparator />
-				<DropdownMenuItem onSelect={() => deleteAgent(agent)} className="text-destructive">
-					<Trash2Icon className="me-2.5 size-4" />
-					<Trans>Delete agent</Trans>
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
+					<DropdownMenuItem onClick={copyEnv}>
+						<CopyIcon className="me-2.5 size-4" />
+						<Trans context="Environment variables">Copy env</Trans>
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onSelect={() => setTagsOpen(true)}>
+						<TagIcon className="me-2.5 size-4" />
+						<Trans>Edit tags</Trans>
+					</DropdownMenuItem>
+					<DropdownMenuItem onSelect={() => updateAgent(agent, true)}>
+						<RotateCwIcon className="me-2.5 size-4" />
+						<Trans>Rotate token</Trans>
+					</DropdownMenuItem>
+					{agent.fingerprint && (
+						<DropdownMenuItem onSelect={() => updateAgent(agent, false, true)}>
+							<Trash2Icon className="me-2.5 size-4" />
+							<Trans>Reset fingerprint</Trans>
+						</DropdownMenuItem>
+					)}
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onSelect={() => deleteAgent(agent)} className="text-destructive">
+						<Trash2Icon className="me-2.5 size-4" />
+						<Trans>Delete agent</Trans>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</>
 	)
 })
 

@@ -49,6 +49,10 @@ type AgentInfoResponse struct {
 	Version      string         `cbor:"version"`
 	Capabilities map[string]any `cbor:"capabilities"`
 	Metadata     map[string]any `cbor:"metadata"`
+	// Tags are free-text labels declared by the agent via its TAGS env var. The hub
+	// applies them only at enrollment (new record), so UI edits are never clobbered.
+	// omitempty keeps the field optional on the wire for older agents.
+	Tags []string `cbor:"tags,omitempty"`
 }
 
 // HostSnapshotResponse is the top-level snapshot returned by the agent for GetHostSnapshot requests.

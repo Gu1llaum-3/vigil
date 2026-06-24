@@ -29,11 +29,12 @@ const (
 )
 
 type HostOverviewRecord struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Status   string `json:"status"`
-	LastSeen string `json:"last_seen"`
-	Version  string `json:"version"`
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Status   string   `json:"status"`
+	LastSeen string   `json:"last_seen"`
+	Version  string   `json:"version"`
+	Tags     []string `json:"tags"`
 	common.HostSnapshotResponse
 	Metrics *common.HostMetricsResponse `json:"metrics,omitempty"`
 }
@@ -295,6 +296,9 @@ func buildHostOverviewRecord(agent *core.Record, snapshot *common.HostSnapshotRe
 		Status:   agent.GetString("status"),
 		LastSeen: agent.GetDateTime("last_seen").String(),
 		Version:  agent.GetString("version"),
+		// GetStringSlice always returns a non-nil slice (empty for missing/empty JSON),
+		// so tags serialize as [] not null without an explicit guard.
+		Tags: agent.GetStringSlice("tags"),
 	}
 	if snapshot != nil {
 		host.HostSnapshotResponse = *snapshot

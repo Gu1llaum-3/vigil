@@ -22,6 +22,7 @@ export interface AgentRecord extends RecordModel {
 	last_seen: string
 	capabilities: Record<string, unknown>
 	metadata: Record<string, unknown>
+	tags?: string[]
 	created_by: string
 }
 

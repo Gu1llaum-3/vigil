@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	app "github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/agent/collectors"
+	"github.com/Gu1llaum-3/vigil/agent/utils"
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/fxamacker/cbor/v2"
 )
@@ -87,7 +89,33 @@ func (h *GetAgentInfoHandler) Handle(hctx *HandlerContext) error {
 			"hostname": hostname,
 		},
 	}
+	// Optional free-text tags declared via the TAGS env (comma-separated). The hub
+	// applies these only when it first creates the agent record, so they seed
+	// provisioning automation without ever overwriting tags managed from the UI.
+	rawTags, _ := utils.GetEnv("TAGS")
+	if tags := parseTags(rawTags); len(tags) > 0 {
+		info["tags"] = tags
+	}
 	return hctx.SendResponse(info, hctx.RequestID)
+}
+
+// parseTags splits a comma-separated TAGS env value into trimmed, de-duplicated,
+// non-empty tags (order preserved).
+func parseTags(raw string) []string {
+	seen := make(map[string]struct{})
+	tags := make([]string, 0)
+	for _, part := range strings.Split(raw, ",") {
+		tag := strings.TrimSpace(part)
+		if tag == "" {
+			continue
+		}
+		if _, dup := seen[tag]; dup {
+			continue
+		}
+		seen[tag] = struct{}{}
+		tags = append(tags, tag)
+	}
+	return tags
 }
 
 ////////////////////////////////////////////////////////////////////////////

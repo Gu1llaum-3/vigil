@@ -53,6 +53,7 @@ Important fields include:
 - `status`
 - `capabilities`
 - `metadata`
+- `tags` — JSON array of free-text strings (migration `32_add_agent_tags.go`) for grouping/searching/filtering hosts. No managed catalog; arbitrary per-host strings. A normal writable field: non-readonly users edit it directly via the collection API (the agents `updateRule` already permits them), and it is included in the hosts-overview/detail payloads (`HostOverviewRecord.tags`). Agents may declare initial tags via the `TAGS` env var (reported in `GetAgentInfo`); the hub applies them **only when it first creates the agent record** (`setInitialAgentTags` in `agent_connect.go`), so reconnects and the UI remain authoritative.
 
 **Tenancy / authorization (by design):** Vigil is single-tenant — every authenticated user
 sees the whole fleet (`listRule`/`viewRule` only require authentication), and any non-readonly
