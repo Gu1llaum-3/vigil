@@ -147,7 +147,30 @@ func (ms *MonitorScheduler) doCheck(ctx context.Context, monitorID string) {
 		return
 	}
 
+	// Inverted monitors treat a reachable target as the alert condition, so flip
+	// up<->down before the result is persisted and notifications are derived.
+	// Only reachability checks are invertible — never push (a missing heartbeat is
+	// a real outage, not a "reachable" signal), matching how the UI exposes it.
+	if monitorType != "push" && monitor.GetBool("inverted") {
+		status, msg = invertMonitorResult(status, msg)
+	}
+
 	ms.saveResult(monitor, status, latencyMs, msg)
+}
+
+// invertMonitorResult flips an up/down result for inverted monitors (a reachable
+// target becomes the alert condition). The raw check message is kept verbatim —
+// the "inverted" context is shown in the UI (badge / Mode cell), not baked into
+// the stored message. An unknown status is left unchanged.
+func invertMonitorResult(status int, msg string) (int, string) {
+	switch status {
+	case monitorStatusUp:
+		return monitorStatusDown, msg
+	case monitorStatusDown:
+		return monitorStatusUp, msg
+	default:
+		return status, msg
+	}
 }
 
 func (ms *MonitorScheduler) inStartupGracePeriod() bool {

@@ -412,6 +412,16 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 									</div>
 									<div className="text-foreground">{monitor.failure_threshold ?? 3}</div>
 								</div>
+								{monitor.inverted && (
+									<div>
+										<div className="text-xs text-muted-foreground">
+											<Trans>Mode</Trans>
+										</div>
+										<div className="text-foreground">
+											<Trans>Inverted</Trans>
+										</div>
+									</div>
+								)}
 							</div>
 						</CardDescription>
 					</div>

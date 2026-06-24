@@ -1146,6 +1146,10 @@ msgstr "Configuration d'audit fine pour <0>{0}</0>. Les filtres restreignent les
 msgid "Fingerprint"
 msgstr "Empreinte"
 
+#: src/components/routes/monitors.tsx
+msgid "Flips up and down: the monitor is \"down\" when the target is reachable."
+msgstr "Inverse haut/bas : la sonde est « en échec » lorsque la cible est joignable."
+
 #: src/components/login/auth-form.tsx
 msgid "Forgot password?"
 msgstr "Mot de passe oublié ?"
@@ -1378,6 +1382,15 @@ msgstr "Intervalle (s)"
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
 msgstr "Adresse email invalide."
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Inverted"
+msgstr "Inversé"
+
+#: src/components/routes/monitors.tsx
+msgid "Inverted (alert when the target responds)"
+msgstr "Inversé (alerter lorsque la cible répond)"
 
 #: src/components/routes/monitors.tsx
 msgid "IP family"
@@ -1630,6 +1643,10 @@ msgstr "Sévérité minimale"
 #: src/lib/audit-status.ts
 msgid "Minor available"
 msgstr "Version mineure disponible"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Mode"
+msgstr "Mode"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Monitor"
@@ -2570,6 +2587,14 @@ msgstr "Paramètres enregistrés"
 #: src/components/routes/notifications.tsx
 msgid "Severity"
 msgstr "Sévérité"
+
+#: src/components/routes/monitors.tsx
+msgid "Show all monitors"
+msgstr "Afficher toutes les sondes"
+
+#: src/components/routes/monitors.tsx
+msgid "Show only monitors that are down"
+msgstr "Afficher uniquement les sondes en échec"
 
 #: src/components/login/auth-form.tsx
 msgid "Sign in"

@@ -72,6 +72,30 @@ Rules:
 
 Breaking this rule can silently break protocol compatibility between hub and agent.
 
+## Migrations Run In Lexical Filename Order, Not Numeric Order
+
+PocketBase sorts registered migrations by **filename string comparison**
+(`core/migrations_list.go`: `l.list[i].File < l.list[j].File`), *not* by the
+leading integer. Because `'2' (0x32) < '_' (0x5F)`, a two-digit prefix like
+`32_…` sorts **before** the single-digit `3_create_monitors.go`. In fact every
+two-digit `1X_`/`2X_`/`3X_` migration runs *before* the single-digit
+`2_`,`3_`,`4_`,`6_`,`7_` migrations.
+
+Consequence: a migration that modifies a collection created in a single-digit
+migration must itself sort **after** it, or `FindCollectionByNameOrId` returns
+`sql: no rows in result set` at apply time. The existing two-digit migrations
+(13–31) never hit this because they only touch collections created in *other*
+two-digit migrations.
+
+This is why `8_add_monitor_inverted.go` (which alters the `monitors` collection
+from `3_create_monitors.go`) uses an `8_` prefix instead of the next sequential
+`32_`: `8_` sorts after all single-digit migrations, so `monitors` exists when
+it runs. When adding a migration that touches `users`, `agents`,
+`host_snapshots`, `monitors`, or the notification collections (created in
+single-digit migrations), pick a prefix that sorts after that source migration —
+do not assume numeric order. Renaming already-shipped migration files is unsafe
+(the `_migrations` table tracks them by filename and would re-run them).
+
 ## Treat WebSocket As The Real Transport
 
 The real transport path in this repository is WebSocket.

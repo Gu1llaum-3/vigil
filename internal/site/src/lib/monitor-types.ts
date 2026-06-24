@@ -15,6 +15,8 @@ export interface MonitorRecord {
 	http_accepted_codes?: number[]
 	keyword?: string
 	keyword_invert?: boolean
+	// inverted: treat a reachable target as the alert condition (flip up<->down)
+	inverted?: boolean
 	// TCP
 	hostname?: string
 	port?: number
@@ -39,6 +41,18 @@ export interface MonitorRecord {
 	uptime_24h?: number
 	uptime_30d?: number
 	recent_checks?: { status: MonitorStatus; checked_at: string }[]
+}
+
+// Up/down only count a *confirmed* status (1=up, 0=down). A monitor that is
+// unchecked, unknown, or still retrying below its failure threshold sits at
+// status -1 and is rendered "Pending" — it counts as neither up nor down (same
+// separation as Uptime Kuma's PENDING state). Shared so the monitors page, group
+// sections, and the sidebar bell count all agree with the status badge.
+export function isMonitorUp(m: MonitorRecord): boolean {
+	return Boolean(m.last_checked_at) && m.status === 1
+}
+export function isMonitorDown(m: MonitorRecord): boolean {
+	return Boolean(m.last_checked_at) && m.status === 0
 }
 
 export interface MonitorGroupResponse {
@@ -79,6 +93,7 @@ export interface MonitorFormData {
 	http_method: string
 	keyword: string
 	keyword_invert: boolean
+	inverted: boolean
 	hostname: string
 	port: number | ""
 	ping_count: number | ""
@@ -101,6 +116,7 @@ export const defaultMonitorForm: MonitorFormData = {
 	http_method: "GET",
 	keyword: "",
 	keyword_invert: false,
+	inverted: false,
 	hostname: "",
 	port: "",
 	ping_count: 1,

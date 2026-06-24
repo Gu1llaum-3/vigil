@@ -47,10 +47,12 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
 import { isReadOnlyUser, pb } from "@/lib/api"
-import { copyToClipboard } from "@/lib/utils"
+import { cn, copyToClipboard } from "@/lib/utils"
 import { $router, Link } from "@/components/router"
 import {
 	defaultMonitorForm,
+	isMonitorDown,
+	isMonitorUp,
 	type MonitorFormData,
 	type MonitorGroupRecord,
 	type MonitorGroupResponse,
@@ -192,6 +194,7 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 					http_method: monitor.http_method || "GET",
 					keyword: monitor.keyword || "",
 					keyword_invert: monitor.keyword_invert || false,
+					inverted: monitor.inverted || false,
 					hostname: monitor.hostname || "",
 					port: monitor.port || "",
 					dns_host: monitor.dns_host || "",
@@ -226,6 +229,8 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 				interval: Number(form.interval) || 60,
 				timeout: Number(form.timeout) || 10,
 				failure_threshold: Number(form.failure_threshold) || 0,
+				// inverted applies to every reachability type; the hub ignores it for push
+				inverted: form.type === "push" ? false : form.inverted,
 			}
 			switch (form.type) {
 				case "http":
@@ -550,6 +555,21 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 						</p>
 					)}
 
+					{/* Inverted mode — meaningful for reachability checks, not for push heartbeats */}
+					{form.type !== "push" && (
+						<div className="grid gap-1.5">
+							<div className="flex items-center gap-2">
+								<Switch checked={form.inverted} onCheckedChange={(v) => set("inverted", v)} id="monitor-inverted" />
+								<Label htmlFor="monitor-inverted">
+									<Trans>Inverted (alert when the target responds)</Trans>
+								</Label>
+							</div>
+							<p className="text-xs text-muted-foreground">
+								<Trans>Flips up and down: the monitor is "down" when the target is reachable.</Trans>
+							</p>
+						</div>
+					)}
+
 					{/* Active */}
 					<div className="flex items-center gap-2">
 						<Switch checked={form.active} onCheckedChange={(v) => set("active", v)} id="monitor-active" />
@@ -665,6 +685,9 @@ export default memo(function MonitorsPage() {
 	const [editGroup, setEditGroup] = useState<MonitorGroupRecord | null>(null)
 	const [deleteGroupConfirm, setDeleteGroupConfirm] = useState<MonitorGroupResponse | null>(null)
 	const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => readOpenGroups())
+	// When toggled (via the "X down" counter), only groups containing a down monitor
+	// are shown and force-expanded, to triage outages fast.
+	const [showOnlyDown, setShowOnlyDown] = useState(false)
 
 	const fetchMonitors = useCallback(async () => {
 		try {
@@ -745,9 +768,14 @@ export default memo(function MonitorsPage() {
 	}
 
 	const allMonitors = groups.flatMap((g) => g.monitors)
-	const upCount = allMonitors.filter((m) => m.last_checked_at && m.status === 1).length
-	const downCount = allMonitors.filter((m) => m.last_checked_at && m.status !== 1).length
+	const upCount = allMonitors.filter(isMonitorUp).length
+	const downCount = allMonitors.filter(isMonitorDown).length
 	const orderedGroups = [...groups.filter((group) => !group.id), ...groups.filter((group) => group.id)]
+	const groupHasDown = (g: MonitorGroupResponse) => g.monitors.some(isMonitorDown)
+	// Only honor the down-only filter while something is actually down, so the view
+	// doesn't get stuck on an empty list after everything recovers.
+	const downOnly = showOnlyDown && downCount > 0
+	const visibleGroups = downOnly ? orderedGroups.filter(groupHasDown) : orderedGroups
 
 	function toggleGroup(id: string) {
 		setOpenGroups((current) => {
@@ -781,9 +809,17 @@ export default memo(function MonitorsPage() {
 							<span>·</span>
 							{downCount > 0 && (
 								<>
-									<span className="font-medium text-red-600 dark:text-red-400">
+									<button
+										type="button"
+										onClick={() => setShowOnlyDown((v) => !v)}
+										title={downOnly ? t`Show all monitors` : t`Show only monitors that are down`}
+										className={cn(
+											"font-medium text-red-600 hover:underline dark:text-red-400",
+											downOnly && "underline"
+										)}
+									>
 										{downCount} <Trans>down</Trans>
-									</span>
+									</button>
 									<span>·</span>
 								</>
 							)}
@@ -865,13 +901,16 @@ export default memo(function MonitorsPage() {
 
 			{/* Groups + monitors */}
 			<div className="flex flex-col gap-6">
-				{orderedGroups.map((group) => (
+				{visibleGroups.map((group) => (
 					<MonitorGroupSection
 						key={group.id || ungroupedGroupStateKey}
 						group={group}
 						readonly={readonly}
-						open={openGroups[group.id || ungroupedGroupStateKey] ?? !group.id}
-						onToggle={() => toggleGroup(group.id || ungroupedGroupStateKey)}
+						downOnly={downOnly}
+						open={downOnly ? true : (openGroups[group.id || ungroupedGroupStateKey] ?? !group.id)}
+						// In down-only mode groups are force-expanded, so collapsing is disabled
+						// (no-op) rather than silently mutating the persisted open state.
+						onToggle={downOnly ? () => {} : () => toggleGroup(group.id || ungroupedGroupStateKey)}
 						onEditMonitor={(m) => {
 							setEditMonitor(m)
 							setMonitorDefaultGroupId("")
@@ -951,6 +990,7 @@ interface MonitorGroupSectionProps {
 	availableGroups: MonitorGroupRecord[]
 	readonly: boolean
 	open: boolean
+	downOnly: boolean
 	onToggle: () => void
 	onEditMonitor: (m: MonitorRecord) => void
 	onAddMonitor: () => void
@@ -965,6 +1005,7 @@ function MonitorGroupSection({
 	availableGroups,
 	readonly,
 	open,
+	downOnly,
 	onToggle,
 	onEditMonitor,
 	onAddMonitor,
@@ -977,6 +1018,12 @@ function MonitorGroupSection({
 
 	const isUngrouped = !group.id
 	const title = isUngrouped ? <Trans>No group</Trans> : group.name
+
+	const downInGroup = group.monitors.filter(isMonitorDown).length
+	// Down monitors float to the top of the group; in down-only mode the rest are hidden.
+	const rows = (downOnly ? group.monitors.filter(isMonitorDown) : group.monitors)
+		.slice()
+		.sort((a, b) => Number(isMonitorDown(b)) - Number(isMonitorDown(a)))
 
 	return (
 		<div className="rounded-md border border-border/60 overflow-hidden bg-card">
@@ -994,9 +1041,17 @@ function MonitorGroupSection({
 				</Button>
 				<div className="flex items-center gap-2 justify-self-start text-xs whitespace-nowrap text-muted-foreground">
 					<span className="text-green-600 dark:text-green-400 font-medium">
-						{group.monitors.filter((m) => m.last_checked_at && m.status === 1).length} <Trans>up</Trans>
+						{group.monitors.filter(isMonitorUp).length} <Trans>up</Trans>
 					</span>
 					<span>·</span>
+					{downInGroup > 0 && (
+						<>
+							<span className="font-medium text-red-600 dark:text-red-400">
+								{downInGroup} <Trans>down</Trans>
+							</span>
+							<span>·</span>
+						</>
+					)}
 					<span>
 						{group.monitors.length} <Trans>total</Trans>
 					</span>
@@ -1066,14 +1121,14 @@ function MonitorGroupSection({
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{group.monitors.length === 0 ? (
+							{rows.length === 0 ? (
 								<TableRow>
 									<TableCell colSpan={readonly ? 9 : 10} className="text-center text-muted-foreground text-sm py-6">
 										<Trans>No monitors in this group.</Trans>
 									</TableCell>
 								</TableRow>
 							) : (
-								group.monitors.map((m) => (
+								rows.map((m) => (
 									<MonitorRow
 										key={m.id}
 										monitor={m}
@@ -1108,16 +1163,24 @@ function MonitorRow({ monitor: m, availableGroups, readonly, onMoveMonitor, onEd
 	const target = monitorTarget(m)
 	const canVisitTarget = m.type === "http" && /^https?:\/\//i.test(target)
 	const currentGroupId = m.group || ungroupedGroupStateKey
+	const down = isMonitorDown(m)
 
 	return (
-		<TableRow>
+		<TableRow className={cn(down && "bg-red-500/[0.04] hover:bg-red-500/[0.08]")}>
 			<TableCell>
 				<StatusBadge status={m.status} lastCheckedAt={m.last_checked_at} />
 			</TableCell>
 			<TableCell>
-				<Link href={getPagePath($router, "monitor", { id: m.id })} className="font-medium text-sm hover:underline">
-					{m.name}
-				</Link>
+				<div className="flex flex-wrap items-center gap-1.5">
+					<Link href={getPagePath($router, "monitor", { id: m.id })} className="font-medium text-sm hover:underline">
+						{m.name}
+					</Link>
+					{m.inverted && (
+						<Badge variant="outline" className="text-[10px]">
+							<Trans>Inverted</Trans>
+						</Badge>
+					)}
+				</div>
 				{m.last_msg && <div className="text-xs text-muted-foreground truncate max-w-xs mt-0.5">{m.last_msg}</div>}
 			</TableCell>
 			<TableCell className="hidden sm:table-cell">
