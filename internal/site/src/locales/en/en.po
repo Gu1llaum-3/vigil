@@ -447,6 +447,7 @@ msgid "Click \"Add monitor\" to start monitoring your services."
 msgstr "Click \"Add monitor\" to start monitoring your services."
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/ui/copy-button.tsx
 #: src/components/ui/input-copy.tsx
 msgid "Click to copy"
 msgstr "Click to copy"
@@ -585,6 +586,7 @@ msgid "Containers were detected, but image audit results have not been generated
 msgstr "Containers were detected, but image audit results have not been generated yet."
 
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/ui/copy-button.tsx
 #: src/lib/utils.ts
 msgid "Copied to clipboard"
 msgstr "Copied to clipboard"
@@ -616,6 +618,11 @@ msgstr "Copy env"
 msgctxt "Button to copy install script command"
 msgid "Copy install script"
 msgstr "Copy install script"
+
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
+msgid "Copy IP"
+msgstr "Copy IP"
 
 #: src/components/add-agent.tsx
 msgctxt "Button to copy raw binary command"

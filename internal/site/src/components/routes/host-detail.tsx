@@ -17,6 +17,7 @@ import Spinner from "@/components/spinner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CopyButton } from "@/components/ui/copy-button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -292,8 +293,15 @@ export default function HostDetailPage() {
 							)}
 						</div>
 						<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-							<span>{host.hostname || host.id}</span>
-							<span>{host.primary_ip || "-"}</span>
+							{host.name && host.hostname && host.hostname !== host.name && <span>{host.hostname}</span>}
+							{host.primary_ip ? (
+								<span className="inline-flex items-center gap-1">
+									{host.primary_ip}
+									<CopyButton value={host.primary_ip} label={t`Copy IP`} />
+								</span>
+							) : (
+								<span>-</span>
+							)}
 							<span>
 								<Trans>Last snapshot</Trans>: {formatDateTime(host.collected_at)}
 							</span>
