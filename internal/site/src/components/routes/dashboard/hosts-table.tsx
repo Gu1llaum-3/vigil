@@ -16,6 +16,7 @@ import { getPagePath } from "@nanostores/router"
 import { $router, Link } from "@/components/router"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { CopyButton } from "@/components/ui/copy-button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -176,9 +177,21 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 							<Link href={getPagePath($router, "host", { id: h.id })} className="font-semibold hover:underline">
 								{h.name || h.hostname || h.id}
 							</Link>
-							<div className="text-xs text-muted-foreground">
-								{[h.hostname && h.hostname !== h.name ? h.hostname : "", h.primary_ip].filter(Boolean).join(" · ") ||
-									"—"}
+							<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+								{h.hostname && h.hostname !== h.name && <span>{h.hostname}</span>}
+								{h.hostname && h.hostname !== h.name && h.primary_ip && <span aria-hidden>·</span>}
+								{h.primary_ip ? (
+									<span className="inline-flex items-center gap-1">
+										{h.primary_ip}
+										<CopyButton
+											value={h.primary_ip}
+											label={t`Copy IP`}
+											className="opacity-0 transition group-hover:opacity-100"
+										/>
+									</span>
+								) : (
+									!(h.hostname && h.hostname !== h.name) && <span>—</span>
+								)}
 							</div>
 						</div>
 						<InfoBtn

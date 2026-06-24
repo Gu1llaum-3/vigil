@@ -127,6 +127,7 @@ function CountBadge({ count, tone = "danger" }: { count: number; tone?: "danger"
 
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
 	const page = useStore($router)
+	const version = globalThis.APP?.HUB_VERSION
 	const downHostCount = useDownHostCount()
 	const downMonitorCount = useDownMonitorCount()
 	const imageUpdatesCount = useImageUpdatesCount()
@@ -219,6 +220,11 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
 					)
 				})}
 			</nav>
+
+			{/* Current hub version, pinned to the bottom (hidden in the collapsed rail). */}
+			{!collapsed && version && (
+				<div className="mt-auto px-3 pb-1 text-[11px] tabular-nums text-muted-foreground/70">{version}</div>
+			)}
 		</div>
 	)
 }

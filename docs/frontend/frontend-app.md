@@ -150,6 +150,10 @@ The sidebar routes are:
 
 The desktop sidebar collapse state is controlled from the topbar and stored in `localStorage` under `vigil.sidebar.collapsed`. It is intentionally local UI state, not persisted user settings.
 
+The sidebar also pins the current hub version (`globalThis.APP?.HUB_VERSION`, injected by `server.go`) to the bottom of the rail; it is hidden when the sidebar is collapsed.
+
+Inline "copy to clipboard" affordances should use the shared `internal/site/src/components/ui/copy-button.tsx` (icon button with a 1.5s checkmark success state, tooltip, and a11y label) so the copy idiom stays consistent. It currently backs the host IP copy buttons (hosts table + host-detail header); older copy sites such as container image refs and monitor push URLs predate it and still inline their own variants — migrate them to `CopyButton` when touched.
+
 The topbar component is `internal/site/src/components/navbar.tsx`.
 
 This component demonstrates several frontend conventions used in the project:
