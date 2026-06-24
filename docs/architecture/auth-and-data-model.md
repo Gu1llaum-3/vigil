@@ -127,7 +127,7 @@ The collection is tied to the user that created the enrollment token.
 
 - created by migration `3_create_monitors.go`
 - one record per configured uptime monitor
-- common fields: `name`, `type` (select: `http`/`tcp`/`dns`/`push`), `group` (relation→monitor_groups), `active`, `interval` (seconds), `timeout` (seconds)
+- common fields: `name`, `type` (select: `http`/`ping`/`tcp`/`dns`/`push`), `group` (relation→monitor_groups), `active`, `interval` (seconds), `timeout` (seconds)
 - type-specific fields: `url`, `http_method`, `http_accepted_codes` (json), `keyword`, `keyword_invert`, `hostname`, `port`, `dns_host`, `dns_type`, `dns_server`, `push_token`
 - behavior field (migration `8_add_monitor_inverted.go`, prefixed `8_` for lexical migration ordering — see conventions-and-gotchas.md): `inverted` (bool — flip up↔down so a reachable target is the alert condition)
 - status fields updated by the scheduler: `status` (-1=unknown, 0=down, 1=up), `last_checked_at`, `last_latency_ms`, `last_msg`, `last_push_at`

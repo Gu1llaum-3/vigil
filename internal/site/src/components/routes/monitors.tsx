@@ -777,6 +777,13 @@ export default memo(function MonitorsPage() {
 	const downOnly = showOnlyDown && downCount > 0
 	const visibleGroups = downOnly ? orderedGroups.filter(groupHasDown) : orderedGroups
 
+	// Clear the down-only filter once everything recovers, so it doesn't silently
+	// re-apply (force-expanding + collapse-locking groups) the next time a monitor
+	// goes down without the user re-requesting it.
+	useEffect(() => {
+		if (downCount === 0 && showOnlyDown) setShowOnlyDown(false)
+	}, [downCount, showOnlyDown])
+
 	function toggleGroup(id: string) {
 		setOpenGroups((current) => {
 			const next = {
@@ -836,7 +843,7 @@ export default memo(function MonitorsPage() {
 								variant="outline"
 								size="sm"
 								onClick={() => setAllGroupsOpen(true)}
-								disabled={orderedGroups.length === 0}
+								disabled={orderedGroups.length === 0 || downOnly}
 							>
 								<ChevronDownIcon className="h-4 w-4 me-1.5" />
 								<Trans>Expand all</Trans>
@@ -845,7 +852,7 @@ export default memo(function MonitorsPage() {
 								variant="outline"
 								size="sm"
 								onClick={() => setAllGroupsOpen(false)}
-								disabled={orderedGroups.length === 0}
+								disabled={orderedGroups.length === 0 || downOnly}
 							>
 								<ChevronRightIcon className="h-4 w-4 me-1.5" />
 								<Trans>Collapse all</Trans>
@@ -1040,21 +1047,30 @@ function MonitorGroupSection({
 					{title}
 				</Button>
 				<div className="flex items-center gap-2 justify-self-start text-xs whitespace-nowrap text-muted-foreground">
-					<span className="text-green-600 dark:text-green-400 font-medium">
-						{group.monitors.filter(isMonitorUp).length} <Trans>up</Trans>
-					</span>
-					<span>·</span>
-					{downInGroup > 0 && (
+					{downOnly ? (
+						// Only down rows are rendered in this mode — show just that count to match.
+						<span className="font-medium text-red-600 dark:text-red-400">
+							{downInGroup} <Trans>down</Trans>
+						</span>
+					) : (
 						<>
-							<span className="font-medium text-red-600 dark:text-red-400">
-								{downInGroup} <Trans>down</Trans>
+							<span className="text-green-600 dark:text-green-400 font-medium">
+								{group.monitors.filter(isMonitorUp).length} <Trans>up</Trans>
 							</span>
 							<span>·</span>
+							{downInGroup > 0 && (
+								<>
+									<span className="font-medium text-red-600 dark:text-red-400">
+										{downInGroup} <Trans>down</Trans>
+									</span>
+									<span>·</span>
+								</>
+							)}
+							<span>
+								{group.monitors.length} <Trans>total</Trans>
+							</span>
 						</>
 					)}
-					<span>
-						{group.monitors.length} <Trans>total</Trans>
-					</span>
 				</div>
 				<div className="justify-self-end">
 					{group.id && !readonly && (
