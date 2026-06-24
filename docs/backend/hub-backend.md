@@ -362,6 +362,10 @@ Goroutine start/stop is **only triggered from the API handlers**, not from Pocke
 
 Monitors also have a `failure_threshold` field. The default is `3`, `0` means instant down, and the scheduler flips the monitor to `down` after that many consecutive failures.
 
+### Inverted Monitors
+
+A monitor with `inverted = true` treats a *reachable* target as the alert condition (e.g. a maintenance page that should normally be unreachable). `doCheck` calls `invertMonitorResult(status, msg)` to flip `up`↔`down` **before** `saveResult`, so the failure-threshold and notification machinery operate on the effective status unchanged. An `unknown` status is left untouched, and the flip is **skipped for `push`** monitors (a missing heartbeat is a real outage, not a reachability signal — and the UI only offers the toggle for http/tcp/dns/ping). The raw check message is kept verbatim; the "inverted" context is surfaced in the UI (badge / Mode cell), not baked into the stored `last_msg`.
+
 The startup grace period only softens the initial `unknown` path after hub boot. Monitors that already had a known status such as `up` still honor their configured threshold immediately, and low thresholds (`0` and `1`) still apply immediately.
 
 Both use `SaveNoValidate` — see the critical note above.

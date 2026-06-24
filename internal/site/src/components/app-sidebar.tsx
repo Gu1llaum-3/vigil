@@ -7,7 +7,7 @@ import { Logo } from "@/components/logo"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { pb } from "@/lib/api"
-import type { MonitorGroupResponse } from "@/lib/monitor-types"
+import { isMonitorDown, type MonitorGroupResponse } from "@/lib/monitor-types"
 import { cn } from "@/lib/utils"
 import { $router, Link } from "./router"
 
@@ -19,7 +19,7 @@ function useDownMonitorCount() {
 		try {
 			const groups = await pb.send<MonitorGroupResponse[]>("/api/app/monitors", { method: "GET" })
 			const allMonitors = (groups ?? []).flatMap((group) => group.monitors)
-			setDownCount(allMonitors.filter((monitor) => monitor.last_checked_at && monitor.status === 0).length)
+			setDownCount(allMonitors.filter(isMonitorDown).length)
 		} catch {
 			// ignore transient sidebar fetch failures
 		}

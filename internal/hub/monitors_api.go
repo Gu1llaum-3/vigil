@@ -31,6 +31,7 @@ type MonitorRecord struct {
 	HTTPMethod            string              `json:"http_method,omitempty"`
 	Keyword               string              `json:"keyword,omitempty"`
 	KeywordInvert         bool                `json:"keyword_invert,omitempty"`
+	Inverted              bool                `json:"inverted,omitempty"`
 	Hostname              string              `json:"hostname,omitempty"`
 	Port                  int                 `json:"port,omitempty"`
 	DNSHost               string              `json:"dns_host,omitempty"`
@@ -174,6 +175,7 @@ func monitorToRecord(m *core.Record, appURL string, metrics *MonitorMetrics, rec
 		HTTPMethod:    m.GetString("http_method"),
 		Keyword:       m.GetString("keyword"),
 		KeywordInvert: m.GetBool("keyword_invert"),
+		Inverted:      m.GetBool("inverted"),
 		Hostname:      m.GetString("hostname"),
 		Port:          m.GetInt("port"),
 		DNSHost:       m.GetString("dns_host"),
@@ -642,7 +644,7 @@ func applyMonitorFields(rec *core.Record, body map[string]any) {
 		"url", "http_method", "http_accepted_codes", "keyword", "keyword_invert",
 		"hostname", "port", "dns_host", "dns_type", "dns_server", "push_token",
 		"ping_count", "ping_per_request_timeout", "ping_ip_family",
-		"failure_threshold",
+		"failure_threshold", "inverted",
 	}
 	for _, f := range fields {
 		if v, ok := body[f]; ok {

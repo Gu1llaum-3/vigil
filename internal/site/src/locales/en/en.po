@@ -1141,6 +1141,10 @@ msgstr "Fine-grained audit configuration for <0>{0}</0>. Tag filters narrow whic
 msgid "Fingerprint"
 msgstr "Fingerprint"
 
+#: src/components/routes/monitors.tsx
+msgid "Flips up and down: the monitor is \"down\" when the target is reachable."
+msgstr "Flips up and down: the monitor is \"down\" when the target is reachable."
+
 #: src/components/login/auth-form.tsx
 msgid "Forgot password?"
 msgstr "Forgot password?"
@@ -1373,6 +1377,15 @@ msgstr "Interval (s)"
 #: src/components/login/auth-form.tsx
 msgid "Invalid email address."
 msgstr "Invalid email address."
+
+#: src/components/routes/monitor-detail.tsx
+#: src/components/routes/monitors.tsx
+msgid "Inverted"
+msgstr "Inverted"
+
+#: src/components/routes/monitors.tsx
+msgid "Inverted (alert when the target responds)"
+msgstr "Inverted (alert when the target responds)"
 
 #: src/components/routes/monitors.tsx
 msgid "IP family"
@@ -1625,6 +1638,10 @@ msgstr "Minimum severity"
 #: src/lib/audit-status.ts
 msgid "Minor available"
 msgstr "Minor available"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Mode"
+msgstr "Mode"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Monitor"
@@ -2565,6 +2582,14 @@ msgstr "Settings saved"
 #: src/components/routes/notifications.tsx
 msgid "Severity"
 msgstr "Severity"
+
+#: src/components/routes/monitors.tsx
+msgid "Show all monitors"
+msgstr "Show all monitors"
+
+#: src/components/routes/monitors.tsx
+msgid "Show only monitors that are down"
+msgstr "Show only monitors that are down"
 
 #: src/components/login/auth-form.tsx
 msgid "Sign in"

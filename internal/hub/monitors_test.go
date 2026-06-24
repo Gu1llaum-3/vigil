@@ -141,3 +141,21 @@ func TestCheckPingRequiresHostname(t *testing.T) {
 	require.Zero(t, latency)
 	require.Equal(t, "Missing hostname", msg)
 }
+
+func TestInvertMonitorResult(t *testing.T) {
+	// up becomes down (reachable target is the alert condition for inverted monitors);
+	// the raw message is kept verbatim (no presentation baked into stored data)
+	status, msg := invertMonitorResult(monitorStatusUp, "HTTP 200")
+	require.Equal(t, monitorStatusDown, status)
+	require.Equal(t, "HTTP 200", msg)
+
+	// down becomes up (target is unreachable as expected)
+	status, msg = invertMonitorResult(monitorStatusDown, "Connection failed")
+	require.Equal(t, monitorStatusUp, status)
+	require.Equal(t, "Connection failed", msg)
+
+	// unknown is left untouched
+	status, msg = invertMonitorResult(monitorStatusUnknown, "pending")
+	require.Equal(t, monitorStatusUnknown, status)
+	require.Equal(t, "pending", msg)
+}

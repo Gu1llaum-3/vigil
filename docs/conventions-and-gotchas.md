@@ -72,6 +72,38 @@ Rules:
 
 Breaking this rule can silently break protocol compatibility between hub and agent.
 
+## Migrations Run In Lexical Filename Order, Not Numeric Order
+
+PocketBase sorts registered migrations by **filename string comparison**
+(`core/migrations_list.go`: `l.list[i].File < l.list[j].File`), *not* by the
+leading integer. Because `'2' (0x32) < '_' (0x5F)`, a two-digit prefix like
+`32_…` sorts **before** the single-digit `3_create_monitors.go`. In fact every
+two-digit `1X_`/`2X_`/`3X_` migration runs *before* the single-digit
+`2_`,`3_`,`4_`,`6_`,`7_` migrations.
+
+Consequence: a migration that modifies a collection created in a single-digit
+migration must itself sort **after** it, or `FindCollectionByNameOrId` returns
+`sql: no rows in result set` at apply time.
+
+Some existing two-digit migrations *do* touch single-digit-created collections —
+e.g. `23_add_monitor_events_composite_index.go` touches `monitor_events` (from
+`3_create_monitors.go`) and `27_hide_agent_token.go` touches `agents` (from
+`0_collections_snapshot_*.go`). They get away with it only because each guards
+the lookup with `if err != nil { return nil }`: when the collection isn't there
+yet the migration silently no-ops. That **masks** the ordering hazard rather than
+fixing it (and on a fresh DB the intended change may simply be skipped), so it is
+not a pattern to copy. `27_` happens to be safe because it still sorts after `0_`.
+
+This is why `8_add_monitor_inverted.go` (which alters the `monitors` collection
+from `3_create_monitors.go`) uses an `8_` prefix instead of the next sequential
+`32_`: `8_` sorts after all single-digit migrations, so `monitors` is guaranteed
+to exist when it runs. When adding a migration that touches `users`, `agents`,
+`host_snapshots`, `monitors`, or the notification collections (created in
+single-digit migrations), pick a prefix that sorts after that source migration —
+do not assume numeric order, and do not rely on the `return nil` guard to paper
+over bad ordering. Renaming already-shipped migration files is unsafe (the
+`_migrations` table tracks them by filename and would re-run them).
+
 ## Treat WebSocket As The Real Transport
 
 The real transport path in this repository is WebSocket.
