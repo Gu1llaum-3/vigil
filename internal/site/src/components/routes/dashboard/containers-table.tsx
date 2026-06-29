@@ -50,7 +50,9 @@ import { toast } from "@/components/ui/use-toast"
 import { $router, Link } from "@/components/router"
 import { StaleCheckHint } from "@/components/stale-check-hint"
 import { useAuditLabel } from "@/lib/audit-status"
-import { isAdmin, pb } from "@/lib/api"
+import { isAdmin, isReadOnlyUser, pb } from "@/lib/api"
+import { muteKey, useMutes } from "@/lib/mutes"
+import { MuteBadge, MuteBellButton } from "@/components/mute-menu"
 import { containerSeverity, isStoppedContainerStatus } from "@/lib/container-status"
 import { cn, copyToClipboard } from "@/lib/utils"
 import type { ContainerFleetEntry } from "@/lib/dashboard-types"
@@ -402,6 +404,9 @@ type OverrideEntry = {
 	notes?: string
 }
 
+// OverrideMenu is the admin-only per-container image-audit policy control. Notification
+// muting is a separate, consistent far-right bell column (see MuteBellButton), not folded
+// in here, so the mute affordance looks and behaves the same across monitors/hosts/containers.
 function OverrideMenu({
 	entry,
 	current,
@@ -659,6 +664,8 @@ export const ContainersTable = memo(function ContainersTable({
 	const [overrides, setOverrides] = useState<Record<string, OverrideEntry>>({})
 	const [advancedOverrideEntry, setAdvancedOverrideEntry] = useState<ContainerFleetEntry | null>(null)
 	const admin = isAdmin()
+	const readonly = isReadOnlyUser()
+	const mutes = useMutes()
 
 	useEffect(() => {
 		if (!admin) return
@@ -938,8 +945,29 @@ export const ContainersTable = memo(function ContainersTable({
 						} as ColumnDef<ContainerFleetEntry>,
 					]
 				: []),
+			{
+				id: "mute",
+				enableSorting: false,
+				header: () => (
+					<span className="sr-only">
+						<Trans>Notifications</Trans>
+					</span>
+				),
+				cell: ({ row: { original: c } }: { row: { original: ContainerFleetEntry } }) => {
+					const activeMute = mutes.get(muteKey("container_image", `${c.host_id}|${c.name}`))
+					return (
+						<div className="flex justify-end">
+							{readonly ? (
+								<MuteBadge activeMute={activeMute} />
+							) : (
+								<MuteBellButton type="container_image" id={`${c.host_id}|${c.name}`} activeMute={activeMute} />
+							)}
+						</div>
+					)
+				},
+			} as ColumnDef<ContainerFleetEntry>,
 		],
-		[admin, overrides, setOverridePolicy, t]
+		[admin, readonly, mutes, overrides, setOverridePolicy, t]
 	)
 
 	const table = useReactTable({

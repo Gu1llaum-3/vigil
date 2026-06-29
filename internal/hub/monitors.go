@@ -241,10 +241,7 @@ func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latency
 			Current:  monitorStatusName(effectiveStatus),
 			Details:  map[string]any{"last_msg": msg, "latency_ms": latencyMs},
 		}
-		if err := ms.hub.createSystemNotification(evt); err != nil {
-			slog.Warn("Failed to create system notification", "monitor", monitorID, "err", err)
-		}
-		ms.hub.notifier.Dispatch(evt)
+		ms.hub.emitNotification(evt)
 	}
 }
 

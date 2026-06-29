@@ -653,12 +653,7 @@ func (h *Hub) emitContainerImageAuditNotification(rec *core.Record, result image
 		return
 	}
 	evt := h.containerImageAuditNotificationEvent(rec, result, targets)
-	if err := h.createSystemNotification(evt); err != nil {
-		slog.Warn("container image audits: failed to create system notification", "err", err)
-	}
-	if h.notifier != nil {
-		h.notifier.Dispatch(evt)
-	}
+	h.emitNotification(evt)
 }
 
 func (h *Hub) containerImageAuditNotificationEvent(rec *core.Record, result imageAuditResult, targets []imageNotificationTarget) notifications.Event {
