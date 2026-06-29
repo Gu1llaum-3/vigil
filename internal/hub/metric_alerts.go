@@ -372,10 +372,7 @@ func metricAlertEvent(agentID, agentName string, metric metricKind, value float6
 
 func (e *metricAlertEvaluator) dispatch(evt notifications.Event, agentID string, metric metricKind) {
 	evt.OccurredAt = time.Now()
-	if err := e.hub.createSystemNotification(evt); err != nil {
-		slog.Warn("metric alerts: failed to create system notification", "agent", agentID, "metric", metric, "err", err)
-	}
-	e.hub.notifier.Dispatch(evt)
+	e.hub.emitNotification(evt)
 }
 
 func (e *metricAlertEvaluator) agentName(agentID string) string {

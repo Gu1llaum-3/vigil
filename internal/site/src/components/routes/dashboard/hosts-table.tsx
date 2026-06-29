@@ -25,6 +25,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { MetricBar } from "@/components/metric-charts"
 import { isReadOnlyUser } from "@/lib/api"
+import { muteKey, useMutes } from "@/lib/mutes"
+import { MuteBadge, MuteBellButton } from "@/components/mute-menu"
 import { formatBytesPerSecond } from "@/lib/format"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import {
@@ -82,6 +84,7 @@ function InfoBtn({ rows }: { rows: Array<{ label: string; value: string | number
 
 // Per-row quick actions on the hosts table — currently editing tags without
 // leaving the overview. Reuses the shared TagsDialog; non-readonly only.
+// (Notification muting lives in its own far-right bell column, not here.)
 function HostRowActions({ host }: { host: HostsOverviewRecord }) {
 	const { t } = useLingui()
 	const [tagsOpen, setTagsOpen] = useState(false)
@@ -149,6 +152,7 @@ interface HostsTableProps {
 export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersChange }: HostsTableProps) {
 	const { t } = useLingui()
 	const readOnly = isReadOnlyUser()
+	const mutes = useMutes()
 	const [sorting, setSorting] = useState<SortingState>([{ id: "connection", desc: true }])
 	const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
 	const [search, setSearch] = useState("")
@@ -326,8 +330,29 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					<span className="font-mono text-xs text-muted-foreground">{h.version || "—"}</span>
 				),
 			},
+			{
+				id: "mute",
+				enableSorting: false,
+				header: () => (
+					<span className="sr-only">
+						<Trans>Notifications</Trans>
+					</span>
+				),
+				cell: ({ row: { original: h } }) => {
+					const activeMute = mutes.get(muteKey("agent", h.id))
+					return (
+						<div className="flex justify-end">
+							{readOnly ? (
+								<MuteBadge activeMute={activeMute} />
+							) : (
+								<MuteBellButton type="agent" id={h.id} activeMute={activeMute} />
+							)}
+						</div>
+					)
+				},
+			},
 		],
-		[t, readOnly]
+		[t, readOnly, mutes]
 	)
 
 	const table = useReactTable({

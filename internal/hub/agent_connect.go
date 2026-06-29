@@ -285,10 +285,7 @@ func (h *Hub) UpdateAgent(record *AgentRecord, fingerprint, status, version stri
 			Previous: previous,
 			Current:  status,
 		}
-		if err := h.createSystemNotification(evt); err != nil {
-			slog.Warn("Failed to create system notification", "agent", rec.Id, "err", err)
-		}
-		h.notifier.Dispatch(evt)
+		h.emitNotification(evt)
 	}
 
 	return nil
@@ -382,10 +379,7 @@ func (h *Hub) setAgentStatus(agentId, status string) {
 		Previous: previous,
 		Current:  status,
 	}
-	if err := h.createSystemNotification(evt); err != nil {
-		slog.Warn("Failed to create system notification", "agent", agentId, "err", err)
-	}
-	h.notifier.Dispatch(evt)
+	h.emitNotification(evt)
 }
 
 // updateAgentInfo persists capabilities and metadata returned by GetAgentInfo, and
