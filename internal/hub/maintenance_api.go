@@ -3,6 +3,7 @@ package hub
 import (
 	"errors"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -246,6 +247,78 @@ func (h *Hub) deleteMaintenanceWindow(e *core.RequestEvent) error {
 		return err
 	}
 	return e.JSON(http.StatusOK, map[string]any{"ok": true})
+}
+
+// maintenanceOccurrencePayload is one concrete maintenance interval for a resource's chart,
+// carrying the window's title/severity for the band tooltip.
+type maintenanceOccurrencePayload struct {
+	Start    string `json:"start"`
+	End      string `json:"end"`
+	Title    string `json:"title"`
+	Severity string `json:"severity"`
+}
+
+// maintenanceOccurrencesForResource returns every maintenance interval covering the given
+// resource (monitor or agent) that intersects [since, until], across all enabled windows,
+// sorted by start. Drives the blue maintenance bands on the detail charts.
+func (h *Hub) maintenanceOccurrencesForResource(resourceType, id string, since, until time.Time) ([]maintenanceOccurrencePayload, error) {
+	records, err := h.FindRecordsByFilter(maintenanceCollection, "enabled = true", "", 0, 0)
+	if err != nil {
+		return nil, err
+	}
+	out := []maintenanceOccurrencePayload{}
+	for _, rec := range records {
+		var scope maintenanceScope
+		_ = rec.UnmarshalJSONField("scope", &scope)
+		covered := false
+		switch resourceType {
+		case "monitor":
+			covered = maintenanceScopeCoversMonitor(scope, id)
+		case "agent":
+			covered = maintenanceScopeCoversAgent(scope, id)
+		}
+		if !covered {
+			continue
+		}
+		title := rec.GetString("title")
+		severity := firstNonEmpty(rec.GetString("severity"), "info")
+		for _, occ := range maintenanceOccurrences(specFromRecord(rec), since, until) {
+			out = append(out, maintenanceOccurrencePayload{
+				Start:    occ.Start.UTC().Format(time.RFC3339),
+				End:      occ.End.UTC().Format(time.RFC3339),
+				Title:    title,
+				Severity: severity,
+			})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Start < out[j].Start })
+	return out, nil
+}
+
+// getMonitorMaintenance returns maintenance intervals covering a monitor over `range`, for
+// the detail chart's blue bands. Available to all authenticated users.
+func (h *Hub) getMonitorMaintenance(e *core.RequestEvent) error {
+	id := e.Request.PathValue("id")
+	now := time.Now().UTC()
+	since := now.Add(-parseMonitorRangeWindow(e.Request.URL.Query().Get("range")))
+	occ, err := h.maintenanceOccurrencesForResource("monitor", id, since, now)
+	if err != nil {
+		return err
+	}
+	return e.JSON(http.StatusOK, occ)
+}
+
+// getHostMaintenance returns maintenance intervals covering a host (agent) over `range`, for
+// the host detail charts' blue bands. Available to all authenticated users.
+func (h *Hub) getHostMaintenance(e *core.RequestEvent) error {
+	id := e.Request.PathValue("id")
+	now := time.Now().UTC()
+	since := now.Add(-parseMetricsHistoryRange(e.Request.URL.Query().Get("range")))
+	occ, err := h.maintenanceOccurrencesForResource("agent", id, since, now)
+	if err != nil {
+		return err
+	}
+	return e.JSON(http.StatusOK, occ)
 }
 
 // getActiveMaintenance returns the currently-active windows for the banner. Available to
