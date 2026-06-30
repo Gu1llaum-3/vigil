@@ -168,6 +168,12 @@ export interface HostsOverviewRecord extends HostSnapshot {
 	version: string
 	tags?: string[]
 	metrics?: HostMetrics | null
+	/**
+	 * Instantaneous bar severity per metric ("normal"/"warning"/"critical"), computed
+	 * hub-side from the current value vs the resolved thresholds (ignoring the alert's
+	 * enabled/hysteresis/duration/mute state). Absent when no metrics are available.
+	 */
+	metric_severity?: Partial<Record<"cpu" | "memory" | "disk", string>>
 }
 
 export interface DistributionEntry {

@@ -398,9 +398,9 @@ export function MetricCard({
 	)
 }
 
-export function MetricBar({ value, tone = "emerald" }: { value?: number | null; tone?: "emerald" | "amber" }) {
+export function MetricBar({ value, tone = "emerald" }: { value?: number | null; tone?: "emerald" | "amber" | "red" }) {
 	const percent = Math.max(0, Math.min(100, value ?? 0))
-	const barClass = tone === "amber" ? "bg-amber-500/80" : "bg-emerald-500/80"
+	const barClass = tone === "red" ? "bg-red-500/80" : tone === "amber" ? "bg-amber-500/80" : "bg-emerald-500/80"
 	return (
 		<div className="flex min-w-[180px] items-center gap-3">
 			<span className="w-12 shrink-0 text-xs font-medium tabular-nums">{formatPercent(value)}</span>

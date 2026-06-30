@@ -35,6 +35,19 @@ import {
 	type HostsFilters,
 } from "./hosts-filter-sheet"
 
+// Map the hub-computed instantaneous metric severity to a MetricBar tone. Falls back to
+// the green "emerald" tone for "normal", a missing severity, or an unconnected host.
+function severityTone(host: HostsOverviewRecord, metric: "cpu" | "memory" | "disk"): "emerald" | "amber" | "red" {
+	switch (host.metric_severity?.[metric]) {
+		case "critical":
+			return "red"
+		case "warning":
+			return "amber"
+		default:
+			return "emerald"
+	}
+}
+
 function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
 	return (
 		<span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-medium text-foreground">
@@ -225,7 +238,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 						<Trans>CPU</Trans>
 					</SortBtn>
 				),
-				cell: ({ row: { original: h } }) => <MetricBar value={h.metrics?.cpu_percent} />,
+				cell: ({ row: { original: h } }) => <MetricBar value={h.metrics?.cpu_percent} tone={severityTone(h, "cpu")} />,
 			},
 			{
 				id: "memory",
@@ -235,7 +248,9 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 						<Trans>Memory</Trans>
 					</SortBtn>
 				),
-				cell: ({ row: { original: h } }) => <MetricBar value={h.metrics?.memory_used_percent} />,
+				cell: ({ row: { original: h } }) => (
+					<MetricBar value={h.metrics?.memory_used_percent} tone={severityTone(h, "memory")} />
+				),
 			},
 			{
 				id: "disk",
@@ -246,10 +261,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 					</SortBtn>
 				),
 				cell: ({ row: { original: h } }) => (
-					<MetricBar
-						value={h.metrics?.disk_used_percent}
-						tone={h.metrics && h.metrics.disk_used_percent >= 75 ? "amber" : "emerald"}
-					/>
+					<MetricBar value={h.metrics?.disk_used_percent} tone={severityTone(h, "disk")} />
 				),
 			},
 			{

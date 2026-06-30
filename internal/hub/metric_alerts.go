@@ -198,6 +198,65 @@ func (e *metricAlertEvaluator) thresholdFor(agentID string, metric metricKind) (
 	return th, ok && th.enabled
 }
 
+// barSeverityDefaults are the fallback warning/critical thresholds used to color the
+// hosts-overview metric bars when no metric_alerts row is configured for a host. They
+// mirror the frontend seed defaults (metricAlertInfo) so a vanilla install still shows a
+// red CPU bar at 99% without an admin first configuring an alert. loadavg is intentionally
+// absent — it has no bar in the hosts table.
+var barSeverityDefaults = map[metricKind]struct{ warning, critical float64 }{
+	metricCPU:    {warning: 80, critical: 90},
+	metricMemory: {warning: 80, critical: 90},
+	metricDisk:   {warning: 80, critical: 90},
+}
+
+// firstPositive returns the first strictly-positive value, or 0 if none is. A 0 threshold
+// means "unset" for bar coloring, so this lets a band fall through to a lower-precedence
+// source rather than treating 0 as a real (always-breached) threshold.
+func firstPositive(vals ...float64) float64 {
+	for _, v := range vals {
+		if v > 0 {
+			return v
+		}
+	}
+	return 0
+}
+
+// barThresholds resolves the (warning, critical) thresholds used to color a metric's
+// hosts-overview bar. Each band is resolved INDEPENDENTLY across per-agent override →
+// global → built-in default, taking the first positive value: a disabled/zeroed "mute"
+// override, or a global that sets only one band, still falls through to a sensible default
+// rather than leaving the bar uncolored. enabled/hysteresis/duration are intentionally
+// ignored — the bar reflects the machine, not the alert. A metric with no configured row
+// and no built-in default resolves to 0/0 (never colored).
+func (e *metricAlertEvaluator) barThresholds(agentID string, metric metricKind) (warning, critical float64) {
+	def := barSeverityDefaults[metric] // zero value (0/0) for metrics without a default
+	var ovrW, ovrC, glW, glC float64
+	e.mu.RLock()
+	if byMetric, ok := e.perAgent[agentID]; ok {
+		if th, ok := byMetric[metric]; ok {
+			ovrW, ovrC = th.warning, th.critical
+		}
+	}
+	if th, ok := e.global[metric]; ok {
+		glW, glC = th.warning, th.critical
+	}
+	e.mu.RUnlock()
+	return firstPositive(ovrW, glW, def.warning), firstPositive(ovrC, glC, def.critical)
+}
+
+// instantSeverity returns the bar severity for a metric's current value against the
+// resolved thresholds (see barThresholds), REGARDLESS of enabled/hysteresis/duration/mute.
+func (e *metricAlertEvaluator) instantSeverity(agentID string, metric metricKind, value float64) alertTier {
+	warning, critical := e.barThresholds(agentID, metric)
+	if critical > 0 && value >= critical {
+		return tierCritical
+	}
+	if warning > 0 && value >= warning {
+		return tierWarning
+	}
+	return tierNone
+}
+
 // evaluate compares each metric against its threshold and dispatches edge-triggered
 // notifications. Safe to call from the per-agent collection goroutines: the
 // read-compute-write of the tier is done atomically in transition() so two
