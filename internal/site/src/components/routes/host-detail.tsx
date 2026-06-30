@@ -10,7 +10,6 @@ import {
 	NetworkIcon,
 	ServerIcon,
 	ShieldAlertIcon,
-	TagIcon,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { $router, Link } from "@/components/router"
@@ -33,9 +32,9 @@ import {
 	NetworkHistoryChart,
 } from "@/components/metric-charts"
 import { MetricThresholdsSheet } from "@/components/metric-thresholds"
-import { TagsDialog } from "@/components/tags-dialog"
+import { HostTags } from "@/components/host-tags"
 import { cn } from "@/lib/utils"
-import { isAdmin, isReadOnlyUser, pb } from "@/lib/api"
+import { isAdmin, pb } from "@/lib/api"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import type { ContainerMetricsHistoryPoint } from "@/lib/dashboard-types"
 import {
@@ -78,7 +77,6 @@ export default function HostDetailPage() {
 	const [containerFilters, setContainerFilters] = useState<ContainersFilters>(defaultContainersFilters)
 	const [host, setHost] = useState<HostsOverviewRecord | null>(null)
 	const [hostLoading, setHostLoading] = useState(true)
-	const [tagsOpen, setTagsOpen] = useState(false)
 	const [metricsRange, setMetricsRange] = useState<MetricsRange>("24h")
 	const [metricsHistory, setMetricsHistory] = useState<HostMetrics[]>([])
 	const [latestContainerMetricsPoint, setLatestContainerMetricsPoint] = useState<ContainerMetricsHistoryPoint | null>(
@@ -309,32 +307,11 @@ export default function HostDetailPage() {
 								<Trans>Last snapshot</Trans>: {formatDateTime(host.collected_at)}
 							</span>
 						</div>
-						{(host.tags?.length || !isReadOnlyUser()) && (
-							<div className="mt-2 flex flex-wrap items-center gap-1.5">
-								{(host.tags ?? []).map((tag) => (
-									<Badge key={tag} variant="secondary" className="font-normal">
-										{tag}
-									</Badge>
-								))}
-								{!isReadOnlyUser() && (
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-										onClick={() => setTagsOpen(true)}
-									>
-										<TagIcon className="size-3.5" />
-										{host.tags?.length ? <Trans>Edit tags</Trans> : <Trans>Add tags</Trans>}
-									</Button>
-								)}
-							</div>
-						)}
-						<TagsDialog
-							agentId={hostId}
-							currentTags={host.tags ?? []}
-							title={host.name || host.hostname || host.id}
-							open={tagsOpen}
-							onClose={() => setTagsOpen(false)}
+						<HostTags
+							className="mt-2"
+							tags={host.tags}
+							variant="wrap"
+							edit={{ agentId: hostId, title: host.name || host.hostname || host.id, mode: "button" }}
 						/>
 					</div>
 					{isAdmin() && (

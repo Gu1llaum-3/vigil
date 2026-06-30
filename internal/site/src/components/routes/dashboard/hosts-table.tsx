@@ -10,11 +10,11 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table"
-import { ChevronDownIcon, TagIcon, XIcon } from "lucide-react"
+import { ChevronDownIcon, XIcon } from "lucide-react"
 import { memo, useEffect, useMemo, useState } from "react"
 import { getPagePath } from "@nanostores/router"
 import { $router, Link } from "@/components/router"
-import { TagsDialog } from "@/components/tags-dialog"
+import { HostTags } from "@/components/host-tags"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CopyButton } from "@/components/ui/copy-button"
@@ -77,94 +77,6 @@ function InfoBtn({ rows }: { rows: Array<{ label: string; value: string | number
 				</div>
 			</TooltipContent>
 		</Tooltip>
-	)
-}
-
-// Compact, fixed-height tag cloud for the hosts table: shows the first couple of tags,
-// collapses the rest into a focusable "+N" control whose tooltip lists them all, and reveals
-// a pencil (→ TagsDialog) on row hover (the row carries `group/row`). Keeps row height
-// constant regardless of tag count. The edit affordance is non-readonly only; notification
-// muting lives in its own bell column.
-const TAGS_VISIBLE = 2
-
-function HostTagsCell({ host, readOnly }: { host: HostsOverviewRecord; readOnly: boolean }) {
-	const { t } = useLingui()
-	const [tagsOpen, setTagsOpen] = useState(false)
-	// Tags are free-text (collection API / TAGS env) and not deduped at the data layer;
-	// dedupe here so React keys stay unique and the cloud never shows a value twice.
-	const tags = Array.from(new Set(host.tags ?? []))
-	const shown = tags.slice(0, TAGS_VISIBLE)
-	const hasOverflow = tags.length > TAGS_VISIBLE
-	const editLabel = tags.length ? t`Edit tags` : t`Add tags`
-
-	if (readOnly && tags.length === 0) {
-		return <span className="text-xs text-muted-foreground/40">—</span>
-	}
-
-	return (
-		<div className="flex items-center gap-1">
-			<div className="flex items-center gap-1 overflow-hidden">
-				{shown.map((tag) => (
-					<Badge
-						key={tag}
-						variant="secondary"
-						title={tag}
-						className="max-w-[7rem] shrink-0 truncate px-1.5 py-0 text-[10px] font-normal"
-					>
-						{tag}
-					</Badge>
-				))}
-				{hasOverflow && (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<button
-								type="button"
-								data-nolink
-								onClick={(e) => e.stopPropagation()}
-								aria-label={t`Show all ${tags.length} tags`}
-								className="inline-flex shrink-0 items-center rounded-full border border-border/50 px-1.5 text-[10px] font-normal text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-							>
-								+{tags.length - TAGS_VISIBLE}
-							</button>
-						</TooltipTrigger>
-						<TooltipContent className="max-w-[18rem]">
-							<div className="flex flex-wrap gap-1">
-								{tags.map((tag) => (
-									<Badge key={tag} variant="secondary" className="px-1.5 py-0 text-[10px] font-normal">
-										{tag}
-									</Badge>
-								))}
-							</div>
-						</TooltipContent>
-					</Tooltip>
-				)}
-			</div>
-			{!readOnly && (
-				<>
-					<Button
-						variant="ghost"
-						size="icon"
-						data-nolink
-						className="size-6 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
-						onClick={(e) => {
-							e.stopPropagation()
-							setTagsOpen(true)
-						}}
-						title={editLabel}
-					>
-						<TagIcon className="size-3.5" />
-						<span className="sr-only">{editLabel}</span>
-					</Button>
-					<TagsDialog
-						agentId={host.id}
-						currentTags={tags}
-						title={host.name || host.hostname || host.id}
-						open={tagsOpen}
-						onClose={() => setTagsOpen(false)}
-					/>
-				</>
-			)}
-		</div>
 	)
 }
 
@@ -356,7 +268,14 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 				id: "tags",
 				enableSorting: false,
 				header: () => <Trans>Tags</Trans>,
-				cell: ({ row: { original: h } }) => <HostTagsCell host={h} readOnly={readOnly} />,
+				cell: ({ row: { original: h } }) => (
+					<HostTags
+						tags={h.tags}
+						variant="cloud"
+						edit={{ agentId: h.id, title: h.name || h.hostname || h.id, mode: "pencil" }}
+						emptyDash
+					/>
+				),
 			},
 			{
 				id: "mute",

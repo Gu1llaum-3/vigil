@@ -177,8 +177,7 @@ msgstr "Add monitor here"
 msgid "Add rule"
 msgstr "Add rule"
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/host-detail.tsx
+#: src/components/host-tags.tsx
 msgid "Add tags"
 msgstr "Add tags"
 
@@ -977,8 +976,7 @@ msgstr "Edit rule"
 msgid "Edit Schedule"
 msgstr "Edit Schedule"
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/host-detail.tsx
+#: src/components/host-tags.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/tags-dialog.tsx
 msgid "Edit tags"
@@ -2824,7 +2822,7 @@ msgid "Severity"
 msgstr "Severity"
 
 #. placeholder {0}: tags.length
-#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/host-tags.tsx
 msgid "Show all {0} tags"
 msgstr "Show all {0} tags"
 
