@@ -359,6 +359,118 @@ func TestThresholdForDisabledOverrideMutes(t *testing.T) {
 	}
 }
 
+// TestInstantSeverity locks the hosts-overview bar coloring: severity reflects the
+// instantaneous value against the resolved thresholds, IGNORING enabled/hysteresis/
+// duration/mute (the bar shows the machine, not the alert state). Resolution is
+// per-agent override > global > built-in default (80/90 for cpu/memory/disk).
+func TestInstantSeverity(t *testing.T) {
+	cases := []struct {
+		name    string
+		eval    *metricAlertEvaluator
+		agent   string
+		metric  metricKind
+		value   float64
+		want    alertTier
+	}{
+		{
+			name:   "vanilla install uses built-in default: 99.6%% CPU is critical",
+			eval:   &metricAlertEvaluator{},
+			agent:  "a1",
+			metric: metricCPU,
+			value:  99.6,
+			want:   tierCritical,
+		},
+		{
+			name:   "built-in default warning band",
+			eval:   &metricAlertEvaluator{},
+			agent:  "a1",
+			metric: metricMemory,
+			value:  85,
+			want:   tierWarning,
+		},
+		{
+			name:   "below built-in default is normal",
+			eval:   &metricAlertEvaluator{},
+			agent:  "a1",
+			metric: metricDisk,
+			value:  50,
+			want:   tierNone,
+		},
+		{
+			name: "disabled global row still colors the bar (enabled ignored)",
+			eval: &metricAlertEvaluator{
+				global: map[metricKind]metricThreshold{metricCPU: {enabled: false, warning: 60, critical: 70}},
+			},
+			agent:  "a1",
+			metric: metricCPU,
+			value:  65,
+			want:   tierWarning,
+		},
+		{
+			name: "disabled per-agent override (mute) still colors and wins over global",
+			eval: &metricAlertEvaluator{
+				global:   map[metricKind]metricThreshold{metricCPU: {enabled: true, warning: 80, critical: 90}},
+				perAgent: map[string]map[metricKind]metricThreshold{"a1": {metricCPU: {enabled: false, warning: 50, critical: 60}}},
+			},
+			agent:  "a1",
+			metric: metricCPU,
+			value:  55,
+			want:   tierWarning,
+		},
+		{
+			name:   "metric with no configured row and no built-in default is normal",
+			eval:   &metricAlertEvaluator{},
+			agent:  "a1",
+			metric: metricLoadAvg,
+			value:  99,
+			want:   tierNone,
+		},
+		{
+			// A "mute" row (disabled, both bands left at 0) must NOT leave the bar uncolored:
+			// each band falls through to the built-in default so a saturated host still reds.
+			name: "zeroed mute override falls through to built-in default",
+			eval: &metricAlertEvaluator{
+				perAgent: map[string]map[metricKind]metricThreshold{"a1": {metricCPU: {enabled: false}}},
+			},
+			agent:  "a1",
+			metric: metricCPU,
+			value:  100,
+			want:   tierCritical,
+		},
+		{
+			// A global row that sets only critical must let the warning band fall through to
+			// the default (80), not silently lose the intermediate warning color.
+			name: "global with only critical set keeps default warning band",
+			eval: &metricAlertEvaluator{
+				global: map[metricKind]metricThreshold{metricCPU: {enabled: true, critical: 95}},
+			},
+			agent:  "a1",
+			metric: metricCPU,
+			value:  82,
+			want:   tierWarning,
+		},
+		{
+			// A partial override (warning only) keeps its own warning but inherits the default
+			// critical so the upper band is not lost.
+			name: "partial override inherits default critical",
+			eval: &metricAlertEvaluator{
+				perAgent: map[string]map[metricKind]metricThreshold{"a1": {metricCPU: {enabled: true, warning: 50}}},
+			},
+			agent:  "a1",
+			metric: metricCPU,
+			value:  95,
+			want:   tierCritical,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.eval.instantSeverity(tc.agent, tc.metric, tc.value); got != tc.want {
+				t.Fatalf("instantSeverity(%s, %v) = %v, want %v", tc.agent, tc.value, got, tc.want)
+			}
+		})
+	}
+}
+
 func hostMetrics(t *testing.T, cpu, mem, diskMax, diskRoot float64) common.HostMetricsResponse {
 	t.Helper()
 	return common.HostMetricsResponse{

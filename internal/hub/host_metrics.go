@@ -37,6 +37,10 @@ type HostOverviewRecord struct {
 	Tags     []string `json:"tags"`
 	common.HostSnapshotResponse
 	Metrics *common.HostMetricsResponse `json:"metrics,omitempty"`
+	// MetricSeverity maps cpu/memory/disk to the instantaneous bar severity
+	// ("normal"/"warning"/"critical") of the current value against the resolved
+	// thresholds. Computed in loadHostsOverview; absent when no metrics are available.
+	MetricSeverity map[string]string `json:"metric_severity,omitempty"`
 }
 
 func parseMetricsInterval() time.Duration {
@@ -339,7 +343,19 @@ func (h *Hub) loadHostsOverview() ([]HostOverviewRecord, error) {
 			metricsCopy := metrics
 			metricsPtr = &metricsCopy
 		}
-		hosts = append(hosts, buildHostOverviewRecord(agent, snapshotPtr, metricsPtr))
+		record := buildHostOverviewRecord(agent, snapshotPtr, metricsPtr)
+		if metricsPtr != nil && h.metricAlerts != nil {
+			// Color each bar by the instantaneous value the bar itself shows (disk uses the
+			// root-filesystem percent, matching the displayed value), ignoring the alert's
+			// enabled/hysteresis/duration/mute state — the bar reflects the machine, not the
+			// alert. Resolution falls back to built-in defaults so a vanilla install still colors.
+			record.MetricSeverity = map[string]string{
+				"cpu":    h.metricAlerts.instantSeverity(agent.Id, metricCPU, metricsPtr.CPUPercent).String(),
+				"memory": h.metricAlerts.instantSeverity(agent.Id, metricMemory, metricsPtr.MemoryUsedPercent).String(),
+				"disk":   h.metricAlerts.instantSeverity(agent.Id, metricDisk, metricsPtr.DiskUsedPercent).String(),
+			}
+		}
+		hosts = append(hosts, record)
 	}
 
 	sort.SliceStable(hosts, func(i, j int) bool {
