@@ -2,7 +2,16 @@ import { t } from "@lingui/core/macro"
 import { Trans, useLingui } from "@lingui/react/macro"
 import { useStore } from "@nanostores/react"
 import { getPagePath, redirectPage } from "@nanostores/router"
-import { BellIcon, BotIcon, Clock3Icon, KeyRoundIcon, KeySquareIcon, SettingsIcon, Trash2Icon } from "lucide-react"
+import {
+	BellIcon,
+	BotIcon,
+	Clock3Icon,
+	KeyRoundIcon,
+	KeySquareIcon,
+	SettingsIcon,
+	Trash2Icon,
+	WrenchIcon,
+} from "lucide-react"
 import { lazy, useEffect } from "react"
 import { PageHeader } from "@/components/page-header"
 import { $router } from "@/components/router.tsx"
@@ -19,6 +28,7 @@ const jobsSettingsImport = () => import("./jobs.tsx")
 const purgeSettingsImport = () => import("./purge.tsx")
 const registryCredentialsSettingsImport = () => import("./registry-credentials.tsx")
 const apiKeysSettingsImport = () => import("./api-keys.tsx")
+const maintenanceSettingsImport = () => import("./maintenance.tsx")
 
 const GeneralSettings = lazy(generalSettingsImport)
 const AgentsSettings = lazy(agentsSettingsImport)
@@ -27,6 +37,7 @@ const JobsSettings = lazy(jobsSettingsImport)
 const PurgeSettings = lazy(purgeSettingsImport)
 const RegistryCredentialsSettings = lazy(registryCredentialsSettingsImport)
 const ApiKeysSettings = lazy(apiKeysSettingsImport)
+const MaintenanceSettings = lazy(maintenanceSettingsImport)
 
 export async function saveSettings(newSettings: Partial<UserSettings>) {
 	try {
@@ -85,6 +96,13 @@ export default function SettingsLayout() {
 			icon: Clock3Icon,
 			admin: true,
 			preload: jobsSettingsImport,
+		},
+		{
+			title: t`Maintenance`,
+			href: getPagePath($router, "settings", { name: "maintenance" }),
+			icon: WrenchIcon,
+			admin: true,
+			preload: maintenanceSettingsImport,
 		},
 		{
 			title: t`Registry credentials`,
@@ -152,6 +170,8 @@ function SettingsContent({ name }: { name: string }) {
 			return <NotificationsSettings />
 		case "jobs":
 			return <JobsSettings />
+		case "maintenance":
+			return <MaintenanceSettings />
 		case "registry-credentials":
 			return <RegistryCredentialsSettings />
 		case "api-keys":

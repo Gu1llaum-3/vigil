@@ -29,6 +29,13 @@ export function apiPatch<T>(path: string, body: unknown): Promise<T> {
 		headers: { "Content-Type": "application/json" },
 	}) as Promise<T>
 }
+export function apiPut<T>(path: string, body: unknown): Promise<T> {
+	return pb.send(path, {
+		method: "PUT",
+		body: JSON.stringify(body),
+		headers: { "Content-Type": "application/json" },
+	}) as Promise<T>
+}
 export async function apiDelete(path: string): Promise<void> {
 	await pb.send(path, { method: "DELETE" })
 }
