@@ -6,6 +6,11 @@ import (
 	"net/http"
 	"os"
 	"time"
+	// Embed the IANA timezone database in the binary so time.LoadLocation works in any
+	// runtime environment — notably the Alpine/scratch Docker image, which ships without
+	// system tzdata. Without this, maintenance windows reject valid zones like
+	// "Europe/Paris" with "Invalid timezone" on the deployed hub.
+	_ "time/tzdata"
 
 	"github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/internal/hub"
