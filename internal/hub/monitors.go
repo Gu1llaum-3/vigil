@@ -24,6 +24,12 @@ const (
 	monitorStatusUnknown = -1
 	monitorStatusDown    = 0
 	monitorStatusUp      = 1
+	// monitorStatusPending marks a check that FAILED but has not yet reached the failure
+	// threshold (so the monitor's effective status is still up). It is written only to
+	// monitor_events rows — never to a monitor's own `status` — so the sparkline can show
+	// "failing but not yet down" (amber) before the monitor flips down (red), Uptime-Kuma
+	// style. Pending events are excluded from the uptime denominator.
+	monitorStatusPending = 2
 )
 
 var (
@@ -183,19 +189,6 @@ func (ms *MonitorScheduler) inStartupGracePeriod() bool {
 func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latencyMs int64, msg string) {
 	monitorID := monitor.Id
 
-	col, err := ms.hub.FindCachedCollectionByNameOrId("monitor_events")
-	if err == nil {
-		event := core.NewRecord(col)
-		event.Set("monitor", monitorID)
-		event.Set("status", status)
-		event.Set("latency_ms", latencyMs)
-		event.Set("msg", msg)
-		event.Set("checked_at", time.Now().UTC())
-		if saveErr := ms.hub.SaveNoValidate(event); saveErr != nil {
-			slog.Warn("Failed to save monitor event", "monitor", monitorID, "err", saveErr)
-		}
-	}
-
 	failureThreshold := monitor.GetInt("failure_threshold")
 	if monitor.Get("failure_threshold") == nil {
 		failureThreshold = 3
@@ -214,6 +207,30 @@ func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latency
 			effectiveStatus = monitorStatusDown
 		} else {
 			effectiveStatus = previousStatus
+		}
+	}
+
+	// A failed check that is still UNDER the failure threshold is recorded as "pending" so
+	// the sparkline shows amber before red. This keys on the failure count, not on
+	// effectiveStatus: once the count reaches the threshold the check is recorded as down
+	// even if the startup grace delays the monitor's own status flip — so a genuine outage
+	// during a hub restart still counts toward downtime instead of being hidden as pending.
+	// The monitor's own status and the notification path are unaffected.
+	eventStatus := status
+	if status == monitorStatusDown && failureCount < failureThreshold {
+		eventStatus = monitorStatusPending
+	}
+
+	col, err := ms.hub.FindCachedCollectionByNameOrId("monitor_events")
+	if err == nil {
+		event := core.NewRecord(col)
+		event.Set("monitor", monitorID)
+		event.Set("status", eventStatus)
+		event.Set("latency_ms", latencyMs)
+		event.Set("msg", msg)
+		event.Set("checked_at", time.Now().UTC())
+		if saveErr := ms.hub.SaveNoValidate(event); saveErr != nil {
+			slog.Warn("Failed to save monitor event", "monitor", monitorID, "err", saveErr)
 		}
 	}
 
