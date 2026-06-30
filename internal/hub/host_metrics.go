@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -444,21 +445,14 @@ type FleetMetricSeries struct {
 }
 
 // getFleetMetrics returns every fleet metric's per-host history over the range in a single
-// response keyed by metric (cpu/memory/disk/load), so the Metrics page renders all charts
-// from one scan of host_metric_samples instead of one request — and one scan — per metric.
+// response keyed by metric (cpu/memory/disk/load). The aggregation is done **in SQL**
+// (GROUP BY agent + time bucket), so a 7d range yields ~seriesTargetPoints points per host
+// instead of one row per raw sample (~10k) — keeping the Metrics page fast at scale. The
+// bucket width comes from the shared deriveBucketSeconds, so short ranges stay raw.
 func (h *Hub) getFleetMetrics(e *core.RequestEvent) error {
-	since := time.Now().UTC().Add(-parseMetricsHistoryRange(e.Request.URL.Query().Get("range")))
-	records, err := h.FindRecordsByFilter(
-		hostMetricSamplesCollection,
-		"collected_at >= {:since}",
-		"collected_at",
-		0,
-		0,
-		dbx.Params{"since": since},
-	)
-	if err != nil {
-		return e.InternalServerError("Internal server error", err)
-	}
+	window := parseMetricsHistoryRange(e.Request.URL.Query().Get("range"))
+	since := time.Now().UTC().Add(-window)
+	bucketSeconds := deriveBucketSeconds(window, seriesTargetPoints)
 
 	names := make(map[string]string)
 	if agents, aerr := h.FindAllRecords("agents"); aerr == nil {
@@ -470,40 +464,80 @@ func (h *Hub) getFleetMetrics(e *core.RequestEvent) error {
 		slog.Warn("fleet metrics: failed to load agent names", "err", aerr)
 	}
 
-	return e.JSON(http.StatusOK, buildAllFleetMetricSeries(records, names))
+	out, err := h.loadFleetMetricsSeries(since, bucketSeconds, names)
+	if err != nil {
+		return e.InternalServerError("Internal server error", err)
+	}
+	return e.JSON(http.StatusOK, out)
 }
 
-// buildAllFleetMetricSeries groups collected_at-ordered samples into one series per agent
-// (first-appearance order) for every metric in a single pass: each record is walked once and
-// its timestamp formatted once, appending a point to each metric's per-agent series. The
-// agent id is used as the display name when none is known.
-func buildAllFleetMetricSeries(records []*core.Record, names map[string]string) map[string][]FleetMetricSeries {
+type fleetMetricsBucketRow struct {
+	Agent       string          `db:"agent"`
+	BucketStart int64           `db:"bucket_start"`
+	AvgCPU      sql.NullFloat64 `db:"avg_cpu"`
+	AvgMemory   sql.NullFloat64 `db:"avg_memory"`
+	AvgDisk     sql.NullFloat64 `db:"avg_disk"`
+	AvgLoad     sql.NullFloat64 `db:"avg_load"`
+}
+
+// loadFleetMetricsSeries aggregates host_metric_samples in SQL into per-(agent, time-bucket)
+// averages for every metric, returning one series per host per metric (agents in
+// first-appearance order). Only ~one row per bucket is materialized, not every raw sample.
+func (h *Hub) loadFleetMetricsSeries(since time.Time, bucketSeconds int, names map[string]string) (map[string][]FleetMetricSeries, error) {
+	if bucketSeconds < 1 {
+		bucketSeconds = 60
+	}
+	var rows []fleetMetricsBucketRow
+	err := h.DB().
+		NewQuery(`SELECT
+			agent,
+			(CAST(strftime('%s', collected_at) AS INTEGER) / {:bucket}) * {:bucket} AS bucket_start,
+			AVG(cpu_percent) AS avg_cpu,
+			AVG(memory_used_percent) AS avg_memory,
+			AVG(disk_used_percent) AS avg_disk,
+			AVG(load5) AS avg_load
+		FROM host_metric_samples
+		WHERE collected_at >= {:since}
+		GROUP BY agent, bucket_start
+		ORDER BY agent, bucket_start`).
+		Bind(dbx.Params{"since": since.UTC(), "bucket": bucketSeconds}).
+		All(&rows)
+	if err != nil {
+		return nil, err
+	}
+
 	order := make([]string, 0)
-	// agentID → metric → series (one point slice per metric).
 	byAgent := make(map[string]map[string]*FleetMetricSeries)
-	for _, rec := range records {
-		agentID := rec.GetString("agent")
-		if agentID == "" {
+	for _, r := range rows {
+		if r.Agent == "" {
 			continue
 		}
-		seriesByMetric, seen := byAgent[agentID]
+		seriesByMetric, seen := byAgent[r.Agent]
 		if !seen {
-			name := names[agentID]
+			name := names[r.Agent]
 			if name == "" {
-				name = agentID
+				name = r.Agent
 			}
 			seriesByMetric = make(map[string]*FleetMetricSeries, len(fleetMetricFields))
 			for metric := range fleetMetricFields {
-				seriesByMetric[metric] = &FleetMetricSeries{ID: agentID, Name: name, Points: []FleetMetricPoint{}}
+				seriesByMetric[metric] = &FleetMetricSeries{ID: r.Agent, Name: name, Points: []FleetMetricPoint{}}
 			}
-			byAgent[agentID] = seriesByMetric
-			order = append(order, agentID)
+			byAgent[r.Agent] = seriesByMetric
+			order = append(order, r.Agent)
 		}
-		collectedAt := rec.GetDateTime("collected_at").Time().UTC().Format(time.RFC3339)
-		for metric, field := range fleetMetricFields {
-			s := seriesByMetric[metric]
-			s.Points = append(s.Points, FleetMetricPoint{CollectedAt: collectedAt, Value: numberAsFloat64(rec.Get(field))})
+		at := time.Unix(r.BucketStart, 0).UTC().Format(time.RFC3339)
+		appendPoint := func(metric string, v sql.NullFloat64) {
+			// Skip a bucket whose metric is NULL (no samples carried that column) rather than
+			// plotting a misleading 0 — the chart shows a gap instead of a false dip to zero.
+			if !v.Valid {
+				return
+			}
+			seriesByMetric[metric].Points = append(seriesByMetric[metric].Points, FleetMetricPoint{CollectedAt: at, Value: v.Float64})
 		}
+		appendPoint("cpu", r.AvgCPU)
+		appendPoint("memory", r.AvgMemory)
+		appendPoint("disk", r.AvgDisk)
+		appendPoint("load", r.AvgLoad)
 	}
 
 	out := make(map[string][]FleetMetricSeries, len(fleetMetricFields))
@@ -514,7 +548,7 @@ func buildAllFleetMetricSeries(records []*core.Record, names map[string]string) 
 		}
 		out[metric] = series
 	}
-	return out
+	return out, nil
 }
 
 func parseMetricsHistoryRange(raw string) time.Duration {
