@@ -641,6 +641,13 @@ Per-resource silencing of notifications (both the in-app bell and external chann
 
 The frontend talks to `pb.collection("notification_mutes")` directly (no custom `/api/app` endpoint); collection rules gate writes to non-readonly users. See `docs/backend/hub-backend.md` (Notification Dispatcher → Suppression chokepoint) for the hub side.
 
+## Maintenance Windows + Banner
+
+Planned maintenance windows suppress notifications and surface a global banner (see the `maintenance` collection and the hub Suppression chokepoint).
+
+- `internal/site/src/components/maintenance-banner.tsx` — `MaintenanceBanner`, mounted in `app-shell.tsx` **inside** the sticky header `div` above the `Navbar` (so it sticks with the header, no z-index fight). It **subscribes to the `maintenance` collection over realtime** (debounced refetch) so a teammate creating/editing/deleting a window appears instantly for everyone — and also polls `GET /api/app/maintenance/active` every 60s plus on tab focus to catch recurring windows that activate by wall-clock (which emit no DB event). Realtime is the change signal; the banner's data always comes from `/active`. Renders nothing when no window is active; otherwise a full-width bar colored by the highest active severity, showing **that** window's title, description, and "until HH:MM" from `ends_at`.
+- `internal/site/src/components/routes/settings/maintenance.tsx` — admin-only Settings page (`MaintenancePage`), wired into `settings/layout.tsx` (nav item `admin: true`, `WrenchIcon`, route name `maintenance`). Lists windows with a schedule/scope/status summary and a create/edit dialog. The dialog switches between one-time (`datetime-local` start/end) and recurring (`time` start/end + weekday toggle buttons + `timezone` text, defaulting to the browser zone) and offers a global-vs-scoped toggle whose `ScopeList` checkboxes pick hosts (`pb.collection("agents")`) and monitors (`/api/app/monitors`). CRUD goes through `apiGet`/`apiPost`/`apiPut`/`apiDelete` against `/api/app/maintenance-windows`.
+
 ## High-Signal Files For Frontend Work
 
 - `internal/site/src/main.tsx`

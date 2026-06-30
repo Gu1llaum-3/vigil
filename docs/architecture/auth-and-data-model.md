@@ -96,6 +96,16 @@ The collection is tied to the user that created the enrollment token.
 - the absence of an FK also avoids the migration lexical-ordering trap (a relation to `monitors`/`agents` in a `33_` file would run before `3_create_monitors.go`); an orphan mute row left after the resource is deleted is harmless
 - unique index on `(resource_type, resource_id)` makes muting an upsert (the client recovers from a lost create race by updating the winner's row)
 - enforced at the `h.emitNotification` chokepoint via `isNotificationSuppressed` (`internal/hub/notification_mute.go`); a mute on an `agent` also covers that host's `container_image` events. Suppression **fails open** (logs and delivers) on a DB lookup error — an alerting path must not silently drop notifications
+
+### `maintenance`
+
+- created by migration `34_create_maintenance.go`
+- planned maintenance windows that suppress notifications for covered resources while active and drive the global "maintenance in progress" banner
+- fields: `title`, `description`, `enabled`, `severity` (`info`/`warning`/`critical`), `strategy` (`single`/`recurring`), `start_at`/`end_at` (single), `start_time`/`end_time`/`weekdays`/`active_from`/`active_to`/`timezone` (recurring), `scope` (JSON), `created_by`
+- `single` windows use absolute start/end instants; `recurring` windows match a local time-of-day range in `timezone` (via `time.LoadLocation`), an optional `weekdays` set (JSON `[0..6]`, 0=Sunday; empty = every day), and optional `active_from`/`active_to` calendar-date bounds. The recurring computation handles windows that cross midnight (the early-morning portion belongs to the previous day's start weekday)
+- `scope` mirrors `notification_rules.filter`: `{}` = global, `{monitor_ids:[…],agent_ids:[…]}` = targeted. A `container_image` event is covered by its parent agent id. No FK (plain JSON ids) — stale ids after deletion are harmless
+- writes are admin-only: create/update/delete rules are `null`; CRUD is gated by `requireAdminRole` on `/api/app/maintenance-windows` (handlers use `app.Save`, which bypasses collection rules). **Read** (list/view) is open to any authenticated user so the banner can subscribe to the collection over realtime and react instantly to another admin's create/edit/delete. The banner still renders from the separate authenticated `GET /api/app/maintenance/active` (returns only `{id,title,description,severity,ends_at}`) and uses the collection subscription purely as a change signal — so opening read does not change what the banner displays, only that authenticated users can now query/subscribe the collection
+- active-window evaluation is lazy (`activeMaintenances(now)`, no cron); the frontend banner polls. Suppression is enforced at the `h.emitNotification` chokepoint (`underMaintenance`) alongside mutes and, like mutes, **fails open** on a DB error. v1 suppresses **all** in-window events (the "MAINTENANCE→DOWN still alerts" nuance is a future refinement)
 - rules: list/view = authenticated, create/update/delete = non-readonly — the frontend manages mutes via `pb.collection("notification_mutes")` directly (no custom API)
 
 ### `host_metric_samples`

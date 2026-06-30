@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import Navbar from "@/components/navbar"
 import { AppSidebar } from "@/components/app-sidebar"
+import { MaintenanceBanner } from "@/components/maintenance-banner"
 import { cn } from "@/lib/utils"
 
 const sidebarStateKey = "vigil.sidebar.collapsed"
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 			<AppSidebar collapsed={collapsed} mobileOpen={mobileNavOpen} onMobileOpenChange={setMobileNavOpen} />
 			<div className="min-w-0 flex-1">
 				<div className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+					<MaintenanceBanner />
 					<div className="container">
 						<Navbar
 							onMenuClick={() => setMobileNavOpen(true)}

@@ -30,10 +30,12 @@ func (h *Hub) emitNotification(evt notifications.Event) {
 	}
 }
 
-// isNotificationSuppressed reports whether an event must not produce any notification.
-// Branch A only checks per-resource mutes; the maintenance feature extends this.
+// isNotificationSuppressed reports whether an event must not produce any notification —
+// either because the resource is muted, or because it is inside an active maintenance
+// window. Both gates run at the single emitNotification chokepoint.
 func (h *Hub) isNotificationSuppressed(evt notifications.Event) bool {
-	return h.resourceMuted(evt, time.Now())
+	now := time.Now()
+	return h.resourceMuted(evt, now) || h.underMaintenance(evt, now)
 }
 
 // resourceMuted reports whether the event's resource is currently muted. A mute on a
@@ -56,18 +58,25 @@ func (h *Hub) resourceMuted(evt notifications.Event, now time.Time) bool {
 // container *name* instead (matching the container_audit_overrides convention) — resolved
 // from the event Details. A mute on the parent host (agent) also covers the container.
 func (h *Hub) containerImageMuted(evt notifications.Event, now time.Time) bool {
-	agentID, _ := evt.Details["agent_id"].(string)
+	agentID := parentAgentID(evt)
 	containerName, _ := evt.Details["container_name"].(string)
-	if agentID == "" {
-		// Fall back to the composite resource id when Details is absent.
-		agentID, _, _ = strings.Cut(evt.Resource.ID, "|")
-	}
 	if agentID != "" && containerName != "" {
 		if h.muteActive("container_image", auditContainerKey(agentID, containerName), now) {
 			return true
 		}
 	}
 	return agentID != "" && h.muteActive("agent", agentID, now)
+}
+
+// parentAgentID returns the agent id a container_image event belongs to: the agent_id from
+// the event Details, falling back to the head of the "<agentID>|<containerID>" resource id.
+// Shared by mute and maintenance suppression so they can't drift on the id format.
+func parentAgentID(evt notifications.Event) string {
+	if id, _ := evt.Details["agent_id"].(string); id != "" {
+		return id
+	}
+	id, _, _ := strings.Cut(evt.Resource.ID, "|")
+	return id
 }
 
 // muteActive reports whether an active mute exists for the given resource. A mute is

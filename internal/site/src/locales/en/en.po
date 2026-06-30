@@ -121,6 +121,7 @@ msgstr "A unique push URL will be generated automatically. Use it in a cron job 
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/settings/agents.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/registry-credentials.tsx
 msgid "Actions"
@@ -160,6 +161,10 @@ msgstr "Add credential"
 msgid "Add group"
 msgstr "Add group"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Add maintenance window"
+msgstr "Add maintenance window"
+
 #: src/components/routes/monitors.tsx
 msgid "Add monitor"
 msgstr "Add monitor"
@@ -175,6 +180,10 @@ msgstr "Add rule"
 #: src/components/routes/host-detail.tsx
 msgid "Add tags"
 msgstr "Add tags"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Add window"
+msgstr "Add window"
 
 #: src/components/routes/images.tsx
 msgid "Adjust or reset the current filters to see audited container images."
@@ -388,6 +397,7 @@ msgstr "Blue line for successful checks, red background for down periods."
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/jobs.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
 #: src/components/routes/settings/registry-credentials.tsx
@@ -710,9 +720,9 @@ msgstr "Credential updated"
 msgid "Credentials used by the hub to authenticate against private container registries during image audits. Passwords are encrypted at rest with a key stored in the data directory. The hub falls back to the host's <0>~/.docker/config.json</0> for registries not listed here."
 msgstr "Credentials used by the hub to authenticate against private container registries during image audits. Passwords are encrypted at rest with a key stored in the data directory. The hub falls back to the host's <0>~/.docker/config.json</0> for registries not listed here."
 
-#: src/components/metric-thresholds.tsx
-#~ msgid "Critical"
-#~ msgstr "Critical"
+#: src/components/routes/settings/maintenance.tsx
+msgid "Critical"
+msgstr "Critical"
 
 #: src/components/metric-thresholds.tsx
 msgid "Critical above"
@@ -747,6 +757,10 @@ msgstr "Dashboard"
 #: src/components/routes/notifications.tsx
 msgid "Date"
 msgstr "Date"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Days (none = every day)"
+msgstr "Days (none = every day)"
 
 #: src/components/routes/settings/purge.tsx
 msgid "Days to keep"
@@ -816,6 +830,11 @@ msgstr "Delete group"
 msgid "Delete group?"
 msgstr "Delete group?"
 
+#. placeholder {0}: w.title
+#: src/components/routes/settings/maintenance.tsx
+msgid "Delete maintenance window \"{0}\"?"
+msgstr "Delete maintenance window \"{0}\"?"
+
 #: src/components/routes/settings/purge.tsx
 msgid "Delete monitoring events older than the chosen number of days, or wipe the entire probe history."
 msgstr "Delete monitoring events older than the chosen number of days, or wipe the entire probe history."
@@ -831,6 +850,10 @@ msgstr "Deletes old probe and notification history based on retention settings."
 #: src/components/routes/settings/notifications.tsx
 msgid "Delivery destinations (email, webhooks, chat services). A rule sends to these."
 msgstr "Delivery destinations (email, webhooks, chat services). A rule sends to these."
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Description"
+msgstr "Description"
 
 #: src/components/routes/monitors.tsx
 msgid "Destination"
@@ -858,6 +881,7 @@ msgstr "Disable audit"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/images.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/lib/audit-status.ts
 msgid "Disabled"
 msgstr "Disabled"
@@ -907,6 +931,10 @@ msgstr "Down"
 msgid "Duration"
 msgstr "Duration"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "During an active window, notifications for the covered resources are suppressed (bell and external channels) and a banner is shown to every signed-in user. Use a one-time window for a planned operation, or a recurring window for routine maintenance (e.g. nightly)."
+msgstr "During an active window, notifications for the covered resources are suppressed (bell and external channels) and a banner is shown to every signed-in user. Use a one-time window for a planned operation, or a recurring window for routine maintenance (e.g. nightly)."
+
 #: src/components/routes/settings/api-keys.tsx
 msgid "e.g. mcp-server, reporting-script"
 msgstr "e.g. mcp-server, reporting-script"
@@ -931,6 +959,10 @@ msgstr "Edit credential"
 #: src/components/routes/monitors.tsx
 msgid "Edit group"
 msgstr "Edit group"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Edit maintenance window"
+msgstr "Edit maintenance window"
 
 #: src/components/routes/monitors.tsx
 msgid "Edit monitor"
@@ -965,9 +997,18 @@ msgstr "Enable enrollment token"
 msgid "Enable the enrollment token to generate ready-to-use install commands."
 msgstr "Enable the enrollment token to generate ready-to-use install commands."
 
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notifications.tsx
 msgid "Enabled"
 msgstr "Enabled"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "End"
+msgstr "End"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "End time"
+msgstr "End time"
 
 #: src/components/routes/settings/api-keys.tsx
 msgid "Endpoint"
@@ -1060,6 +1101,10 @@ msgstr "Failed to delete credential"
 msgid "Failed to delete group"
 msgstr "Failed to delete group"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Failed to delete maintenance window"
+msgstr "Failed to delete maintenance window"
+
 #: src/components/routes/monitors.tsx
 msgid "Failed to delete monitor"
 msgstr "Failed to delete monitor"
@@ -1075,6 +1120,10 @@ msgstr "Failed to load credentials"
 #: src/components/routes/settings/jobs.tsx
 msgid "Failed to load jobs"
 msgstr "Failed to load jobs"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Failed to load maintenance windows"
+msgstr "Failed to load maintenance windows"
 
 #: src/components/routes/fleet-metrics.tsx
 msgid "Failed to load metrics."
@@ -1121,6 +1170,10 @@ msgstr "Failed to save credential"
 #: src/components/routes/monitors.tsx
 msgid "Failed to save group"
 msgstr "Failed to save group"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Failed to save maintenance window"
+msgstr "Failed to save maintenance window"
 
 #: src/components/routes/monitors.tsx
 msgid "Failed to save monitor"
@@ -1196,6 +1249,10 @@ msgstr "For 8 hours"
 #: src/components/login/auth-form.tsx
 msgid "Forgot password?"
 msgstr "Forgot password?"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Fri"
+msgstr "Fri"
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "From"
@@ -1310,6 +1367,7 @@ msgstr "Hostname to resolve"
 #: src/components/app-sidebar.tsx
 #: src/components/command-palette.tsx
 #: src/components/routes/hosts.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Hosts"
 msgstr "Hosts"
 
@@ -1393,6 +1451,10 @@ msgstr "Image updates"
 #: src/components/routes/settings/notifications.tsx
 msgid "In-app bell"
 msgstr "In-app bell"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Info"
+msgstr "Info"
 
 #: src/components/routes/settings/notifications.tsx
 msgid "Info and above"
@@ -1564,6 +1626,10 @@ msgstr "Leave as-is to keep the existing value."
 msgid "Leave blank to keep current"
 msgstr "Leave blank to keep current"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Limit to specific hosts / monitors (otherwise global)"
+msgstr "Limit to specific hosts / monitors (otherwise global)"
+
 #: src/components/routes/fleet-metrics.tsx
 msgid "Load (5m)"
 msgstr "Load (5m)"
@@ -1606,6 +1672,7 @@ msgstr "Loading purge settings…"
 
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Loading…"
 msgstr "Loading…"
 
@@ -1638,6 +1705,30 @@ msgstr "Logs"
 #: src/components/routes/settings/api-keys.tsx
 msgid "Long-lived read-only tokens for scripts and integrations (e.g. the MCP server). A key acts as you and can read everything you can; it cannot make changes. The token is shown only once at creation."
 msgstr "Long-lived read-only tokens for scripts and integrations (e.g. the MCP server). A key acts as you and can read everything you can; it cannot make changes. The token is shown only once at creation."
+
+#: src/components/routes/settings/layout.tsx
+msgid "Maintenance"
+msgstr "Maintenance"
+
+#: src/components/maintenance-banner.tsx
+msgid "Maintenance in progress"
+msgstr "Maintenance in progress"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Maintenance window created"
+msgstr "Maintenance window created"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Maintenance window deleted"
+msgstr "Maintenance window deleted"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Maintenance window updated"
+msgstr "Maintenance window updated"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Maintenance windows"
+msgstr "Maintenance windows"
 
 #: src/components/routes/settings/layout.tsx
 msgid "Manage display preferences."
@@ -1705,6 +1796,10 @@ msgstr "Minor available"
 msgid "Mode"
 msgstr "Mode"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Mon"
+msgstr "Mon"
+
 #: src/components/routes/monitor-detail.tsx
 msgid "Monitor"
 msgstr "Monitor"
@@ -1749,6 +1844,7 @@ msgstr "Monitoring"
 #: src/components/routes/dashboard/kpi-cards.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/notifications.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Monitors"
 msgstr "Monitors"
 
@@ -1938,6 +2034,10 @@ msgstr "No images match these filters"
 msgid "No latency"
 msgstr "No latency"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "No maintenance windows yet."
+msgstr "No maintenance windows yet."
+
 #: src/components/metric-charts.tsx
 msgid "No metrics yet."
 msgstr "No metrics yet."
@@ -1990,6 +2090,10 @@ msgstr "No unread notifications"
 msgid "No urgent issue detected."
 msgstr "No urgent issue detected."
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "None available"
+msgstr "None available"
+
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Not checked"
 msgstr "Not checked"
@@ -2036,6 +2140,10 @@ msgstr "Notification History Retention (days)"
 msgid "Notifications"
 msgstr "Notifications"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Notifications are suppressed while this window is active."
+msgstr "Notifications are suppressed while this window is active."
+
 #: src/components/mute-menu.tsx
 msgid "Notifications muted"
 msgstr "Notifications muted"
@@ -2065,6 +2173,10 @@ msgstr "Offline Hosts"
 #: src/components/routes/images.tsx
 msgid "on"
 msgstr "on"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "One-time"
+msgstr "One-time"
 
 #: src/components/login/auth-form.tsx
 msgid "One-time password"
@@ -2374,6 +2486,10 @@ msgstr "Reboot required"
 msgid "Record type"
 msgstr "Record type"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Recurring"
+msgstr "Recurring"
+
 #: src/components/routes/home.tsx
 msgid "Refresh"
 msgstr "Refresh"
@@ -2562,9 +2678,14 @@ msgstr "same major"
 msgid "Same major"
 msgstr "Same major"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Sat"
+msgstr "Sat"
+
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/monitors.tsx
 #: src/components/routes/settings/jobs.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/registry-credentials.tsx
 #: src/components/tags-dialog.tsx
@@ -2588,6 +2709,7 @@ msgid "Saving…"
 msgstr "Saving…"
 
 #: src/components/routes/settings/jobs.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Schedule"
 msgstr "Schedule"
 
@@ -2596,6 +2718,7 @@ msgid "Schedule updated"
 msgstr "Schedule updated"
 
 #: src/components/routes/settings/api-keys.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Scope"
 msgstr "Scope"
 
@@ -2648,6 +2771,10 @@ msgstr "Security"
 msgid "Security updates"
 msgstr "Security updates"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Select at least one host or monitor, or switch to global"
+msgstr "Select at least one host or monitor, or switch to global"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Send alerts outside the app (email, Slack, Teams, Ntfy, …). Add destinations (channels), then route events to them (rules). Independent from the in-app bell above."
 msgstr "Send alerts outside the app (email, Slack, Teams, Ntfy, …). Add destinations (channels), then route events to them (rules). Independent from the in-app bell above."
@@ -2683,6 +2810,7 @@ msgstr "Settings saved"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/notifications.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Severity"
 msgstr "Severity"
 
@@ -2706,6 +2834,14 @@ msgstr "SMTP settings"
 msgid "Source"
 msgstr "Source"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Start"
+msgstr "Start"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Start time"
+msgstr "Start time"
+
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "State"
@@ -2724,6 +2860,7 @@ msgstr "State detail"
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/routes/settings/jobs.tsx
+#: src/components/routes/settings/maintenance.tsx
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Status"
 msgstr "Status"
@@ -2736,6 +2873,10 @@ msgstr "Stopped"
 #: src/components/routes/host-detail.tsx
 msgid "Storage"
 msgstr "Storage"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Sun"
+msgstr "Sun"
 
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "Swap"
@@ -2848,6 +2989,10 @@ msgstr "Threshold"
 msgid "Throttle (seconds, 0 = no throttle)"
 msgstr "Throttle (seconds, 0 = no throttle)"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Thu"
+msgstr "Thu"
+
 #: src/components/routes/settings/general.tsx
 msgid "Time format"
 msgstr "Time format"
@@ -2859,6 +3004,18 @@ msgstr "Timeout"
 #: src/components/routes/monitors.tsx
 msgid "Timeout (s)"
 msgstr "Timeout (s)"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Timezone"
+msgstr "Timezone"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Title"
+msgstr "Title"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Title is required"
+msgstr "Title is required"
 
 #: src/components/routes/settings/notifications/history.tsx
 msgid "To"
@@ -2901,9 +3058,14 @@ msgstr "Translations are managed from the project's locale catalogs."
 msgid "Trigger after"
 msgstr "Trigger after"
 
+#: src/components/routes/settings/maintenance.tsx
+msgid "Tue"
+msgstr "Tue"
+
 #: src/components/routes/host-detail.tsx
 #: src/components/routes/monitor-detail.tsx
 #: src/components/routes/monitors.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Type"
 msgstr "Type"
 
@@ -2931,6 +3093,11 @@ msgstr "Unread"
 #: src/lib/audit-status.ts
 msgid "Unsupported"
 msgstr "Unsupported"
+
+#. placeholder {0}: new Date(primary.ends_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+#: src/components/maintenance-banner.tsx
+msgid "until {0}"
+msgstr "until {0}"
 
 #: src/components/mute-menu.tsx
 msgid "Until I resume"
@@ -3021,6 +3188,7 @@ msgid "Vigil exposes a read-only Model Context Protocol server, so an AI assista
 msgstr "Vigil exposes a read-only Model Context Protocol server, so an AI assistant (Claude Desktop, Claude Code, …) can query your fleet — hosts, monitors, uptime and response-time reports. Create a key above, then add this server to your MCP client."
 
 #: src/components/routes/home.tsx
+#: src/components/routes/settings/maintenance.tsx
 msgid "Warning"
 msgstr "Warning"
 
@@ -3036,6 +3204,10 @@ msgstr "Warning and above"
 #: src/components/routes/dashboard/containers-table.tsx
 msgid "Warnings"
 msgstr "Warnings"
+
+#: src/components/routes/settings/maintenance.tsx
+msgid "Wed"
+msgstr "Wed"
 
 #: src/components/routes/settings/agents.tsx
 msgid "When enabled, this token allows agents to self-register without prior creation."
