@@ -47,6 +47,8 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
 import { isReadOnlyUser, pb } from "@/lib/api"
+import { type ActiveMute, muteKey, useMutes } from "@/lib/mutes"
+import { MuteBadge, MuteBellButton } from "@/components/mute-menu"
 import { cn, copyToClipboard } from "@/lib/utils"
 import { $router, Link } from "@/components/router"
 import {
@@ -671,6 +673,7 @@ function GroupDialog({ open, onClose, onSaved, group }: GroupDialogProps) {
 export default memo(function MonitorsPage() {
 	const { t } = useLingui()
 	const readonly = isReadOnlyUser()
+	const mutes = useMutes()
 
 	const [groups, setGroups] = useState<MonitorGroupResponse[]>([])
 	const [groupList, setGroupList] = useState<MonitorGroupRecord[]>([])
@@ -913,6 +916,7 @@ export default memo(function MonitorsPage() {
 						key={group.id || ungroupedGroupStateKey}
 						group={group}
 						readonly={readonly}
+						mutes={mutes}
 						downOnly={downOnly}
 						open={downOnly ? true : (openGroups[group.id || ungroupedGroupStateKey] ?? !group.id)}
 						// In down-only mode groups are force-expanded, so collapsing is disabled
@@ -996,6 +1000,7 @@ interface MonitorGroupSectionProps {
 	group: MonitorGroupResponse
 	availableGroups: MonitorGroupRecord[]
 	readonly: boolean
+	mutes: Map<string, ActiveMute>
 	open: boolean
 	downOnly: boolean
 	onToggle: () => void
@@ -1011,6 +1016,7 @@ function MonitorGroupSection({
 	group,
 	availableGroups,
 	readonly,
+	mutes,
 	open,
 	downOnly,
 	onToggle,
@@ -1134,12 +1140,17 @@ function MonitorGroupSection({
 									<Trans>Last check</Trans>
 								</TableHead>
 								{!readonly && <TableHead className="w-10" />}
+								<TableHead className="w-12 text-right">
+									<span className="sr-only">
+										<Trans>Notifications</Trans>
+									</span>
+								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{rows.length === 0 ? (
 								<TableRow>
-									<TableCell colSpan={readonly ? 9 : 10} className="text-center text-muted-foreground text-sm py-6">
+									<TableCell colSpan={readonly ? 10 : 11} className="text-center text-muted-foreground text-sm py-6">
 										<Trans>No monitors in this group.</Trans>
 									</TableCell>
 								</TableRow>
@@ -1150,6 +1161,7 @@ function MonitorGroupSection({
 										monitor={m}
 										availableGroups={availableGroups}
 										readonly={readonly}
+										activeMute={mutes.get(muteKey("monitor", m.id))}
 										onMoveMonitor={onMoveMonitor}
 										onEdit={() => onEditMonitor(m)}
 										onDelete={() => onDeleteMonitor(m.id)}
@@ -1170,12 +1182,21 @@ interface MonitorRowProps {
 	monitor: MonitorRecord
 	availableGroups: MonitorGroupRecord[]
 	readonly: boolean
+	activeMute?: ActiveMute
 	onMoveMonitor: (monitorId: string, groupId: string) => void
 	onEdit: () => void
 	onDelete: () => void
 }
 
-function MonitorRow({ monitor: m, availableGroups, readonly, onMoveMonitor, onEdit, onDelete }: MonitorRowProps) {
+function MonitorRow({
+	monitor: m,
+	availableGroups,
+	readonly,
+	activeMute,
+	onMoveMonitor,
+	onEdit,
+	onDelete,
+}: MonitorRowProps) {
 	const target = monitorTarget(m)
 	const canVisitTarget = m.type === "http" && /^https?:\/\//i.test(target)
 	const currentGroupId = m.group || ungroupedGroupStateKey
@@ -1310,6 +1331,15 @@ function MonitorRow({ monitor: m, availableGroups, readonly, onMoveMonitor, onEd
 					</DropdownMenu>
 				</TableCell>
 			)}
+			<TableCell className="text-right">
+				<div className="flex justify-end">
+					{readonly ? (
+						<MuteBadge activeMute={activeMute} />
+					) : (
+						<MuteBellButton type="monitor" id={m.id} activeMute={activeMute} />
+					)}
+				</div>
+			</TableCell>
 		</TableRow>
 	)
 }

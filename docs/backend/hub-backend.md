@@ -501,9 +501,25 @@ The `host_snapshots` collection is created by migration `2_create_host_snapshots
 
 Notifications are sent by a `*notifications.Dispatcher` (`internal/hub/notifications/dispatcher.go`) held as a field on `Hub`. It is instantiated in `NewHub` and started as a goroutine in `StartHub`.
 
+### Suppression chokepoint (`emitNotification`)
+
+Every event flows through a single method, `h.emitNotification(evt)` (`internal/hub/notification_mute.go`), instead of calling the bell + dispatcher inline. It gates delivery on `h.isNotificationSuppressed(evt)` **before both** the in-app bell (`createSystemNotification`) and external channels (`notifier.Dispatch`), so a suppressed resource is silenced everywhere at once:
+
+```go
+func (h *Hub) emitNotification(evt notifications.Event) {
+    if h.isNotificationSuppressed(evt) { return }
+    _ = h.createSystemNotification(evt)   // bell
+    h.notifier.Dispatch(evt)              // channels
+}
+```
+
+`isNotificationSuppressed` currently checks per-resource **mutes** (`notification_mutes` collection): an active mute on `(resource_type, resource_id)` — `muted_until` empty (indefinite) or in the future. `container_image` events are handled specially (`containerImageMuted`): the mute is keyed by the stable container **name** (`<agentID>|<containerName>`, matching `container_audit_overrides`) rather than the ephemeral container id the event carries, so it survives the redeploy it was meant to silence — the name is read from the event `Details`. A mute on a host (`agent`) also covers that host's `container_image` events, so muting a noisy host silences its containers and metric alerts too. The lookup **fails open** (logs and delivers) on a DB error — suppression must never silently swallow an alert. Putting the check here — not in the dispatcher — is what makes a mute cut the bell *and* the channels together. (The maintenance feature extends this same method with active-window suppression.)
+
 ### Dispatch points
 
-- **Monitor state transition** (`internal/hub/monitors.go` `saveResult`): after writing the new status with `SaveNoValidate`, if `effectiveStatus != previousStatus && previousStatus != monitorStatusUnknown`, writes a `system_notifications` entry and calls `h.notifier.Dispatch(...)`.
+All four route through `h.emitNotification(evt)`:
+
+- **Monitor state transition** (`internal/hub/monitors.go` `saveResult`): after writing the new status with `SaveNoValidate`, if `effectiveStatus != previousStatus && previousStatus != monitorStatusUnknown`, emits the event (bell + dispatch).
 - **Agent status transition** (`internal/hub/agent_connect.go` `setAgentStatus`): reads the previous status before overwriting; if changed, writes a `system_notifications` entry and calls `h.notifier.Dispatch(...)` after `SaveNoValidate`.
 - **Container image update discovery** (`internal/hub/image_audits.go` `upsertContainerImageAudit`): after each scheduled audit result is merged into `container_image_audits`, the hub computes a persisted notification signature from the newer compatible tags currently available for that container. It emits both the system notification and external dispatch from the same event payload only when that signature changes, so the same discovered version set is not re-notified on every run.
 - **Host metric threshold breach/recovery** (`internal/hub/metric_alerts.go`, called directly from `persistHostMetrics`, before the `host_metric_current` upsert): on each metrics poll the evaluator compares CPU/RAM/disk/loadavg against the per-(agent, metric) thresholds in the `metric_alerts` collection (per-agent override → global default; a disabled override mutes the metric for that host). It emits `host.metric_exceeded` (severity `warning`/`critical`) on tier escalation and `host.metric_normal` on recovery, using an edge-trigger state with hysteresis so a value hovering at the threshold does not flap. The tier read-compute-write is atomic; the dead band is clamped so an alert can always recover; an exact-0 reading is ignored as a non-reading; the disk alert names the busiest mount. The fired tier is persisted in `host_metric_current.alert_tiers` (folded into the same write) and restored at boot, so a restart does not re-fire active alerts. Routed by `notification_rules` like any other event (filter by `agent_ids`, gate by `min_severity`). Admin CRUD at `/api/app/metric-alerts`.

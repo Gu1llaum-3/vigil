@@ -87,6 +87,17 @@ The collection is tied to the user that created the enrollment token.
 - the `authenticateApiKey` middleware (`internal/hub/api_keys.go`) only authenticates the **Vigil app API** (`/api/app/*` and `/api/mcp`) — a key is never honored on the generic PocketBase API (`/api/collections`, `/api/realtime`, admin), so it can't act as a full session on raw collections. It resolves the bearer token (scheme stripped case-insensitively) to the user, enforces scope (a `read` key may only use safe HTTP methods; on `/api/mcp` scope is enforced per-tool — read keys are served only read-only tools, read-write keys also get write tools), and hands `RequireAuth` a freshly minted JWT
 - `expires_at` is validated on creation (RFC3339, must be in the future) so a typo can't silently produce a non-expiring key; key management (`/api/app/api-keys`) is refused when the request itself authenticated via a key, so a key cannot mint more keys
 
+### `notification_mutes`
+
+- created by migration `33_create_notification_mutes.go`
+- per-resource notification silence list; suppresses **both** the in-app bell and external channels for one resource
+- fields: `resource_type` (`monitor` / `agent` / `container_image`), `resource_id` (**plain text, no FK relation**), `muted_until` (date; empty = indefinite), `created_by`, `note`
+- `resource_id` is plain text rather than a relation so the same table covers containers, which have no first-class record. For `monitor`/`agent` it is the record id; for `container_image` it is `<agentID>|<containerName>` — the stable container **name** (matching `container_audit_overrides`), *not* the ephemeral container id the audit event carries. That way a mute survives the container being recreated on the redeploy it was meant to silence; the hub resolves the event's container id to its name (via the event `Details`) when checking suppression
+- the absence of an FK also avoids the migration lexical-ordering trap (a relation to `monitors`/`agents` in a `33_` file would run before `3_create_monitors.go`); an orphan mute row left after the resource is deleted is harmless
+- unique index on `(resource_type, resource_id)` makes muting an upsert (the client recovers from a lost create race by updating the winner's row)
+- enforced at the `h.emitNotification` chokepoint via `isNotificationSuppressed` (`internal/hub/notification_mute.go`); a mute on an `agent` also covers that host's `container_image` events. Suppression **fails open** (logs and delivers) on a DB lookup error — an alerting path must not silently drop notifications
+- rules: list/view = authenticated, create/update/delete = non-readonly — the frontend manages mutes via `pb.collection("notification_mutes")` directly (no custom API)
+
 ### `host_metric_samples`
 
 - created by migration `21_create_host_metrics.go`

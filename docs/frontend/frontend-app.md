@@ -626,6 +626,21 @@ The component deduplicates these alert toasts for a short window so a single eve
 
 The toast titles and descriptions also go through the normal Lingui catalogs, so changing their copy requires the usual locale extract/compile workflow.
 
+## Notification Mutes
+
+Per-resource silencing of notifications (both the in-app bell and external channels) lives in:
+
+- `internal/site/src/lib/mutes.ts` — `useMutes()` returns a `Map<"${type}:${id}", ActiveMute>` kept in sync via a realtime subscription on the `notification_mutes` collection plus a 60s timer (a timed mute produces no DB event when it expires, so the timer drops it from the map). `muteResource(type, id, until)` upserts (the collection has a unique `(resource_type, resource_id)` index) and `unmuteResource` deletes. Duration presets: 1h / 8h / 24h / indefinite.
+- `internal/site/src/components/mute-menu.tsx` — `MuteMenuItems` (drop into any `DropdownMenuContent`; duration submenu when unmuted, single "Resume" item when muted), `MuteBellButton` (a self-contained ghost bell whose dropdown holds those items — amber with the remaining time when muted, faint otherwise), and `MuteBadge` (a small pill showing the remaining time for a timed mute, or "Muted" when indefinite, full expiry in its tooltip). A timed mute's "time left" comes from `formatRemaining` and refreshes on the `useMutes` 60s re-eval.
+
+**One consistent affordance across all three tables**: a dedicated **far-right bell column** (`MuteBellButton` for non-readonly users, a static `MuteBadge` for readonly) — never folded into a row's `…` actions menu. The bell is faint when idle, amber with the time-left when muted, and its dropdown carries the same duration/resume options everywhere, so the mute UX reads identically on monitors, hosts, and containers. Each table calls `useMutes()` once at the table level and threads the per-row `activeMute` down (never one subscription per row):
+
+- **Monitors** (`routes/monitors.tsx`) — `resource_type = "monitor"`, id = monitor id. The row `…` menu stays move/edit/delete only.
+- **Hosts** (`routes/dashboard/hosts-table.tsx`) — `resource_type = "agent"`, id = agent id. The row `…` menu stays tags-only. Muting a host also silences its containers and metric alerts (handled hub-side).
+- **Containers** (`routes/dashboard/containers-table.tsx`) — `resource_type = "container_image"`, id = `${host_id}|${container_name}` (the stable container **name**, matching the audit-override key) so the mute survives a redeploy; the hub maps the event's container id to its name when checking suppression. The admin-only image-audit `OverrideMenu` is its own separate column.
+
+The frontend talks to `pb.collection("notification_mutes")` directly (no custom `/api/app` endpoint); collection rules gate writes to non-readonly users. See `docs/backend/hub-backend.md` (Notification Dispatcher → Suppression chokepoint) for the hub side.
+
 ## High-Signal Files For Frontend Work
 
 - `internal/site/src/main.tsx`
