@@ -57,22 +57,20 @@ function useContainerStatusLabel(status: string): string {
 	}
 }
 
-function ContainerStatusBadge({ container }: { container: ContainerFleetEntry }) {
-	const label = useContainerStatusLabel(container.status)
-	const severity = containerSeverity(container)
-	const cls =
-		severity === "ok"
-			? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-			: severity === "warning"
-				? "border-amber-500/30 bg-amber-500/10 text-amber-400"
-				: severity === "error"
-					? "border-red-500/30 bg-red-500/10 text-red-400"
-					: "border-border/50 text-muted-foreground"
-	return (
-		<Badge variant="outline" className={cn(cls)}>
-			{label}
-		</Badge>
-	)
+// statusCardStyle maps a container's severity to the colored Status card (border/bg tone +
+// value text color): running → green, dead/crash → red, restarting → amber, and
+// intentional/clean states (paused, created, clean exit) stay neutral.
+function statusCardStyle(container: ContainerFleetEntry): { tone?: string; valueClass?: string } {
+	switch (containerSeverity(container)) {
+		case "ok":
+			return { tone: "border-emerald-500/40 bg-emerald-500/5", valueClass: "text-emerald-500" }
+		case "error":
+			return { tone: "border-red-500/40 bg-red-500/5", valueClass: "text-red-500" }
+		case "warning":
+			return { tone: "border-amber-500/40 bg-amber-500/5", valueClass: "text-amber-500" }
+		default:
+			return {}
+	}
 }
 
 function InfoRow({ label, value, mono }: { label: React.ReactNode; value: React.ReactNode; mono?: boolean }) {
@@ -236,6 +234,7 @@ export default memo(function ContainerDetailPage() {
 
 	const audit = container.image_audit ?? null
 	const imageRef = audit?.current_ref || container.image_ref || container.image || ""
+	const statusStyle = statusCardStyle(container)
 
 	return (
 		<div className="space-y-6 pb-10">
@@ -248,10 +247,7 @@ export default memo(function ContainerDetailPage() {
 				</Button>
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<div className="flex flex-wrap items-center gap-3">
-							<h1 className="text-2xl font-semibold tracking-tight">{decodedName}</h1>
-							<ContainerStatusBadge container={container} />
-						</div>
+						<h1 className="text-2xl font-semibold tracking-tight">{decodedName}</h1>
 						<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
 							<Link href={getPagePath($router, "host", { id: hostId })} className="hover:underline">
 								{hostName}
@@ -264,7 +260,12 @@ export default memo(function ContainerDetailPage() {
 			</div>
 
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				<MetricCard title={<Trans>Status</Trans>} value={statusLabel} icon={<BoxIcon className="size-4" />} />
+				<MetricCard
+					title={<Trans>Status</Trans>}
+					value={<span className={statusStyle.valueClass}>{statusLabel}</span>}
+					tone={statusStyle.tone}
+					icon={<BoxIcon className="size-4" />}
+				/>
 				<MetricCard
 					title={<Trans>CPU now</Trans>}
 					value={formatPercent(cpuNow)}
