@@ -4,6 +4,7 @@ package hub
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/stretchr/testify/require"
@@ -39,10 +40,10 @@ func TestHostOverviewIncludesTags(t *testing.T) {
 	require.Equal(t, []string{}, buildHostOverviewRecord(bareFetched, nil, nil).Tags)
 }
 
-// TestBuildAllFleetMetricSeries locks the fleet-metrics grouping: in one pass samples are
-// grouped into one series per agent (first-appearance order) for every metric, each metric
-// reads its own field, and the agent id is used when no name is known.
-func TestBuildAllFleetMetricSeries(t *testing.T) {
+// TestLoadFleetMetricsSeries locks the SQL-bucketed fleet aggregation: samples are grouped
+// per (agent, time bucket) into one averaged point per bucket, for every metric, with the
+// agent id used as the display name when none is known.
+func TestLoadFleetMetricsSeries(t *testing.T) {
 	hub, testApp, err := createTestHub(t)
 	require.NoError(t, err)
 	defer cleanupTestHub(hub, testApp)
@@ -61,31 +62,38 @@ func TestBuildAllFleetMetricSeries(t *testing.T) {
 		require.NoError(t, rerr)
 		return rec
 	}
-	// collected_at order: a1, a2, a1
-	records := []*core.Record{
-		mk(a1.Id, 10, "2026-01-01 00:00:00.000Z"),
-		mk(a2.Id, 50, "2026-01-01 00:00:30.000Z"),
-		mk(a1.Id, 20, "2026-01-01 00:01:00.000Z"),
+	mk(a1.Id, 10, "2026-01-01 00:00:00.000Z") // a1, minute bucket 00:00
+	mk(a2.Id, 50, "2026-01-01 00:00:30.000Z") // a2, minute bucket 00:00
+	mk(a2.Id, 70, "2026-01-01 00:00:45.000Z") // a2, same bucket 00:00 → avg(50,70)=60
+	mk(a1.Id, 20, "2026-01-01 00:01:00.000Z") // a1, minute bucket 00:01
+
+	since := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+	// index a metric's series by agent id (SQL orders by agent id, not insertion order).
+	byID := func(series []FleetMetricSeries) map[string]FleetMetricSeries {
+		m := make(map[string]FleetMetricSeries, len(series))
+		for _, s := range series {
+			m[s.ID] = s
+		}
+		return m
 	}
 
-	all := buildAllFleetMetricSeries(records, map[string]string{a1.Id: "web-1", a2.Id: "web-2"})
-	// Every metric is present, each grouped per agent in first-appearance order.
+	all, err := hub.loadFleetMetricsSeries(since, 60, map[string]string{a1.Id: "web-1", a2.Id: "web-2"})
+	require.NoError(t, err)
 	require.Len(t, all, 4)
 	for _, metric := range []string{"cpu", "memory", "disk", "load"} {
 		require.Contains(t, all, metric)
 		require.Len(t, all[metric], 2)
 	}
-	cpu := all["cpu"]
-	require.Equal(t, a1.Id, cpu[0].ID)
-	require.Equal(t, "web-1", cpu[0].Name)
-	require.Len(t, cpu[0].Points, 2)
-	require.Equal(t, 10.0, cpu[0].Points[0].Value)
-	require.Equal(t, 20.0, cpu[0].Points[1].Value)
-	require.Equal(t, a2.Id, cpu[1].ID)
-	require.Len(t, cpu[1].Points, 1)
-	require.Equal(t, 50.0, cpu[1].Points[0].Value)
+	cpu := byID(all["cpu"])
+	require.Equal(t, "web-1", cpu[a1.Id].Name)
+	require.Len(t, cpu[a1.Id].Points, 2) // two distinct minute buckets
+	require.Equal(t, 10.0, cpu[a1.Id].Points[0].Value)
+	require.Equal(t, 20.0, cpu[a1.Id].Points[1].Value)
+	require.Len(t, cpu[a2.Id].Points, 1)
+	require.Equal(t, 60.0, cpu[a2.Id].Points[0].Value) // two samples in one bucket → averaged
 
 	// name falls back to the agent id when unknown
-	fallback := buildAllFleetMetricSeries(records, map[string]string{})
-	require.Equal(t, a1.Id, fallback["cpu"][0].Name)
+	fallback, err := hub.loadFleetMetricsSeries(since, 60, map[string]string{})
+	require.NoError(t, err)
+	require.Equal(t, a1.Id, byID(fallback["cpu"])[a1.Id].Name)
 }

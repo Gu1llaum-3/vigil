@@ -562,20 +562,34 @@ func parseMonitorRangeWindow(raw string) time.Duration {
 	}
 }
 
-const monitorSeriesTargetPoints = 500
+// seriesTargetPoints is the approximate number of points a downsampled chart series aims
+// for; the bucket width is derived from the range to hit it. Shared by the monitor latency
+// series and the fleet-metrics endpoint.
+const seriesTargetPoints = 500
+
+// deriveBucketSeconds picks a bucket width so a range yields ~targetPoints buckets. The
+// floor is 1s (not 60s): for short ranges window/target is smaller than the sample interval,
+// so each bucket holds ≤1 sample and the series is effectively raw — no spike-smoothing. Only
+// long ranges (where window/target exceeds the interval) actually aggregate.
+func deriveBucketSeconds(window time.Duration, targetPoints int) int {
+	if targetPoints < 1 {
+		targetPoints = 1
+	}
+	bucketSeconds := int(window.Seconds()) / targetPoints
+	if bucketSeconds < 1 {
+		bucketSeconds = 1
+	}
+	return bucketSeconds
+}
 
 // getMonitorSeries returns a downsampled latency series for the monitor over `range`,
-// bucketed to ~monitorSeriesTargetPoints points — used by the detail chart for long ranges
+// bucketed to ~seriesTargetPoints points — used by the detail chart for long ranges
 // (e.g. 7d) where returning every raw check would be too many points to fetch and render.
 func (h *Hub) getMonitorSeries(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
 	window := parseMonitorRangeWindow(e.Request.URL.Query().Get("range"))
 	since := time.Now().UTC().Add(-window)
-	bucketSeconds := int(window.Seconds()) / monitorSeriesTargetPoints
-	if bucketSeconds < 60 {
-		bucketSeconds = 60
-	}
-	result, err := h.loadMonitorSeries(id, since, bucketSeconds)
+	result, err := h.loadMonitorSeries(id, since, deriveBucketSeconds(window, seriesTargetPoints))
 	if err != nil {
 		return err
 	}
