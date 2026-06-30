@@ -39,10 +39,10 @@ func TestHostOverviewIncludesTags(t *testing.T) {
 	require.Equal(t, []string{}, buildHostOverviewRecord(bareFetched, nil, nil).Tags)
 }
 
-// TestBuildFleetMetricSeries locks the fleet-metrics grouping: samples are grouped
-// into one series per agent (first-appearance order), the requested field is read
-// per point, and the agent id is used when no name is known.
-func TestBuildFleetMetricSeries(t *testing.T) {
+// TestBuildAllFleetMetricSeries locks the fleet-metrics grouping: in one pass samples are
+// grouped into one series per agent (first-appearance order) for every metric, each metric
+// reads its own field, and the agent id is used when no name is known.
+func TestBuildAllFleetMetricSeries(t *testing.T) {
 	hub, testApp, err := createTestHub(t)
 	require.NoError(t, err)
 	defer cleanupTestHub(hub, testApp)
@@ -68,18 +68,24 @@ func TestBuildFleetMetricSeries(t *testing.T) {
 		mk(a1.Id, 20, "2026-01-01 00:01:00.000Z"),
 	}
 
-	series := buildFleetMetricSeries(records, "cpu_percent", map[string]string{a1.Id: "web-1", a2.Id: "web-2"})
-	require.Len(t, series, 2)
-	require.Equal(t, a1.Id, series[0].ID)
-	require.Equal(t, "web-1", series[0].Name)
-	require.Len(t, series[0].Points, 2)
-	require.Equal(t, 10.0, series[0].Points[0].Value)
-	require.Equal(t, 20.0, series[0].Points[1].Value)
-	require.Equal(t, a2.Id, series[1].ID)
-	require.Len(t, series[1].Points, 1)
-	require.Equal(t, 50.0, series[1].Points[0].Value)
+	all := buildAllFleetMetricSeries(records, map[string]string{a1.Id: "web-1", a2.Id: "web-2"})
+	// Every metric is present, each grouped per agent in first-appearance order.
+	require.Len(t, all, 4)
+	for _, metric := range []string{"cpu", "memory", "disk", "load"} {
+		require.Contains(t, all, metric)
+		require.Len(t, all[metric], 2)
+	}
+	cpu := all["cpu"]
+	require.Equal(t, a1.Id, cpu[0].ID)
+	require.Equal(t, "web-1", cpu[0].Name)
+	require.Len(t, cpu[0].Points, 2)
+	require.Equal(t, 10.0, cpu[0].Points[0].Value)
+	require.Equal(t, 20.0, cpu[0].Points[1].Value)
+	require.Equal(t, a2.Id, cpu[1].ID)
+	require.Len(t, cpu[1].Points, 1)
+	require.Equal(t, 50.0, cpu[1].Points[0].Value)
 
 	// name falls back to the agent id when unknown
-	fallback := buildFleetMetricSeries(records, "cpu_percent", map[string]string{})
-	require.Equal(t, a1.Id, fallback[0].Name)
+	fallback := buildAllFleetMetricSeries(records, map[string]string{})
+	require.Equal(t, a1.Id, fallback["cpu"][0].Name)
 }

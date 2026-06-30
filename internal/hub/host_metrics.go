@@ -443,15 +443,10 @@ type FleetMetricSeries struct {
 	Points []FleetMetricPoint `json:"points"`
 }
 
-// getFleetMetrics returns one metric's history for every host over the range, as a
-// per-host series for a multi-line chart. Built on the same host_metric_samples
-// table as the single-host history, with one query across all agents.
+// getFleetMetrics returns every fleet metric's per-host history over the range in a single
+// response keyed by metric (cpu/memory/disk/load), so the Metrics page renders all charts
+// from one scan of host_metric_samples instead of one request — and one scan — per metric.
 func (h *Hub) getFleetMetrics(e *core.RequestEvent) error {
-	metric := e.Request.PathValue("metric")
-	field, ok := fleetMetricFields[metric]
-	if !ok {
-		return e.BadRequestError("Unknown metric", nil)
-	}
 	since := time.Now().UTC().Add(-parseMetricsHistoryRange(e.Request.URL.Query().Get("range")))
 	records, err := h.FindRecordsByFilter(
 		hostMetricSamplesCollection,
@@ -475,41 +470,51 @@ func (h *Hub) getFleetMetrics(e *core.RequestEvent) error {
 		slog.Warn("fleet metrics: failed to load agent names", "err", aerr)
 	}
 
-	return e.JSON(http.StatusOK, buildFleetMetricSeries(records, field, names))
+	return e.JSON(http.StatusOK, buildAllFleetMetricSeries(records, names))
 }
 
-// buildFleetMetricSeries groups collected_at-ordered samples into one series per
-// agent (in first-appearance order), reading `field` for each point's value and
-// falling back to the agent id when no name is known.
-func buildFleetMetricSeries(records []*core.Record, field string, names map[string]string) []FleetMetricSeries {
+// buildAllFleetMetricSeries groups collected_at-ordered samples into one series per agent
+// (first-appearance order) for every metric in a single pass: each record is walked once and
+// its timestamp formatted once, appending a point to each metric's per-agent series. The
+// agent id is used as the display name when none is known.
+func buildAllFleetMetricSeries(records []*core.Record, names map[string]string) map[string][]FleetMetricSeries {
 	order := make([]string, 0)
-	byAgent := make(map[string]*FleetMetricSeries)
+	// agentID → metric → series (one point slice per metric).
+	byAgent := make(map[string]map[string]*FleetMetricSeries)
 	for _, rec := range records {
 		agentID := rec.GetString("agent")
 		if agentID == "" {
 			continue
 		}
-		series, seen := byAgent[agentID]
+		seriesByMetric, seen := byAgent[agentID]
 		if !seen {
 			name := names[agentID]
 			if name == "" {
 				name = agentID
 			}
-			series = &FleetMetricSeries{ID: agentID, Name: name, Points: []FleetMetricPoint{}}
-			byAgent[agentID] = series
+			seriesByMetric = make(map[string]*FleetMetricSeries, len(fleetMetricFields))
+			for metric := range fleetMetricFields {
+				seriesByMetric[metric] = &FleetMetricSeries{ID: agentID, Name: name, Points: []FleetMetricPoint{}}
+			}
+			byAgent[agentID] = seriesByMetric
 			order = append(order, agentID)
 		}
-		series.Points = append(series.Points, FleetMetricPoint{
-			CollectedAt: rec.GetDateTime("collected_at").Time().UTC().Format(time.RFC3339),
-			Value:       numberAsFloat64(rec.Get(field)),
-		})
+		collectedAt := rec.GetDateTime("collected_at").Time().UTC().Format(time.RFC3339)
+		for metric, field := range fleetMetricFields {
+			s := seriesByMetric[metric]
+			s.Points = append(s.Points, FleetMetricPoint{CollectedAt: collectedAt, Value: numberAsFloat64(rec.Get(field))})
+		}
 	}
 
-	result := make([]FleetMetricSeries, 0, len(order))
-	for _, agentID := range order {
-		result = append(result, *byAgent[agentID])
+	out := make(map[string][]FleetMetricSeries, len(fleetMetricFields))
+	for metric := range fleetMetricFields {
+		series := make([]FleetMetricSeries, 0, len(order))
+		for _, agentID := range order {
+			series = append(series, *byAgent[agentID][metric])
+		}
+		out[metric] = series
 	}
-	return result
+	return out
 }
 
 func parseMetricsHistoryRange(raw string) time.Duration {

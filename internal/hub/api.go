@@ -215,7 +215,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.GET("/hosts-overview", h.getHostsOverview)
 	apiAuth.GET("/hosts/{id}", h.getHostDetail)
 	apiAuth.GET("/hosts/{id}/metrics", h.getHostMetricsHistory)
-	apiAuth.GET("/fleet-metrics/{metric}", h.getFleetMetrics)
+	apiAuth.GET("/fleet-metrics", h.getFleetMetrics)
 	apiAuth.GET("/hosts/{id}/container-metrics", h.getHostContainerMetricsHistory)
 	apiAuth.GET("/hosts/{id}/container-metrics/latest", h.getHostContainerMetricsLatest)
 	apiAuth.GET("/hosts/{id}/container-metrics/by-name/{name}", h.getContainerMetricsHistoryByName)

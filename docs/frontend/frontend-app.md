@@ -296,7 +296,7 @@ Realtime refresh for `/hosts` is driven by PocketBase subscriptions to `agents`,
 
 Shared chart components live in `internal/site/src/components/metric-charts.tsx` (`MetricCard`, `MetricBar`, `MetricHistoryChart`, `NetworkHistoryChart`, `LoadHistoryChart`, `FleetMetricChart`, `buildTimeSeries`, `metricsRanges`) and shared format helpers in `internal/site/src/lib/format.ts`. Both are used by `host-detail.tsx` and `container-detail.tsx`.
 
-The `/metrics` route (`routes/fleet-metrics.tsx`, sidebar "Metrics") is a fleet-wide view: it plots one metric (CPU/memory/disk/load) across **all** hosts as a multi-line chart via `FleetMetricChart`, with metric + time-range selectors. It fetches `GET /api/app/fleet-metrics/:metric?range=` and refreshes on `host_metric_current` realtime events (1s debounce).
+The `/metrics` route (`routes/fleet-metrics.tsx`, sidebar "Metrics") is a fleet-wide view: it plots **all** metrics (CPU/memory/disk/load) across **all** hosts as stacked multi-line charts (one `FleetMetricChart` per metric, a series per host), with only a time-range selector — every chart shows at once so the page can be skimmed without toggling a metric. It fetches everything in one call, `GET /api/app/fleet-metrics?range=` (a metric-keyed map), and refreshes on `host_metric_current` realtime events (1s debounce).
 
 ## Image Updates Route
 
