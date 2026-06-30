@@ -400,6 +400,14 @@ Those historical `monitor_events` records are also used to derive rolling stats 
 
 The rolling uptime and average latency values are computed over the available events in each window. They are exposed as soon as at least one event exists in the window (`total > 0`), so the frontend shows real data immediately. `N/A` is only shown when there are no events at all for the window. `avg_latency_24h_ms` is never set for `push`-type monitors.
 
+#### Monitors-list aggregate cache (`monitor_stats_cache.go`)
+
+Computing those aggregates is expensive: `loadAllMonitorMetrics` runs a 30-day `GROUP BY` scan over the whole `monitor_events` table and `loadRecentChecks` does one indexed seek per monitor. The list endpoint (`GET /api/app/monitors`) is also hit frequently by the sidebar down-count and the home page, so recomputing on every request scanned the events table constantly.
+
+The hub keeps an in-memory `monitorStatsCache` (on `*Hub`), refreshed in the background by a ticker (`MONITORS_STATS_INTERVAL`, default 30s, started in `StartHub` next to the snapshot/metrics tickers; it computes once eagerly at boot so the first request is warm). `buildMonitorsResponse` reads the cached aggregates + `recent_checks` instead of querying `monitor_events`, while still loading the small `monitors`/`monitor_groups` tables live — so **`status`/`last_checked_at`/`last_latency_ms`/`last_msg` stay instant** (the sidebar down-count remains accurate) and only the historical aggregates lag by up to one refresh interval. On a cold cache (before the first refresh) `buildMonitorsResponse` computes once synchronously so the response is never statless. A measured ~140× drop in per-request cost at 90k events (≈47ms → ≈0.3ms), widening with event volume.
+
+**Gotcha:** the cached `*MonitorMetrics` is shared and read-only. The push-monitor latency nil-ing in `buildMonitorsResponse` copies the struct first (`cp := *metrics`) — mutating the cached pointer in place would corrupt the cache and race other readers. The monitor *detail* endpoint (`buildMonitorDetail`, one monitor) is unaffected and still computes directly.
+
 The monitor detail page uses the same history data through:
 
 - `GET /api/app/monitors/{id}` — single monitor payload with current status and rolling metrics

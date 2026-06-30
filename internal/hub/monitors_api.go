@@ -292,10 +292,16 @@ func (h *Hub) buildMonitorsResponse() ([]*MonitorGroupResponse, error) {
 		return nil, err
 	}
 
-	// Aggregate metrics for all monitors in a single query rather than one per monitor.
-	metricsByMonitor, err := h.loadAllMonitorMetrics()
-	if err != nil {
-		return nil, err
+	// Aggregated metrics + recent-checks come from the in-memory cache (refreshed in the
+	// background), so this endpoint no longer scans monitor_events on every request. On a
+	// cold cache (e.g. right after boot, before the first refresh), compute once synchronously
+	// so the first response still carries stats.
+	metricsByMonitor, recentByMonitor, ok := h.monitorStatsSnapshot()
+	if !ok {
+		if err := h.ensureMonitorStatsWarm(); err != nil {
+			return nil, err
+		}
+		metricsByMonitor, recentByMonitor, _ = h.monitorStatsSnapshot()
 	}
 
 	appURL := h.Settings().Meta.AppURL
@@ -323,14 +329,14 @@ func (h *Hub) buildMonitorsResponse() ([]*MonitorGroupResponse, error) {
 	for _, m := range monitors {
 		metrics := metricsByMonitor[m.Id]
 		if metrics != nil && m.GetString("type") == "push" {
-			metrics.AvgLatency24hMs = nil
+			// Copy before nil-ing latency: the cached *MonitorMetrics is shared (read-only),
+			// mutating it in place would corrupt the cache and race other readers.
+			cp := *metrics
+			cp.AvgLatency24hMs = nil
+			metrics = &cp
 		}
-		// One indexed lookup per monitor (WHERE monitor=? ORDER BY checked_at DESC LIMIT N)
-		// — each is a sub-ms seek on the (monitor, checked_at) index. NOTE: a single windowed
-		// query (ROW_NUMBER OVER PARTITION BY monitor) is NOT faster here — SQLite can't push
-		// the per-partition LIMIT into the scan, so it full-scans monitor_events. Keep the
-		// per-monitor seeks.
-		recentChecks, _ := h.loadRecentChecks(m, recentChecksLimit)
+		// recent_checks (sparkline) comes from the cache too — no per-monitor seek here.
+		recentChecks := recentByMonitor[m.Id]
 		mr := monitorToRecord(m, appURL, metrics, recentChecks)
 		if gr, ok := groupMap[mr.Group]; ok {
 			gr.Monitors = append(gr.Monitors, mr)
