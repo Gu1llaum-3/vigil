@@ -1768,6 +1768,10 @@ msgstr "Mémoire actuelle"
 msgid "Memory usage"
 msgstr "Utilisation mémoire"
 
+#: src/components/routes/monitor-detail.tsx
+msgid "Message"
+msgstr "Message"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Message delivered"
 msgstr "Message envoyé"
@@ -2078,6 +2082,10 @@ msgstr "Aucun résultat trouvé."
 #: src/components/routes/settings/notifications.tsx
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr "Aucune règle configurée. Ajoutez une règle pour commencer à router les notifications."
+
+#: src/components/routes/monitor-detail.tsx
+msgid "No status changes in this range."
+msgstr "Aucun changement d'état sur cette période."
 
 #: src/components/routes/host-detail.tsx
 msgid "No storage data."
@@ -2849,6 +2857,7 @@ msgstr "Heure de début"
 
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/monitor-detail.tsx
 msgid "State"
 msgstr "État"
 
@@ -2869,6 +2878,10 @@ msgstr "Détail de l'état"
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Status"
 msgstr "Statut"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Status history"
+msgstr "Historique d'état"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
@@ -2998,6 +3011,10 @@ msgstr "Temporisation (secondes, 0 = aucune limitation)"
 msgid "Thu"
 msgstr "Jeu"
 
+#: src/components/routes/monitor-detail.tsx
+msgid "Time"
+msgstr "Heure"
+
 #: src/components/routes/settings/general.tsx
 msgid "Time format"
 msgstr "Format d'heure"
@@ -3121,6 +3138,10 @@ msgstr "OK"
 #: src/lib/audit-status.ts
 msgid "Up to date"
 msgstr "À jour"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Up/down transitions over the selected range, most recent first."
+msgstr "Transitions disponible/hors ligne sur la période sélectionnée, du plus récent au plus ancien."
 
 #: src/components/routes/host-detail.tsx
 msgid "Update"
