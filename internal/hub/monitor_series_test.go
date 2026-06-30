@@ -29,6 +29,36 @@ func seedMonitorWithEvents(t *testing.T, hub *Hub, events []struct {
 	return mon.Id
 }
 
+func TestMonitorEventsWindowSince(t *testing.T) {
+	now := time.Date(2026, 1, 8, 12, 0, 0, 0, time.UTC)
+
+	// range derives since server-side and takes precedence over a client since.
+	got, err := monitorEventsWindowSince(now, "7d", "2020-01-01T00:00:00Z")
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, now.Add(-7*24*time.Hour), *got)
+
+	// no range → client since is parsed and honored.
+	got, err = monitorEventsWindowSince(now, "", "2026-01-01T00:00:00Z")
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), *got)
+
+	// neither → unbounded (nil).
+	got, err = monitorEventsWindowSince(now, "", "")
+	require.NoError(t, err)
+	require.Nil(t, got)
+
+	// invalid client since → error.
+	_, err = monitorEventsWindowSince(now, "", "not-a-timestamp")
+	require.Error(t, err)
+
+	// unknown non-empty range → error (not a silent 24h default that would truncate a
+	// caller's since-based query).
+	_, err = monitorEventsWindowSince(now, "monthly", "2026-01-01T00:00:00Z")
+	require.Error(t, err)
+}
+
 func TestLoadMonitorSeries_Buckets(t *testing.T) {
 	hub, testApp, err := createTestHub(t)
 	require.NoError(t, err)

@@ -2834,6 +2834,10 @@ msgstr "Show all monitors"
 msgid "Show only monitors that are down"
 msgstr "Show only monitors that are down"
 
+#: src/components/routes/monitor-detail.tsx
+msgid "Showing the {TRANSITIONS_LIMIT} most recent status changes; older changes are not listed."
+msgstr "Showing the {TRANSITIONS_LIMIT} most recent status changes; older changes are not listed."
+
 #: src/components/login/auth-form.tsx
 msgid "Sign in"
 msgstr "Sign in"

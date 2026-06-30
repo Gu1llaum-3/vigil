@@ -2,6 +2,7 @@ package hub
 
 import (
 	"database/sql"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -512,14 +513,11 @@ func (h *Hub) getMonitorEvents(e *core.RequestEvent) error {
 		limit = parsed
 	}
 
-	var sincePtr, untilPtr *time.Time
-	if rawSince := query.Get("since"); rawSince != "" {
-		since, err := time.Parse(time.RFC3339, rawSince)
-		if err != nil {
-			return e.BadRequestError("Invalid since timestamp", err)
-		}
-		sincePtr = &since
+	sincePtr, err := monitorEventsWindowSince(time.Now().UTC(), query.Get("range"), query.Get("since"))
+	if err != nil {
+		return e.BadRequestError("Invalid time window", err)
 	}
+	var untilPtr *time.Time
 	if rawUntil := query.Get("until"); rawUntil != "" {
 		until, err := time.Parse(time.RFC3339, rawUntil)
 		if err != nil {
@@ -545,21 +543,58 @@ func (h *Hub) getMonitorEvents(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, result)
 }
 
-func parseMonitorRangeWindow(raw string) time.Duration {
+// monitorEventsWindowSince resolves the `since` lower bound for the monitor events /
+// transitions endpoint. A `range` (1h/3h/6h/24h/7d) makes the SERVER the single clock
+// authority for the window and takes precedence over a client-supplied `since` — so the
+// detail chart and the transitions list cover exactly the same period (the series endpoint
+// derives `since` the same way) instead of drifting by client/server clock skew. An unknown
+// non-empty `range` is rejected (rather than silently coerced to 24h, which would truncate
+// an external caller's `since`-based query without warning). Returns nil when neither is
+// given (unbounded history, capped by limit).
+func monitorEventsWindowSince(now time.Time, rangeParam, sinceParam string) (*time.Time, error) {
+	if rangeParam != "" {
+		window, ok := parseMonitorRange(rangeParam)
+		if !ok {
+			return nil, fmt.Errorf("invalid range %q", rangeParam)
+		}
+		since := now.Add(-window).UTC()
+		return &since, nil
+	}
+	if sinceParam != "" {
+		since, err := time.Parse(time.RFC3339, sinceParam)
+		if err != nil {
+			return nil, err
+		}
+		since = since.UTC()
+		return &since, nil
+	}
+	return nil, nil
+}
+
+// parseMonitorRange maps a range key to its window, reporting whether the key is known.
+// ok=false carries the 24h default so callers that want lenient behavior (the series
+// endpoint, whose range always comes from our own UI) can ignore ok, while the events
+// endpoint can reject an unknown range.
+func parseMonitorRange(raw string) (time.Duration, bool) {
 	switch raw {
 	case "1h":
-		return time.Hour
+		return time.Hour, true
 	case "3h":
-		return 3 * time.Hour
+		return 3 * time.Hour, true
 	case "6h":
-		return 6 * time.Hour
+		return 6 * time.Hour, true
 	case "24h":
-		return 24 * time.Hour
+		return 24 * time.Hour, true
 	case "7d":
-		return 7 * 24 * time.Hour
+		return 7 * 24 * time.Hour, true
 	default:
-		return 24 * time.Hour
+		return 24 * time.Hour, false
 	}
+}
+
+func parseMonitorRangeWindow(raw string) time.Duration {
+	window, _ := parseMonitorRange(raw)
+	return window
 }
 
 // seriesTargetPoints is the approximate number of points a downsampled chart series aims

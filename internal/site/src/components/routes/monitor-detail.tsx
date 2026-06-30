@@ -36,6 +36,11 @@ const ranges: { key: RangeKey; label: string; hours: number }[] = [
 	{ key: "7d", label: "7d", hours: 168 },
 ]
 
+// Cap on the status-change history fetched for the selected range. Transitions are sparse
+// (status changes, not raw checks), so 500 covers even a heavily flapping monitor; when the
+// list reaches the cap the UI says so rather than silently dropping the oldest changes.
+const TRANSITIONS_LIMIT = 500
+
 function formatLatencyMs(ms?: number): string {
 	if (ms == null) return "N/A"
 	return `${Math.round(ms * 10) / 10}ms`
@@ -209,8 +214,9 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 				setMonitor(detail)
 
 				const selectedRange = ranges.find((item) => item.key === range) ?? ranges[0]
-				const since = new Date(Date.now() - selectedRange.hours * 60 * 60 * 1000).toISOString()
 
+				// The chart and the transitions list are both windowed server-side via `range`,
+				// so they cover exactly the same period regardless of client/server clock skew.
 				// Chart data: a server-side downsampled series for long ranges (7d would be
 				// ~10k raw points), raw events (with per-check tooltips) for ≤24h.
 				const chartPromise =
@@ -223,7 +229,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 									5000
 								)
 								return pb.send<MonitorEventRecord[]>(
-									`/api/app/monitors/${monitorId}/events?since=${encodeURIComponent(since)}&limit=${limit}`,
+									`/api/app/monitors/${monitorId}/events?range=${selectedRange.key}&limit=${limit}`,
 									{ method: "GET" }
 								)
 							})()
@@ -231,9 +237,11 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 				// Transition history (Uptime-Kuma-style up↔down list) over the same window.
 				// Runs in parallel with the chart fetch; non-fatal so a failure here never
 				// blanks the chart.
+				// Fetch one past the cap so the UI can tell "exactly the cap, nothing dropped"
+				// from "more than the cap" (a bare LIMIT N cannot) and only then show the note.
 				const transitionsPromise = pb
 					.send<MonitorEventRecord[]>(
-						`/api/app/monitors/${monitorId}/events?since=${encodeURIComponent(since)}&transitions_only=true&limit=200`,
+						`/api/app/monitors/${monitorId}/events?range=${selectedRange.key}&transitions_only=true&limit=${TRANSITIONS_LIMIT + 1}`,
 						{ method: "GET" }
 					)
 					.catch(() => [] as MonitorEventRecord[])
@@ -585,7 +593,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 										</tr>
 									</thead>
 									<tbody>
-										{transitions.map((ev) => (
+										{transitions.slice(0, TRANSITIONS_LIMIT).map((ev) => (
 											<tr key={ev.id || ev.checked_at} className="border-t border-border/40">
 												<td className="py-2 pe-4">{statusBadge(ev.status)}</td>
 												<td className="py-2 pe-4 whitespace-nowrap tabular-nums text-muted-foreground">
@@ -596,6 +604,13 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 										))}
 									</tbody>
 								</table>
+								{transitions.length > TRANSITIONS_LIMIT && (
+									<p className="mt-3 text-xs text-muted-foreground">
+										<Trans>
+											Showing the {TRANSITIONS_LIMIT} most recent status changes; older changes are not listed.
+										</Trans>
+									</p>
+								)}
 							</div>
 						) : (
 							<div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
