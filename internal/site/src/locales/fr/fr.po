@@ -182,6 +182,7 @@ msgstr "Ajouter une sonde ici"
 msgid "Add rule"
 msgstr "Ajouter une règle"
 
+#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Add tags"
 msgstr "Ajouter des tags"
@@ -1326,8 +1327,8 @@ msgid "Host"
 msgstr "Hôte"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Host actions"
-msgstr "Actions de l'hôte"
+#~ msgid "Host actions"
+#~ msgstr "Actions de l'hôte"
 
 #: src/components/notification-log-toasts.tsx
 msgid "Host back online"
@@ -1898,8 +1899,8 @@ msgid "Needs attention"
 msgstr "À traiter"
 
 #: src/components/routes/dashboard/hosts-table.tsx
-msgid "Net"
-msgstr "Réseau"
+#~ msgid "Net"
+#~ msgstr "Réseau"
 
 #: src/components/routes/host-detail.tsx
 msgid "Network"
@@ -2819,6 +2820,11 @@ msgstr "Paramètres enregistrés"
 msgid "Severity"
 msgstr "Sévérité"
 
+#. placeholder {0}: tags.length
+#: src/components/routes/dashboard/hosts-table.tsx
+msgid "Show all {0} tags"
+msgstr "Afficher les {0} tags"
+
 #: src/components/routes/monitors.tsx
 msgid "Show all monitors"
 msgstr "Afficher toutes les sondes"
@@ -2912,6 +2918,7 @@ msgid "Tag rebuilt"
 msgstr "Tag reconstruit"
 
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/tags-dialog.tsx
 msgid "Tags"
