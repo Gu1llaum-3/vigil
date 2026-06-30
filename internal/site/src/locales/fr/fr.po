@@ -182,8 +182,7 @@ msgstr "Ajouter une sonde ici"
 msgid "Add rule"
 msgstr "Ajouter une règle"
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/host-detail.tsx
+#: src/components/host-tags.tsx
 msgid "Add tags"
 msgstr "Ajouter des tags"
 
@@ -982,8 +981,7 @@ msgstr "Modifier la règle"
 msgid "Edit Schedule"
 msgstr "Modifier la planification"
 
-#: src/components/routes/dashboard/hosts-table.tsx
-#: src/components/routes/host-detail.tsx
+#: src/components/host-tags.tsx
 #: src/components/routes/settings/agents.tsx
 #: src/components/tags-dialog.tsx
 msgid "Edit tags"
@@ -2829,7 +2827,7 @@ msgid "Severity"
 msgstr "Sévérité"
 
 #. placeholder {0}: tags.length
-#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/host-tags.tsx
 msgid "Show all {0} tags"
 msgstr "Afficher les {0} tags"
 

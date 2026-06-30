@@ -15,8 +15,8 @@ import {
 } from "lucide-react"
 import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { $router } from "@/components/router"
+import { HostTags } from "@/components/host-tags"
 import { TagsDialog } from "@/components/tags-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
@@ -354,13 +354,7 @@ const SectionTable = memo(({ agents = [], tokens = {} }: { agents: AgentRecord[]
 							<TableCell className="font-mono text-[0.95em] py-2">{agent.fingerprint}</TableCell>
 							<TableCell className="py-2">
 								{agent.tags && agent.tags.length > 0 ? (
-									<span className="flex flex-wrap gap-1">
-										{agent.tags.map((tag) => (
-											<Badge key={tag} variant="secondary" className="px-1.5 py-0 text-xs font-normal">
-												{tag}
-											</Badge>
-										))}
-									</span>
+									<HostTags tags={agent.tags} variant="wrap" />
 								) : (
 									<span className="text-muted-foreground">—</span>
 								)}
