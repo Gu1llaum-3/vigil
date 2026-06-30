@@ -1764,6 +1764,10 @@ msgstr "Memory now"
 msgid "Memory usage"
 msgstr "Memory usage"
 
+#: src/components/routes/monitor-detail.tsx
+msgid "Message"
+msgstr "Message"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Message delivered"
 msgstr "Message delivered"
@@ -2074,6 +2078,10 @@ msgstr "No results found."
 #: src/components/routes/settings/notifications.tsx
 msgid "No rules configured. Add a rule to start routing notifications."
 msgstr "No rules configured. Add a rule to start routing notifications."
+
+#: src/components/routes/monitor-detail.tsx
+msgid "No status changes in this range."
+msgstr "No status changes in this range."
 
 #: src/components/routes/host-detail.tsx
 msgid "No storage data."
@@ -2850,6 +2858,7 @@ msgstr "Start time"
 
 #: src/components/routes/container-detail.tsx
 #: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/monitor-detail.tsx
 msgid "State"
 msgstr "State"
 
@@ -2870,6 +2879,10 @@ msgstr "State detail"
 #: src/components/routes/settings/notifications/history.tsx
 msgid "Status"
 msgstr "Status"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Status history"
+msgstr "Status history"
 
 #: src/components/routes/dashboard/containers-filter-sheet.tsx
 #: src/components/routes/dashboard/containers-table.tsx
@@ -3000,6 +3013,10 @@ msgstr "Throttle (seconds, 0 = no throttle)"
 msgid "Thu"
 msgstr "Thu"
 
+#: src/components/routes/monitor-detail.tsx
+msgid "Time"
+msgstr "Time"
+
 #: src/components/routes/settings/general.tsx
 msgid "Time format"
 msgstr "Time format"
@@ -3123,6 +3140,10 @@ msgstr "Up"
 #: src/lib/audit-status.ts
 msgid "Up to date"
 msgstr "Up to date"
+
+#: src/components/routes/monitor-detail.tsx
+msgid "Up/down transitions over the selected range, most recent first."
+msgstr "Up/down transitions over the selected range, most recent first."
 
 #: src/components/routes/host-detail.tsx
 msgid "Update"

@@ -26,13 +26,14 @@ import type { MonitorEventRecord, MonitorRecord, MonitorStatus } from "@/lib/mon
 
 ChartJS.register(LineElement, LinearScale, PointElement, Filler, Tooltip, Legend)
 
-type RangeKey = "1h" | "3h" | "6h" | "24h"
+type RangeKey = "1h" | "3h" | "6h" | "24h" | "7d"
 
 const ranges: { key: RangeKey; label: string; hours: number }[] = [
 	{ key: "1h", label: "1h", hours: 1 },
 	{ key: "3h", label: "3h", hours: 3 },
 	{ key: "6h", label: "6h", hours: 6 },
 	{ key: "24h", label: "24h", hours: 24 },
+	{ key: "7d", label: "7d", hours: 168 },
 ]
 
 function formatLatencyMs(ms?: number): string {
@@ -182,6 +183,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 	const [range, setRange] = useState<RangeKey>("24h")
 	const [monitor, setMonitor] = useState<MonitorRecord | null>(null)
 	const [events, setEvents] = useState<MonitorEventRecord[]>([])
+	const [transitions, setTransitions] = useState<MonitorEventRecord[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -208,14 +210,38 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 
 				const selectedRange = ranges.find((item) => item.key === range) ?? ranges[0]
 				const since = new Date(Date.now() - selectedRange.hours * 60 * 60 * 1000).toISOString()
-				const intervalMs = Math.max((detail.interval || 60) * 1000, 60_000)
-				const limit = Math.min(Math.max(Math.ceil((selectedRange.hours * 60 * 60 * 1000) / intervalMs) + 50, 250), 5000)
-				const history = await pb.send<MonitorEventRecord[]>(
-					`/api/app/monitors/${monitorId}/events?since=${encodeURIComponent(since)}&limit=${limit}`,
-					{ method: "GET" }
-				)
+
+				// Chart data: a server-side downsampled series for long ranges (7d would be
+				// ~10k raw points), raw events (with per-check tooltips) for ≤24h.
+				const chartPromise =
+					selectedRange.key === "7d"
+						? pb.send<MonitorEventRecord[]>(`/api/app/monitors/${monitorId}/series?range=7d`, { method: "GET" })
+						: (() => {
+								const intervalMs = Math.max((detail.interval || 60) * 1000, 60_000)
+								const limit = Math.min(
+									Math.max(Math.ceil((selectedRange.hours * 60 * 60 * 1000) / intervalMs) + 50, 250),
+									5000
+								)
+								return pb.send<MonitorEventRecord[]>(
+									`/api/app/monitors/${monitorId}/events?since=${encodeURIComponent(since)}&limit=${limit}`,
+									{ method: "GET" }
+								)
+							})()
+
+				// Transition history (Uptime-Kuma-style up↔down list) over the same window.
+				// Runs in parallel with the chart fetch; non-fatal so a failure here never
+				// blanks the chart.
+				const transitionsPromise = pb
+					.send<MonitorEventRecord[]>(
+						`/api/app/monitors/${monitorId}/events?since=${encodeURIComponent(since)}&transitions_only=true&limit=200`,
+						{ method: "GET" }
+					)
+					.catch(() => [] as MonitorEventRecord[])
+
+				const [history, trans] = await Promise.all([chartPromise, transitionsPromise])
 				if (requestSeq !== requestSeqRef.current) return
 				setEvents(history)
+				setTransitions(trans)
 			} catch (err) {
 				if (requestSeq !== requestSeqRef.current) return
 				setError(err instanceof Error ? err.message : "Failed to load monitor")
@@ -496,7 +522,9 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 						<div className="text-xs text-muted-foreground">
 							<Trans>Checks loaded</Trans>
 						</div>
-						<div className="mt-1 text-sm font-medium">{events.length}</div>
+						{/* For 7d the chart data is downsampled buckets, not raw checks, so the raw
+						    count is not meaningful — show a dash rather than the bucket count. */}
+						<div className="mt-1 text-sm font-medium">{range === "7d" ? "—" : events.length}</div>
 					</div>
 					<div className="rounded-lg border bg-muted/20 p-4">
 						<div className="text-xs text-muted-foreground">
@@ -526,6 +554,54 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 								</div>
 							)}
 						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="border-border/70">
+					<CardHeader className="pb-3">
+						<CardTitle className="text-sm font-medium flex items-center gap-2">
+							<Clock3Icon className="h-4 w-4" />
+							<Trans>Status history</Trans>
+						</CardTitle>
+						<CardDescription>
+							<Trans>Up/down transitions over the selected range, most recent first.</Trans>
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{transitions.length > 0 ? (
+							<div className="overflow-x-auto">
+								<table className="w-full text-sm">
+									<thead>
+										<tr className="text-left text-xs text-muted-foreground">
+											<th className="pb-2 pe-4 font-medium">
+												<Trans>State</Trans>
+											</th>
+											<th className="pb-2 pe-4 font-medium">
+												<Trans>Time</Trans>
+											</th>
+											<th className="pb-2 font-medium">
+												<Trans>Message</Trans>
+											</th>
+										</tr>
+									</thead>
+									<tbody>
+										{transitions.map((ev) => (
+											<tr key={ev.id || ev.checked_at} className="border-t border-border/40">
+												<td className="py-2 pe-4">{statusBadge(ev.status)}</td>
+												<td className="py-2 pe-4 whitespace-nowrap tabular-nums text-muted-foreground">
+													{ev.checked_at ? formatDateTime(Date.parse(ev.checked_at)) : "—"}
+												</td>
+												<td className="py-2 break-words text-muted-foreground">{ev.msg || "—"}</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						) : (
+							<div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+								<Trans>No status changes in this range.</Trans>
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			</CardContent>

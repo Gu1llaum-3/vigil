@@ -1,6 +1,8 @@
 package hub
 
 import (
+	"database/sql"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -8,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 // MonitorGroupResponse is a group with its monitors, returned by the API.
@@ -525,11 +528,162 @@ func (h *Hub) getMonitorEvents(e *core.RequestEvent) error {
 		untilPtr = &until
 	}
 
+	// transitions_only returns just the status-change events (Uptime-Kuma-style incident
+	// history), computed server-side so the payload stays small over long windows.
+	if query.Get("transitions_only") == "true" {
+		transitions, err := h.loadMonitorTransitions(id, sincePtr, limit)
+		if err != nil {
+			return err
+		}
+		return e.JSON(http.StatusOK, transitions)
+	}
+
 	result, err := h.loadMonitorEvents(id, limit, sincePtr, untilPtr)
 	if err != nil {
 		return err
 	}
 	return e.JSON(http.StatusOK, result)
+}
+
+func parseMonitorRangeWindow(raw string) time.Duration {
+	switch raw {
+	case "1h":
+		return time.Hour
+	case "3h":
+		return 3 * time.Hour
+	case "6h":
+		return 6 * time.Hour
+	case "24h":
+		return 24 * time.Hour
+	case "7d":
+		return 7 * 24 * time.Hour
+	default:
+		return 24 * time.Hour
+	}
+}
+
+const monitorSeriesTargetPoints = 500
+
+// getMonitorSeries returns a downsampled latency series for the monitor over `range`,
+// bucketed to ~monitorSeriesTargetPoints points — used by the detail chart for long ranges
+// (e.g. 7d) where returning every raw check would be too many points to fetch and render.
+func (h *Hub) getMonitorSeries(e *core.RequestEvent) error {
+	id := e.Request.PathValue("id")
+	window := parseMonitorRangeWindow(e.Request.URL.Query().Get("range"))
+	since := time.Now().UTC().Add(-window)
+	bucketSeconds := int(window.Seconds()) / monitorSeriesTargetPoints
+	if bucketSeconds < 60 {
+		bucketSeconds = 60
+	}
+	result, err := h.loadMonitorSeries(id, since, bucketSeconds)
+	if err != nil {
+		return err
+	}
+	return e.JSON(http.StatusOK, result)
+}
+
+type monitorSeriesRow struct {
+	BucketStart int64           `db:"bucket_start"`
+	AvgLatency  sql.NullFloat64 `db:"avg_latency"`
+	DownCount   int             `db:"down_count"`
+}
+
+// loadMonitorSeries returns a downsampled series for one monitor: events in [since, now]
+// grouped into fixed buckets of bucketSeconds, aggregated **in SQL** so only one row per
+// bucket (~monitorSeriesTargetPoints) is materialized, not every raw check. Each bucket
+// yields one MonitorEventEntry the frontend's buildSeries consumes unchanged — latency =
+// average over the bucket's up checks, status = down if ANY check in the bucket was down
+// (so incidents still show as red bands).
+func (h *Hub) loadMonitorSeries(id string, since time.Time, bucketSeconds int) ([]MonitorEventEntry, error) {
+	if bucketSeconds < 1 {
+		bucketSeconds = 60
+	}
+	var rows []monitorSeriesRow
+	err := h.DB().
+		NewQuery(`SELECT
+			(CAST(strftime('%s', checked_at) AS INTEGER) / {:bucket}) * {:bucket} AS bucket_start,
+			AVG(CASE WHEN status = 1 THEN latency_ms END) AS avg_latency,
+			SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS down_count
+		FROM monitor_events
+		WHERE monitor = {:id} AND checked_at >= {:since}
+		GROUP BY bucket_start
+		ORDER BY bucket_start`).
+		Bind(dbx.Params{"id": id, "since": since.UTC(), "bucket": bucketSeconds}).
+		All(&rows)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]MonitorEventEntry, 0, len(rows))
+	for _, r := range rows {
+		status, latency := 1, 0
+		if r.DownCount > 0 {
+			status = 0
+		}
+		if r.AvgLatency.Valid {
+			latency = int(math.Round(r.AvgLatency.Float64))
+		}
+		out = append(out, MonitorEventEntry{
+			Status:    status,
+			LatencyMs: latency,
+			CheckedAt: time.Unix(r.BucketStart, 0).UTC().Format(time.RFC3339),
+		})
+	}
+	return out, nil
+}
+
+type monitorTransitionRow struct {
+	ID        string         `db:"id"`
+	CheckedAt types.DateTime `db:"checked_at"`
+	Status    int            `db:"status"`
+	LatencyMs int            `db:"latency_ms"`
+	Msg       string         `db:"msg"`
+}
+
+// loadMonitorTransitions returns only the status-change events for a monitor in [since, now],
+// newest first (capped at limit; limit<=0 = no cap). Change detection runs **in SQL** via a
+// LAG window function, so only transition rows are materialized in Go — bounded regardless of
+// how many raw checks fall in the window. The WHERE clause is built from constants only (the
+// id/since/limit are bound params), so it is injection-safe.
+func (h *Hub) loadMonitorTransitions(id string, since *time.Time, limit int) ([]MonitorEventEntry, error) {
+	where := "monitor = {:id}"
+	params := dbx.Params{"id": id}
+	if since != nil {
+		where += " AND checked_at >= {:since}"
+		params["since"] = since.UTC()
+	}
+	if limit <= 0 {
+		limit = -1 // SQLite: LIMIT -1 means unbounded
+	}
+	params["limit"] = limit
+
+	var rows []monitorTransitionRow
+	err := h.DB().
+		NewQuery(`SELECT id, status, latency_ms, msg, checked_at FROM (
+			SELECT id, status, latency_ms, msg, checked_at,
+			       LAG(status) OVER (ORDER BY checked_at) AS prev_status
+			FROM monitor_events
+			WHERE ` + where + `
+		) WHERE prev_status IS NULL OR status != prev_status
+		ORDER BY checked_at DESC
+		LIMIT {:limit}`).
+		Bind(params).
+		All(&rows)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]MonitorEventEntry, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, MonitorEventEntry{
+			ID:        r.ID,
+			Status:    r.Status,
+			LatencyMs: r.LatencyMs,
+			Msg:       r.Msg,
+			CheckedAt: r.CheckedAt.Time().UTC().Format(time.RFC3339),
+		})
+	}
+	return out, nil
 }
 
 // getMonitorGroups returns all monitor groups.
