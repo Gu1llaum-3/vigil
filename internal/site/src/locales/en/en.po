@@ -126,6 +126,10 @@ msgstr "A unique push URL will be generated automatically. Use it in a cron job 
 msgid "Actions"
 msgstr "Actions"
 
+#: src/components/routes/dashboard/containers-table.tsx
+#~ msgid "Actions for {0}"
+#~ msgstr "Actions for {0}"
+
 #: src/components/routes/monitors.tsx
 msgid "Active"
 msgstr "Active"
@@ -1084,9 +1088,17 @@ msgstr "Failed to load purge settings"
 msgid "Failed to move monitor"
 msgstr "Failed to move monitor"
 
+#: src/components/mute-menu.tsx
+msgid "Failed to mute notifications"
+msgstr "Failed to mute notifications"
+
 #: src/components/metric-thresholds.tsx
 msgid "Failed to reset"
 msgstr "Failed to reset"
+
+#: src/components/mute-menu.tsx
+msgid "Failed to resume notifications"
+msgstr "Failed to resume notifications"
 
 #: src/components/routes/settings/api-keys.tsx
 msgid "Failed to revoke API key"
@@ -1168,6 +1180,18 @@ msgstr "Fingerprint"
 #: src/components/routes/monitors.tsx
 msgid "Flips up and down: the monitor is \"down\" when the target is reachable."
 msgstr "Flips up and down: the monitor is \"down\" when the target is reachable."
+
+#: src/components/mute-menu.tsx
+msgid "For 1 hour"
+msgstr "For 1 hour"
+
+#: src/components/mute-menu.tsx
+msgid "For 24 hours"
+msgstr "For 24 hours"
+
+#: src/components/mute-menu.tsx
+msgid "For 8 hours"
+msgstr "For 8 hours"
 
 #: src/components/login/auth-form.tsx
 msgid "Forgot password?"
@@ -1732,6 +1756,23 @@ msgstr "Monitors"
 msgid "Move to"
 msgstr "Move to"
 
+#: src/components/mute-menu.tsx
+msgid "Mute notifications"
+msgstr "Mute notifications"
+
+#: src/components/mute-menu.tsx
+msgid "Muted"
+msgstr "Muted"
+
+#: src/components/mute-menu.tsx
+msgid "Muted indefinitely"
+msgstr "Muted indefinitely"
+
+#. placeholder {0}: new Date(activeMute.mutedUntil).toLocaleString()
+#: src/components/mute-menu.tsx
+msgid "Muted until {0}"
+msgstr "Muted until {0}"
+
 #: src/components/routes/settings/notifications.tsx
 msgid "My Slack alerts"
 msgstr "My Slack alerts"
@@ -1985,12 +2026,23 @@ msgstr "Notification History Retention (days)"
 #: src/components/app-sidebar.tsx
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
+#: src/components/routes/dashboard/containers-table.tsx
+#: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/monitors.tsx
 #: src/components/routes/notifications.tsx
 #: src/components/routes/settings/layout.tsx
 #: src/components/routes/settings/notifications.tsx
 #: src/components/routes/settings/purge.tsx
 msgid "Notifications"
 msgstr "Notifications"
+
+#: src/components/mute-menu.tsx
+msgid "Notifications muted"
+msgstr "Notifications muted"
+
+#: src/components/mute-menu.tsx
+msgid "Notifications resumed"
+msgstr "Notifications resumed"
 
 #: src/components/login/auth-form.tsx
 msgid "OAuth 2 / OIDC support"
@@ -2438,6 +2490,10 @@ msgstr "Restarting"
 msgid "Restarting for"
 msgstr "Restarting for"
 
+#: src/components/mute-menu.tsx
+msgid "Resume notifications"
+msgstr "Resume notifications"
+
 #: src/components/metric-thresholds.tsx
 msgid "Reverted to global default"
 msgstr "Reverted to global default"
@@ -2875,6 +2931,10 @@ msgstr "Unread"
 #: src/lib/audit-status.ts
 msgid "Unsupported"
 msgstr "Unsupported"
+
+#: src/components/mute-menu.tsx
+msgid "Until I resume"
+msgstr "Until I resume"
 
 #: src/components/routes/monitors.tsx
 msgid "up"
