@@ -64,6 +64,7 @@ type MonitorCheckPoint struct {
 
 type monitorMetrics struct {
 	AvgLatency24hMs float64 `db:"avg_latency_24h_ms"`
+	Events24h       int     `db:"events_24h"`
 	Total24h        int     `db:"total_24h"`
 	Up24h           int     `db:"up_24h"`
 	Total30d        int     `db:"total_30d"`
@@ -76,8 +77,9 @@ func (h *Hub) loadMonitorMetrics(m *core.Record) (*MonitorMetrics, error) {
 	var row monitorMetrics
 	query := `
 SELECT
-	COUNT(*) AS total_30d,
-	COALESCE(SUM(CASE WHEN checked_at >= {:since24} THEN 1 ELSE 0 END), 0) AS total_24h,
+	COALESCE(SUM(CASE WHEN status IN (0, 1) THEN 1 ELSE 0 END), 0) AS total_30d,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} THEN 1 ELSE 0 END), 0) AS events_24h,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status IN (0, 1) THEN 1 ELSE 0 END), 0) AS total_24h,
 	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status = 1 THEN 1 ELSE 0 END), 0) AS up_24h,
 	COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) AS up_30d,
 	COALESCE(AVG(CASE WHEN checked_at >= {:since24} THEN latency_ms END), 0) AS avg_latency_24h_ms
@@ -92,11 +94,14 @@ WHERE monitor = {:id} AND checked_at >= {:since30}`
 	}
 
 	metrics := &MonitorMetrics{}
+	// Latency presence is gated on *any* events in the window, independent of the uptime
+	// denominator (which excludes pending/unknown), so a monitor doesn't lose its latency
+	// reading just because its only recent checks were pending.
+	if row.Events24h > 0 && m.GetString("type") != "push" {
+		avg := row.AvgLatency24hMs
+		metrics.AvgLatency24hMs = &avg
+	}
 	if row.Total24h > 0 {
-		if m.GetString("type") != "push" {
-			avg := row.AvgLatency24hMs
-			metrics.AvgLatency24hMs = &avg
-		}
 		uptime24 := float64(row.Up24h) / float64(row.Total24h) * 100
 		metrics.Uptime24h = &uptime24
 	}
@@ -116,6 +121,7 @@ type MonitorMetrics struct {
 type monitorMetricsRow struct {
 	Monitor         string  `db:"monitor"`
 	AvgLatency24hMs float64 `db:"avg_latency_24h_ms"`
+	Events24h       int     `db:"events_24h"`
 	Total24h        int     `db:"total_24h"`
 	Up24h           int     `db:"up_24h"`
 	Total30d        int     `db:"total_30d"`
@@ -133,8 +139,9 @@ func (h *Hub) loadAllMonitorMetrics() (map[string]*MonitorMetrics, error) {
 	query := `
 SELECT
 	monitor,
-	COUNT(*) AS total_30d,
-	COALESCE(SUM(CASE WHEN checked_at >= {:since24} THEN 1 ELSE 0 END), 0) AS total_24h,
+	COALESCE(SUM(CASE WHEN status IN (0, 1) THEN 1 ELSE 0 END), 0) AS total_30d,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} THEN 1 ELSE 0 END), 0) AS events_24h,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status IN (0, 1) THEN 1 ELSE 0 END), 0) AS total_24h,
 	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status = 1 THEN 1 ELSE 0 END), 0) AS up_24h,
 	COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) AS up_30d,
 	COALESCE(AVG(CASE WHEN checked_at >= {:since24} THEN latency_ms END), 0) AS avg_latency_24h_ms
@@ -151,9 +158,13 @@ GROUP BY monitor`
 	result := make(map[string]*MonitorMetrics, len(rows))
 	for _, row := range rows {
 		metrics := &MonitorMetrics{}
-		if row.Total24h > 0 {
+		// Latency presence is gated on any events in the window (independent of the uptime
+		// denominator, which excludes pending/unknown). The caller nils latency for push monitors.
+		if row.Events24h > 0 {
 			avg := row.AvgLatency24hMs
 			metrics.AvgLatency24hMs = &avg
+		}
+		if row.Total24h > 0 {
 			uptime24 := float64(row.Up24h) / float64(row.Total24h) * 100
 			metrics.Uptime24h = &uptime24
 		}
@@ -632,17 +643,19 @@ func (h *Hub) getMonitorSeries(e *core.RequestEvent) error {
 }
 
 type monitorSeriesRow struct {
-	BucketStart int64           `db:"bucket_start"`
-	AvgLatency  sql.NullFloat64 `db:"avg_latency"`
-	DownCount   int             `db:"down_count"`
+	BucketStart  int64           `db:"bucket_start"`
+	AvgLatency   sql.NullFloat64 `db:"avg_latency"`
+	DownCount    int             `db:"down_count"`
+	PendingCount int             `db:"pending_count"`
 }
 
 // loadMonitorSeries returns a downsampled series for one monitor: events in [since, now]
 // grouped into fixed buckets of bucketSeconds, aggregated **in SQL** so only one row per
 // bucket (~monitorSeriesTargetPoints) is materialized, not every raw check. Each bucket
 // yields one MonitorEventEntry the frontend's buildSeries consumes unchanged — latency =
-// average over the bucket's up checks, status = down if ANY check in the bucket was down
-// (so incidents still show as red bands).
+// average over the bucket's up checks; bucket status follows the worst check in the bucket
+// (down if ANY check was down → red band, else pending if ANY was pending → amber band,
+// else up), so incidents stay visible on the downsampled chart.
 func (h *Hub) loadMonitorSeries(id string, since time.Time, bucketSeconds int) ([]MonitorEventEntry, error) {
 	if bucketSeconds < 1 {
 		bucketSeconds = 60
@@ -652,7 +665,8 @@ func (h *Hub) loadMonitorSeries(id string, since time.Time, bucketSeconds int) (
 		NewQuery(`SELECT
 			(CAST(strftime('%s', checked_at) AS INTEGER) / {:bucket}) * {:bucket} AS bucket_start,
 			AVG(CASE WHEN status = 1 THEN latency_ms END) AS avg_latency,
-			SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS down_count
+			SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS down_count,
+			SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS pending_count
 		FROM monitor_events
 		WHERE monitor = {:id} AND checked_at >= {:since}
 		GROUP BY bucket_start
@@ -667,7 +681,9 @@ func (h *Hub) loadMonitorSeries(id string, since time.Time, bucketSeconds int) (
 	for _, r := range rows {
 		status, latency := 1, 0
 		if r.DownCount > 0 {
-			status = 0
+			status = monitorStatusDown
+		} else if r.PendingCount > 0 {
+			status = monitorStatusPending
 		}
 		if r.AvgLatency.Valid {
 			latency = int(math.Round(r.AvgLatency.Float64))
@@ -689,14 +705,17 @@ type monitorTransitionRow struct {
 	Msg       string         `db:"msg"`
 }
 
-// loadMonitorTransitions returns only the status-change events for a monitor in [since, now],
-// newest first (capped at limit; limit<=0 = no cap). Change detection runs **in SQL** via a
-// LAG window function, so only transition rows are materialized in Go — bounded regardless of
-// how many raw checks fall in the window. The WHERE clause is built from constants only (the
-// id/since/limit are bound params), so it is injection-safe.
+// loadMonitorTransitions returns only the real up↔down status-change events for a monitor in
+// [since, now], newest first (capped at limit; limit<=0 = no cap). Change detection runs **in
+// SQL** via a LAG window function, so only transition rows are materialized in Go — bounded
+// regardless of how many raw checks fall in the window. Pending (sub-threshold) rows are
+// excluded *before* the LAG so they neither create up→pending→up churn nor push real outages
+// out of the capped incident list — pending is surfaced on the sparkline, not the incident log.
+// The WHERE clause is built from constants only (the id/since/limit/pending are bound params),
+// so it is injection-safe.
 func (h *Hub) loadMonitorTransitions(id string, since *time.Time, limit int) ([]MonitorEventEntry, error) {
-	where := "monitor = {:id}"
-	params := dbx.Params{"id": id}
+	where := "monitor = {:id} AND status != {:pending}"
+	params := dbx.Params{"id": id, "pending": monitorStatusPending}
 	if since != nil {
 		where += " AND checked_at >= {:since}"
 		params["since"] = since.UTC()

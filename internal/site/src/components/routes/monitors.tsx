@@ -138,6 +138,9 @@ function checkBarClass(status: number): string {
 	switch (status) {
 		case 1:
 			return "bg-green-500"
+		case 2:
+			// Pending: failed but under the failure threshold (not yet down) — amber, Kuma-style.
+			return "bg-amber-500"
 		case 0:
 			return "bg-red-500"
 		default:

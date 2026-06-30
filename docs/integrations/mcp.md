@@ -68,7 +68,7 @@ All tools are **read-only** (`readOnlyHint`):
 | `get_host` | One host's full detail: OS, packages, repositories, reboot status, Docker, metrics |
 | `list_monitors` | All monitors grouped, with status, last latency, and computed **24h average latency** and **24h / 30d uptime** |
 | `get_monitor` | One monitor's detail plus recent check points |
-| `monitor_events` | A monitor's raw check history (status, `latency_ms`, timestamp), with `since`/`until`/`limit` — the basis for custom uptime / response-time reports |
+| `monitor_events` | A monitor's raw check history (status, `latency_ms`, timestamp), with `since`/`until`/`limit` — the basis for custom uptime / response-time reports. **Event `status` is `1`=up, `0`=down, `2`=pending** (a failed check still under the monitor's failure threshold), or `-1`=unknown. To match the hub's uptime figure compute `up / (up + down)` over `status IN (0,1)` only — exclude `2`/`-1` from the denominator rather than treating them as down. |
 
 ## Notes & security
 

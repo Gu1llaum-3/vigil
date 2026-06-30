@@ -125,15 +125,18 @@ function statusBadge(status: MonitorStatus) {
 	)
 }
 
-function createDownBandPlugin(bands: Array<{ start: number; end: number }>): Plugin<"line"> {
+// createBandPlugin shades the chart background over the given x-ranges in `color`. Used to
+// mark down periods (red) and pending periods (amber) behind the latency line. Each plugin
+// needs a unique `id` so Chart.js can register both at once.
+function createBandPlugin(id: string, color: string, bands: Array<{ start: number; end: number }>): Plugin<"line"> {
 	return {
-		id: "down-bands",
+		id,
 		beforeDatasetsDraw(chart) {
 			const { ctx, chartArea, scales } = chart
 			if (!chartArea || !bands.length) return
 			const xScale = scales.x
 			ctx.save()
-			ctx.fillStyle = "rgba(239, 68, 68, 0.12)"
+			ctx.fillStyle = color
 			for (const band of bands) {
 				const start = xScale.getPixelForValue(band.start)
 				const end = xScale.getPixelForValue(band.end)
@@ -144,6 +147,31 @@ function createDownBandPlugin(bands: Array<{ start: number; end: number }>): Plu
 			ctx.restore()
 		},
 	}
+}
+
+// buildBands collapses consecutive points whose status matches into shaded x-ranges, each
+// extending to the next non-matching point (or the chart's right edge for an open run).
+function buildBands(
+	points: Array<{ x: number; status: number }>,
+	matchStatus: number,
+	chartEnd: number
+): Array<{ start: number; end: number }> {
+	const bands: Array<{ start: number; end: number }> = []
+	let start: number | null = null
+	for (const point of points) {
+		if (point.status === matchStatus && start === null) {
+			start = point.x
+			continue
+		}
+		if (point.status !== matchStatus && start !== null) {
+			bands.push({ start, end: point.x })
+			start = null
+		}
+	}
+	if (start !== null && points.length > 0) {
+		bands.push({ start, end: chartEnd })
+	}
+	return bands
 }
 
 function buildSeries(events: MonitorEventRecord[]) {
@@ -162,23 +190,12 @@ function buildSeries(events: MonitorEventRecord[]) {
 		})
 		.filter((point) => Number.isFinite(point.x))
 
-	const downBands: Array<{ start: number; end: number }> = []
-	let downStart: number | null = null
-	for (const point of points) {
-		if (point.status === 0 && downStart === null) {
-			downStart = point.x
-			continue
-		}
-		if (point.status !== 0 && downStart !== null) {
-			downBands.push({ start: downStart, end: point.x })
-			downStart = null
-		}
-	}
-	if (downStart !== null && points.length > 0) {
-		downBands.push({ start: downStart, end: chartEnd })
-	}
+	// down (0) → red bands, pending (2) → amber bands. A point is exactly one status, so the
+	// two band sets never overlap.
+	const downBands = buildBands(points, 0, chartEnd)
+	const pendingBands = buildBands(points, 2, chartEnd)
 
-	return { points, downBands, chartEnd }
+	return { points, downBands, pendingBands, chartEnd }
 }
 
 const MonitorDetailPage = memo(function MonitorDetailPage() {
@@ -325,6 +342,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 						label(context) {
 							const point = context.raw as { y?: number | null; status?: number }
 							if (point.status === 0) return t`Down`
+							if (point.status === 2) return t`Pending`
 							if (point.y == null) return t`No latency`
 							return `${t`Latency`}: ${formatLatencyMs(point.y)}`
 						},
@@ -356,7 +374,14 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 		}),
 		[series.chartEnd, series.points, t]
 	)
-	const downBandPlugin = useMemo(() => createDownBandPlugin(series.downBands), [series.downBands])
+	const downBandPlugin = useMemo(
+		() => createBandPlugin("down-bands", "rgba(239, 68, 68, 0.12)", series.downBands),
+		[series.downBands]
+	)
+	const pendingBandPlugin = useMemo(
+		() => createBandPlugin("pending-bands", "rgba(245, 158, 11, 0.12)", series.pendingBands),
+		[series.pendingBands]
+	)
 
 	if (!monitorId) {
 		return <div className="text-center py-10 text-muted-foreground">404</div>
@@ -555,7 +580,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 					<CardContent>
 						<div className="h-[360px]">
 							{series.points.length > 0 ? (
-								<Line data={chartData} options={chartOptions} plugins={[downBandPlugin]} />
+								<Line data={chartData} options={chartOptions} plugins={[downBandPlugin, pendingBandPlugin]} />
 							) : (
 								<div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
 									<Trans>No history available.</Trans>

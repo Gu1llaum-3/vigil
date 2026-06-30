@@ -66,6 +66,86 @@ func TestSaveResultKeepsUnknownMonitorsInStartupGrace(t *testing.T) {
 	require.Equal(t, 3, updated.GetInt("failure_count"))
 }
 
+func TestSaveResultWritesPendingUnderThreshold(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	monitor, err := createTestRecord(hub, "monitors", map[string]any{
+		"name":              "API",
+		"type":              "http",
+		"status":            monitorStatusUp,
+		"failure_count":     0,
+		"failure_threshold": 3,
+	})
+	require.NoError(t, err)
+
+	ms := newMonitorScheduler(hub)
+	// Past the startup grace so threshold transitions apply immediately.
+	ms.startedAt = time.Now().Add(-time.Hour)
+
+	// Two failing checks under the threshold: events are pending, monitor stays up.
+	ms.saveResult(monitor, monitorStatusDown, 0, "fail 1")
+	ms.saveResult(monitor, monitorStatusDown, 0, "fail 2")
+	require.Equal(t, monitorStatusUp, monitor.GetInt("status"), "monitor must stay up under threshold")
+
+	// Third failing check hits the threshold: event is down, monitor flips down.
+	ms.saveResult(monitor, monitorStatusDown, 0, "fail 3")
+	require.Equal(t, monitorStatusDown, monitor.GetInt("status"))
+
+	// Recovery: event is up.
+	ms.saveResult(monitor, monitorStatusUp, 12, "ok")
+	require.Equal(t, monitorStatusUp, monitor.GetInt("status"))
+
+	countByStatus := func(status int) int {
+		events, err := hub.FindRecordsByFilter("monitor_events",
+			"monitor = {:id} && status = {:s}", "", 0, 0,
+			map[string]any{"id": monitor.Id, "s": status})
+		require.NoError(t, err)
+		return len(events)
+	}
+	require.Equal(t, 2, countByStatus(monitorStatusPending), "two under-threshold failures are pending")
+	require.Equal(t, 1, countByStatus(monitorStatusDown), "the threshold-crossing failure is down")
+	require.Equal(t, 1, countByStatus(monitorStatusUp), "the recovery is up")
+}
+
+// TestSaveResultGraceWindowOutageStillRecordsDown locks the fix for the regression where an
+// outage during the startup grace window was hidden as pending. The grace delays the
+// monitor's own status flip, but a check that reached the failure threshold must still be
+// recorded as down (0) so it counts toward uptime — not pending (2).
+func TestSaveResultGraceWindowOutageStillRecordsDown(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	monitor, err := createTestRecord(hub, "monitors", map[string]any{
+		"name":              "API",
+		"type":              "http",
+		"status":            monitorStatusUnknown,
+		"failure_count":     0,
+		"failure_threshold": 2,
+	})
+	require.NoError(t, err)
+
+	ms := newMonitorScheduler(hub)
+	ms.startedAt = time.Now() // inside the startup grace window
+
+	ms.saveResult(monitor, monitorStatusDown, 0, "fail 1") // count 1 < 2 → pending
+	ms.saveResult(monitor, monitorStatusDown, 0, "fail 2") // count 2 ≥ 2 → down, but grace keeps status unknown
+
+	require.Equal(t, monitorStatusUnknown, monitor.GetInt("status"), "grace must keep the monitor unknown")
+
+	countByStatus := func(status int) int {
+		events, err := hub.FindRecordsByFilter("monitor_events",
+			"monitor = {:id} && status = {:s}", "", 0, 0,
+			map[string]any{"id": monitor.Id, "s": status})
+		require.NoError(t, err)
+		return len(events)
+	}
+	require.Equal(t, 1, countByStatus(monitorStatusPending), "first sub-threshold failure is pending")
+	require.Equal(t, 1, countByStatus(monitorStatusDown), "threshold-crossing failure is down even during grace")
+}
+
 func TestCheckPingReturnsParsedLatencyOnSuccess(t *testing.T) {
 	originalLookPath := pingLookPath
 	originalCommandContext := pingCommandContext

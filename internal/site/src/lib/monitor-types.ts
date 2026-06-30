@@ -1,5 +1,8 @@
 export type MonitorType = "http" | "ping" | "tcp" | "dns" | "push"
-export type MonitorStatus = -1 | 0 | 1 // -1=unknown, 0=down, 1=up
+// -1=unknown, 0=down, 1=up, 2=pending. A monitor's own aggregate `status` is only ever
+// -1/0/1; 2=pending appears only on individual check events (monitor_events / recent_checks /
+// transitions), marking a failed check still under the failure threshold.
+export type MonitorStatus = -1 | 0 | 1 | 2
 
 export interface MonitorRecord {
 	id: string
