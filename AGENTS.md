@@ -325,6 +325,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `CHECK_UPDATES` | Enable GitHub update check endpoint | — |
 | `SNAPSHOT_INTERVAL` | Interval between periodic snapshot collections (e.g. `5m`, `10m`, `1h`) | `15m` |
 | `METRICS_INTERVAL` | Interval between periodic lightweight host metrics collections (e.g. `30s`, `1m`) | `1m` |
+| `MONITORS_STATS_INTERVAL` | Interval at which the monitors-list aggregate cache (uptime 24h/30d, avg latency, recent-checks sparkline) is recomputed in the background (min `5s`). Lower = fresher list aggregates, more frequent `monitor_events` scans. Monitor up/down status is always live regardless. | `30s` |
 
 ---
 

@@ -35,6 +35,7 @@ type Hub struct {
 	agentConns               sync.Map // agentID (string) → *ws.WsConn
 	systemNotificationReadAt sync.Map // userID (string) → map[string]string
 	monitorScheduler         *MonitorScheduler
+	monitorStats             monitorStatsCache
 	notifier                 *notifications.Dispatcher
 	metricAlerts             *metricAlertEvaluator
 	credentialsKey           []byte
@@ -105,6 +106,11 @@ func (h *Hub) StartHub() error {
 		// sustained-"for" breach streak (e.g. an agent that went offline mid-window).
 		h.metricAlerts.pollInterval = metricsInterval
 		goSafe("metrics ticker", func() { h.startMetricsTicker(ctx, metricsInterval) })
+		// keep the monitors-list aggregate cache warm so GET /api/app/monitors (and the
+		// sidebar/home that hit it) serve from memory instead of scanning monitor_events.
+		monitorStatsInterval := parseMonitorStatsInterval()
+		slog.Info("Monitor stats ticker started", "interval", monitorStatsInterval)
+		goSafe("monitor stats ticker", func() { h.startMonitorStatsTicker(ctx, monitorStatsInterval) })
 		if err := h.registerScheduledJobs(); err != nil {
 			return err
 		}
@@ -154,24 +160,29 @@ func (h *Hub) StartHub() error {
 	return pb.Start()
 }
 
-// parseSnapshotInterval reads SNAPSHOT_INTERVAL from env and returns the parsed duration.
-// Defaults to 5 minutes; enforces a minimum of 1 minute.
-func parseSnapshotInterval() time.Duration {
-	// 15 minutes: package/repo collection runs apt-get or dnf subprocesses that are
-	// CPU-intensive and potentially network-dependent. Agent liveness (up/down) is
-	// tracked separately via WebSocket Ping every 30s and is unaffected by this interval.
-	const defaultInterval = 15 * time.Minute
-	const minInterval = time.Minute
-	raw, ok := utils.GetEnv("SNAPSHOT_INTERVAL")
+// parseDurationEnv reads a duration from env var `name`, falling back to def when it is
+// unset, empty, unparseable, or below min (logging a warning in the invalid case). Shared
+// by the SNAPSHOT_INTERVAL / METRICS_INTERVAL / MONITORS_STATS_INTERVAL parsers.
+func parseDurationEnv(name string, def, min time.Duration) time.Duration {
+	raw, ok := utils.GetEnv(name)
 	if !ok || raw == "" {
-		return defaultInterval
+		return def
 	}
 	d, err := time.ParseDuration(raw)
-	if err != nil || d < minInterval {
-		slog.Warn("Invalid SNAPSHOT_INTERVAL, using default", "value", raw, "default", defaultInterval)
-		return defaultInterval
+	if err != nil || d < min {
+		slog.Warn("Invalid "+name+", using default", "value", raw, "default", def)
+		return def
 	}
 	return d
+}
+
+// parseSnapshotInterval reads SNAPSHOT_INTERVAL (default 15m, min 1m).
+//
+// 15 minutes: package/repo collection runs apt-get or dnf subprocesses that are
+// CPU-intensive and potentially network-dependent. Agent liveness (up/down) is tracked
+// separately via WebSocket Ping every 30s and is unaffected by this interval.
+func parseSnapshotInterval() time.Duration {
+	return parseDurationEnv("SNAPSHOT_INTERVAL", 15*time.Minute, time.Minute)
 }
 
 // initialize sets up initial configuration (collections, settings, etc.)

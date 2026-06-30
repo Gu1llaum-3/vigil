@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
-	"github.com/Gu1llaum-3/vigil/internal/hub/utils"
 	"github.com/Gu1llaum-3/vigil/internal/hub/ws"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -40,16 +39,7 @@ type HostOverviewRecord struct {
 }
 
 func parseMetricsInterval() time.Duration {
-	raw, ok := utils.GetEnv("METRICS_INTERVAL")
-	if !ok || raw == "" {
-		return defaultMetricsInterval
-	}
-	d, err := time.ParseDuration(raw)
-	if err != nil || d < minMetricsInterval {
-		slog.Warn("Invalid METRICS_INTERVAL, using default", "value", raw, "default", defaultMetricsInterval)
-		return defaultMetricsInterval
-	}
-	return d
+	return parseDurationEnv("METRICS_INTERVAL", defaultMetricsInterval, minMetricsInterval)
 }
 
 func (h *Hub) startMetricsTicker(ctx context.Context, interval time.Duration) {
