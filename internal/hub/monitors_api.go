@@ -77,11 +77,11 @@ func (h *Hub) loadMonitorMetrics(m *core.Record) (*MonitorMetrics, error) {
 	var row monitorMetrics
 	query := `
 SELECT
-	COALESCE(SUM(CASE WHEN status IN (0, 1) THEN 1 ELSE 0 END), 0) AS total_30d,
+	COALESCE(SUM(CASE WHEN status IN (0, 1) AND COALESCE(maintenance, 0) = 0 THEN 1 ELSE 0 END), 0) AS total_30d,
 	COALESCE(SUM(CASE WHEN checked_at >= {:since24} THEN 1 ELSE 0 END), 0) AS events_24h,
-	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status IN (0, 1) THEN 1 ELSE 0 END), 0) AS total_24h,
-	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status = 1 THEN 1 ELSE 0 END), 0) AS up_24h,
-	COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) AS up_30d,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status IN (0, 1) AND COALESCE(maintenance, 0) = 0 THEN 1 ELSE 0 END), 0) AS total_24h,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status = 1 AND COALESCE(maintenance, 0) = 0 THEN 1 ELSE 0 END), 0) AS up_24h,
+	COALESCE(SUM(CASE WHEN status = 1 AND COALESCE(maintenance, 0) = 0 THEN 1 ELSE 0 END), 0) AS up_30d,
 	COALESCE(AVG(CASE WHEN checked_at >= {:since24} THEN latency_ms END), 0) AS avg_latency_24h_ms
 FROM monitor_events
 WHERE monitor = {:id} AND checked_at >= {:since30}`
@@ -139,11 +139,11 @@ func (h *Hub) loadAllMonitorMetrics() (map[string]*MonitorMetrics, error) {
 	query := `
 SELECT
 	monitor,
-	COALESCE(SUM(CASE WHEN status IN (0, 1) THEN 1 ELSE 0 END), 0) AS total_30d,
+	COALESCE(SUM(CASE WHEN status IN (0, 1) AND COALESCE(maintenance, 0) = 0 THEN 1 ELSE 0 END), 0) AS total_30d,
 	COALESCE(SUM(CASE WHEN checked_at >= {:since24} THEN 1 ELSE 0 END), 0) AS events_24h,
-	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status IN (0, 1) THEN 1 ELSE 0 END), 0) AS total_24h,
-	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status = 1 THEN 1 ELSE 0 END), 0) AS up_24h,
-	COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) AS up_30d,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status IN (0, 1) AND COALESCE(maintenance, 0) = 0 THEN 1 ELSE 0 END), 0) AS total_24h,
+	COALESCE(SUM(CASE WHEN checked_at >= {:since24} AND status = 1 AND COALESCE(maintenance, 0) = 0 THEN 1 ELSE 0 END), 0) AS up_24h,
+	COALESCE(SUM(CASE WHEN status = 1 AND COALESCE(maintenance, 0) = 0 THEN 1 ELSE 0 END), 0) AS up_30d,
 	COALESCE(AVG(CASE WHEN checked_at >= {:since24} THEN latency_ms END), 0) AS avg_latency_24h_ms
 FROM monitor_events
 WHERE checked_at >= {:since30}

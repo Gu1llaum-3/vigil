@@ -221,6 +221,11 @@ func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latency
 		eventStatus = monitorStatusPending
 	}
 
+	now := time.Now().UTC()
+	// Flag the check if it falls inside an active maintenance window covering this monitor, so
+	// the uptime aggregates can exclude it. Read from the in-memory cache → no DB query here.
+	inMaintenance := ms.hub.monitorUnderMaintenance(monitorID, now)
+
 	col, err := ms.hub.FindCachedCollectionByNameOrId("monitor_events")
 	if err == nil {
 		event := core.NewRecord(col)
@@ -228,7 +233,8 @@ func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latency
 		event.Set("status", eventStatus)
 		event.Set("latency_ms", latencyMs)
 		event.Set("msg", msg)
-		event.Set("checked_at", time.Now().UTC())
+		event.Set("checked_at", now)
+		event.Set("maintenance", inMaintenance)
 		if saveErr := ms.hub.SaveNoValidate(event); saveErr != nil {
 			slog.Warn("Failed to save monitor event", "monitor", monitorID, "err", saveErr)
 		}
