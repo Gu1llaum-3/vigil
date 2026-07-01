@@ -7,6 +7,7 @@ import {
 	LinearScale,
 	PointElement,
 	type ChartOptions,
+	type Plugin,
 	type ScriptableContext,
 	Tooltip,
 } from "chart.js"
@@ -18,6 +19,33 @@ import { cn } from "@/lib/utils"
 ChartJS.register(LineElement, LinearScale, PointElement, Filler, Tooltip, Legend)
 
 export type ChartPoint = { x: number; y: number }
+
+export type ChartBand = { start: number; end: number }
+
+// createBandPlugin shades the chart background over the given x-ranges in `color` (e.g. red
+// down / amber pending / blue maintenance bands). Each plugin instance needs a unique `id` so
+// Chart.js can register several at once; list them bottom-to-top in the chart's `plugins`
+// array. Exported from here so any chart (monitor or host) can reuse it.
+export function createBandPlugin(id: string, color: string, bands: ChartBand[]): Plugin<"line"> {
+	return {
+		id,
+		beforeDatasetsDraw(chart) {
+			const { ctx, chartArea, scales } = chart
+			if (!chartArea || !bands.length) return
+			const xScale = scales.x
+			ctx.save()
+			ctx.fillStyle = color
+			for (const band of bands) {
+				const start = xScale.getPixelForValue(band.start)
+				const end = xScale.getPixelForValue(band.end)
+				const left = Math.min(start, end)
+				const width = Math.max(1, Math.abs(end - start))
+				ctx.fillRect(left, chartArea.top, width, chartArea.bottom - chartArea.top)
+			}
+			ctx.restore()
+		},
+	}
+}
 
 // areaFill builds a scriptable vertical gradient (color → transparent) for the
 // filled area under a line, matching the Beszel-style area look.
