@@ -13,15 +13,20 @@ import {
 	PointElement,
 	Tooltip,
 	type ChartOptions,
-	type Plugin,
 } from "chart.js"
-import { areaFill } from "@/components/metric-charts"
+import { areaFill, createBandPlugin } from "@/components/metric-charts"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { $router, Link } from "@/components/router"
 import { pb } from "@/lib/api"
+import {
+	fetchMonitorMaintenance,
+	MAINTENANCE_BAND_COLOR,
+	type MaintenanceOccurrence,
+	occurrenceBands,
+} from "@/lib/maintenance"
 import type { MonitorEventRecord, MonitorRecord, MonitorStatus } from "@/lib/monitor-types"
 
 ChartJS.register(LineElement, LinearScale, PointElement, Filler, Tooltip, Legend)
@@ -125,30 +130,6 @@ function statusBadge(status: MonitorStatus) {
 	)
 }
 
-// createBandPlugin shades the chart background over the given x-ranges in `color`. Used to
-// mark down periods (red) and pending periods (amber) behind the latency line. Each plugin
-// needs a unique `id` so Chart.js can register both at once.
-function createBandPlugin(id: string, color: string, bands: Array<{ start: number; end: number }>): Plugin<"line"> {
-	return {
-		id,
-		beforeDatasetsDraw(chart) {
-			const { ctx, chartArea, scales } = chart
-			if (!chartArea || !bands.length) return
-			const xScale = scales.x
-			ctx.save()
-			ctx.fillStyle = color
-			for (const band of bands) {
-				const start = xScale.getPixelForValue(band.start)
-				const end = xScale.getPixelForValue(band.end)
-				const left = Math.min(start, end)
-				const width = Math.max(1, Math.abs(end - start))
-				ctx.fillRect(left, chartArea.top, width, chartArea.bottom - chartArea.top)
-			}
-			ctx.restore()
-		},
-	}
-}
-
 // buildBands collapses consecutive points whose status matches into shaded x-ranges, each
 // extending to the next non-matching point (or the chart's right edge for an open run).
 function buildBands(
@@ -206,6 +187,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 	const [monitor, setMonitor] = useState<MonitorRecord | null>(null)
 	const [events, setEvents] = useState<MonitorEventRecord[]>([])
 	const [transitions, setTransitions] = useState<MonitorEventRecord[]>([])
+	const [maintenance, setMaintenance] = useState<MaintenanceOccurrence[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -263,10 +245,14 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 					)
 					.catch(() => [] as MonitorEventRecord[])
 
-				const [history, trans] = await Promise.all([chartPromise, transitionsPromise])
+				// Maintenance intervals over the same window → blue chart bands. Non-fatal.
+				const maintenancePromise = fetchMonitorMaintenance(monitorId, selectedRange.key)
+
+				const [history, trans, maint] = await Promise.all([chartPromise, transitionsPromise, maintenancePromise])
 				if (requestSeq !== requestSeqRef.current) return
 				setEvents(history)
 				setTransitions(trans)
+				setMaintenance(maint)
 			} catch (err) {
 				if (requestSeq !== requestSeqRef.current) return
 				setError(err instanceof Error ? err.message : "Failed to load monitor")
@@ -381,6 +367,10 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 	const pendingBandPlugin = useMemo(
 		() => createBandPlugin("pending-bands", "rgba(245, 158, 11, 0.12)", series.pendingBands),
 		[series.pendingBands]
+	)
+	const maintenanceBandPlugin = useMemo(
+		() => createBandPlugin("maintenance-bands", MAINTENANCE_BAND_COLOR, occurrenceBands(maintenance)),
+		[maintenance]
 	)
 
 	if (!monitorId) {
@@ -580,7 +570,11 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 					<CardContent>
 						<div className="h-[360px]">
 							{series.points.length > 0 ? (
-								<Line data={chartData} options={chartOptions} plugins={[downBandPlugin, pendingBandPlugin]} />
+								<Line
+									data={chartData}
+									options={chartOptions}
+									plugins={[maintenanceBandPlugin, downBandPlugin, pendingBandPlugin]}
+								/>
 							) : (
 								<div className="flex h-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
 									<Trans>No history available.</Trans>
