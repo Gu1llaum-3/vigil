@@ -148,6 +148,41 @@ function checkBarClass(status: number): string {
 	}
 }
 
+// IPFamilyField is the shared auto/IPv4/IPv6 selector used by HTTP, TCP, and ping monitor
+// forms. "" (empty) = auto (dual-stack); a "__auto__" sentinel is used because the Select
+// primitive can't hold an empty-string value.
+function IPFamilyField({
+	value,
+	onChange,
+}: {
+	value: "" | "ipv4" | "ipv6"
+	onChange: (v: "" | "ipv4" | "ipv6") => void
+}) {
+	const { t } = useLingui()
+	return (
+		<div className="grid gap-1.5">
+			<Label>
+				<Trans>IP family</Trans>
+			</Label>
+			<Select
+				value={value || "__auto__"}
+				onValueChange={(v) => onChange(v === "__auto__" ? "" : (v as "ipv4" | "ipv6"))}
+			>
+				<SelectTrigger>
+					<SelectValue placeholder={t`Auto`} />
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="__auto__">
+						<Trans>Auto</Trans>
+					</SelectItem>
+					<SelectItem value="ipv4">IPv4</SelectItem>
+					<SelectItem value="ipv6">IPv6</SelectItem>
+				</SelectContent>
+			</Select>
+		</div>
+	)
+}
+
 const monitorGroupStateKey = "vigil.monitors.open-groups"
 const ungroupedGroupStateKey = "__ungrouped__"
 
@@ -200,6 +235,7 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 					keyword: monitor.keyword || "",
 					keyword_invert: monitor.keyword_invert || false,
 					inverted: monitor.inverted || false,
+					ip_family: monitor.ip_family || "",
 					hostname: monitor.hostname || "",
 					port: monitor.port || "",
 					dns_host: monitor.dns_host || "",
@@ -243,6 +279,7 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 					payload.http_method = form.http_method
 					payload.keyword = form.keyword
 					payload.keyword_invert = form.keyword_invert
+					payload.ip_family = form.ip_family || ""
 					break
 				case "ping":
 					payload.hostname = form.hostname
@@ -253,6 +290,7 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 				case "tcp":
 					payload.hostname = form.hostname
 					payload.port = Number(form.port) || 0
+					payload.ip_family = form.ip_family || ""
 					break
 				case "dns":
 					payload.dns_host = form.dns_host
@@ -418,6 +456,7 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 								</Label>
 								<Input value={form.keyword} onChange={(e) => set("keyword", e.target.value)} placeholder="" />
 							</div>
+							<IPFamilyField value={form.ip_family} onChange={(v) => set("ip_family", v)} />
 						</>
 					)}
 
@@ -453,26 +492,7 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 										onChange={(e) => set("ping_per_request_timeout", Number(e.target.value))}
 									/>
 								</div>
-								<div className="grid gap-1.5">
-									<Label>
-										<Trans>IP family</Trans>
-									</Label>
-									<Select
-										value={form.ping_ip_family || "__auto__"}
-										onValueChange={(v) => set("ping_ip_family", v === "__auto__" ? "" : (v as "ipv4" | "ipv6"))}
-									>
-										<SelectTrigger>
-											<SelectValue placeholder={t`Auto`} />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="__auto__">
-												<Trans>Auto</Trans>
-											</SelectItem>
-											<SelectItem value="ipv4">IPv4</SelectItem>
-											<SelectItem value="ipv6">IPv6</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
+								<IPFamilyField value={form.ping_ip_family} onChange={(v) => set("ping_ip_family", v)} />
 							</div>
 						</>
 					)}
@@ -503,6 +523,7 @@ function MonitorDialog({ open, onClose, onSaved, monitor, groups, defaultGroupId
 									placeholder="5432"
 								/>
 							</div>
+							<IPFamilyField value={form.ip_family} onChange={(v) => set("ip_family", v)} />
 						</div>
 					)}
 

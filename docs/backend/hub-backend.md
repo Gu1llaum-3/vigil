@@ -364,6 +364,8 @@ Goroutine start/stop is **only triggered from the API handlers**, not from Pocke
 
 Monitors also have a `failure_threshold` field. The default is `3`, `0` means instant down, and the scheduler flips the monitor to `down` after that many consecutive failures.
 
+**IP family pin** — `http` and `tcp` monitors carry an optional `ip_family` (`""`/`ipv4`/`ipv6`, migration `9_add_monitor_ip_family.go`). `checkHTTP`/`checkTCP` pass the dial network through `familyNetwork(network, ip_family)`, which narrows `tcp`→`tcp4`/`tcp6` when a family is set (empty keeps Go's default dual-stack Happy Eyeballs). This lets an operator force a Cloudflare-proxied HTTP target onto IPv4 so a transient IPv6-path outage doesn't trip it. The SSRF `Control` guard is unchanged (it runs per resolved address regardless of family). Ping already has its own `ping_ip_family` (`-4`/`-6`); DNS monitors are unaffected.
+
 A failing check that has **not yet** reached the threshold (the monitor's effective status is still up) is recorded in `monitor_events.status` as **pending (`2`)**, Uptime-Kuma style, so the sparkline shows amber ("failing but not yet down") before the monitor flips down (red). Pending is only ever written to events — never to a monitor's own `status` (which stays `-1`/`0`/`1`) — and the notification path is unchanged (notifications still fire only on the effective up↔down transition). The monitor status constants are `monitorStatusUnknown=-1`, `monitorStatusDown=0`, `monitorStatusUp=1`, `monitorStatusPending=2`.
 
 ### Inverted Monitors

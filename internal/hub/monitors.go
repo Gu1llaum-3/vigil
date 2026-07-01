@@ -289,6 +289,23 @@ func (ms *MonitorScheduler) shouldDelayDownTransition(previousStatus, failureThr
 	return previousStatus == monitorStatusUnknown && ms.inStartupGracePeriod()
 }
 
+// familyNetwork narrows a dial network to a single IP family when ipFamily is "ipv4"/"ipv6",
+// so HTTP/TCP checks can be pinned (e.g. to dodge a flaky IPv6 path to a Cloudflare-proxied
+// target). Empty (or any other value) keeps the requested network — Go's default dual-stack
+// Happy Eyeballs. Only tcp* is narrowed; other networks pass through unchanged.
+func familyNetwork(network, ipFamily string) string {
+	switch network {
+	case "tcp", "tcp4", "tcp6":
+		switch ipFamily {
+		case "ipv4":
+			return "tcp4"
+		case "ipv6":
+			return "tcp6"
+		}
+	}
+	return network
+}
+
 func checkHTTP(ctx context.Context, monitor *core.Record) (status int, msg string) {
 	url := monitor.GetString("url")
 	if url == "" {
@@ -316,12 +333,18 @@ func checkHTTP(ctx context.Context, monitor *core.Record) (status int, msg strin
 		}
 	}
 
+	// Optional per-monitor IP-family pin (auto/ipv4/ipv6): narrow the dial network so an
+	// IPv6-path outage doesn't take down a dual-stack (e.g. Cloudflare-proxied) target.
+	ipFamily := monitor.GetString("ip_family")
+	dialer := newGuardedDialer()
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
 			// SSRF guard: reject loopback/link-local/metadata (and optionally private)
 			// resolved addresses; also covers redirects and DNS rebinding.
-			DialContext: newGuardedDialer().DialContext,
+			DialContext: func(dctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.DialContext(dctx, familyNetwork(network, ipFamily), addr)
+			},
 		},
 	}
 
@@ -477,8 +500,10 @@ func checkTCP(ctx context.Context, monitor *core.Record) (status int, msg string
 	}
 
 	// SSRF guard: block loopback/link-local/metadata (and optionally private) targets.
+	// Honor the per-monitor IP-family pin (auto/ipv4/ipv6) like the HTTP check.
 	dialer := newGuardedDialer()
-	conn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", hostname, port))
+	network := familyNetwork("tcp", monitor.GetString("ip_family"))
+	conn, err := dialer.DialContext(ctx, network, fmt.Sprintf("%s:%d", hostname, port))
 	if err != nil {
 		return monitorStatusDown, fmt.Sprintf("Connection failed: %s", err)
 	}
