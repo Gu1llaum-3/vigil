@@ -1,9 +1,11 @@
 package hub
 
 import (
+	"context"
 	"log/slog"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
@@ -11,6 +13,88 @@ import (
 )
 
 const maintenanceCollection = "maintenance"
+
+// maintenanceCacheEntry is the evaluatable subset of one enabled maintenance window.
+type maintenanceCacheEntry struct {
+	spec  maintenanceSpec
+	scope maintenanceScope
+}
+
+// maintenanceWindowCache holds the enabled maintenance windows in memory so the per-check
+// flag in saveResult costs no DB query. It caches the *definitions* (which change only on
+// CRUD, kept fresh via hooks); activeness is still computed live against `now` at read time,
+// so recurring windows that activate by wall-clock need no refresh.
+type maintenanceWindowCache struct {
+	mu      sync.RWMutex
+	entries []maintenanceCacheEntry
+}
+
+// refreshMaintenanceCache reloads the enabled maintenance windows into the in-memory cache.
+func (h *Hub) refreshMaintenanceCache() error {
+	records, err := h.FindRecordsByFilter(maintenanceCollection, "enabled = true", "", 0, 0)
+	if err != nil {
+		return err
+	}
+	entries := make([]maintenanceCacheEntry, 0, len(records))
+	for _, rec := range records {
+		var scope maintenanceScope
+		_ = rec.UnmarshalJSONField("scope", &scope)
+		entries = append(entries, maintenanceCacheEntry{spec: specFromRecord(rec), scope: scope})
+	}
+	h.maintenanceCache.mu.Lock()
+	h.maintenanceCache.entries = entries
+	h.maintenanceCache.mu.Unlock()
+	return nil
+}
+
+// monitorUnderMaintenance reports, from the in-memory cache, whether the monitor is inside an
+// active maintenance window at `now`. Zero DB queries on the hot check-write path; returns
+// false immediately when no windows are enabled.
+func (h *Hub) monitorUnderMaintenance(monitorID string, now time.Time) bool {
+	h.maintenanceCache.mu.RLock()
+	defer h.maintenanceCache.mu.RUnlock()
+	for _, e := range h.maintenanceCache.entries {
+		if isMaintenanceWindowActive(e.spec, now) && maintenanceScopeCoversMonitor(e.scope, monitorID) {
+			return true
+		}
+	}
+	return false
+}
+
+// startMaintenanceCacheTicker periodically re-warms the maintenance cache. The hooks keep it
+// fresh on every CRUD, but a transient refresh error (swallowed by the hook) or a direct DB
+// edit could otherwise leave the flag cache stale indefinitely; this bounds that to one tick.
+func (h *Hub) startMaintenanceCacheTicker(ctx context.Context) {
+	ticker := time.NewTicker(maintenanceCacheRefreshInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := h.refreshMaintenanceCache(); err != nil {
+				slog.Warn("maintenance cache periodic refresh failed", "err", err)
+			}
+		}
+	}
+}
+
+const maintenanceCacheRefreshInterval = time.Minute
+
+// registerMaintenanceHooks keeps the cache in sync with the maintenance collection. Like
+// metric_alerts, it is a low-frequency, admin-edited collection, so after-write hooks are
+// safe (unlike the high-frequency monitor/metric collections — see conventions doc).
+func (h *Hub) registerMaintenanceHooks() {
+	reload := func(e *core.RecordEvent) error {
+		if err := h.refreshMaintenanceCache(); err != nil {
+			slog.Warn("maintenance cache refresh failed", "err", err)
+		}
+		return e.Next()
+	}
+	h.App.OnRecordAfterCreateSuccess(maintenanceCollection).BindFunc(reload)
+	h.App.OnRecordAfterUpdateSuccess(maintenanceCollection).BindFunc(reload)
+	h.App.OnRecordAfterDeleteSuccess(maintenanceCollection).BindFunc(reload)
+}
 
 // maintenanceScope mirrors notification_rules.filter: empty = global, otherwise the
 // window only covers the listed monitors/agents.
@@ -207,6 +291,11 @@ func maintenanceScopeCoversAgent(scope maintenanceScope, agentID string) bool {
 	return containsString(scope.AgentIDs, agentID)
 }
 
+// locationCache memoizes resolved IANA locations. time.LoadLocation re-parses the (embedded)
+// tzdata on every call, and loadLocationOrUTC is on the per-check maintenance-flag hot path,
+// so caching avoids repeated parses across many monitors and recurring windows.
+var locationCache sync.Map // tz name → *time.Location
+
 // loadLocationOrUTC resolves an IANA timezone, falling back to UTC (with a warning) when
 // the zone is unknown — e.g. a window saved against a zone the deployment's tzdata later
 // drops. The API validates the zone at write time, so this only bites on environment drift.
@@ -214,11 +303,15 @@ func loadLocationOrUTC(name string) *time.Location {
 	if name == "" {
 		return time.UTC
 	}
+	if cached, ok := locationCache.Load(name); ok {
+		return cached.(*time.Location)
+	}
 	loc, err := time.LoadLocation(name)
 	if err != nil {
 		slog.Warn("maintenance: unknown timezone, evaluating in UTC", "timezone", name, "err", err)
 		return time.UTC
 	}
+	locationCache.Store(name, loc)
 	return loc
 }
 

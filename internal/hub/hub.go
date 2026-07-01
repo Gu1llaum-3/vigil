@@ -38,6 +38,7 @@ type Hub struct {
 	monitorStats             monitorStatsCache
 	notifier                 *notifications.Dispatcher
 	metricAlerts             *metricAlertEvaluator
+	maintenanceCache         maintenanceWindowCache
 	credentialsKey           []byte
 }
 
@@ -114,6 +115,14 @@ func (h *Hub) StartHub() error {
 		if err := h.registerScheduledJobs(); err != nil {
 			return err
 		}
+		// Warm the maintenance-window cache BEFORE the scheduler starts, so the very first
+		// checks after a restart during a maintenance window are flagged correctly (the flag
+		// is written once and never reconciled). A background ticker re-warms it periodically
+		// as a safety net against a swallowed hook-refresh error or a direct DB edit.
+		if err := h.refreshMaintenanceCache(); err != nil {
+			slog.Warn("initial maintenance cache load failed", "err", err)
+		}
+		goSafe("maintenance cache ticker", func() { h.startMaintenanceCacheTicker(ctx) })
 		// start monitor scheduler
 		goSafe("monitor scheduler", func() { h.monitorScheduler.start(ctx) })
 		// start notification dispatcher
@@ -151,6 +160,9 @@ func (h *Hub) StartHub() error {
 
 	// Keep the metric-alert threshold cache in sync with the metric_alerts collection.
 	h.registerMetricAlertHooks()
+
+	// Keep the maintenance-window cache in sync with the maintenance collection.
+	h.registerMaintenanceHooks()
 
 	pb, ok := h.App.(*pocketbase.PocketBase)
 	if !ok {

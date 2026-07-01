@@ -146,6 +146,45 @@ func TestSaveResultGraceWindowOutageStillRecordsDown(t *testing.T) {
 	require.Equal(t, 1, countByStatus(monitorStatusDown), "threshold-crossing failure is down even during grace")
 }
 
+func TestSaveResultFlagsMaintenance(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	monitor, err := createTestRecord(hub, "monitors", map[string]any{
+		"name":              "API",
+		"type":              "http",
+		"status":            monitorStatusUp,
+		"failure_count":     0,
+		"failure_threshold": 1,
+	})
+	require.NoError(t, err)
+
+	now := time.Now().UTC()
+	_, err = createTestRecord(hub, maintenanceCollection, map[string]any{
+		"title":    "window",
+		"enabled":  true,
+		"strategy": "single",
+		"start_at": now.Add(-time.Hour).Format(time.RFC3339),
+		"end_at":   now.Add(time.Hour).Format(time.RFC3339),
+		"scope":    map[string]any{}, // global → covers the monitor
+	})
+	require.NoError(t, err)
+	require.NoError(t, hub.refreshMaintenanceCache())
+
+	ms := newMonitorScheduler(hub)
+	ms.startedAt = time.Now().Add(-time.Hour)
+	require.True(t, hub.monitorUnderMaintenance(monitor.Id, now))
+
+	ms.saveResult(monitor, monitorStatusUp, 20, "ok")
+
+	events, err := hub.FindRecordsByFilter("monitor_events", "monitor = {:id}", "-checked_at", 1, 0,
+		map[string]any{"id": monitor.Id})
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	require.True(t, events[0].GetBool("maintenance"), "check inside an active window must be flagged maintenance")
+}
+
 func TestCheckPingReturnsParsedLatencyOnSuccess(t *testing.T) {
 	originalLookPath := pingLookPath
 	originalCommandContext := pingCommandContext

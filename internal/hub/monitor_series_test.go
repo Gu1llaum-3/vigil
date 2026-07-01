@@ -132,6 +132,50 @@ func TestLoadMonitorMetricsExcludesPendingFromUptime(t *testing.T) {
 	require.InDelta(t, 100.0*7.0/9.0, *metrics.Uptime24h, 0.01)
 }
 
+func TestLoadMonitorMetricsExcludesMaintenance(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	mon, err := createTestRecord(hub, "monitors", map[string]any{"name": "m", "type": "http", "active": false})
+	require.NoError(t, err)
+
+	now := time.Now().UTC()
+	mkEvent := func(minAgo, status int, maintenance bool) {
+		_, err := createTestRecord(hub, "monitor_events", map[string]any{
+			"monitor":     mon.Id,
+			"status":      status,
+			"latency_ms":  int64(100),
+			"checked_at":  now.Add(-time.Duration(minAgo) * time.Minute),
+			"maintenance": maintenance,
+		})
+		require.NoError(t, err)
+	}
+	// Non-maintenance: 5 up, 2 down → uptime should be 5/(5+2). Maintenance up checks (3)
+	// must be excluded entirely from both up and denominator.
+	for i := 0; i < 5; i++ {
+		mkEvent(i+1, monitorStatusUp, false)
+	}
+	for i := 0; i < 2; i++ {
+		mkEvent(i+20, monitorStatusDown, false)
+	}
+	for i := 0; i < 3; i++ {
+		mkEvent(i+40, monitorStatusUp, true)
+	}
+
+	metrics, err := hub.loadMonitorMetrics(mon)
+	require.NoError(t, err)
+	require.NotNil(t, metrics.Uptime24h)
+	require.InDelta(t, 100.0*5.0/7.0, *metrics.Uptime24h, 0.01, "maintenance checks excluded from uptime")
+
+	// The all-monitors aggregate must agree with the single-monitor query.
+	all, err := hub.loadAllMonitorMetrics()
+	require.NoError(t, err)
+	require.NotNil(t, all[mon.Id])
+	require.NotNil(t, all[mon.Id].Uptime24h)
+	require.InDelta(t, 100.0*5.0/7.0, *all[mon.Id].Uptime24h, 0.01)
+}
+
 func TestLoadMonitorSeriesPendingBuckets(t *testing.T) {
 	hub, testApp, err := createTestHub(t)
 	require.NoError(t, err)
