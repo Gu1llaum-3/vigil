@@ -30,11 +30,18 @@ import {
 	type MetricsRange,
 	metricsRanges,
 	NetworkHistoryChart,
+	useBandPlugin,
 } from "@/components/metric-charts"
 import { MetricThresholdsSheet } from "@/components/metric-thresholds"
 import { HostTags } from "@/components/host-tags"
 import { cn } from "@/lib/utils"
 import { isAdmin, pb } from "@/lib/api"
+import {
+	fetchHostMaintenance,
+	MAINTENANCE_BAND_COLOR,
+	type MaintenanceOccurrence,
+	occurrenceBands,
+} from "@/lib/maintenance"
 import type { HostMetrics, HostsOverviewRecord } from "@/lib/dashboard-types"
 import type { ContainerMetricsHistoryPoint } from "@/lib/dashboard-types"
 import {
@@ -79,6 +86,7 @@ export default function HostDetailPage() {
 	const [hostLoading, setHostLoading] = useState(true)
 	const [metricsRange, setMetricsRange] = useState<MetricsRange>("24h")
 	const [metricsHistory, setMetricsHistory] = useState<HostMetrics[]>([])
+	const [maintenance, setMaintenance] = useState<MaintenanceOccurrence[]>([])
 	const [latestContainerMetricsPoint, setLatestContainerMetricsPoint] = useState<ContainerMetricsHistoryPoint | null>(
 		null
 	)
@@ -106,20 +114,26 @@ export default function HostDetailPage() {
 	const loadMetrics = useCallback(async () => {
 		if (!hostId) {
 			setMetricsHistory([])
+			setMaintenance([])
 			return
 		}
 		const requestId = ++metricsRequestRef.current
 		try {
-			const data = await pb.send<HostMetrics[]>(`/api/app/hosts/${hostId}/metrics?range=${metricsRange}`, {
-				method: "GET",
-			})
+			// Fetch metrics + maintenance windows over the same range in parallel so the charts
+			// and their blue maintenance bands stay in sync. Maintenance is non-fatal (→ []).
+			const [data, maint] = await Promise.all([
+				pb.send<HostMetrics[]>(`/api/app/hosts/${hostId}/metrics?range=${metricsRange}`, { method: "GET" }),
+				fetchHostMaintenance(hostId, metricsRange),
+			])
 			if (requestId === metricsRequestRef.current) {
 				setMetricsHistory(data)
+				setMaintenance(maint)
 			}
 		} catch (error) {
 			if (requestId === metricsRequestRef.current) {
 				console.error("host metrics fetch failed", error)
 				setMetricsHistory([])
+				setMaintenance([])
 			}
 		}
 	}, [hostId, metricsRange])
@@ -230,6 +244,12 @@ export default function HostDetailPage() {
 		() => buildTimeSeries(metricsHistory, (point) => point.load15 / loadCores),
 		[metricsHistory, loadCores]
 	)
+	// One shared blue maintenance-band plugin for every host metric chart over the range. Stable
+	// identity that reads live bands via a ref, so range changes update the bands without a
+	// chart remount (react-chartjs-2 never re-applies the plugins prop after mount).
+	const maintenanceBands = useMemo(() => occurrenceBands(maintenance), [maintenance])
+	const maintenanceBandPlugin = useBandPlugin("maintenance-bands", MAINTENANCE_BAND_COLOR, maintenanceBands)
+
 	const visibleContainerIDList = useMemo(() => hostContainers.map((container) => container.id), [hostContainers])
 	const latestContainerMetrics = useMemo(() => {
 		const metricsByVisibleID = new Map<string, ContainerMetricsHistoryPoint["containers"][number]>()
@@ -428,23 +448,32 @@ export default function HostDetailPage() {
 							points={cpuHistory}
 							formatter={(value) => formatPercent(value)}
 							color="rgb(59, 130, 246)"
+							plugins={[maintenanceBandPlugin]}
 						/>
-						<LoadHistoryChart oneMin={load1History} fiveMin={load5History} fifteenMin={load15History} />
+						<LoadHistoryChart
+							oneMin={load1History}
+							fiveMin={load5History}
+							fifteenMin={load15History}
+							plugins={[maintenanceBandPlugin]}
+						/>
 						<MetricHistoryChart
 							title={<Trans>Memory usage</Trans>}
 							points={memoryHistory}
 							formatter={(value) => formatPercent(value)}
 							color="rgb(16, 185, 129)"
+							plugins={[maintenanceBandPlugin]}
 						/>
 						<MetricHistoryChart
 							title={<Trans>Disk usage</Trans>}
 							points={diskHistory}
 							formatter={(value) => formatPercent(value)}
 							color="rgb(245, 158, 11)"
+							plugins={[maintenanceBandPlugin]}
 						/>
 						<NetworkHistoryChart
 							rxPoints={buildTimeSeries(metricsHistory, (point) => point.network_rx_bps)}
 							txPoints={buildTimeSeries(metricsHistory, (point) => point.network_tx_bps)}
+							plugins={[maintenanceBandPlugin]}
 						/>
 					</div>
 				</TabsContent>
