@@ -185,6 +185,45 @@ func TestSaveResultFlagsMaintenance(t *testing.T) {
 	require.True(t, events[0].GetBool("maintenance"), "check inside an active window must be flagged maintenance")
 }
 
+func TestFamilyNetwork(t *testing.T) {
+	cases := []struct {
+		network, ipFamily, want string
+	}{
+		{"tcp", "", "tcp"},         // auto → unchanged (dual-stack Happy Eyeballs)
+		{"tcp", "ipv4", "tcp4"},    // pin IPv4
+		{"tcp", "ipv6", "tcp6"},    // pin IPv6
+		{"tcp4", "ipv6", "tcp6"},   // explicit network still honors the pin
+		{"tcp", "garbage", "tcp"},  // unknown value → unchanged
+		{"udp", "ipv4", "udp"},     // non-tcp networks pass through
+	}
+	for _, tc := range cases {
+		if got := familyNetwork(tc.network, tc.ipFamily); got != tc.want {
+			t.Errorf("familyNetwork(%q, %q) = %q, want %q", tc.network, tc.ipFamily, got, tc.want)
+		}
+	}
+}
+
+// TestMonitorIPFamilyColumnPersists proves the 9_add_monitor_ip_family migration actually
+// created the column in a fresh DB (the single-digit prefix must sort after 3_create_monitors)
+// and that the value round-trips — an unknown/skipped field would silently read back "".
+func TestMonitorIPFamilyColumnPersists(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	mon, err := createTestRecord(hub, "monitors", map[string]any{
+		"name":      "API",
+		"type":      "http",
+		"url":       "https://example.com",
+		"ip_family": "ipv4",
+	})
+	require.NoError(t, err)
+
+	reloaded, err := hub.FindRecordById("monitors", mon.Id)
+	require.NoError(t, err)
+	require.Equal(t, "ipv4", reloaded.GetString("ip_family"))
+}
+
 func TestCheckPingReturnsParsedLatencyOnSuccess(t *testing.T) {
 	originalLookPath := pingLookPath
 	originalCommandContext := pingCommandContext

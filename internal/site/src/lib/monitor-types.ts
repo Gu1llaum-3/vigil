@@ -20,6 +20,8 @@ export interface MonitorRecord {
 	keyword_invert?: boolean
 	// inverted: treat a reachable target as the alert condition (flip up<->down)
 	inverted?: boolean
+	// ip_family: pin HTTP/TCP checks to one IP family ("" = auto/dual-stack)
+	ip_family?: "" | "ipv4" | "ipv6"
 	// TCP
 	hostname?: string
 	port?: number
@@ -97,6 +99,7 @@ export interface MonitorFormData {
 	keyword: string
 	keyword_invert: boolean
 	inverted: boolean
+	ip_family: "" | "ipv4" | "ipv6"
 	hostname: string
 	port: number | ""
 	ping_count: number | ""
@@ -120,6 +123,7 @@ export const defaultMonitorForm: MonitorFormData = {
 	keyword: "",
 	keyword_invert: false,
 	inverted: false,
+	ip_family: "",
 	hostname: "",
 	port: "",
 	ping_count: 1,

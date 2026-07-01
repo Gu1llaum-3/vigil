@@ -46,6 +46,7 @@ type MonitorRecord struct {
 	PingCount             int                 `json:"ping_count,omitempty"`
 	PingPerRequestTimeout int                 `json:"ping_per_request_timeout,omitempty"`
 	PingIPFamily          string              `json:"ping_ip_family,omitempty"`
+	IPFamily              string              `json:"ip_family,omitempty"`
 	FailureThreshold      int                 `json:"failure_threshold"`
 	Status                int                 `json:"status"`
 	LastCheckedAt         string              `json:"last_checked_at"`
@@ -210,6 +211,7 @@ func monitorToRecord(m *core.Record, appURL string, metrics *MonitorMetrics, rec
 			return m.GetInt("ping_per_request_timeout")
 		}(),
 		PingIPFamily: m.GetString("ping_ip_family"),
+		IPFamily:     m.GetString("ip_family"),
 		FailureThreshold: func() int {
 			if raw := m.Get("failure_threshold"); raw == nil {
 				return 3
@@ -872,7 +874,7 @@ func applyMonitorFields(rec *core.Record, body map[string]any) {
 		"url", "http_method", "http_accepted_codes", "keyword", "keyword_invert",
 		"hostname", "port", "dns_host", "dns_type", "dns_server", "push_token",
 		"ping_count", "ping_per_request_timeout", "ping_ip_family",
-		"failure_threshold", "inverted",
+		"ip_family", "failure_threshold", "inverted",
 	}
 	for _, f := range fields {
 		if v, ok := body[f]; ok {
