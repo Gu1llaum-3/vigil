@@ -14,7 +14,7 @@ import {
 	Tooltip,
 	type ChartOptions,
 } from "chart.js"
-import { areaFill, createBandPlugin } from "@/components/metric-charts"
+import { areaFill, useBandPlugin } from "@/components/metric-charts"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -360,18 +360,10 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 		}),
 		[series.chartEnd, series.points, t]
 	)
-	const downBandPlugin = useMemo(
-		() => createBandPlugin("down-bands", "rgba(239, 68, 68, 0.12)", series.downBands),
-		[series.downBands]
-	)
-	const pendingBandPlugin = useMemo(
-		() => createBandPlugin("pending-bands", "rgba(245, 158, 11, 0.12)", series.pendingBands),
-		[series.pendingBands]
-	)
-	const maintenanceBandPlugin = useMemo(
-		() => createBandPlugin("maintenance-bands", MAINTENANCE_BAND_COLOR, occurrenceBands(maintenance)),
-		[maintenance]
-	)
+	const downBandPlugin = useBandPlugin("down-bands", "rgba(239, 68, 68, 0.12)", series.downBands)
+	const pendingBandPlugin = useBandPlugin("pending-bands", "rgba(245, 158, 11, 0.12)", series.pendingBands)
+	const maintenanceBands = useMemo(() => occurrenceBands(maintenance), [maintenance])
+	const maintenanceBandPlugin = useBandPlugin("maintenance-bands", MAINTENANCE_BAND_COLOR, maintenanceBands)
 
 	if (!monitorId) {
 		return <div className="text-center py-10 text-muted-foreground">404</div>

@@ -13,16 +13,24 @@ export interface MaintenanceOccurrence {
 	severity: string
 }
 
-// fetchMonitorMaintenance loads the maintenance intervals for a monitor over `range`. Bands
-// are a non-fatal chart overlay, so a failure resolves to [] — but it is logged (not silently
+// fetchMaintenance loads the maintenance intervals covering a resource over `range`. Bands are
+// a non-fatal chart overlay, so a failure resolves to [] — but it is logged (not silently
 // swallowed) so a broken endpoint is distinguishable from "no windows" when diagnosing.
-export function fetchMonitorMaintenance(id: string, range: string): Promise<MaintenanceOccurrence[]> {
+function fetchMaintenance(kind: "monitors" | "hosts", id: string, range: string): Promise<MaintenanceOccurrence[]> {
 	return pb
-		.send<MaintenanceOccurrence[]>(`/api/app/monitors/${id}/maintenance?range=${range}`, { method: "GET" })
+		.send<MaintenanceOccurrence[]>(`/api/app/${kind}/${id}/maintenance?range=${range}`, { method: "GET" })
 		.catch((err) => {
-			console.warn("failed to load monitor maintenance windows", err)
+			console.warn(`failed to load ${kind} maintenance windows`, err)
 			return [] as MaintenanceOccurrence[]
 		})
+}
+
+export function fetchMonitorMaintenance(id: string, range: string): Promise<MaintenanceOccurrence[]> {
+	return fetchMaintenance("monitors", id, range)
+}
+
+export function fetchHostMaintenance(id: string, range: string): Promise<MaintenanceOccurrence[]> {
+	return fetchMaintenance("hosts", id, range)
 }
 
 // occurrenceBands converts maintenance occurrences into chart x-ranges (ms), dropping any

@@ -11,6 +11,7 @@ import {
 	type ScriptableContext,
 	Tooltip,
 } from "chart.js"
+import { useMemo, useRef } from "react"
 import { Line } from "react-chartjs-2"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatBytesPerSecond, formatChartTime, formatPercent } from "@/lib/format"
@@ -22,14 +23,16 @@ export type ChartPoint = { x: number; y: number }
 
 export type ChartBand = { start: number; end: number }
 
-// createBandPlugin shades the chart background over the given x-ranges in `color` (e.g. red
-// down / amber pending / blue maintenance bands). Each plugin instance needs a unique `id` so
+// createBandPlugin shades the chart background over x-ranges in `color` (e.g. red down / amber
+// pending / blue maintenance bands). `getBands` is read at every draw so the bands can change
+// without recreating the plugin (see useBandPlugin). Each instance needs a unique `id` so
 // Chart.js can register several at once; list them bottom-to-top in the chart's `plugins`
-// array. Exported from here so any chart (monitor or host) can reuse it.
-export function createBandPlugin(id: string, color: string, bands: ChartBand[]): Plugin<"line"> {
+// array. Exported so any chart (monitor or host) can reuse it.
+export function createBandPlugin(id: string, color: string, getBands: () => ChartBand[]): Plugin<"line"> {
 	return {
 		id,
 		beforeDatasetsDraw(chart) {
+			const bands = getBands()
 			const { ctx, chartArea, scales } = chart
 			if (!chartArea || !bands.length) return
 			const xScale = scales.x
@@ -45,6 +48,17 @@ export function createBandPlugin(id: string, color: string, bands: ChartBand[]):
 			ctx.restore()
 		},
 	}
+}
+
+// useBandPlugin returns a STABLE band plugin that always draws the latest `bands`. react-chartjs-2
+// applies the `plugins` prop only at mount and never re-applies it on update, so a plugin that
+// closed over `bands` would keep painting the mount-time bands forever (stale/misplaced after a
+// range change). Reading bands from a ref — while the chart redraws on its data change — keeps
+// the bands current without remounting the chart. Returns a plugin whose identity never changes.
+export function useBandPlugin(id: string, color: string, bands: ChartBand[]): Plugin<"line"> {
+	const bandsRef = useRef(bands)
+	bandsRef.current = bands
+	return useMemo(() => createBandPlugin(id, color, () => bandsRef.current), [id, color])
 }
 
 // areaFill builds a scriptable vertical gradient (color → transparent) for the
@@ -145,11 +159,13 @@ export function MetricHistoryChart({
 	points,
 	formatter,
 	color,
+	plugins,
 }: {
 	title: React.ReactNode
 	points: ChartPoint[]
 	formatter: (value: number) => string
 	color: string
+	plugins?: Plugin<"line">[]
 }) {
 	const chartData = {
 		datasets: [
@@ -176,7 +192,7 @@ export function MetricHistoryChart({
 					</div>
 				) : (
 					<div className="h-64">
-						<Line data={chartData} options={options} />
+						<Line data={chartData} options={options} plugins={plugins} />
 					</div>
 				)}
 			</CardContent>
@@ -184,7 +200,15 @@ export function MetricHistoryChart({
 	)
 }
 
-export function NetworkHistoryChart({ rxPoints, txPoints }: { rxPoints: ChartPoint[]; txPoints: ChartPoint[] }) {
+export function NetworkHistoryChart({
+	rxPoints,
+	txPoints,
+	plugins,
+}: {
+	rxPoints: ChartPoint[]
+	txPoints: ChartPoint[]
+	plugins?: Plugin<"line">[]
+}) {
 	const data = {
 		datasets: [
 			{
@@ -259,7 +283,7 @@ export function NetworkHistoryChart({ rxPoints, txPoints }: { rxPoints: ChartPoi
 					</div>
 				) : (
 					<div className="h-64">
-						<Line data={data} options={options} />
+						<Line data={data} options={options} plugins={plugins} />
 					</div>
 				)}
 			</CardContent>
@@ -274,10 +298,12 @@ export function LoadHistoryChart({
 	oneMin,
 	fiveMin,
 	fifteenMin,
+	plugins,
 }: {
 	oneMin: ChartPoint[]
 	fiveMin: ChartPoint[]
 	fifteenMin: ChartPoint[]
+	plugins?: Plugin<"line">[]
 }) {
 	const lineStyle = {
 		borderWidth: 1.5,
@@ -352,7 +378,7 @@ export function LoadHistoryChart({
 					</div>
 				) : (
 					<div className="h-64">
-						<Line data={data} options={options} />
+						<Line data={data} options={options} plugins={plugins} />
 					</div>
 				)}
 			</CardContent>
