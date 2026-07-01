@@ -215,6 +215,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.GET("/hosts-overview", h.getHostsOverview)
 	apiAuth.GET("/hosts/{id}", h.getHostDetail)
 	apiAuth.GET("/hosts/{id}/metrics", h.getHostMetricsHistory)
+	apiAuth.GET("/hosts/{id}/maintenance", h.getHostMaintenance)
 	apiAuth.GET("/fleet-metrics", h.getFleetMetrics)
 	apiAuth.GET("/hosts/{id}/container-metrics", h.getHostContainerMetricsHistory)
 	apiAuth.GET("/hosts/{id}/container-metrics/latest", h.getHostContainerMetricsLatest)
@@ -232,6 +233,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.DELETE("/monitors/{id}", h.deleteMonitor).BindFunc(excludeReadOnlyRole)
 	apiAuth.GET("/monitors/{id}/events", h.getMonitorEvents)
 	apiAuth.GET("/monitors/{id}/series", h.getMonitorSeries)
+	apiAuth.GET("/monitors/{id}/maintenance", h.getMonitorMaintenance)
 	// monitor groups
 	apiAuth.GET("/monitor-groups", h.getMonitorGroups)
 	apiAuth.POST("/monitor-groups", h.createMonitorGroup).BindFunc(excludeReadOnlyRole)

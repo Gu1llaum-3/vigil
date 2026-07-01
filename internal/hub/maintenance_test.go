@@ -263,3 +263,111 @@ func TestUnderMaintenanceSuppresses(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, hub2.underMaintenance(monEvt, now))
 }
+
+func TestMaintenanceOccurrences_Single(t *testing.T) {
+	start := mustTime(t, time.RFC3339, "2026-07-01T02:00:00Z")
+	end := mustTime(t, time.RFC3339, "2026-07-01T04:00:00Z")
+	spec := maintenanceSpec{Enabled: true, Strategy: "single", StartAt: start, EndAt: end}
+
+	// Overlapping range → the absolute interval.
+	occ := maintenanceOccurrences(spec, mustTime(t, time.RFC3339, "2026-07-01T00:00:00Z"), mustTime(t, time.RFC3339, "2026-07-01T12:00:00Z"))
+	require.Len(t, occ, 1)
+	require.True(t, occ[0].Start.Equal(start))
+	require.True(t, occ[0].End.Equal(end))
+
+	// Range entirely before the window → none.
+	require.Empty(t, maintenanceOccurrences(spec, mustTime(t, time.RFC3339, "2026-06-30T00:00:00Z"), mustTime(t, time.RFC3339, "2026-07-01T01:00:00Z")))
+	// Range entirely after the window → none.
+	require.Empty(t, maintenanceOccurrences(spec, mustTime(t, time.RFC3339, "2026-07-01T05:00:00Z"), mustTime(t, time.RFC3339, "2026-07-02T00:00:00Z")))
+	// Disabled → none.
+	require.Empty(t, maintenanceOccurrences(maintenanceSpec{Enabled: false, Strategy: "single", StartAt: start, EndAt: end}, start, end))
+
+	// Window touching the range exactly at an edge must NOT emit a degenerate zero-width band.
+	require.Empty(t, maintenanceOccurrences(spec, end, mustTime(t, time.RFC3339, "2026-07-01T12:00:00Z")), "EndAt == since → no band")
+	require.Empty(t, maintenanceOccurrences(spec, mustTime(t, time.RFC3339, "2026-07-01T00:00:00Z"), start), "StartAt == until → no band")
+}
+
+func TestMaintenanceOccurrences_RecurringDaily(t *testing.T) {
+	// Daily 02:00–04:00 UTC.
+	spec := maintenanceSpec{Enabled: true, Strategy: "recurring", StartTime: "02:00", EndTime: "04:00", Timezone: "UTC"}
+	// 3-day range covering 3 daily occurrences.
+	occ := maintenanceOccurrences(spec, mustTime(t, time.RFC3339, "2026-07-01T00:00:00Z"), mustTime(t, time.RFC3339, "2026-07-03T23:00:00Z"))
+	require.Len(t, occ, 3)
+	require.True(t, occ[0].Start.Equal(mustTime(t, time.RFC3339, "2026-07-01T02:00:00Z")))
+	require.True(t, occ[0].End.Equal(mustTime(t, time.RFC3339, "2026-07-01T04:00:00Z")))
+	require.True(t, occ[2].Start.Equal(mustTime(t, time.RFC3339, "2026-07-03T02:00:00Z")))
+}
+
+func TestMaintenanceOccurrences_RecurringWeekday(t *testing.T) {
+	// Only Wednesdays (weekday 3). 2026-07-01 is a Wednesday; +7 days is the next.
+	spec := maintenanceSpec{Enabled: true, Strategy: "recurring", StartTime: "02:00", EndTime: "04:00", Weekdays: []int{3}, Timezone: "UTC"}
+	occ := maintenanceOccurrences(spec, mustTime(t, time.RFC3339, "2026-07-01T00:00:00Z"), mustTime(t, time.RFC3339, "2026-07-09T23:00:00Z"))
+	require.Len(t, occ, 2) // Wed 2026-07-01 and Wed 2026-07-08
+	require.Equal(t, time.Wednesday, occ[0].Start.UTC().Weekday())
+	require.Equal(t, time.Wednesday, occ[1].Start.UTC().Weekday())
+}
+
+func TestMaintenanceOccurrences_MidnightCrossing(t *testing.T) {
+	// 23:00 → 02:00 UTC daily. A range starting mid-tail must still catch the occurrence that
+	// started the previous day.
+	spec := maintenanceSpec{Enabled: true, Strategy: "recurring", StartTime: "23:00", EndTime: "02:00", Timezone: "UTC"}
+	occ := maintenanceOccurrences(spec, mustTime(t, time.RFC3339, "2026-07-02T00:30:00Z"), mustTime(t, time.RFC3339, "2026-07-02T12:00:00Z"))
+	require.Len(t, occ, 1)
+	require.True(t, occ[0].Start.Equal(mustTime(t, time.RFC3339, "2026-07-01T23:00:00Z")))
+	require.True(t, occ[0].End.Equal(mustTime(t, time.RFC3339, "2026-07-02T02:00:00Z")))
+}
+
+func TestMaintenanceScopeCovers(t *testing.T) {
+	global := maintenanceScope{}
+	require.True(t, maintenanceScopeCoversMonitor(global, "m1"))
+	require.True(t, maintenanceScopeCoversAgent(global, "a1"))
+
+	monScoped := maintenanceScope{MonitorIDs: []string{"m1"}}
+	require.True(t, maintenanceScopeCoversMonitor(monScoped, "m1"))
+	require.False(t, maintenanceScopeCoversMonitor(monScoped, "m2"))
+	require.False(t, maintenanceScopeCoversAgent(monScoped, "a1")) // monitor-scoped doesn't cover agents
+
+	agentScoped := maintenanceScope{AgentIDs: []string{"a1"}}
+	require.True(t, maintenanceScopeCoversAgent(agentScoped, "a1"))
+	require.False(t, maintenanceScopeCoversAgent(agentScoped, "a2"))
+	require.False(t, maintenanceScopeCoversMonitor(agentScoped, "m1"))
+}
+
+func TestMaintenanceOccurrencesForResource(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	winStart := mustTime(t, time.RFC3339, "2026-07-01T02:00:00Z")
+	winEnd := mustTime(t, time.RFC3339, "2026-07-01T04:00:00Z")
+	mk := func(title string, enabled bool, scope map[string]any) {
+		_, err := createTestRecord(hub, maintenanceCollection, map[string]any{
+			"title":    title,
+			"enabled":  enabled,
+			"strategy": "single",
+			"start_at": winStart.Format(time.RFC3339),
+			"end_at":   winEnd.Format(time.RFC3339),
+			"scope":    scope,
+		})
+		require.NoError(t, err)
+	}
+	mk("global", true, map[string]any{})
+	mk("mon1 only", true, map[string]any{"monitor_ids": []string{"m1"}})
+	mk("agent a1 only", true, map[string]any{"agent_ids": []string{"a1"}})
+	mk("disabled global", false, map[string]any{})
+
+	since := mustTime(t, time.RFC3339, "2026-07-01T00:00:00Z")
+	until := mustTime(t, time.RFC3339, "2026-07-01T12:00:00Z")
+
+	m1, err := hub.maintenanceOccurrencesForResource("monitor", "m1", since, until)
+	require.NoError(t, err)
+	require.Len(t, m1, 2) // global + mon1-only (disabled & agent-scoped excluded)
+
+	m2, err := hub.maintenanceOccurrencesForResource("monitor", "m2", since, until)
+	require.NoError(t, err)
+	require.Len(t, m2, 1) // global only
+
+	a1, err := hub.maintenanceOccurrencesForResource("agent", "a1", since, until)
+	require.NoError(t, err)
+	require.Len(t, a1, 2) // global + agent a1-only
+}
