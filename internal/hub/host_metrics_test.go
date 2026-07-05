@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/stretchr/testify/require"
 )
@@ -38,6 +40,43 @@ func TestHostOverviewIncludesTags(t *testing.T) {
 	bareFetched, err := hub.FindRecordById("agents", bare.Id)
 	require.NoError(t, err)
 	require.Equal(t, []string{}, buildHostOverviewRecord(bareFetched, nil, nil).Tags)
+}
+
+// TestUpsertHostMetricCurrentStoresDiskMounts proves the 35_add_host_metric_disk_mounts
+// migration created the disk_mounts column in a fresh DB and that the per-mount breakdown
+// round-trips through host_metric_current; a legacy agent (no DiskMounts) stores nothing.
+func TestUpsertHostMetricCurrentStoresDiskMounts(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	agent, err := createTestRecord(hub, "agents", map[string]any{"name": "h1", "token": "tok-h1"})
+	require.NoError(t, err)
+
+	hub.upsertHostMetricCurrent(agent.Id, common.HostMetricsResponse{
+		DiskUsedPercent:    40,
+		DiskMaxUsedPercent: 95,
+		DiskMaxMount:       "/data",
+		DiskMounts: []common.DiskMount{
+			{Mountpoint: "/", UsedPercent: 40},
+			{Mountpoint: "/data", UsedPercent: 95},
+		},
+	})
+
+	rec, err := hub.FindFirstRecordByFilter(hostMetricCurrentCollection, "agent = {:a}", dbx.Params{"a": agent.Id})
+	require.NoError(t, err)
+	// Read back through the actual converter used by the API (not the raw JSON field), so the
+	// per-mount data is proven to reach responses, not just the column.
+	got := hostMetricsFromRecord(rec).DiskMounts
+	require.Len(t, got, 2)
+	require.Equal(t, "/data", got[1].Mountpoint)
+	require.Equal(t, 95.0, got[1].UsedPercent)
+
+	// Legacy agent (no DiskMounts) must NOT wipe the previously stored breakdown.
+	hub.upsertHostMetricCurrent(agent.Id, common.HostMetricsResponse{DiskUsedPercent: 10})
+	rec2, err := hub.FindFirstRecordByFilter(hostMetricCurrentCollection, "agent = {:a}", dbx.Params{"a": agent.Id})
+	require.NoError(t, err)
+	require.Len(t, hostMetricsFromRecord(rec2).DiskMounts, 2, "legacy/empty poll must not clobber stored breakdown")
 }
 
 // TestLoadFleetMetricsSeries locks the SQL-bucketed fleet aggregation: samples are grouped

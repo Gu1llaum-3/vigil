@@ -126,6 +126,7 @@ The collection is tied to the user that created the enrollment token.
 - written only by the hub after each successful metrics poll
 - migration `24_add_metric_alert_columns.go` adds `load1`/`load5`/`load15`/`disk_max_used_percent` to both `host_metric_samples` and `host_metric_current`
 - migration `26_add_alert_tiers.go` adds an `alert_tiers` JSON column to `host_metric_current` only: it persists the metric-alert edge-trigger state (`metric → fired tier`) per agent so a hub restart does not re-fire already-active alerts (restored at boot by `loadState()`)
+- migration `35_add_host_metric_disk_mounts.go` adds a `disk_mounts` JSON column to `host_metric_current` only: the latest per-mount `[]{mountpoint,used_percent}` breakdown from `HostMetricsResponse.DiskMounts`, used for the per-filesystem view and the hub-side per-host include/exclude + "worst monitored mount" selection. Only overwritten when the agent reports mounts (a legacy/empty poll never clobbers it); empty on agents older than the field
 
 ### `metric_alerts`
 
