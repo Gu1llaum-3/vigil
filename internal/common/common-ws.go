@@ -74,6 +74,13 @@ type HostSnapshotResponse struct {
 }
 
 // HostMetricsResponse is the lightweight periodic monitoring payload returned by the agent.
+// DiskMount is one filesystem's high-frequency usage sample (mountpoint + used%), carried in
+// HostMetricsResponse so the hub can compute the worst *monitored* mount per host.
+type DiskMount struct {
+	Mountpoint  string  `cbor:"mountpoint"   json:"mountpoint"`
+	UsedPercent float64 `cbor:"used_percent" json:"used_percent"`
+}
+
 type HostMetricsResponse struct {
 	CPUPercent        float64 `cbor:"cpu_percent"         json:"cpu_percent"`
 	MemoryTotalBytes  uint64  `cbor:"memory_total_bytes"  json:"memory_total_bytes"`
@@ -87,7 +94,13 @@ type HostMetricsResponse struct {
 	// agents older than the metric-alerts feature — callers must degrade gracefully.
 	DiskMaxUsedPercent float64 `cbor:"disk_max_used_percent" json:"disk_max_used_percent"`
 	DiskMaxMount       string  `cbor:"disk_max_mount"        json:"disk_max_mount"`
-	NetworkRxBps       uint64  `cbor:"network_rx_bps"      json:"network_rx_bps"`
+	// DiskMounts is the per-mount used% for every real local filesystem the agent sees
+	// (same set the max is computed over). It lets the hub apply per-host include/exclude
+	// rules and pick the worst *monitored* mount — the agent can't be told what to exclude
+	// (pull-only, read-only agents), so it reports all and the hub filters. Empty on agents
+	// older than this field; callers degrade to DiskMaxUsedPercent/DiskMaxMount.
+	DiskMounts   []DiskMount `cbor:"disk_mounts"    json:"disk_mounts"`
+	NetworkRxBps uint64      `cbor:"network_rx_bps"      json:"network_rx_bps"`
 	NetworkTxBps       uint64  `cbor:"network_tx_bps"      json:"network_tx_bps"`
 	// Load1/5/15 are the 1/5/15-minute load averages. Zero on agents older than the
 	// metric-alerts feature.

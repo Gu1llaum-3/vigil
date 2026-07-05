@@ -120,6 +120,7 @@ func collectMemoryMetrics(metrics *common.HostMetricsResponse) {
 func collectDiskMetricsLocked(now time.Time, metrics *common.HostMetricsResponse) {
 	parts := diskPartitionsLocked(now)
 	rootSeen := false
+	seenMount := make(map[string]bool, len(parts))
 	for _, p := range parts {
 		usage, err := psdisk.Usage(p.Mountpoint)
 		if err != nil || usage.Total == 0 {
@@ -136,6 +137,12 @@ func collectDiskMetricsLocked(now time.Time, metrics *common.HostMetricsResponse
 			metrics.DiskMaxUsedPercent = used
 			metrics.DiskMaxMount = p.Mountpoint
 		}
+		// Per-mount breakdown for hub-side include/exclude + worst-monitored selection.
+		// Dedup by mountpoint so bind/remounts don't double-list a filesystem the hub keys on.
+		if !seenMount[p.Mountpoint] {
+			seenMount[p.Mountpoint] = true
+			metrics.DiskMounts = append(metrics.DiskMounts, common.DiskMount{Mountpoint: p.Mountpoint, UsedPercent: used})
+		}
 	}
 
 	// Fallback: if root was not in the (filtered/empty) partition list, read it
@@ -150,6 +157,10 @@ func collectDiskMetricsLocked(now time.Time, metrics *common.HostMetricsResponse
 				metrics.DiskMaxUsedPercent = used
 				metrics.DiskMaxMount = "/"
 			}
+			// !rootSeen guarantees "/" was not appended in the loop, so add it here (even when
+			// other mounts already populated the list) — root must never be missing from the
+			// per-mount breakdown.
+			metrics.DiskMounts = append(metrics.DiskMounts, common.DiskMount{Mountpoint: "/", UsedPercent: used})
 		}
 	}
 }

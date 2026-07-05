@@ -164,6 +164,12 @@ func (h *Hub) upsertHostMetricCurrent(agentID string, metrics common.HostMetrics
 		if tiers != nil {
 			rec.Set("alert_tiers", tiers)
 		}
+		// Latest-only per-mount breakdown (host_metric_current only, not the samples history).
+		// Only overwrite when the agent actually reported mounts, so a legacy/downgraded agent
+		// (empty list) doesn't wipe the last known breakdown.
+		if len(metrics.DiskMounts) > 0 {
+			rec.Set("disk_mounts", metrics.DiskMounts)
+		}
 	})
 	if err != nil {
 		slog.Warn("Failed to save current host metrics", "agent", agentID, "err", err)
@@ -208,6 +214,8 @@ func hostMetricsFromRecord(rec *core.Record) common.HostMetricsResponse {
 		Load5:              numberAsFloat64(rec.Get("load5")),
 		Load15:             numberAsFloat64(rec.Get("load15")),
 	}
+	// Per-mount breakdown (host_metric_current only; absent/empty on samples and legacy agents).
+	_ = rec.UnmarshalJSONField("disk_mounts", &metrics.DiskMounts)
 	if !rec.GetDateTime("collected_at").IsZero() {
 		metrics.CollectedAt = rec.GetDateTime("collected_at").Time().UTC().Format(time.RFC3339)
 	}
