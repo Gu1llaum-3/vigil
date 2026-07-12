@@ -39,6 +39,7 @@ type Hub struct {
 	notifier                 *notifications.Dispatcher
 	metricAlerts             *metricAlertEvaluator
 	maintenanceCache         maintenanceWindowCache
+	diskRules                diskRuleCache
 	credentialsKey           []byte
 }
 
@@ -132,6 +133,11 @@ func (h *Hub) StartHub() error {
 		// restore the edge-trigger state persisted in host_metric_current so a restart
 		// does not re-fire alerts that are already active (and keeps ongoing breaches).
 		h.metricAlerts.loadState()
+		// warm the disk-monitor-rule cache so persistHostMetrics picks the worst *monitored*
+		// mount without a DB query (collections exist post-migration).
+		if err := h.refreshDiskRuleCache(); err != nil {
+			slog.Warn("initial disk rule cache load failed", "err", err)
+		}
 		// start external heartbeat (push monitoring, e.g. Uptime Kuma / Healthchecks.io)
 		// Disabled unless HEARTBEAT_URL is set; heartbeat.New returns nil in that case.
 		if hb := heartbeat.New(h.App, utils.GetEnv); hb != nil {
@@ -163,6 +169,9 @@ func (h *Hub) StartHub() error {
 
 	// Keep the maintenance-window cache in sync with the maintenance collection.
 	h.registerMaintenanceHooks()
+
+	// Keep the disk-monitor-rule cache in sync with the disk_monitor_rules collection.
+	h.registerDiskRuleHooks()
 
 	pb, ok := h.App.(*pocketbase.PocketBase)
 	if !ok {

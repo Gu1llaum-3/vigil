@@ -127,6 +127,11 @@ The collection is tied to the user that created the enrollment token.
 - migration `24_add_metric_alert_columns.go` adds `load1`/`load5`/`load15`/`disk_max_used_percent` to both `host_metric_samples` and `host_metric_current`
 - migration `26_add_alert_tiers.go` adds an `alert_tiers` JSON column to `host_metric_current` only: it persists the metric-alert edge-trigger state (`metric → fired tier`) per agent so a hub restart does not re-fire already-active alerts (restored at boot by `loadState()`)
 - migration `35_add_host_metric_disk_mounts.go` adds a `disk_mounts` JSON column to `host_metric_current` only: the latest per-mount `[]{mountpoint,used_percent}` breakdown from `HostMetricsResponse.DiskMounts`, used for the per-filesystem view and the hub-side per-host include/exclude + "worst monitored mount" selection. Only overwritten when the agent reports mounts (a legacy/empty poll never clobbers it); empty on agents older than the field
+- migration `37_add_host_metric_disk_max_mount.go` adds a `disk_max_mount` text column to `host_metric_current` only: the name of the worst *monitored* mount (after the include/exclude rule), for the fleet disk bar tooltip. `disk_max_used_percent` on both samples and current is now the worst *monitored* mount's percent (folded in by `persistHostMetrics`), not the agent's blind busiest mount — they differ only when a `disk_monitor_rules` policy excludes mounts
+
+### `disk_monitor_rules`
+
+Per-host policy for which filesystems the disk bar + disk alert consider. One row per `agent` (relation to `agents`, unique index). Fields: `mode` (`all` default / `include` / `exclude`) and `mounts` (JSON list of mountpoints). Admin-only: rules are `null`, access gated by `requireAdminRole` on `/api/app/disk-monitor-rules` (list/upsert-by-agent/delete). Cached in memory (`diskRuleCache`, kept fresh via `disk_monitor_rules` hooks + a boot warm) so `monitoredWorstDisk` — the worst used% among the monitored mounts — costs no DB query on the per-poll hot path. Created by migration `36_create_disk_monitor_rules.go`.
 
 ### `metric_alerts`
 

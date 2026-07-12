@@ -268,6 +268,14 @@ func (e *metricAlertEvaluator) evaluate(agentID string, metrics common.HostMetri
 			e.clearState(agentID, metric)
 			continue
 		}
+		// A disk_monitor_rule that currently matches no mount (exclude-all / include-none)
+		// mutes the disk alert for this host: clear any active tier and skip, exactly like an
+		// unconfigured threshold — never fall back to root usage. (Legacy agents with no
+		// per-mount breakdown are not muted; they keep evaluating the reported worst.)
+		if metric == metricDisk && e.hub != nil && e.hub.diskMuted(agentID, metrics.DiskMounts) {
+			e.clearState(agentID, metric)
+			continue
+		}
 		value, unit := metricValue(metric, metrics)
 		// loadavg is normalized to load-per-core so a single global threshold means the
 		// same thing on every host (1.0 = fully utilized). If the core count is unknown

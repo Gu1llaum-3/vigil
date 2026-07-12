@@ -128,6 +128,16 @@ func (h *Hub) collectAndPersistHostMetrics(ctx context.Context, agentID string, 
 }
 
 func (h *Hub) persistHostMetrics(agentID string, metrics common.HostMetricsResponse) {
+	// Fold the worst *monitored* mount (per the host's include/exclude rule) into
+	// DiskMaxUsedPercent/DiskMaxMount, so the disk alert, the samples history, and the current
+	// row reflect it instead of the agent's blind worst. Only when at least one mount is
+	// monitored: a rule matching no mount mutes the disk alert (handled in the evaluator) and
+	// we leave the agent's reported worst untouched rather than persisting a misleading 0.
+	// Legacy agents (no per-mount breakdown) also keep their reported values.
+	if pct, mount, monitored := h.monitoredWorstDisk(agentID, metrics.DiskMounts); monitored {
+		metrics.DiskMaxUsedPercent = pct
+		metrics.DiskMaxMount = mount
+	}
 	h.insertHostMetricSample(agentID, metrics)
 	// Evaluate metric-threshold alerts before writing the current row, so the resulting
 	// edge-trigger state (alert_tiers) is persisted in that same write — surviving a
@@ -170,6 +180,8 @@ func (h *Hub) upsertHostMetricCurrent(agentID string, metrics common.HostMetrics
 		if len(metrics.DiskMounts) > 0 {
 			rec.Set("disk_mounts", metrics.DiskMounts)
 		}
+		// Name of the worst monitored mount (current-only), for the fleet disk bar tooltip.
+		rec.Set("disk_max_mount", metrics.DiskMaxMount)
 	})
 	if err != nil {
 		slog.Warn("Failed to save current host metrics", "agent", agentID, "err", err)
@@ -208,6 +220,7 @@ func hostMetricsFromRecord(rec *core.Record) common.HostMetricsResponse {
 		DiskUsedBytes:      numberAsUint64(rec.Get("disk_used_bytes")),
 		DiskUsedPercent:    numberAsFloat64(rec.Get("disk_used_percent")),
 		DiskMaxUsedPercent: numberAsFloat64(rec.Get("disk_max_used_percent")),
+		DiskMaxMount:       rec.GetString("disk_max_mount"),
 		NetworkRxBps:       numberAsUint64(rec.Get("network_rx_bps")),
 		NetworkTxBps:       numberAsUint64(rec.Get("network_tx_bps")),
 		Load1:              numberAsFloat64(rec.Get("load1")),
