@@ -36,8 +36,12 @@ func createTestHub(t testing.TB) (*Hub, *pbtests.TestApp, error) {
 	return NewHub(testApp), testApp, err
 }
 
-// cleanupTestHub tears down the test app.
-func cleanupTestHub(_ *Hub, testApp *pbtests.TestApp) {
+// cleanupTestHub stops the hub's agent connection goroutines, then tears down the
+// test app, so no goroutine writes to the database after it is closed.
+func cleanupTestHub(hub *Hub, testApp *pbtests.TestApp) {
+	if hub != nil {
+		hub.stopAgentConnections()
+	}
 	if testApp != nil {
 		testApp.Cleanup()
 	}
@@ -975,4 +979,3 @@ func TestAgentWebSocketIntegration(t *testing.T) {
 		})
 	}
 }
-

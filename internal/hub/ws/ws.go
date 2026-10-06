@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"time"
 	"weak"
 
@@ -23,7 +24,9 @@ type Handler struct {
 
 // WsConn represents a WebSocket connection to an agent.
 type WsConn struct {
-	conn           *gws.Conn
+	// conn is cleared by OnClose (read-loop goroutine) while other goroutines ping or
+	// close the connection, hence the atomic pointer.
+	conn           atomic.Pointer[gws.Conn]
 	requestManager *RequestManager
 	DownChan       chan struct{}
 }
@@ -42,11 +45,12 @@ func GetUpgrader() *gws.Upgrader {
 
 // NewWsConnection creates a new WebSocket connection wrapper.
 func NewWsConnection(conn *gws.Conn) *WsConn {
-	return &WsConn{
-		conn:           conn,
+	wsConn := &WsConn{
 		requestManager: NewRequestManager(conn),
 		DownChan:       make(chan struct{}, 1),
 	}
+	wsConn.conn.Store(conn)
+	return wsConn
 }
 
 // OnOpen sets a deadline for the WebSocket connection.
@@ -74,7 +78,7 @@ func (h *Handler) OnClose(conn *gws.Conn, err error) {
 	if !ok {
 		return
 	}
-	wsConn.(*WsConn).conn = nil
+	wsConn.(*WsConn).conn.Store(nil)
 	// wait 5 seconds to allow reconnection before signaling down
 	go func(downChan weak.Pointer[chan struct{}]) {
 		time.Sleep(5 * time.Second)
@@ -87,8 +91,8 @@ func (h *Handler) OnClose(conn *gws.Conn, err error) {
 
 // Close terminates the WebSocket connection gracefully.
 func (ws *WsConn) Close(msg []byte) {
-	if ws.IsConnected() {
-		ws.conn.WriteClose(1000, msg)
+	if conn := ws.conn.Load(); conn != nil {
+		conn.WriteClose(1000, msg)
 	}
 	if ws.requestManager != nil {
 		ws.requestManager.Close()
@@ -97,11 +101,12 @@ func (ws *WsConn) Close(msg []byte) {
 
 // Ping sends a ping frame to keep the connection alive.
 func (ws *WsConn) Ping() error {
-	if ws.conn == nil {
+	conn := ws.conn.Load()
+	if conn == nil {
 		return gws.ErrConnClosed
 	}
-	ws.conn.SetDeadline(time.Now().Add(deadline))
-	return ws.conn.WritePing(nil)
+	conn.SetDeadline(time.Now().Add(deadline))
+	return conn.WritePing(nil)
 }
 
 // handleAgentRequest processes a response from the agent.
@@ -128,7 +133,7 @@ func (ws *WsConn) handleAgentRequest(req *PendingRequest, handler ResponseHandle
 
 // IsConnected returns true if the WebSocket connection is active.
 func (ws *WsConn) IsConnected() bool {
-	return ws.conn != nil
+	return ws.conn.Load() != nil
 }
 
 // SendRequest sends a request to the agent and returns a pending request handle.
