@@ -8,3 +8,35 @@ updates:
       interval: weekly
     commit-message:
       prefix: ci
+
+  # Hub and agent Go modules. Minor/patch bumps are grouped into a single PR to
+  # keep the noise down; major bumps still get their own PR.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    groups:
+      go-minor-patch:
+        update-types: [minor, patch]
+
+  # Frontend (Vite/React, npm with package-lock.json).
+  - package-ecosystem: npm
+    directory: /internal/site
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  # Base images of the hub Dockerfile (internal/dockerfile_hub). Images are
+  # pinned by tag + digest; Dependabot bumps both.
+  - package-ecosystem: docker
+    directory: /internal
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
