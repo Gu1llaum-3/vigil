@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
+  # Called by release.yml so that nothing is published from a tag that fails CI.
+  workflow_call:
 
 permissions:
   contents: read
@@ -17,6 +20,34 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # The hub embeds internal/site/dist (//go:embed all:dist), which is built by the
+      # frontend and not committed; an empty page is enough to compile and test.
+      - name: Placeholder frontend build
+        run: mkdir -p internal/site/dist && touch internal/site/dist/index.html
+
+      - name: Verify modules
+        run: |
+          go mod verify
+          go mod tidy -diff
+
+      - name: Vet
+        run: go vet -tags=testing ./...
+
+      # Linux runner, so the //go:build linux collector tests run too.
+      - name: Test
+        run: go test -tags=testing -timeout 20m ./...
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

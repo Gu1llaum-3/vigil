@@ -67,15 +67,13 @@ Typical use case:
 
 ### Release Workflows
 
-Paths:
+Path: `.github/workflows/release.yml`, triggered by a version tag. Its jobs run in sequence:
 
-- `.github/workflows/release.yml`
-- `.github/workflows/docker-images.yml`
+1. `ci` — calls `.github/workflows/ci.yml` (Go vet + tests on Linux, frontend checks) on the tagged commit
+2. `goreleaser` — `needs: ci`; publishes the Go binaries, archives, `.deb` packages and signed checksums
+3. `docker` — `needs: goreleaser`; builds and pushes the hub image to GHCR
 
-Purpose:
-
-- publish Go release artifacts for tagged versions
-- build and push the hub Docker image to GHCR
+So a tag whose commit fails CI publishes nothing, and an image is never pushed without the matching release (or the reverse, as could happen when the image had its own workflow). The workflow is read-only by default; `goreleaser` gets `contents: write` and `id-token: write` (cosign), `docker` gets `packages: write`.
 
 Release behavior:
 
@@ -83,7 +81,7 @@ Release behavior:
 - tags containing a hyphen such as `v1.2.3-beta.1` or `v1.2.3-dev.1` are treated as prereleases
 - GitHub prereleases stay separate and are never promoted to `latest`
 - rerunning the same tag replaces existing release artifacts instead of failing on duplicate asset names
-- `docker-images.yml` does **not** build the frontend on the runner — the Dockerfile's `web-builder` stage does (and `internal/site/dist` is in `.dockerignore`); it uses the GitHub Actions BuildKit cache (`type=gha`) across the three platforms (`linux/amd64`, `linux/arm64`, `linux/arm/v7`)
+- the `docker` job does **not** build the frontend on the runner — the Dockerfile's `web-builder` stage does (and `internal/site/dist` is in `.dockerignore`); it uses the GitHub Actions BuildKit cache (`type=gha`) across the three platforms (`linux/amd64`, `linux/arm64`, `linux/arm/v7`). A cache written on a tag is only readable by that same tag (and nothing builds the image on `main`), so it mostly speeds up re-runs of one release; each new tag builds cold
 - `release.yml` installs Go from `go-version-file: go.mod`, so the `go` directive in `go.mod` **is** the toolchain used for release binaries — bump it to pick up Go security patch releases
 
 > **Note:** there is intentionally no agent Compose or combined hub+agent Compose. Agents are installed natively (see *Service Management And Install Scripts*).
@@ -100,7 +98,7 @@ Purpose:
 - produce a container image that serves the embedded web UI and PocketBase runtime
 - install the system `ping` binary used by the hub `ping` monitor type
 - pin the Go builder image to the patched Go toolchain version required by `go.mod`
-- stamp the release version into the binary: the `VERSION` build arg (passed by `docker-images.yml` as the git tag) is injected with the same `-X github.com/Gu1llaum-3/vigil.Version=…` flag as `.goreleaser.yml`, leading `v` stripped. Without it the binary keeps the in-source default (`0.0.0-dev`), which shows a dev version in the UI / `GET /api/app/info`, makes `CHECK_UPDATES` always report an update, and makes the *Add agent* install command fall back to `main` instead of pinning a release — so a local `docker build` reports `0.0.0-dev` unless you pass `--build-arg VERSION=vX.Y.Z`
+- stamp the release version into the binary: the `VERSION` build arg (passed by the release workflow's `docker` job as the git tag) is injected with the same `-X github.com/Gu1llaum-3/vigil.Version=…` flag as `.goreleaser.yml`, leading `v` stripped. Without it the binary keeps the in-source default (`0.0.0-dev`), which shows a dev version in the UI / `GET /api/app/info`, makes `CHECK_UPDATES` always report an update, and makes the *Add agent* install command fall back to `main` instead of pinning a release — so a local `docker build` reports `0.0.0-dev` unless you pass `--build-arg VERSION=vX.Y.Z`
 - all three base images (`node`, `golang`, `alpine`) are pinned by tag **and** digest; Dependabot's `docker` ecosystem (`.github/dependabot.yml`, directory `/internal`) bumps both
 
 Operational note:
@@ -183,6 +181,7 @@ Integrity:
 - `make_latest: true` so GitHub's `/releases/latest` resolves for stable tags (the install scripts depend on it); prereleases stay excluded via `prerelease: auto`
 - the `checksums.txt` file is signed with cosign v3 keyless (OIDC) by the release workflow, producing a single Sigstore bundle `*_checksums.txt.sigstore.json` (releases up to v0.2.14-beta shipped separate `*.sig` + `*.pem` instead); the `signs:` block documents the `cosign verify-blob --bundle` recipe. Cosign v3 signs through a signing config that only writes the bundle, so the old `--output-signature`/`--output-certificate` args would make the release fail — keep `--bundle`
 - the hub image build publishes provenance and an SBOM
+- goreleaser's `before` hook no longer runs `go mod tidy`, so the release never rewrites `go.mod`/`go.sum`: it builds exactly the committed files, whose tidiness CI checks (`go mod tidy -diff`). The hook runs `go mod verify` instead, a cheap check (the go command verifies every downloaded module against `go.sum` anyway)
 
 If you rename the project or change binary names, this file must stay in sync with `app.go` and any install scripts.
 
