@@ -4,8 +4,10 @@ package app
 // Version is the current application version. It is a var (not a const) so release
 // builds can override it via -ldflags "-X github.com/Gu1llaum-3/vigil.Version=..."
 // (see .goreleaser.yml). Keep the default a valid semver: the hub rejects agents
-// whose reported version does not parse as semver.
-var Version = "0.1.0"
+// whose reported version does not parse as semver. The "-dev" pre-release marks an
+// unstamped build: it matches no git tag and sorts below every real release (the web
+// UI relies on it to avoid pinning install commands to a nonexistent tag).
+var Version = "0.0.0-dev"
 
 const (
 	// DisplayName is the user-facing product name shown in the UI.

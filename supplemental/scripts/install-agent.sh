@@ -80,7 +80,7 @@ print_supported_targets() {
 
 print_prerelease_hint() {
   echo "If you want to install a beta or other pre-release, pass it explicitly with --version or -v."
-  echo "Example: ./install-agent.sh --version v0.1.0-beta.5 ..."
+  echo "Example: ./install-agent.sh --version vX.Y.Z-beta ..."
 }
 
 require_supported_release_target() {

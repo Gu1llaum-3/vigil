@@ -25,8 +25,16 @@ curl -sL https://raw.githubusercontent.com/Gu1llaum-3/vigil/main/supplemental/sc
 
 You may specify a port number with the `-p` flag. The default port is `8090`.
 
+Without `-v`, the script installs the latest **stable** release. Pre-releases (such as `-beta` versions) must be passed explicitly with `-v`; pick the tag from the [releases page](https://github.com/Gu1llaum-3/vigil/releases).
+
 ```bash
 ./install-hub.sh
+```
+
+Example for a beta:
+
+```bash
+./install-hub.sh -v vX.Y.Z-beta
 ```
 
 #### Uninstall
@@ -51,11 +59,13 @@ curl -sL https://raw.githubusercontent.com/Gu1llaum-3/vigil/main/supplemental/sc
 
 #### Install
 
-The agent install script is currently intended for Linux release targets published by `.goreleaser.yml`: `amd64`, `arm64`, and `arm` (`armv7`).
+The easiest way to install an agent is the command copied from the hub's **Add agent** dialog (*Install script* tab): it already contains the hub URL, public key and token, and it is pinned to the hub's own version, so the agent always matches the hub.
+
+To run the script by hand instead: the agent install script is currently intended for Linux release targets published by `.goreleaser.yml`: `amd64`, `arm64`, and `arm` (`armv7`).
 
 You may optionally include the hub public key, token, and hub URL as arguments. Run `./install-agent.sh -h` for more info.
 
-If you want to test a beta or another pre-release, pass it explicitly with `--version` because GitHub's `latest` endpoint only returns stable releases.
+Without `--version`, the script installs the latest **stable** release. To install a beta or another pre-release (for example to match a beta hub), pass it explicitly with `--version`, because GitHub's `latest` endpoint only returns stable releases. Use the same version as your hub.
 
 If specifying your key with `-k`, please make sure to enclose it in quotes.
 
@@ -66,7 +76,7 @@ If specifying your key with `-k`, please make sure to enclose it in quotes.
 Example for a beta:
 
 ```bash
-./install-agent.sh --version v0.1.0-beta.5
+./install-agent.sh --version vX.Y.Z-beta
 ```
 
 #### Uninstall
@@ -79,10 +89,10 @@ Example for a beta:
 
 `vigil-agent update` is not available yet.
 
-To upgrade an existing agent installation, re-run the install script and optionally pin a release version:
+To upgrade an existing agent installation, re-run the install script and pin the release version (usually your hub's version):
 
 ```bash
-./install-agent.sh --version v0.1.0
+./install-agent.sh --version vX.Y.Z
 ```
 
 ## Manual install

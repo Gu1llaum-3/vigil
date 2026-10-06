@@ -1,8 +1,7 @@
 import { memo } from "react"
+import { installScriptCommand } from "@/lib/agent-install"
 import { copyToClipboard, getHubURL } from "@/lib/utils"
 import { DropdownMenuContent, DropdownMenuItem } from "./ui/dropdown-menu"
-
-const installScriptURL = "https://raw.githubusercontent.com/Gu1llaum-3/vigil/main/supplemental/scripts/install-agent.sh"
 
 export function copyDockerCompose(publicKey: string, token: string) {
 	copyToClipboard(`services:
@@ -29,9 +28,7 @@ export function copyDockerRun(publicKey: string, token: string) {
 }
 
 export function copyInstallScriptCommand(publicKey: string, token: string) {
-	copyToClipboard(
-		`curl -sL ${installScriptURL} -o install-agent.sh && chmod +x install-agent.sh && ./install-agent.sh -k "${publicKey}" -t "${token}" -url "${getHubURL()}"`
-	)
+	copyToClipboard(installScriptCommand({ version: globalThis.APP?.HUB_VERSION, publicKey, token, hubURL: getHubURL() }))
 }
 
 export function copyBinaryEnvCommand(publicKey: string, token: string) {
