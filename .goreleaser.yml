@@ -4,7 +4,8 @@ project_name: vigil
 
 before:
   hooks:
-    - go mod tidy
+    # go.mod/go.sum are checked by CI (go mod tidy -diff); never rewrite them at build time.
+    - go mod verify
 
 builds:
   - id: vigil
