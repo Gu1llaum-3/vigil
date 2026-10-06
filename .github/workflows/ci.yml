@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: internal/site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: internal/site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint and format (biome)
+        run: npm run check
+
+      # The Vite build transpiles with SWC and never type-checks, so this is the only
+      # place type errors are caught. It also compiles the lingui catalogs it imports.
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

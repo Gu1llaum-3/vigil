@@ -13,9 +13,6 @@ export default defineConfig({
 		lingui(),
 		tailwindcss(),
 	],
-	esbuild: {
-		legalComments: "external",
-	},
 	resolve: {
 		alias: {
 			"@": path.resolve(import.meta.dirname, "./src"),
