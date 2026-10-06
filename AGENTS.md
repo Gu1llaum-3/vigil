@@ -102,7 +102,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 │   │   ├── container_metrics.go    # Lightweight running-container metrics (linux)
 │   │   ├── packages_debian.go      # APT packages and pending updates (linux)
 │   │   ├── packages_redhat.go      # DNF/YUM packages and pending updates (linux)
-│   │   ├── repositories_debian.go  # APT repo sources (linux)
+│   │   ├── repositories_debian.go  # APT repo sources: .list + deb822 .sources (linux)
 │   │   ├── repositories_redhat.go  # DNF/YUM repo sources (linux)
 │   │   ├── reboot.go               # Reboot-required detection (linux)
 │   │   ├── docker.go               # Docker container inventory (linux)
