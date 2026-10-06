@@ -6,7 +6,7 @@ This is useful if you want to run the hub or agent in the background continuousl
 
 There are two scripts, one for the hub and one for the agent. You can run either one, or both.
 
-The install script creates a dedicated user for the service (`app`), downloads the latest release, and installs the service.
+The install scripts create a dedicated system user for the service (`vigil` for the hub, `vigil-agent` for the agent), download the release, and install the service.
 
 If you need to edit the service -- for instance, to change an environment variable -- you can edit the file(s) in `/etc/systemd/system/`. Then reload the systemd daemon and restart the service.
 
@@ -59,7 +59,7 @@ curl -sL https://raw.githubusercontent.com/Gu1llaum-3/vigil/main/supplemental/sc
 
 #### Install
 
-The easiest way to install an agent is the command copied from the hub's **Add agent** dialog (*Install script* tab): it already contains the hub URL, public key and token, and it is pinned to the hub's own version, so the agent always matches the hub.
+The easiest way to install an agent is the command copied from the hub's **Add agent** dialog (*Copy install script*, or *Copy install script with Docker monitoring* from its menu): it already contains the hub URL, public key and token, and it is pinned to the hub's own version, so the agent always matches the hub.
 
 To run the script by hand instead: the agent install script is currently intended for Linux release targets published by `.goreleaser.yml`: `amd64`, `arm64`, and `arm` (`armv7`).
 
@@ -77,6 +77,12 @@ Example for a beta:
 
 ```bash
 ./install-agent.sh --version vX.Y.Z-beta
+```
+
+The agent runs as the unprivileged `vigil-agent` user and does not get Docker access by default. To inventory and monitor Docker containers, add `--docker`: it puts `vigil-agent` in the `docker` group, which is equivalent to root access on the host. Upgrades keep the current setting; `--no-docker` revokes it.
+
+```bash
+./install-agent.sh --docker
 ```
 
 #### Uninstall

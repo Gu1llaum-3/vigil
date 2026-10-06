@@ -643,6 +643,11 @@ msgctxt "Button to copy install script command"
 msgid "Copy install script"
 msgstr "Copy install script"
 
+#: src/components/add-agent.tsx
+msgctxt "Button to copy the install script command that grants the agent Docker socket access"
+msgid "Copy install script with Docker monitoring"
+msgstr "Copy install script with Docker monitoring"
+
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/host-detail.tsx
 msgid "Copy IP"
@@ -913,6 +918,10 @@ msgstr "DNS server (optional)"
 #: src/components/routes/host-detail.tsx
 msgid "Docker"
 msgstr "Docker"
+
+#: src/components/add-agent.tsx
+msgid "Docker monitoring adds the agent to the docker group, which is equivalent to root access on the host."
+msgstr "Docker monitoring adds the agent to the docker group, which is equivalent to root access on the host."
 
 #: src/components/routes/settings/api-keys.tsx
 msgid "Done"

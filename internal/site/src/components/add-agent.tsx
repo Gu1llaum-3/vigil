@@ -111,6 +111,14 @@ const AgentDialog = ({ open, setOpen }: { open: boolean; setOpen: (open: boolean
 	const binaryItems = useMemo<DropdownItem[]>(
 		() => [
 			{
+				text: t({
+					message: "Copy install script with Docker monitoring",
+					context: "Button to copy the install script command that grants the agent Docker socket access",
+				}),
+				onClick: () => copyInstallScriptCommand(publicKey, token, true),
+				icons: [TuxIcon],
+			},
+			{
 				text: t({ message: "Copy raw command", context: "Button to copy raw binary command" }),
 				onClick: () => copyBinaryEnvCommand(publicKey, token),
 				icons: [TuxIcon],
@@ -132,6 +140,9 @@ const AgentDialog = ({ open, setOpen }: { open: boolean; setOpen: (open: boolean
 					<Trans>
 						Copy the install script command or a raw binary launch command for a new agent. The dialog uses the hub
 						public key and the current enrollment token.
+					</Trans>{" "}
+					<Trans>
+						Docker monitoring adds the agent to the docker group, which is equivalent to root access on the host.
 					</Trans>
 				</DialogDescription>
 			</DialogHeader>
