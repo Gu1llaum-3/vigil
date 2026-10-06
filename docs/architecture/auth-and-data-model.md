@@ -455,7 +455,7 @@ Behavior notes:
 
 - `TOKEN_FILE` is an alternative to `TOKEN`
 - `KEY_FILE` is an alternative to `KEY`
-- if no key is configured, hub identity verification is skipped
+- a hub key is required: with no `KEY`/`KEY_FILE`/`--key`, the agent exits at startup
 - `DATA_DIR` overrides automatic data-directory selection
 
 ## Data-Model Change Checklist

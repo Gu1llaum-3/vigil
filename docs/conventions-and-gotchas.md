@@ -128,17 +128,17 @@ Both hub and agent support prefixed and unprefixed env names.
 
 Lookup order:
 
-1. `APP_HUB_<KEY>`
+1. `VIGIL_HUB_<KEY>` (`app.HubEnvPrefix`)
 2. `<KEY>`
 
 ### Agent
 
 Lookup order:
 
-1. `APP_AGENT_<KEY>`
+1. `VIGIL_AGENT_<KEY>` (`app.AgentEnvPrefix`)
 2. `<KEY>`
 
-This matters when debugging config because a prefixed variable can override an unprefixed one unexpectedly.
+This matters when debugging config because a prefixed variable can override an unprefixed one unexpectedly, even when it is set to an empty value (for example an empty `VIGIL_AGENT_KEY` hides `KEY`).
 
 ## Development Frontend And Production Frontend Behave Differently
 
@@ -192,13 +192,11 @@ Current rule:
 
 If you add a new action or adjust handshake logic, keep this boundary intact.
 
-## Missing Key Material Changes Security Posture
+## The Hub Public Key Is Mandatory
 
-If no hub public key is provided to the agent, signature verification is skipped.
+The agent exits at startup when no hub public key is configured (`--key`, `KEY` or `KEY_FILE`, read in that order; an empty value, empty file or comment-only file counts as missing), and `verifySignature` fails closed on an empty key set.
 
-That may be acceptable for local development, but it is not equivalent to verified production operation.
-
-Do not document or treat the no-key path as the preferred default.
+There is no unverified mode, including for local development. Do not add one, and do not document the key as optional.
 
 ## Fingerprint Identity And Token Identity Are Different
 

@@ -63,7 +63,7 @@ Behavior notes:
 
 - `TOKEN_FILE` is an alternative to `TOKEN`
 - `KEY_FILE` is an alternative to `KEY`
-- missing key material means hub signature verification is skipped
+- a hub key is mandatory (`--key`, `KEY` or `KEY_FILE`): without one the agent exits at startup
 - `LOG_LEVEL` configures runtime logging verbosity
 - `TAGS` is a comma-separated list of free-text host tags reported in `GetAgentInfo` (`parseTags` trims/dedupes); the hub applies them only at first enrollment, so the UI remains the source of truth afterward
 
@@ -177,9 +177,7 @@ Important behavior:
 
 All handlers other than the fingerprint challenge require hub verification first.
 
-If no keys are configured, the verification loop effectively has no keys to check and the agent operates without cryptographic hub verification.
-
-That may be acceptable for development, but it should not be treated as the secure default.
+A hub public key is mandatory. `loadPublicKeys` in `internal/cmd/agent/agent.go` reads `--key`, then `KEY`, then `KEY_FILE`, and the agent exits at startup with `no hub public key configured` when none of them yields a key (unset, empty, or comments only). `verifySignature` also fails closed on an empty key set, so there is no mode without hub verification, including for development: copy the key from the hub's *Add agent* dialog.
 
 ## Handler Registry
 

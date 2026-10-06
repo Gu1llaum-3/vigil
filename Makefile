@@ -71,6 +71,6 @@ dev-agent:
 		go run github.com/Gu1llaum-3/vigil/internal/cmd/agent; \
 	fi
 
-# KEY="..." make dev
+# HUB_URL=http://localhost:8090 TOKEN="..." KEY="..." make dev
 dev:
 	$(MAKE) -j dev-server dev-hub dev-agent

@@ -66,11 +66,12 @@ add_config_value TOKEN "$RET"
 deb-systemd-helper enable "$SERVICE".service
 systemctl daemon-reload
 
-# Only start automatically once a hub URL is configured; without it the agent
-# has nothing to connect to and would just idle (and log warnings).
-if grep -q "^HUB_URL=." "$CONFIG_FILE"; then
+# Only start automatically once a hub URL and the hub public key are configured;
+# without the URL the agent has nothing to connect to, and without the key it
+# exits at startup (and systemd would keep restarting it).
+if grep -q "^HUB_URL=." "$CONFIG_FILE" && grep -q "^KEY=." "$CONFIG_FILE"; then
 	deb-systemd-invoke start "$SERVICE".service || echo "could not start $SERVICE.service!"
 else
-	echo "HUB_URL is not set in $CONFIG_FILE; not starting $SERVICE.service yet."
-	echo "Set HUB_URL (and TOKEN) there, then run: systemctl start $SERVICE.service"
+	echo "HUB_URL or KEY is not set in $CONFIG_FILE; not starting $SERVICE.service yet."
+	echo "Set HUB_URL, KEY and TOKEN there, then run: systemctl start $SERVICE.service"
 fi

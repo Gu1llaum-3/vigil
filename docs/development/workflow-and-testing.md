@@ -49,7 +49,7 @@ Output binaries are written under `build/`.
 - `make dev-hub`
   - runs the hub in development mode and proxies frontend requests to Vite
 - `make dev-agent`
-  - runs the agent in a development loop
+  - runs the agent in a development loop; export `HUB_URL`, `TOKEN` and `KEY` first (copied from the hub's *Add agent* dialog), otherwise the agent exits at startup
 - `make dev`
   - runs frontend, hub, and agent development processes together
 
@@ -253,7 +253,7 @@ make dev-hub
 ### Run The Agent Only
 
 ```bash
-make dev-agent
+HUB_URL=http://localhost:8090 TOKEN="..." KEY="..." make dev-agent
 ```
 
 This is useful when you are only debugging agent startup, fingerprinting, or hub connection behavior.
