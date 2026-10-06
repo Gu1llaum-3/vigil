@@ -262,7 +262,10 @@ export default memo(function Home() {
 					<h2 className="text-lg font-semibold tracking-tight">
 						<Trans>Hosts overview</Trans>
 					</h2>
-					<Link href={getPagePath($router, "hosts")} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+					<Link
+						href={getPagePath($router, "hosts")}
+						className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+					>
 						<Trans>View all hosts</Trans>
 					</Link>
 				</div>

@@ -42,9 +42,7 @@ export function HostTags({
 	const editLabel = tags.length ? t`Edit tags` : t`Add tags`
 
 	if (tags.length === 0 && !canEdit) {
-		return emptyDash ? (
-			<span className={cn("text-xs text-muted-foreground/40", className)}>—</span>
-		) : null
+		return emptyDash ? <span className={cn("text-xs text-muted-foreground/40", className)}>—</span> : null
 	}
 
 	const cloud = variant === "cloud"

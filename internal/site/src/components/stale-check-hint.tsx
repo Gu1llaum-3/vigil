@@ -9,13 +9,7 @@ import { cn } from "@/lib/utils"
  * (consecutive_failures > 0). Renders nothing otherwise, so it is safe to drop next to
  * any audit status badge. Keeps the dashboard, images page and container detail consistent.
  */
-export function StaleCheckHint({
-	audit,
-	className,
-}: {
-	audit?: ContainerImageAudit | null
-	className?: string
-}) {
+export function StaleCheckHint({ audit, className }: { audit?: ContainerImageAudit | null; className?: string }) {
 	const { t } = useLingui()
 	if (!audit || (audit.consecutive_failures ?? 0) === 0 || audit.status === "check_failed") {
 		return null

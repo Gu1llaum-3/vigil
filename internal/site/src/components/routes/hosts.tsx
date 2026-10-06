@@ -61,31 +61,31 @@ export default memo(function HostsPage() {
 						<Trans>connected</Trans>
 					</>
 				}
-					actions={
-						<div className="flex flex-wrap gap-2">
-							{isAdmin() && (
-								<MetricThresholdsSheet
-									agentId=""
-									title={<Trans>Global alert thresholds</Trans>}
-									description={
-										<Trans>
-											Default CPU / memory / disk / load thresholds for every host. Override per host from a host's
-											page. Create a notification rule for the "host.metric_exceeded" event to be notified.
-										</Trans>
-									}
-								/>
-							)}
-							<Button
-								variant="outline"
-								disabled={refreshing || isReadOnlyUser()}
-								onClick={refreshSnapshots}
-								className="gap-2"
-							>
-								<RefreshCwIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
-								<Trans>Refresh inventory</Trans>
-							</Button>
-						</div>
-					}
+				actions={
+					<div className="flex flex-wrap gap-2">
+						{isAdmin() && (
+							<MetricThresholdsSheet
+								agentId=""
+								title={<Trans>Global alert thresholds</Trans>}
+								description={
+									<Trans>
+										Default CPU / memory / disk / load thresholds for every host. Override per host from a host's page.
+										Create a notification rule for the "host.metric_exceeded" event to be notified.
+									</Trans>
+								}
+							/>
+						)}
+						<Button
+							variant="outline"
+							disabled={refreshing || isReadOnlyUser()}
+							onClick={refreshSnapshots}
+							className="gap-2"
+						>
+							<RefreshCwIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
+							<Trans>Refresh inventory</Trans>
+						</Button>
+					</div>
+				}
 			/>
 
 			<HostsTable hosts={hosts} filters={filters} onFiltersChange={setFilters} />
