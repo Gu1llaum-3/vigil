@@ -20,7 +20,13 @@ After cloning, run `mise install` to match the repo versions.
 
 If you want the Git hooks enabled, run `lefthook install` once.
 
-The hooks run `gofmt` and Biome (`pnpm check`) on commit, and Go tests plus the frontend type check (`pnpm typecheck`, only when frontend files are pushed) before push.
+The hooks (`lefthook.yml`) are a local convenience; CI runs the same checks and more, so they are optional:
+
+- pre-commit: `gofmt -w` on the staged Go files, which are then re-staged so the commit holds the formatted version (`stage_fixed`). With a partially staged file, lefthook sets the unstaged changes aside and restores them afterwards; if they touch lines gofmt reformatted, the restore fails ("Couldn't restore unstaged files") and they are left in the `lefthook auto backup` stash, and Biome (`pnpm check`) when frontend files are staged
+- pre-push: the Go tests (creating the empty `internal/site/dist/index.html` the hub needs to compile, like CI) and the frontend type check (`pnpm typecheck`) when frontend files are pushed
+
+Note: `lefthook run <hook>` (e.g. to try a hook by hand) installs the hooks into `.git/hooks` if they are missing; `lefthook uninstall` removes them again.
+
 The `CI` workflow (`.github/workflows/ci.yml`, on pushes to `main` and `dev` and on pull requests, including Dependabot's) has four jobs:
 
 - `go` (ubuntu-latest): `go mod verify`, `go mod tidy -diff` (fails when `go.mod`/`go.sum` are not tidy), `go vet -tags=testing ./...` and `go test -tags=testing -timeout 20m ./...`. It runs on Linux, so the `//go:build linux` collector tests run too, and creates an empty `internal/site/dist/index.html` first because the hub embeds that directory.
