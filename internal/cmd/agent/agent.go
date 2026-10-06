@@ -1,16 +1,17 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/spf13/pflag"
 	"github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/agent"
 	"github.com/Gu1llaum-3/vigil/agent/health"
 	"github.com/Gu1llaum-3/vigil/agent/utils"
+	"github.com/spf13/pflag"
 	gossh "golang.org/x/crypto/ssh"
 )
 
@@ -101,29 +102,34 @@ func (opts *cmdOptions) parse() bool {
 	return false
 }
 
-// loadPublicKeys loads the hub's public keys from the command line flag, environment variable, or key file.
+// errNoHubKey is returned when no hub public key is configured. The hub identity challenge
+// can never pass without one, so the agent refuses to start instead of retrying forever.
+var errNoHubKey = errors.New("no hub public key configured: set KEY, KEY_FILE or --key (the key is shown in the hub's Add agent dialog)")
+
+// loadPublicKeys loads the hub's public keys from the command line flag, environment variable,
+// or key file, and fails when none of them yields a key.
 func (opts *cmdOptions) loadPublicKeys() ([]gossh.PublicKey, error) {
-	// Try command line flag first
-	if opts.key != "" {
-		return agent.ParseKeys(opts.key)
+	input := opts.key
+	if input == "" {
+		if key, ok := utils.GetEnv("KEY"); ok && key != "" {
+			input = key
+		} else if keyFile, ok := utils.GetEnv("KEY_FILE"); ok && keyFile != "" {
+			pubKey, err := os.ReadFile(keyFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read key file: %w", err)
+			}
+			input = string(pubKey)
+		}
 	}
 
-	// Try environment variable
-	if key, ok := utils.GetEnv("KEY"); ok && key != "" {
-		return agent.ParseKeys(key)
-	}
-
-	// Try key file
-	keyFile, ok := utils.GetEnv("KEY_FILE")
-	if !ok {
-		return nil, nil
-	}
-
-	pubKey, err := os.ReadFile(keyFile)
+	keys, err := agent.ParseKeys(input)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read key file: %w", err)
+		return nil, err
 	}
-	return agent.ParseKeys(string(pubKey))
+	if len(keys) == 0 {
+		return nil, errNoHubKey
+	}
+	return keys, nil
 }
 
 // handleFingerprint handles the "fingerprint" command with subcommands "view" and "reset".
@@ -166,7 +172,7 @@ func main() {
 
 	keys, err := opts.loadPublicKeys()
 	if err != nil {
-		log.Fatal("Failed to load public keys:", err)
+		log.Fatal("Failed to load hub public key: ", err)
 	}
 
 	a, err := agent.NewAgent()

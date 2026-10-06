@@ -22,7 +22,8 @@ Template: vigil-agent/docker_access
 Type: boolean
 Default: false
 Description: Grant the agent access to the Docker socket?
- Adding the vigil user to the "docker" group lets the agent collect
+ Adding the vigil-agent user to the "docker" group lets the agent collect
  container inventory and metrics. Membership in that group is equivalent
  to root on this host and effectively bypasses the service sandboxing,
- so only enable it if you need Docker monitoring.
+ so only enable it if you need Docker monitoring. Run
+ "dpkg-reconfigure vigil-agent" later to change this choice.

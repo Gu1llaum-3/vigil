@@ -71,7 +71,7 @@ The agent startup path is:
 
 1. `internal/cmd/agent/agent.go`
 2. flags are parsed and env may be populated from CLI options
-3. hub public keys are loaded from `KEY`, `KEY_FILE`, or the `--key` flag
+3. hub public keys are loaded from the `--key` flag, then `KEY`, then `KEY_FILE`; the agent exits if none yields a key
 4. `agent.NewAgent()` initializes the runtime
 5. `Agent.Start(keys)` hands control to the connection manager
 6. the connection manager opens and maintains the WebSocket connection

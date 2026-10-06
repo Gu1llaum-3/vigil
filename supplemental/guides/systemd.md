@@ -63,7 +63,7 @@ The easiest way to install an agent is the command copied from the hub's **Add a
 
 To run the script by hand instead: the agent install script is currently intended for Linux release targets published by `.goreleaser.yml`: `amd64`, `arm64`, and `arm` (`armv7`).
 
-You may optionally include the hub public key, token, and hub URL as arguments. Run `./install-agent.sh -h` for more info.
+You may pass the hub public key, token, and hub URL as arguments; the key is required, and the script prompts for it on a fresh install when `-k` is omitted. Run `./install-agent.sh -h` for more info.
 
 Without `--version`, the script installs the latest **stable** release. To install a beta or another pre-release (for example to match a beta hub), pass it explicitly with `--version`, because GitHub's `latest` endpoint only returns stable releases. Use the same version as your hub.
 

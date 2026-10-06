@@ -12,11 +12,12 @@ if [ "$1" = "purge" ]; then
 	rm -rf /var/lib/vigil-agent
 
 	# Remove the dedicated system user/group created in postinst. Kept tolerant
-	# (|| true) so a partially-removed package still purges cleanly.
+	# (|| true) so a partially-removed package still purges cleanly. The legacy
+	# "vigil" user of older packages is left alone: it may belong to the hub.
 	if command -v deluser >/dev/null 2>&1; then
-		deluser --quiet --system vigil >/dev/null 2>&1 || true
+		deluser --quiet --system vigil-agent >/dev/null 2>&1 || true
 	fi
 	if command -v delgroup >/dev/null 2>&1; then
-		delgroup --quiet --system --only-if-empty vigil >/dev/null 2>&1 || true
+		delgroup --quiet --system --only-if-empty vigil-agent >/dev/null 2>&1 || true
 	fi
 fi

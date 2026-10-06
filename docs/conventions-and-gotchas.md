@@ -128,17 +128,17 @@ Both hub and agent support prefixed and unprefixed env names.
 
 Lookup order:
 
-1. `APP_HUB_<KEY>`
+1. `VIGIL_HUB_<KEY>` (`app.HubEnvPrefix`)
 2. `<KEY>`
 
 ### Agent
 
 Lookup order:
 
-1. `APP_AGENT_<KEY>`
+1. `VIGIL_AGENT_<KEY>` (`app.AgentEnvPrefix`)
 2. `<KEY>`
 
-This matters when debugging config because a prefixed variable can override an unprefixed one unexpectedly.
+This matters when debugging config because a prefixed variable can override an unprefixed one unexpectedly, even when it is set to an empty value (for example an empty `VIGIL_AGENT_KEY` hides `KEY`).
 
 ## Development Frontend And Production Frontend Behave Differently
 
@@ -192,13 +192,11 @@ Current rule:
 
 If you add a new action or adjust handshake logic, keep this boundary intact.
 
-## Missing Key Material Changes Security Posture
+## The Hub Public Key Is Mandatory
 
-If no hub public key is provided to the agent, signature verification is skipped.
+The agent exits at startup when no hub public key is configured (`--key`, `KEY` or `KEY_FILE`, read in that order; an empty value, empty file or comment-only file counts as missing), and `verifySignature` fails closed on an empty key set.
 
-That may be acceptable for local development, but it is not equivalent to verified production operation.
-
-Do not document or treat the no-key path as the preferred default.
+There is no unverified mode, including for local development. Do not add one, and do not document the key as optional.
 
 ## Fingerprint Identity And Token Identity Are Different
 
@@ -322,11 +320,11 @@ Current rules (`supplemental/scripts/install-agent.sh`, `supplemental/debian/*`)
 When adding a new platform or service manager, follow this pattern — do not add a
 new inline-interpolation path.
 
-Service user and file ownership (`install-agent.sh`):
+Service user and file ownership (`install-agent.sh`, `supplemental/debian/*`):
 
 - the agent runs as the dedicated system user `vigil-agent` — not `vigil`, which is the
   native hub's user (`install-hub.sh`): an agent on the hub's host must not be able to
-  write the hub's data. (The `.deb` still uses `vigil`; see the packaging doc.)
+  write the hub's data. The `.deb` uses the same user
 - the binary and `/opt/vigil-agent` are owned by root (`0755`), the env file is root
   `0600`; only the state dir (`/var/lib/vigil-agent`, holding the fingerprint) belongs
   to the service user. The agent must never be able to rewrite its own binary
@@ -338,6 +336,18 @@ Service user and file ownership (`install-agent.sh`):
   common and may belong to something else
 - uninstall removes `vigil-agent` but keeps `/var/lib/vigil-agent` on purpose: the
   fingerprint stays, so a reinstall comes back as the same host on the hub
+- `.deb`: `/etc/vigil-agent.conf` is root `0600` (systemd reads it as root). Packages up
+  to 0.2.x ran the agent as `vigil`; `postinstall.sh` detects that install from the
+  ownership of the config or the state dir, hands the state dir over to `vigil-agent`
+  (fingerprint kept) and makes the config root-owned, carries a docker membership of
+  `vigil` over to `vigil-agent` by setting the debconf answer (unless the question was
+  explicitly answered), and leaves `vigil` itself alone, because it may be the native
+  hub's user (it only prints how to remove it, or take it out of `docker`). Purge removes
+  `vigil-agent` only
+- `.deb`: every configure resets `/etc/vigil-agent.conf` to root `0600`, so custom
+  ownership or modes on it do not survive an upgrade or reconfigure
+- `.deb`: remove the user from a group with `gpasswd -d`, not `deluser <user> <group>`,
+  which rejects names containing `-` on Debian 13 (adduser 3.152)
 
 ## Docker Group Membership Is Root-Equivalent
 
@@ -348,11 +358,11 @@ systemd sandboxing (`ProtectSystem=strict`, etc.).
 Rules:
 
 - the Debian package makes this opt-in via the `vigil-agent/docker_access` debconf
-  question, and `install-agent.sh` via `--docker` (revoked with `--no-docker`); do not
+  question (authoritative: `true` adds, `false` removes, on every configure), and `install-agent.sh` via `--docker` (revoked with `--no-docker`); do not
   make it automatic. Without either flag the script keeps the current membership, so an
   upgrade never silently drops container inventory; the one carry-over is the migration
-  from the legacy `app` user, whose docker membership was granted unconditionally by
-  older installers
+  from the legacy `app` user (script) or `vigil` user (`.deb`), whose docker membership
+  was granted unconditionally by older installers
 - the agent never needs the `disk` group (no collector reads block devices); do not
   add it back
 - the hub container image runs as a non-root uid (`10001`) and grants `CAP_NET_RAW`

@@ -662,6 +662,10 @@ if [ -z "$KEY" ]; then
   else
     printf "Enter your SSH key: "
     read KEY
+    if [ -z "$KEY" ]; then
+      echo "Error: the hub public key is required (copy it from the hub's Add agent dialog, or pass it with -k)."
+      exit 1
+    fi
   fi
 fi
 

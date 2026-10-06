@@ -26,7 +26,6 @@ func TestLoadPublicKeys(t *testing.T) {
 		envVars     map[string]string
 		setupFiles  map[string][]byte
 		wantErr     bool
-		wantNil     bool // expect nil keys (no key configured)
 		errContains string
 	}{
 		{
@@ -51,8 +50,50 @@ func TestLoadPublicKeys(t *testing.T) {
 			},
 		},
 		{
-			name:    "no key provided returns nil (keys are optional)",
-			wantNil: true,
+			// Without a key the hub challenge can never pass, so fail fast at startup.
+			name:        "error when no key is configured",
+			wantErr:     true,
+			errContains: "no hub public key configured",
+		},
+		{
+			name: "error on empty KEY_FILE",
+			envVars: map[string]string{
+				"KEY_FILE": "empty.pub",
+			},
+			setupFiles: map[string][]byte{
+				"empty.pub": []byte("# no key here\n\n"),
+			},
+			wantErr:     true,
+			errContains: "no hub public key configured",
+		},
+		{
+			name: "error on empty KEY_FILE path",
+			envVars: map[string]string{
+				"KEY_FILE": "",
+			},
+			wantErr:     true,
+			errContains: "no hub public key configured",
+		},
+		{
+			// A blank KEY is a misconfiguration, not a request to fall back to KEY_FILE.
+			name: "error on whitespace-only KEY",
+			envVars: map[string]string{
+				"KEY":      "   ",
+				"KEY_FILE": "testkey.pub",
+			},
+			setupFiles: map[string][]byte{
+				"testkey.pub": pubKey,
+			},
+			wantErr:     true,
+			errContains: "no hub public key configured",
+		},
+		{
+			name: "error on whitespace-only key flag",
+			opts: cmdOptions{
+				key: "  \n",
+			},
+			wantErr:     true,
+			errContains: "no hub public key configured",
 		},
 		{
 			name: "error on invalid key file",
@@ -86,6 +127,12 @@ func TestLoadPublicKeys(t *testing.T) {
 				}
 			}
 
+			// Isolate from the developer's shell (e.g. KEY exported for make dev).
+			for _, k := range []string{"KEY", "KEY_FILE", "VIGIL_AGENT_KEY", "VIGIL_AGENT_KEY_FILE"} {
+				t.Setenv(k, "")
+				os.Unsetenv(k)
+			}
+
 			// Set up environment
 			for k, v := range tt.envVars {
 				t.Setenv(k, v)
@@ -101,10 +148,6 @@ func TestLoadPublicKeys(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			if tt.wantNil {
-				assert.Nil(t, keys)
-				return
-			}
 			assert.Len(t, keys, 1)
 			assert.Equal(t, signer.PublicKey().Type(), keys[0].Type())
 		})

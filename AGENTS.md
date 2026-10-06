@@ -337,7 +337,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `HUB_URL` | Full URL of the hub (e.g. `https://hub.example.com`) | Yes |
 | `TOKEN` | Enrollment token or agent token | Yes (or `TOKEN_FILE`) |
 | `TOKEN_FILE` | Path to a file containing the token | Alt. to `TOKEN` |
-| `KEY` | Hub's public key for identity verification | Recommended |
+| `KEY` | Hub's public key for identity verification | Yes (or `KEY_FILE` / `--key`) |
 | `KEY_FILE` | Path to a file containing the hub's public key | Alt. to `KEY` |
 | `HUB_CA_FILE` | PEM bundle to trust for the hub TLS certificate (private CA / self-signed hub / pinning) | No |
 | `HUB_TLS_INSECURE` | `true` disables hub TLS certificate verification. **Development only** — a MITM can then steal the agent token *and* capture the (static, replayable) hub-identity signature, defeating both auth directions. Never set in production; use `HUB_CA_FILE` for private CAs instead. | No |
@@ -346,7 +346,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 
 The agent verifies the hub's TLS certificate against the system trust store by default. Use `HUB_CA_FILE` for a private CA / self-signed hub; `HUB_TLS_INSECURE=true` disables verification entirely (development only). Because the hub-identity challenge is a static signature over the token (see `docs/architecture/hub-agent-architecture.md`, "Known limitation — static challenge"), `HUB_TLS_INSECURE` is the realistic way an attacker captures a replayable hub signature — so keeping TLS verification on is the primary mitigation until the nonce-based handshake lands.
 
-Without `KEY`/`KEY_FILE`, the agent skips hub identity verification. Acceptable for development; use in production only in trusted network environments.
+The hub public key is mandatory: without `KEY`, `KEY_FILE` or `--key` (or when they contain no key), the agent exits at startup with `no hub public key configured`. There is no mode that skips hub identity verification.
 
 ---
 
@@ -448,7 +448,7 @@ func TestSomething(t *testing.T) {
 - **`GetHostMetrics` must stay lightweight** — it is the high-frequency monitoring path. Keep it limited to cheap host resource reads (CPU, memory, root disk, per-mount used% via `DiskMounts`, network throughput) and do not add package, repository, reboot, or Docker inventory work there. The per-mount `DiskMounts` list is free — `collectDiskMetricsLocked` already iterates every mount to compute the max; it just records each `{mountpoint, used_percent}` in the same loop (no extra probe).
 - **`GetContainerMetrics` must stay lightweight** — keep it focused on cheap running-container runtime metrics (CPU, memory, network). Do not fold image audit or inventory enrichment into this path.
 - **Append-only for WebSocket actions** — never reorder or renumber constants in `common-ws.go`; values are encoded on the wire
-- **`agent.keys` is nil when no KEY is provided** — `verifySignature` in `client.go` iterates over them; an empty slice means hub verification is skipped silently
+- **The agent always has at least one hub key** — `loadPublicKeys` (`internal/cmd/agent/agent.go`) refuses to start without one, and `verifySignature` in `client.go` fails closed on an empty key set (it never skips verification)
 - **Multiple agents can share one enrollment token** — there is intentionally no unique constraint on `agents.token`
 - **`DownChan` signals disconnect after a 5-second delay** (see `ws.go OnClose`), followed by a 30s grace period in `manageAgentLifecycle` before `status=offline` is written — total ~35s. Ping failures bypass the grace period and mark offline immediately. This prevents spurious notifications on service restarts and upgrades.
 - **No PocketBase hooks for monitor scheduler lifecycle** — the scheduler calls `SaveNoValidate` on every check result, which fires PocketBase update events. Adding `OnRecordAfterUpdateSuccess` hooks for the `monitors` collection that call `startMonitor` creates an infinite loop: save → hook → startMonitor → doCheck → save → … . Goroutine lifecycle is managed only from the API handlers (`createMonitor`, `updateMonitor`, `deleteMonitor`) and the `OnRecordAfterDeleteSuccess` hook.
