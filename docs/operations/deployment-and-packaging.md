@@ -174,7 +174,7 @@ Typical concerns to review here:
 Integrity:
 
 - `make_latest: true` so GitHub's `/releases/latest` resolves for stable tags (the install scripts depend on it); prereleases stay excluded via `prerelease: auto`
-- the `checksums.txt` file is signed with cosign keyless (OIDC) by the release workflow, producing `*.sig` and `*.pem`; the `signs:` block documents the `cosign verify-blob` recipe
+- the `checksums.txt` file is signed with cosign v3 keyless (OIDC) by the release workflow, producing a single Sigstore bundle `*_checksums.txt.sigstore.json` (releases up to v0.2.14-beta shipped separate `*.sig` + `*.pem` instead); the `signs:` block documents the `cosign verify-blob --bundle` recipe. Cosign v3 signs through a signing config that only writes the bundle, so the old `--output-signature`/`--output-certificate` args would make the release fail — keep `--bundle`
 - the hub image build publishes provenance and an SBOM
 
 If you rename the project or change binary names, this file must stay in sync with `app.go` and any install scripts.
