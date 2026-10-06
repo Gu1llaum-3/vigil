@@ -89,7 +89,7 @@ make dev
     ├── debian/               # Debian packaging scripts and systemd service unit
     ├── docker/               # Hub Docker Compose (agents install natively)
     ├── guides/               # Installation guides (e.g. systemd)
-    └── scripts/              # Shell/PowerShell install scripts
+    └── scripts/              # Hub and agent install scripts (Linux)
 ```
 
 ## License

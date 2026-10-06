@@ -81,7 +81,7 @@ Defaults include:
 
 - `/var/lib/<agent-data-dir>` on Unix-like systems
 - a user config fallback under the home directory
-- Windows app-data paths when applicable
+- a Windows app-data branch in `agent/data_dir.go`, kept for compile-time portability only (no Windows agent is built)
 
 The agent checks for:
 

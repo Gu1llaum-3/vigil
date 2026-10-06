@@ -103,7 +103,7 @@ The frontend is not yet a broad product surface. It is a shell that demonstrates
 The repository also includes:
 
 - a hub Docker Compose example
-- Linux and FreeBSD install scripts
+- Linux install scripts (hub and agent)
 - Debian packaging assets
 - release packaging configuration in `.goreleaser.yml`
 

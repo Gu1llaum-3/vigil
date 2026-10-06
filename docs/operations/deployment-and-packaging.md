@@ -25,7 +25,8 @@ Not all of these are equally production-opinionated. Some are examples and start
 The supported deployment model is intentionally asymmetric:
 
 - **Hub** — runs as a container (primary path, see the hub Compose below) or as a native service installed via `install-hub.sh`. Docker is the recommended way to run the hub, but not the only one.
-- **Agents** — installed **natively** on each monitored host (shell / PowerShell / Debian package / Homebrew). There is no agent container image; the agent is a lightweight process that integrates with the host's service manager.
+- **Agents** — installed **natively** on each monitored host, which must be **Linux** (`amd64`, `arm64`, `armv7`): with `install-agent.sh` or the Debian package. There is no agent container image; the agent is a lightweight process that integrates with the host's service manager. No Windows or macOS agent is built (the collectors are Linux-only), so there are no PowerShell, scoop, winget, or Homebrew installers.
+  - Note: those installers were removed because they pointed at channels that were never published, and an unclaimed winget ID could have been registered by a third party. Bringing them back requires real builds, collectors, and channels whose namespaces the project owns.
 - **Kubernetes** — not supported. There is no Helm chart.
 
 ## Docker Compose Assets
@@ -195,7 +196,7 @@ The hub update command is implemented in:
 The self-update flow does the following:
 
 1. fetch latest release metadata
-2. resolve the matching archive for the current OS and architecture
+2. resolve the matching archive for the current OS and architecture (`<binary>_<os>_<arch>.tar.gz`, `.zip` on Windows — the names `.goreleaser.yml` publishes, see `archiveSuffix`)
 3. download the archive
 4. extract the new executable
 5. replace the running executable on disk
