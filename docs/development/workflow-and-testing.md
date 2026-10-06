@@ -154,6 +154,20 @@ Without the build tag:
 - editors may show misleading “No packages found” messages for test files
 - your verification may appear to pass while not actually running the intended tests
 
+### Tests Must Not Depend On The User Or The Host
+
+Go tests run as root in CI containers and Docker builds, and as a regular user on laptops. Keep them independent of both:
+
+- for a path that must not be creatable, use a child of a regular file (`uncreatableDir` in `agent/data_dir_test.go`); root can create `/invalid/path`
+- skip permission-denial cases when `os.Geteuid() == 0` (root bypasses directory permissions)
+- clear the env variables the code reads, in both forms: the `VIGIL_AGENT_`/`VIGIL_HUB_` prefixed name wins even when empty, and developers often export `TOKEN`, `KEY` or `DATA_DIR` for `make dev-agent`
+- do not assume a fixed local port is free (a dev hub may listen on it): bind `127.0.0.1:0` and close it to get a refused address
+- never let a test write to real system or home locations: point `HOME` at `t.TempDir()`, and skip a case that would create `/var/lib/...` as root
+- use `require.Error` before reading `err.Error()`, so a missing error fails the test instead of panicking and hiding the rest of the package
+- do not depend on the host's package state: package-manager tests use fake `apt-get`/`dnf` binaries with recorded outputs (`agent/collectors/testdata/`)
+
+Check agent changes in both modes, e.g. `docker run --rm -v "$PWD":/src -w /src golang:1.27 go test -tags=testing ./agent/...` and the same with `--user 1000:1000 -e HOME=/tmp -e GOCACHE=/tmp/gocache -e GOPATH=/tmp/gopath`.
+
 ## Test Helpers
 
 Useful helpers include:

@@ -72,7 +72,7 @@ func TestHandlerRegistry(t *testing.T) {
 		}
 
 		err := registry.Handle(ctx)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unknown action: 255")
 	})
 
@@ -86,7 +86,7 @@ func TestHandlerRegistry(t *testing.T) {
 		}
 
 		err := registry.Handle(ctx)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "hub not verified")
 	})
 }

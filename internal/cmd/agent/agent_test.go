@@ -140,7 +140,7 @@ func TestLoadPublicKeys(t *testing.T) {
 
 			keys, err := tt.opts.loadPublicKeys()
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errContains != "" {
 					assert.Contains(t, err.Error(), tt.errContains)
 				}

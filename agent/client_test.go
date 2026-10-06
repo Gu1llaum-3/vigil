@@ -69,6 +69,7 @@ func TestNewWebSocketClient(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set up environment
+			unsetAgentEnv(t, "HUB_URL", "TOKEN", "TOKEN_FILE")
 			if tc.hubURL != "" {
 				t.Setenv(app.AgentEnvPrefix+"HUB_URL", tc.hubURL)
 			}
@@ -79,7 +80,7 @@ func TestNewWebSocketClient(t *testing.T) {
 			client, err := newWebSocketClient(agent)
 
 			if tc.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if err != nil && tc.errorMsg != "" {
 					assert.Contains(t, err.Error(), tc.errorMsg)
 				}
@@ -228,7 +229,7 @@ func TestWebSocketClient_VerifySignature(t *testing.T) {
 			err := client.verifySignature(signature)
 
 			if tc.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), "invalid signature")
 			} else {
 				assert.NoError(t, err)
@@ -283,7 +284,7 @@ func TestWebSocketClient_HandleHubRequest(t *testing.T) {
 			err := client.handleHubRequest(hubRequest, nil)
 
 			if tc.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tc.errorMsg != "" {
 					assert.Contains(t, err.Error(), tc.errorMsg)
 				}
@@ -363,6 +364,9 @@ func TestWebSocketClient_ConnectRateLimit(t *testing.T) {
 
 // TestGetToken tests the getToken function with various scenarios
 func TestGetToken(t *testing.T) {
+	// Isolate from the developer's shell (make dev-agent exports TOKEN).
+	unsetAgentEnv(t, "TOKEN", "TOKEN_FILE")
+
 	t.Run("token from TOKEN environment variable", func(t *testing.T) {
 		// Set TOKEN env var
 		expectedToken := "test-token-from-env"
@@ -449,7 +453,7 @@ func TestGetToken(t *testing.T) {
 		t.Setenv("TOKEN_FILE", "")
 
 		token, err := getToken()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, "", token)
 		assert.Contains(t, err.Error(), "must set TOKEN or TOKEN_FILE")
 	})
@@ -459,7 +463,7 @@ func TestGetToken(t *testing.T) {
 		t.Setenv("TOKEN_FILE", "/non/existent/file.txt")
 
 		token, err := getToken()
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, "", token)
 		assert.Contains(t, err.Error(), "no such file or directory")
 	})
