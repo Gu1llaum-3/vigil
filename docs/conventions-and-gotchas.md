@@ -360,6 +360,15 @@ Metric-threshold alerts (CPU/RAM/disk/loadavg) are evaluated in
 - A **disabled per-agent override mutes** that metric for that host; it does NOT fall back to an enabled global. Re-inheriting the global is done by deleting the override row ("Reset to global"), not by disabling it.
 - New `HostMetricsResponse` fields are **append-only** (CBOR keyed by field name). Legacy agents omit `load*`/`disk_max_used_percent`; the evaluator degrades gracefully (falls back to root disk; load 0 never breaches).
 
+## JSON v2: PocketBase Responses Use `encoding/json/v2` Semantics
+
+Since PocketBase 0.40 (Go 1.27), `e.JSON(...)` and `e.BindBody(...)` go through `encoding/json/v2`, not the v1 behavior Vigil's response structs were written for. Our own `encoding/json` calls keep v1 semantics, so the difference only shows up on what handlers return through `e.JSON`:
+
+- **`omitempty` no longer drops `false` / `0`.** In v2 it only omits values that encode as empty JSON (`null`, `""`, `{}`, `[]`). For a bool/number field that must stay absent when zero (the frontend applies its own defaults with `??`, e.g. `ping_count ?? 1`), use **`omitzero`** — it behaves the same under v1 and v2. `TestGetMonitorOmitsZeroOptionalFields` pins this for monitors.
+- **nil slices serialize as `[]`, not `null`.** The frontend treats both the same (it always goes through `?.` / `??` / `.length`); keep it that way and never use `=== null` to mean "absent list".
+- `e.BindBody` stays case-insensitive on field names (PocketBase opts into `MatchCaseInsensitiveNames` for compatibility) but now rejects request bodies with duplicate keys.
+- Do not write a custom `UnmarshalJSON` that calls `json.Unmarshal` on an alias of the same type without checking it under Go 1.27: that pattern is what made PocketBase 0.37 overflow the stack on Go 1.27.
+
 ## Good Default Verification Habit
 
 For most non-trivial changes, the safe baseline is:

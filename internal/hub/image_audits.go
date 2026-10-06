@@ -64,12 +64,12 @@ type ContainerImageAudit struct {
 	SameMajorTag   string `json:"same_major_latest_tag,omitempty"`
 	OverallTag     string `json:"overall_latest_tag,omitempty"`
 	NewMajorTag    string `json:"new_major_tag,omitempty"`
-	HasMajorUpdate bool   `json:"major_update_available,omitempty"`
+	HasMajorUpdate bool   `json:"major_update_available,omitzero"`
 	CheckedAt      string `json:"checked_at"`
 	Error          string `json:"error,omitempty"`
 	// ConsecutiveFailures > 0 with a good Status means the last good result is being
 	// shown while recent checks failed transiently; LastCheckError is the soft error.
-	ConsecutiveFailures int    `json:"consecutive_failures,omitempty"`
+	ConsecutiveFailures int    `json:"consecutive_failures,omitzero"`
 	LastCheckError      string `json:"last_check_error,omitempty"`
 	LastCheckErrorAt    string `json:"last_check_error_at,omitempty"`
 }

@@ -34,17 +34,17 @@ type MonitorRecord struct {
 	URL                   string              `json:"url,omitempty"`
 	HTTPMethod            string              `json:"http_method,omitempty"`
 	Keyword               string              `json:"keyword,omitempty"`
-	KeywordInvert         bool                `json:"keyword_invert,omitempty"`
-	Inverted              bool                `json:"inverted,omitempty"`
+	KeywordInvert         bool                `json:"keyword_invert,omitzero"`
+	Inverted              bool                `json:"inverted,omitzero"`
 	Hostname              string              `json:"hostname,omitempty"`
-	Port                  int                 `json:"port,omitempty"`
+	Port                  int                 `json:"port,omitzero"`
 	DNSHost               string              `json:"dns_host,omitempty"`
 	DNSType               string              `json:"dns_type,omitempty"`
 	DNSServer             string              `json:"dns_server,omitempty"`
 	PushToken             string              `json:"push_token,omitempty"`
 	PushURL               string              `json:"push_url,omitempty"`
-	PingCount             int                 `json:"ping_count,omitempty"`
-	PingPerRequestTimeout int                 `json:"ping_per_request_timeout,omitempty"`
+	PingCount             int                 `json:"ping_count,omitzero"`
+	PingPerRequestTimeout int                 `json:"ping_per_request_timeout,omitzero"`
 	PingIPFamily          string              `json:"ping_ip_family,omitempty"`
 	IPFamily              string              `json:"ip_family,omitempty"`
 	FailureThreshold      int                 `json:"failure_threshold"`

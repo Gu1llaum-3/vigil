@@ -452,6 +452,7 @@ func TestSomething(t *testing.T) {
 - **Multiple agents can share one enrollment token** — there is intentionally no unique constraint on `agents.token`
 - **`DownChan` signals disconnect after a 5-second delay** (see `ws.go OnClose`), followed by a 30s grace period in `manageAgentLifecycle` before `status=offline` is written — total ~35s. Ping failures bypass the grace period and mark offline immediately. This prevents spurious notifications on service restarts and upgrades.
 - **No PocketBase hooks for monitor scheduler lifecycle** — the scheduler calls `SaveNoValidate` on every check result, which fires PocketBase update events. Adding `OnRecordAfterUpdateSuccess` hooks for the `monitors` collection that call `startMonitor` creates an infinite loop: save → hook → startMonitor → doCheck → save → … . Goroutine lifecycle is managed only from the API handlers (`createMonitor`, `updateMonitor`, `deleteMonitor`) and the `OnRecordAfterDeleteSuccess` hook.
+- **Use `omitzero`, not `omitempty`, for bool/number response fields that must be absent when zero** — PocketBase ≥ 0.40 serializes `e.JSON` with `encoding/json/v2`, where `omitempty` keeps `false`/`0` and nil slices become `[]`. See `docs/conventions-and-gotchas.md` → JSON v2.
 - **Debounce realtime subscriptions for high-frequency collections** — the `monitors` collection is updated on every check cycle. The frontend uses a 1s debounce on the realtime subscription to avoid a flood of re-fetches. Follow this pattern for any other collection updated by a background loop.
 
 ---
