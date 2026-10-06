@@ -213,7 +213,8 @@ func (client *WebSocketClient) OnMessage(conn *gws.Conn, message *gws.Message) {
 // It responds with a pong and updates the connection deadline.
 func (client *WebSocketClient) OnPing(conn *gws.Conn, message []byte) {
 	conn.SetDeadline(time.Now().Add(wsDeadline))
-	conn.WritePong(message)
+	// A failed pong surfaces as a read error and a reconnect.
+	_ = conn.WritePong(message)
 }
 
 // handleAuthChallenge verifies the authenticity of the hub and returns the system's fingerprint.

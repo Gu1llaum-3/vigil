@@ -56,7 +56,8 @@ func (um *UserManager) InitializeUserSettings(e *core.RecordEvent) error {
 	settings := struct {
 		Emails []string `json:"emails"`
 	}{}
-	record.UnmarshalJSONField("settings", &settings)
+	// Malformed or missing settings keep the defaults.
+	_ = record.UnmarshalJSONField("settings", &settings)
 	// get user email from auth record
 	var user struct {
 		Email string `db:"email"`

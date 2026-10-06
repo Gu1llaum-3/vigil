@@ -119,7 +119,9 @@ func (h *TestHub) Cleanup() {
 func GetHubWithUser(t *testing.T) (*TestHub, *core.Record) {
 	hub, err := NewTestHub(t.TempDir())
 	assert.NoError(t, err)
-	hub.StartHub()
+	// Registers the hub's hooks; starting the server itself always fails on a test
+	// app ("not a pocketbase app"), which is expected.
+	_ = hub.StartHub()
 
 	// Create a test user
 	user, err := CreateUser(hub, "test@example.com", "password")

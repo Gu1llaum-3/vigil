@@ -10,9 +10,9 @@ import (
 
 	"testing/synctest"
 
+	app "github.com/Gu1llaum-3/vigil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	app "github.com/Gu1llaum-3/vigil"
 )
 
 func TestHealth(t *testing.T) {

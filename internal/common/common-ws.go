@@ -101,7 +101,7 @@ type HostMetricsResponse struct {
 	// older than this field; callers degrade to DiskMaxUsedPercent/DiskMaxMount.
 	DiskMounts   []DiskMount `cbor:"disk_mounts"    json:"disk_mounts"`
 	NetworkRxBps uint64      `cbor:"network_rx_bps"      json:"network_rx_bps"`
-	NetworkTxBps       uint64  `cbor:"network_tx_bps"      json:"network_tx_bps"`
+	NetworkTxBps uint64      `cbor:"network_tx_bps"      json:"network_tx_bps"`
 	// Load1/5/15 are the 1/5/15-minute load averages. Zero on agents older than the
 	// metric-alerts feature.
 	Load1       float64 `cbor:"load1"  json:"load1"`

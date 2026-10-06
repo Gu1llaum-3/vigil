@@ -97,7 +97,9 @@ func calculateCPUPercent(prev, current pscpu.TimesStat) float64 {
 }
 
 func getCPUAllBusy(sample pscpu.TimesStat) (total float64, busy float64) {
-	total = sample.Total() - sample.Guest - sample.GuestNice
+	// Guest time is already accounted in User/Nice, so it is left out of the total.
+	total = sample.User + sample.System + sample.Idle + sample.Nice + sample.Iowait +
+		sample.Irq + sample.Softirq + sample.Steal
 	busy = total - sample.Idle - sample.Iowait
 	return total, busy
 }

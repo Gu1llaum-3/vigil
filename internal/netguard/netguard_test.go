@@ -21,14 +21,14 @@ func TestIPBlocked(t *testing.T) {
 	}{
 		{"169.254.169.254", false, false, true}, // cloud metadata (link-local)
 		{"127.0.0.1", false, false, true},       // loopback
-		{"::1", false, false, true},              // IPv6 loopback
-		{"0.0.0.0", false, false, true},          // unspecified
-		{"fe80::1", false, false, true},          // link-local v6
-		{"fd00:ec2::254", false, false, true},    // IPv6 metadata
-		{"8.8.8.8", false, false, false},         // public
-		{"10.0.0.5", false, false, false},        // private allowed by default
-		{"10.0.0.5", true, false, true},          // private blocked when opted in
-		{"127.0.0.1", false, true, false},        // allowAll disables the guard
+		{"::1", false, false, true},             // IPv6 loopback
+		{"0.0.0.0", false, false, true},         // unspecified
+		{"fe80::1", false, false, true},         // link-local v6
+		{"fd00:ec2::254", false, false, true},   // IPv6 metadata
+		{"8.8.8.8", false, false, false},        // public
+		{"10.0.0.5", false, false, false},       // private allowed by default
+		{"10.0.0.5", true, false, true},         // private blocked when opted in
+		{"127.0.0.1", false, true, false},       // allowAll disables the guard
 	}
 	for _, tc := range cases {
 		ip := net.ParseIP(tc.ip)

@@ -3,9 +3,9 @@ package migrations
 import (
 	"os"
 
+	appmeta "github.com/Gu1llaum-3/vigil"
 	"github.com/pocketbase/pocketbase/core"
 	m "github.com/pocketbase/pocketbase/migrations"
-	appmeta "github.com/Gu1llaum-3/vigil"
 )
 
 const (

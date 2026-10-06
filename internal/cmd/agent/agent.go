@@ -94,10 +94,14 @@ func (opts *cmdOptions) parse() bool {
 
 	// Set environment variables from CLI flags (if provided)
 	if opts.hubURL != "" {
-		os.Setenv("HUB_URL", opts.hubURL)
+		if err := os.Setenv("HUB_URL", opts.hubURL); err != nil {
+			log.Fatal("Failed to set HUB_URL: ", err)
+		}
 	}
 	if opts.token != "" {
-		os.Setenv("TOKEN", opts.token)
+		if err := os.Setenv("TOKEN", opts.token); err != nil {
+			log.Fatal("Failed to set TOKEN: ", err)
+		}
 	}
 	return false
 }

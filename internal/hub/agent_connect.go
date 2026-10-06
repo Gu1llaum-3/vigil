@@ -208,7 +208,8 @@ func (acr *agentConnectRequest) validateAgentHeaders(headers http.Header) (strin
 func (acr *agentConnectRequest) sendResponseError(res http.ResponseWriter, code int, message string) error {
 	res.WriteHeader(code)
 	if message != "" {
-		res.Write([]byte(message))
+		// The client may already be gone; nothing to do about it.
+		_, _ = res.Write([]byte(message))
 	}
 	return nil
 }

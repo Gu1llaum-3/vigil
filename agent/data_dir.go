@@ -114,7 +114,8 @@ func directoryIsWritable(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer file.Close()
-	defer os.Remove(testFile)
+	// Only probes writability: the empty file is removed right away.
+	_ = file.Close()
+	_ = os.Remove(testFile)
 	return true, nil
 }

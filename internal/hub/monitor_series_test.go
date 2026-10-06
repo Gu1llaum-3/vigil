@@ -187,10 +187,10 @@ func TestLoadMonitorSeriesPendingBuckets(t *testing.T) {
 		status  int
 		latency int
 	}{
-		{base, monitorStatusUp, 100},                            // bucket 00:00 → up
-		{base.Add(70 * time.Second), monitorStatusPending, 0},   // bucket 00:01 → pending only
-		{base.Add(130 * time.Second), monitorStatusPending, 0},  // bucket 00:02 (pending) ...
-		{base.Add(140 * time.Second), monitorStatusDown, 0},     // ... + down → down wins
+		{base, monitorStatusUp, 100},                           // bucket 00:00 → up
+		{base.Add(70 * time.Second), monitorStatusPending, 0},  // bucket 00:01 → pending only
+		{base.Add(130 * time.Second), monitorStatusPending, 0}, // bucket 00:02 (pending) ...
+		{base.Add(140 * time.Second), monitorStatusDown, 0},    // ... + down → down wins
 	})
 
 	points, err := hub.loadMonitorSeries(id, base.Add(-time.Second), 60)
@@ -251,11 +251,11 @@ func TestLoadMonitorTransitionsExcludesPending(t *testing.T) {
 		status  int
 		latency int
 	}{
-		{min(0), monitorStatusUp, 10},      // up (baseline)
-		{min(1), monitorStatusPending, 0},  // pending (must be ignored)
-		{min(2), monitorStatusPending, 0},  // pending (must be ignored)
-		{min(3), monitorStatusDown, 0},     // down (transition up→down)
-		{min(4), monitorStatusUp, 11},      // up (transition down→up)
+		{min(0), monitorStatusUp, 10},     // up (baseline)
+		{min(1), monitorStatusPending, 0}, // pending (must be ignored)
+		{min(2), monitorStatusPending, 0}, // pending (must be ignored)
+		{min(3), monitorStatusDown, 0},    // down (transition up→down)
+		{min(4), monitorStatusUp, 11},     // up (transition down→up)
 	})
 
 	since := base.Add(-time.Second)
