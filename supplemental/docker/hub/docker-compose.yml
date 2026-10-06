@@ -4,7 +4,7 @@ services:
     # silently change identity on `docker compose pull` (a floating :latest moves with every
     # release). Bump this to the version you are deploying; for the strongest guarantee pin
     # by digest instead (image: 'ghcr.io/gu1llaum-3/vigil@sha256:<digest>').
-    image: 'ghcr.io/gu1llaum-3/vigil:v0.2.15-beta'
+    image: 'ghcr.io/gu1llaum-3/vigil:v0.2.16-beta'
     container_name: 'vigil'
     restart: unless-stopped
     ports:
