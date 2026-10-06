@@ -4,12 +4,13 @@ package agent
 
 import (
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
+	app "github.com/Gu1llaum-3/vigil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	app "github.com/Gu1llaum-3/vigil"
 )
 
 func createTestAgent(t *testing.T) *Agent {
@@ -26,18 +27,18 @@ func TestConnectionManager_NewConnectionManager(t *testing.T) {
 
 	assert.NotNil(t, cm, "Connection manager should not be nil")
 	assert.Equal(t, agent, cm.agent, "Agent reference should be set")
-	assert.Equal(t, Disconnected, cm.State, "Initial state should be Disconnected")
+	assert.Equal(t, Disconnected, cm.State(), "Initial state should be Disconnected")
 	assert.Nil(t, cm.eventChan, "Event channel should be nil initially")
 	assert.Nil(t, cm.wsClient, "WebSocket client should be nil initially")
 	assert.Nil(t, cm.wsTicker, "WebSocket ticker should be nil initially")
-	assert.False(t, cm.isConnecting, "isConnecting should be false initially")
+	assert.Nil(t, cm.retryC, "No retry should be scheduled initially")
 }
 
 // TestConnectionManager_StateTransitions tests basic state transitions
 func TestConnectionManager_StateTransitions(t *testing.T) {
 	agent := createTestAgent(t)
 	cm := agent.connectionManager
-	initialState := cm.State
+	initialState := cm.State()
 	cm.wsClient = &WebSocketClient{
 		hubURL: &url.URL{
 			Host: "localhost:8080",
@@ -48,15 +49,15 @@ func TestConnectionManager_StateTransitions(t *testing.T) {
 
 	// Test state transitions
 	cm.handleStateChange(WebSocketConnected)
-	assert.Equal(t, WebSocketConnected, cm.State, "State should change to WebSocketConnected")
+	assert.Equal(t, WebSocketConnected, cm.State(), "State should change to WebSocketConnected")
 
 	cm.handleStateChange(Disconnected)
-	assert.Equal(t, Disconnected, cm.State, "State should change to Disconnected")
+	assert.Equal(t, Disconnected, cm.State(), "State should change to Disconnected")
 
 	// Test that same state doesn't trigger changes
-	cm.State = WebSocketConnected
+	cm.setState(WebSocketConnected)
 	cm.handleStateChange(WebSocketConnected)
-	assert.Equal(t, WebSocketConnected, cm.State, "Same state should not trigger change")
+	assert.Equal(t, WebSocketConnected, cm.State(), "Same state should not trigger change")
 }
 
 // TestConnectionManager_EventHandling tests event handling logic
@@ -97,9 +98,9 @@ func TestConnectionManager_EventHandling(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cm.State = tc.initialState
+			cm.setState(tc.initialState)
 			cm.handleEvent(tc.event)
-			assert.Equal(t, tc.expectedState, cm.State, "State should match expected after event")
+			assert.Equal(t, tc.expectedState, cm.State(), "State should match expected after event")
 		})
 	}
 }
@@ -144,7 +145,7 @@ func TestConnectionManager_WebSocketConnectionFlow(t *testing.T) {
 	// Test WebSocket connection without proper environment
 	err := cm.startWebSocketConnection()
 	assert.Error(t, err, "WebSocket connection should fail without proper environment")
-	assert.Equal(t, Disconnected, cm.State, "State should remain Disconnected after failed connection")
+	assert.Equal(t, Disconnected, cm.State(), "State should remain Disconnected after failed connection")
 
 	// Test with invalid URL
 	t.Setenv(app.AgentEnvPrefix+"HUB_URL", "1,33%")
@@ -159,23 +160,6 @@ func TestConnectionManager_WebSocketConnectionFlow(t *testing.T) {
 
 	_, err3 := newWebSocketClient(agent)
 	assert.Error(t, err3, "WebSocket client creation should fail without token")
-}
-
-// TestConnectionManager_ReconnectionLogic tests reconnection prevention logic
-func TestConnectionManager_ReconnectionLogic(t *testing.T) {
-	agent := createTestAgent(t)
-	cm := agent.connectionManager
-	cm.eventChan = make(chan ConnectionEvent, 1)
-
-	// Test that isConnecting flag prevents duplicate reconnection attempts
-	// Start from connected state, then simulate disconnect
-	cm.State = WebSocketConnected
-	cm.isConnecting = false
-
-	// First disconnect should trigger reconnection logic
-	cm.handleStateChange(Disconnected)
-	assert.Equal(t, Disconnected, cm.State, "Should change to disconnected")
-	assert.True(t, cm.isConnecting, "Should set isConnecting flag")
 }
 
 // TestConnectionManager_ConnectWithRateLimit tests connection rate limiting
@@ -252,4 +236,103 @@ func TestConnectionManager_ConnectFlow(t *testing.T) {
 	assert.NotPanics(t, func() {
 		cm.connect()
 	}, "Connect should not panic without WebSocket client")
+}
+
+// newUnreachableWsClient builds a real client pointed at a closed port, so Connect fails fast.
+func newUnreachableWsClient(t *testing.T, agent *Agent) *WebSocketClient {
+	t.Setenv(app.AgentEnvPrefix+"HUB_URL", "ws://127.0.0.1:1")
+	t.Setenv(app.AgentEnvPrefix+"TOKEN", "test-token")
+	wsClient, err := newWebSocketClient(agent)
+	require.NoError(t, err)
+	return wsClient
+}
+
+// TestConnectionManager_StateIsSafeForConcurrentReads reads State() from another goroutine
+// while the owning goroutine transitions; run under -race to catch unsynchronized access.
+func TestConnectionManager_StateIsSafeForConcurrentReads(t *testing.T) {
+	agent := createTestAgent(t)
+	cm := agent.connectionManager
+	cm.wsClient = newUnreachableWsClient(t, agent)
+	cm.wsClient.lastConnectAttempt = time.Now() // keep reconnects scheduled, not dialed
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				_ = cm.State()
+			}
+		}
+	}()
+	for range 50 {
+		cm.handleStateChange(WebSocketConnected)
+		cm.handleStateChange(Disconnected)
+	}
+	close(stop)
+	wg.Wait()
+	assert.Equal(t, Disconnected, cm.State())
+}
+
+// TestConnectionManager_DisconnectSchedulesRetryOnLoop checks that a disconnect shortly after
+// a connection attempt arms a retry for the event loop instead of dialing (or sleeping) in a
+// separate goroutine.
+func TestConnectionManager_DisconnectSchedulesRetryOnLoop(t *testing.T) {
+	agent := createTestAgent(t)
+	cm := agent.connectionManager
+	cm.wsClient = newUnreachableWsClient(t, agent)
+	lastAttempt := time.Now()
+	cm.wsClient.lastConnectAttempt = lastAttempt
+	cm.setState(WebSocketConnected)
+
+	cm.handleStateChange(Disconnected)
+
+	assert.Equal(t, Disconnected, cm.State())
+	assert.NotNil(t, cm.retryC, "a retry should be scheduled on the event loop")
+	assert.Equal(t, lastAttempt, cm.wsClient.lastConnectAttempt, "no connection attempt should be made yet")
+
+	select {
+	case <-cm.retryC:
+	case <-time.After(connectAttemptSpacing + time.Second):
+		t.Fatal("scheduled retry never fired")
+	}
+}
+
+// TestConnectionManager_DisconnectReconnectsImmediately checks that once the attempt spacing has
+// elapsed, a disconnect reconnects synchronously and falls back to the ticker when that fails.
+func TestConnectionManager_DisconnectReconnectsImmediately(t *testing.T) {
+	agent := createTestAgent(t)
+	cm := agent.connectionManager
+	cm.wsClient = newUnreachableWsClient(t, agent)
+	cm.wsClient.lastConnectAttempt = time.Now().Add(-10 * time.Second)
+	cm.setState(WebSocketConnected)
+
+	cm.handleStateChange(Disconnected)
+
+	assert.Equal(t, Disconnected, cm.State())
+	assert.Less(t, time.Since(cm.wsClient.lastConnectAttempt), time.Second, "reconnect should be attempted before returning")
+	assert.Nil(t, cm.retryC, "no retry should be scheduled when the attempt was made")
+	require.NotNil(t, cm.wsTicker, "a failed attempt should start the retry ticker")
+	cm.stopWsTicker()
+}
+
+// TestConnectionManager_ConnectedClearsScheduledRetry checks that a successful connection cancels
+// a pending retry.
+func TestConnectionManager_ConnectedClearsScheduledRetry(t *testing.T) {
+	agent := createTestAgent(t)
+	cm := agent.connectionManager
+	cm.wsClient = newUnreachableWsClient(t, agent)
+	cm.wsClient.lastConnectAttempt = time.Now()
+	cm.setState(WebSocketConnected)
+	cm.handleStateChange(Disconnected)
+	require.NotNil(t, cm.retryC)
+
+	cm.handleStateChange(WebSocketConnected)
+
+	assert.Equal(t, WebSocketConnected, cm.State())
+	assert.Nil(t, cm.retryC, "connecting should cancel the scheduled retry")
 }

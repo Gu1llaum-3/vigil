@@ -153,6 +153,8 @@ Responsibilities:
 - reacting to disconnect events
 - updating health status during normal operation
 
+Concurrency model: everything above runs on the single `Start` event loop goroutine. The WebSocket client (whose callbacks run on `gws` goroutines) only reports back by sending `WebSocketConnect` / `WebSocketDisconnect` on `eventChan`; it never touches the manager's state. After a disconnect the loop reconnects immediately, or — if the previous attempt is more recent than `connectAttemptSpacing` (5s) — arms a one-shot `retryC` timer that the same loop services; a failed attempt falls back to the 10s retry ticker. Do not reintroduce `go c.connect()` or other goroutines that mutate the manager: that is what produced the data races `go test -race` used to report. The state is stored atomically and read with `State()`, which is safe from any goroutine (the hub integration tests poll it).
+
 ### WebSocket Client
 
 The WebSocket client is responsible for:
