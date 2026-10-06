@@ -99,7 +99,7 @@ Purpose:
 - produce a container image that serves the embedded web UI and PocketBase runtime
 - install the system `ping` binary used by the hub `ping` monitor type
 - pin the Go builder image to the patched Go toolchain version required by `go.mod`
-- stamp the release version into the binary: the `VERSION` build arg (passed by `docker-images.yml` as the git tag) is injected with the same `-X github.com/Gu1llaum-3/vigil.Version=…` flag as `.goreleaser.yml`, leading `v` stripped. Without it the binary keeps the in-source default (`0.1.0`), which breaks the version shown in the UI / `GET /api/app/info` and the `CHECK_UPDATES` comparison — so a local `docker build` reports `0.1.0` unless you pass `--build-arg VERSION=vX.Y.Z`
+- stamp the release version into the binary: the `VERSION` build arg (passed by `docker-images.yml` as the git tag) is injected with the same `-X github.com/Gu1llaum-3/vigil.Version=…` flag as `.goreleaser.yml`, leading `v` stripped. Without it the binary keeps the in-source default (`0.0.0-dev`), which shows a dev version in the UI / `GET /api/app/info`, makes `CHECK_UPDATES` always report an update, and makes the *Add agent* install command fall back to `main` instead of pinning a release — so a local `docker build` reports `0.0.0-dev` unless you pass `--build-arg VERSION=vX.Y.Z`
 - all three base images (`node`, `golang`, `alpine`) are pinned by tag **and** digest; Dependabot's `docker` ecosystem (`.github/dependabot.yml`, directory `/internal`) bumps both
 
 Operational note:
@@ -146,6 +146,12 @@ Integrity and secret handling:
 - the checksums file is **always** fetched from the canonical `github.com` host, even when `--mirror` routes the (larger) binary through a proxy. This prevents a malicious mirror from serving a backdoored binary together with a matching checksum — the integrity reference never comes from the same untrusted host as the artifact. If `github.com` is fully unreachable the install aborts with guidance unless the operator passes `--insecure-mirror`, which trusts the mirror's checksum and prints a loud reduced-integrity warning. (Advanced users can additionally verify the cosign signature on `checksums.txt` out-of-band — see below.)
 - `install-hub.sh` installs the `vigil` binary and a `vigil` system user; `install-agent.sh` installs the `vigil-agent` binary
 - secrets (`KEY`/`TOKEN`/`HUB_URL`) are never inlined into generated service definitions — systemd uses an `EnvironmentFile=`, and the OpenRC/procd/FreeBSD paths source a root-only, shell-escaped env file (see `docs/conventions-and-gotchas.md`)
+
+Version selection:
+
+- without `-v`, both scripts install GitHub's latest **stable** release (`/releases/latest`) and abort with guidance if there is none; prereleases (every `-beta` tag) are only installed when passed explicitly with `-v`
+- the *Add agent* dialog's install command is **pinned to the hub's own version**: it downloads `install-agent.sh` from the `v<hub version>` tag (not `main`) and passes `-v v<hub version>` (with `curl -f`, so a missing tag aborts instead of running GitHub's 404 page), so a new agent always matches the hub, even when `/releases/latest` lags behind (it pointed at v0.1.1 during the 0.2.x betas). The command is built by `internal/site/src/lib/agent-install.ts`
+- an unstamped dev hub reports `0.0.0-dev` (the in-source default in `app.go`), which matches no tag; its install command falls back to the script on `main` and the script's default version
 
 Important note:
 
