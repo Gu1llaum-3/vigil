@@ -332,7 +332,7 @@ For most repository-specific issues, inspect these in order:
 ### Fix
 
 - re-run the install script with `--docker` (or copy *Copy install script with Docker monitoring* from the *Add agent* dialog), or `dpkg-reconfigure vigil-agent` for the `.deb`
-- then restart the agent so it picks up the new group: the script does it; for the `.deb`, `systemctl restart vigil-agent`
+- the agent picks up the new group on restart: both the script and `dpkg-reconfigure` restart it (for the `.deb`, once `HUB_URL` and `KEY` are set in `/etc/vigil-agent.conf`)
 
 ### Related Files
 

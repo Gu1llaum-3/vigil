@@ -6,8 +6,8 @@ After=network-online.target
 [Service]
 EnvironmentFile=/etc/vigil-agent.conf
 ExecStart=/usr/bin/vigil-agent
-User=vigil
-Group=vigil
+User=vigil-agent
+Group=vigil-agent
 Restart=on-failure
 RestartSec=5
 StateDirectory=vigil-agent
