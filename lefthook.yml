@@ -5,7 +5,7 @@ pre-commit:
       run: "git diff --cached --name-only --diff-filter=ACM -- '*.go' | while IFS= read -r file; do [ -n \"$file\" ] && gofmt -w \"$file\"; done"
     frontend-check:
       glob: "internal/site/**/*.{ts,tsx,js,mjs,cjs,json,css}"
-      run: npm run --prefix ./internal/site check
+      run: pnpm --dir ./internal/site check
 
 pre-push:
   parallel: true
@@ -14,4 +14,4 @@ pre-push:
       run: go test -tags=testing ./...
     frontend-typecheck:
       glob: "internal/site/**/*.{ts,tsx,json}"
-      run: npm run --prefix ./internal/site typecheck
+      run: pnpm --dir ./internal/site typecheck

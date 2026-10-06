@@ -5,7 +5,7 @@
 ### Required
 
 - Go 1.27.1 or newer (PocketBase ≥ 0.40 requires Go 1.27; see `docs/conventions-and-gotchas.md` → JSON v2)
-- Node.js 24.x with `npm`
+- Node.js 24.x and pnpm (version pinned by `packageManager` in `internal/site/package.json`; `mise install` provides it)
 
 ### Optional But Useful
 
@@ -20,7 +20,7 @@ After cloning, run `mise install` to match the repo versions.
 
 If you want the Git hooks enabled, run `lefthook install` once.
 
-The hooks run `gofmt` and Biome (`npm run check`) on commit, and Go tests plus the frontend type check (`npm run typecheck`, only when frontend files are pushed) before push.
+The hooks run `gofmt` and Biome (`pnpm check`) on commit, and Go tests plus the frontend type check (`pnpm typecheck`, only when frontend files are pushed) before push.
 The `CI` workflow (`.github/workflows/ci.yml`, on pushes to `main` and on pull requests) runs Biome, the type check and the frontend build. Frontend builds are also part of the release and Docker image workflows.
 
 ## Main Make Targets
@@ -70,29 +70,34 @@ Frontend commands live in `internal/site/package.json`.
 
 Run them from the repository root via the `Makefile`, or directly in `internal/site`.
 
-This repository standardizes on `npm` for frontend dependency management and script execution.
+This repository standardizes on **pnpm** for frontend dependency management and script execution. The lockfile is `internal/site/pnpm-lock.yaml`; do not use `npm install` (it would create a `package-lock.json`, which is git-ignored). The pnpm version is pinned in one place, the `packageManager` field of `internal/site/package.json`: CI (`pnpm/action-setup`) and the Docker `web-builder` stage read it, and `.mise.toml` mirrors it for local use — bump both together.
+
+pnpm settings live in `internal/site/pnpm-workspace.yaml`:
+
+- `allowBuilds` — pnpm runs no dependency install scripts unless allowed. The only one requested, `@swc/core`'s postinstall, is denied on purpose: it is a fallback that installs `@swc/wasm` when the native binary (shipped as a per-platform optional dependency) cannot load. When a new dependency asks for a build script, pnpm fails the install with `ERR_PNPM_IGNORED_BUILDS`; decide with `pnpm approve-builds <pkg>` or `pnpm approve-builds '!<pkg>'` and commit the result.
+- pnpm's default `minimumReleaseAge` (1 day) is kept: a version published less than 24h ago is not picked, the previous matching version is used instead. This guards against freshly published compromised releases; an update may therefore lag a release by a day.
 
 Important commands:
 
-- `npm run dev`
-- `npm run build`
-- `npm run sync`
-- `npm run sync_and_purge`
-- `npm run lint`
-- `npm run check`
-- `npm run check:fix`
-- `npm run typecheck`
+- `pnpm dev`
+- `pnpm build`
+- `pnpm sync`
+- `pnpm sync_and_purge`
+- `pnpm lint`
+- `pnpm check`
+- `pnpm check:fix`
+- `pnpm typecheck`
 
-The build command compiles Lingui catalogs and runs Vite. It does **not** re-extract messages from sources — extraction would rewrite `.po` files, which is fine in dev but breaks CI release tooling that asserts a clean working tree (e.g. goreleaser). Run `npm run sync` after adding or changing user-facing strings to refresh catalogs, then commit the diff alongside the source change.
+The build command compiles Lingui catalogs and runs Vite. It does **not** re-extract messages from sources — extraction would rewrite `.po` files, which is fine in dev but breaks CI release tooling that asserts a clean working tree (e.g. goreleaser). Run `pnpm sync` after adding or changing user-facing strings to refresh catalogs, then commit the diff alongside the source change.
 
-The frontend `npm run check` command intentionally excludes two categories of files from Biome:
+The frontend `pnpm check` command intentionally excludes two categories of files from Biome:
 
 - generated Lingui locale bundles under `internal/site/src/locales/**/*.ts`
 - the Tailwind v4 stylesheet entrypoint `internal/site/src/index.css`
 
 Those files are still validated indirectly by the normal frontend build, but they are not useful Biome targets because the locale bundles are generated artifacts and the Tailwind v4 at-rules used in `index.css` are not parsed cleanly by the current Biome version.
 
-`npm run build` never type-checks: Vite transpiles TypeScript with SWC and drops the types. `npm run typecheck` (`lingui compile && tsc -b --noEmit`) is the only type check; it compiles the Lingui catalogs first because `src/lib/i18n.ts` imports the generated (git-ignored) `src/locales/*/*.ts` bundles. Use `tsc -b` (project references through `tsconfig.app.json` and `tsconfig.node.json`), not `tsc -p .`: the root `tsconfig.json` has `"files": []` and checks nothing on its own.
+`pnpm build` never type-checks: Vite transpiles TypeScript with SWC and drops the types. `pnpm typecheck` (`lingui compile && tsc -b --noEmit`) is the only type check; it compiles the Lingui catalogs first because `src/lib/i18n.ts` imports the generated (git-ignored) `src/locales/*/*.ts` bundles. Use `tsc -b` (project references through `tsconfig.app.json` and `tsconfig.node.json`), not `tsc -p .`: the root `tsconfig.json` has `"files": []` and checks nothing on its own.
 
 ## Development Modes
 
@@ -189,9 +194,9 @@ If the handshake or request manager changed, prioritize the integration-style te
 
 Recommended verification:
 
-1. `npm run --prefix ./internal/site check`
-2. `npm run --prefix ./internal/site typecheck`
-3. `npm run --prefix ./internal/site build`
+1. `pnpm --dir ./internal/site check`
+2. `pnpm --dir ./internal/site typecheck`
+3. `pnpm --dir ./internal/site build`
 4. if backend integration changed, `go test -tags=testing ./...`
 
 ### Docker Hub Verification
@@ -259,4 +264,4 @@ This is useful when you are only debugging agent startup, fingerprinting, or hub
 - `make dev-hub` creates a placeholder `internal/site/dist/index.html` because the development server path still expects the directory to exist.
 - `make dev-agent` still uses the placeholder module path from `go.mod`, so derived projects should keep it in sync when renaming.
 - frontend localization artifacts are generated and compiled as part of the normal frontend build flow.
-- `npm run check` is expected to focus on maintainable source files; generated Lingui bundles and the Tailwind v4 root stylesheet are verified through `npm run build` instead.
+- `pnpm check` is expected to focus on maintainable source files; generated Lingui bundles and the Tailwind v4 root stylesheet are verified through `pnpm build` instead.

@@ -7,7 +7,7 @@ SKIP_WEB ?= false
 # Set executable extension based on target OS
 EXE_EXT := $(if $(filter windows,$(OS)),.exe,)
 
-.PHONY: tidy build-agent build-hub build-hub-dev build clean lint dev-server dev-agent dev-hub dev generate-locales build-web-ui npm-outdated
+.PHONY: tidy build-agent build-hub build-hub-dev build clean lint dev-server dev-agent dev-hub dev generate-locales build-web-ui pnpm-outdated
 .DEFAULT_GOAL := build
 
 clean:
@@ -24,11 +24,11 @@ tidy:
 	go mod tidy
 
 build-web-ui:
-	npm install --prefix ./internal/site
-	npm run --prefix ./internal/site build
+	pnpm --dir ./internal/site install --frozen-lockfile
+	pnpm --dir ./internal/site build
 
-npm-outdated:
-	@npm outdated --prefix ./internal/site; \
+pnpm-outdated:
+	@pnpm --dir ./internal/site outdated; \
 	status=$$?; \
 	if [ $$status -ne 0 ] && [ $$status -ne 1 ]; then \
 		exit $$status; \
@@ -49,11 +49,11 @@ build: build-agent build-hub
 generate-locales:
 	@if [ ! -f ./internal/site/src/locales/en/en.ts ]; then \
 		echo "Generating locales..."; \
-		npm install --prefix ./internal/site && npm run --prefix ./internal/site sync; \
+		pnpm --dir ./internal/site install --frozen-lockfile && pnpm --dir ./internal/site sync; \
 	fi
 
 dev-server: generate-locales
-	npm run --prefix ./internal/site dev
+	pnpm --dir ./internal/site dev
 
 dev-hub: export ENV=dev
 dev-hub:

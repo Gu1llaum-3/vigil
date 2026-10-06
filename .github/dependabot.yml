@@ -21,7 +21,8 @@ updates:
       go-minor-patch:
         update-types: [minor, patch]
 
-  # Frontend (Vite/React, npm with package-lock.json).
+  # Frontend (Vite/React). The "npm" ecosystem also covers pnpm: Dependabot detects
+  # internal/site/pnpm-lock.yaml and updates it with pnpm.
   - package-ecosystem: npm
     directory: /internal/site
     schedule:

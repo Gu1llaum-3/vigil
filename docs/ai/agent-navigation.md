@@ -180,9 +180,9 @@ Start here:
 
 Run after changes:
 
-- `npm run --prefix ./internal/site sync`
+- `pnpm --dir ./internal/site sync`
   or
-- `npm run --prefix ./internal/site sync_and_purge`
+- `pnpm --dir ./internal/site sync_and_purge`
 
 ### Change Migrations Or Collection Shape
 
