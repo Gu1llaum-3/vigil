@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,7 +21,9 @@ func collectPackagesDebian(ctx context.Context) (common.PackageInfo, error) {
 	info := common.PackageInfo{}
 
 	outdated, err := aptOutdatedPackages(ctx)
-	if err == nil {
+	if err != nil {
+		logPendingUpdatesError("apt", err)
+	} else {
 		info.Outdated = outdated
 		info.OutdatedCount = len(outdated)
 		for _, p := range outdated {
@@ -53,70 +56,55 @@ func aptOutdatedPackages(ctx context.Context) ([]common.OutdatedPackage, error) 
 		return nil, err
 	}
 
-	// Also get security packages list
-	securityPkgs := aptSecurityPackages(ctx)
-
 	var packages []common.OutdatedPackage
 	scanner := bufio.NewScanner(strings.NewReader(string(out)))
 	for scanner.Scan() {
-		line := scanner.Text()
-		// Lines like: "Inst package [installed] (candidate source)"
-		if !strings.HasPrefix(line, "Inst ") {
-			continue
+		if pkg, ok := parseAptInstLine(scanner.Text()); ok {
+			packages = append(packages, pkg)
 		}
-		parts := strings.Fields(line)
-		if len(parts) < 2 {
-			continue
-		}
-		name := parts[1]
-
-		installed := ""
-		candidate := ""
-		// Parse "[installed_version]" and "(candidate_version ..."
-		for i, p := range parts {
-			if strings.HasPrefix(p, "[") && strings.HasSuffix(p, "]") {
-				installed = strings.Trim(p, "[]")
-			}
-			if i > 0 && strings.HasPrefix(p, "(") {
-				candidate = strings.TrimPrefix(parts[i], "(")
-				candidate = strings.TrimSuffix(candidate, ")")
-			}
-		}
-
-		packages = append(packages, common.OutdatedPackage{
-			Name:             name,
-			InstalledVersion: installed,
-			CandidateVersion: candidate,
-			IsSecurity:       securityPkgs[name],
-		})
 	}
 	return packages, nil
 }
 
-// aptSecurityPackages returns a set of package names that have security updates.
-func aptSecurityPackages(ctx context.Context) map[string]bool {
-	result := make(map[string]bool)
-	cmd := exec.CommandContext(ctx, "apt-get", "-s", "-o", "APT::Get::Show-Upgraded=true",
-		"--just-print", "dist-upgrade")
-	out, err := cmd.Output()
-	if err != nil {
-		return result
+// aptInstLine matches a simulated upgrade line:
+//
+//	Inst <name> [<installed>] (<candidate> <origin>[, <origin>...] [<arch>]) [<deps> ]
+//
+// The installed version is absent for a newly installed package.
+var aptInstLine = regexp.MustCompile(`^Inst (\S+) (?:\[([^\]]*)\] )?\((\S+) ([^)]*)\)`)
+
+// parseAptInstLine parses one "Inst" line.
+func parseAptInstLine(line string) (common.OutdatedPackage, bool) {
+	m := aptInstLine.FindStringSubmatch(line)
+	if m == nil {
+		return common.OutdatedPackage{}, false
 	}
-	scanner := bufio.NewScanner(strings.NewReader(string(out)))
-	inSecurity := false
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "security") {
-			inSecurity = true
-		}
-		if inSecurity && strings.HasPrefix(line, "Inst ") {
-			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				result[parts[1]] = true
-			}
+	return common.OutdatedPackage{
+		Name:             m[1],
+		InstalledVersion: m[2],
+		CandidateVersion: m[3],
+		IsSecurity:       aptOriginsIncludeSecurity(m[4]),
+	}, true
+}
+
+// aptOriginsIncludeSecurity reports whether one of the comma-separated
+// "<label>:<version>/<archive>" origins of an Inst line is a security archive:
+// a -security archive (Debian-Security:12/stable-security, Ubuntu:22.04/jammy-security,
+// UbuntuESM:22.04/jammy-infra-security) or the Debian-Security label, whose Debian 10
+// archives have no suffix (Debian-Security:10/oldoldstable).
+func aptOriginsIncludeSecurity(origins string) bool {
+	// Drop the trailing " [<arch>]".
+	if i := strings.LastIndex(origins, " ["); i != -1 {
+		origins = origins[:i]
+	}
+	for origin := range strings.SplitSeq(origins, ", ") {
+		label, rest, _ := strings.Cut(strings.TrimSpace(origin), ":")
+		_, archive, _ := strings.Cut(rest, "/")
+		if strings.HasSuffix(archive, "-security") || strings.EqualFold(label, "Debian-Security") {
+			return true
 		}
 	}
-	return result
+	return false
 }
 
 func dpkgInstalledCount(ctx context.Context) (int, error) {

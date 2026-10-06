@@ -216,8 +216,10 @@ Each collector is a focused function that gathers one domain of host data:
 
 - `system.go` — OS info, CPU, memory, uptime
 - `storage.go` — mounted filesystems and usage
-- `packages_debian.go` — installed packages and pending updates (APT)
-- `packages_redhat.go` — installed packages and pending updates (DNF/YUM)
+- `packages_debian.go` — installed packages and pending updates (APT). Pending updates come from one `apt-get -s upgrade`; each `Inst` line is parsed positionally (`Inst <name> [<installed>] (<candidate> <origins> [<arch>])`), and a package is a security update only when one of **its own** origins is a security archive: an archive ending in `-security` (`Debian-Security:12/stable-security`, `jammy-security`, Ubuntu ESM `jammy-apps-security`/`jammy-infra-security`) or the `Debian-Security` label (Debian 10 archives have no suffix). Packages kept back by `upgrade` are not listed
+- `packages_redhat.go` — installed packages and pending updates (DNF only: yum-only hosts such as Amazon Linux 2 or CentOS 7 report no pending updates). `dnf check-update` exit code `100` means updates, `0` none, anything else (or a missing `dnf`) is a collector error; the installed `@<repo>` lines of the "Obsoleting Packages" section are skipped; security flags come from `dnf updateinfo list security` (dnf4 syntax; dnf5 on Fedora 41+ finds no advisories with it)
+- a failed pending-updates query is logged (`pending updates query failed`, with the command's stderr; a missing package manager only at debug level), but the snapshot still carries no outdated packages for that host, so the hub shows it as having no pending updates: the snapshot has no "unknown" state for this yet
+- the package parsers are tested against real `apt-get`/`dnf` outputs captured from container images and kept in `agent/collectors/testdata/` (files named `*-synthetic.txt` are hand-written edge cases), served by fake binaries put first in `PATH` (`fakebin_test.go`); when changing a parser, add the real output that motivated it there
 - `repositories_debian.go` — APT repository sources, in both formats: one-line `sources.list` / `sources.list.d/*.list` and deb822 `sources.list.d/*.sources` (the default on Debian 12+ images, Debian 13 and Ubuntu 24.04). A deb822 stanza yields one entry per URI × suite; only binary (`deb`) repositories are reported, and `Enabled: no` stanzas are kept with `enabled: false`
 - `repositories_redhat.go` — DNF/YUM repository sources
 - `reboot.go` — reboot-required detection
