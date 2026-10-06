@@ -306,7 +306,7 @@ const MonitorDetailPage = memo(function MonitorDetailPage() {
 					pointHoverRadius: 4,
 					pointHitRadius: 8,
 					spanGaps: false,
-					cubicInterpolationMode: "monotone",
+					cubicInterpolationMode: "monotone" as const,
 				},
 			],
 		}),

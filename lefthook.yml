@@ -12,3 +12,6 @@ pre-push:
   commands:
     go-test:
       run: go test -tags=testing ./...
+    frontend-typecheck:
+      glob: "internal/site/**/*.{ts,tsx,json}"
+      run: npm run --prefix ./internal/site typecheck

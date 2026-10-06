@@ -20,8 +20,8 @@ After cloning, run `mise install` to match the repo versions.
 
 If you want the Git hooks enabled, run `lefthook install` once.
 
-The hooks format Go files on commit and run Go tests before push.
-Frontend builds are enforced in GitHub Actions for release and Docker image workflows, not in local pre-push hooks.
+The hooks run `gofmt` and Biome (`npm run check`) on commit, and Go tests plus the frontend type check (`npm run typecheck`, only when frontend files are pushed) before push.
+The `CI` workflow (`.github/workflows/ci.yml`, on pushes to `main` and on pull requests) runs Biome, the type check and the frontend build. Frontend builds are also part of the release and Docker image workflows.
 
 ## Main Make Targets
 
@@ -81,6 +81,7 @@ Important commands:
 - `npm run lint`
 - `npm run check`
 - `npm run check:fix`
+- `npm run typecheck`
 
 The build command compiles Lingui catalogs and runs Vite. It does **not** re-extract messages from sources — extraction would rewrite `.po` files, which is fine in dev but breaks CI release tooling that asserts a clean working tree (e.g. goreleaser). Run `npm run sync` after adding or changing user-facing strings to refresh catalogs, then commit the diff alongside the source change.
 
@@ -90,6 +91,8 @@ The frontend `npm run check` command intentionally excludes two categories of fi
 - the Tailwind v4 stylesheet entrypoint `internal/site/src/index.css`
 
 Those files are still validated indirectly by the normal frontend build, but they are not useful Biome targets because the locale bundles are generated artifacts and the Tailwind v4 at-rules used in `index.css` are not parsed cleanly by the current Biome version.
+
+`npm run build` never type-checks: Vite transpiles TypeScript with SWC and drops the types. `npm run typecheck` (`lingui compile && tsc -b --noEmit`) is the only type check; it compiles the Lingui catalogs first because `src/lib/i18n.ts` imports the generated (git-ignored) `src/locales/*/*.ts` bundles. Use `tsc -b` (project references through `tsconfig.app.json` and `tsconfig.node.json`), not `tsc -p .`: the root `tsconfig.json` has `"files": []` and checks nothing on its own.
 
 ## Development Modes
 
@@ -187,8 +190,9 @@ If the handshake or request manager changed, prioritize the integration-style te
 Recommended verification:
 
 1. `npm run --prefix ./internal/site check`
-2. `npm run --prefix ./internal/site build`
-3. if backend integration changed, `go test -tags=testing ./...`
+2. `npm run --prefix ./internal/site typecheck`
+3. `npm run --prefix ./internal/site build`
+4. if backend integration changed, `go test -tags=testing ./...`
 
 ### Docker Hub Verification
 

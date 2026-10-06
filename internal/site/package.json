@@ -16,7 +16,8 @@
 		"format": "biome format --write .",
 		"lint": "biome lint .",
 		"check": "biome check .",
-		"check:fix": "biome check --fix ."
+		"check:fix": "biome check --fix .",
+		"typecheck": "lingui compile && tsc -b --noEmit"
 	},
 	"dependencies": {
 		"@lingui/core": "^6.0.0",
