@@ -205,7 +205,7 @@ export function MetricThresholds({ agentId = "" }: { agentId?: string }) {
 									max={Math.max(
 										info.step,
 										form.hysteresis,
-										(form.warning_value || form.critical_value || info.max) - info.step,
+										(form.warning_value || form.critical_value || info.max) - info.step
 									)}
 									step={info.step}
 									onChange={(v) => patch(metric, { hysteresis: v })}

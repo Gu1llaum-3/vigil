@@ -723,8 +723,8 @@ const SectionBellPreferences = memo(() => {
 				</h3>
 				<p className="mt-0.5 text-sm text-muted-foreground">
 					<Trans>
-						Which system events show in the navbar bell and the Notifications page. In-app only — this sends
-						nothing to external channels.
+						Which system events show in the navbar bell and the Notifications page. In-app only — this sends nothing to
+						external channels.
 					</Trans>
 				</p>
 			</div>
@@ -1123,8 +1123,8 @@ const NotificationsSettings = memo(() => {
 				</h3>
 				<p className="text-sm text-muted-foreground leading-relaxed">
 					<Trans>
-						The same events reach you two independent ways: the in-app bell, and external channels (email,
-						Slack, Ntfy, …). Configure each below — turning one on does not affect the other.
+						The same events reach you two independent ways: the in-app bell, and external channels (email, Slack, Ntfy,
+						…). Configure each below — turning one on does not affect the other.
 					</Trans>
 				</p>
 			</div>
@@ -1150,8 +1150,8 @@ const NotificationsSettings = memo(() => {
 							</h3>
 							<p className="mt-0.5 text-sm text-muted-foreground">
 								<Trans>
-									Send alerts outside the app (email, Slack, Teams, Ntfy, …). Add destinations (channels), then
-									route events to them (rules). Independent from the in-app bell above.
+									Send alerts outside the app (email, Slack, Teams, Ntfy, …). Add destinations (channels), then route
+									events to them (rules). Independent from the in-app bell above.
 								</Trans>
 							</p>
 						</div>

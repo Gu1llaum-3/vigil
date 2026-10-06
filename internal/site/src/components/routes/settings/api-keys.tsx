@@ -113,8 +113,8 @@ export default memo(function ApiKeysSettings() {
 					</h3>
 					<p className="mt-1 text-sm text-muted-foreground leading-relaxed">
 						<Trans>
-							Long-lived read-only tokens for scripts and integrations (e.g. the MCP server). A key acts as you and
-							can read everything you can; it cannot make changes. The token is shown only once at creation.
+							Long-lived read-only tokens for scripts and integrations (e.g. the MCP server). A key acts as you and can
+							read everything you can; it cannot make changes. The token is shown only once at creation.
 						</Trans>
 					</p>
 				</div>
@@ -161,12 +161,7 @@ export default memo(function ApiKeysSettings() {
 									{k.last_used_at ? formatDateTime(k.last_used_at) : <Trans>never</Trans>}
 								</TableCell>
 								<TableCell>
-									<Button
-										variant="ghost"
-										size="icon"
-										title={t`Revoke`}
-										onClick={() => revokeKey(k.id)}
-									>
+									<Button variant="ghost" size="icon" title={t`Revoke`} onClick={() => revokeKey(k.id)}>
 										<Trash2Icon className="size-4 text-red-500" />
 									</Button>
 								</TableCell>
@@ -183,9 +178,9 @@ export default memo(function ApiKeysSettings() {
 				</h3>
 				<p className="mt-1 text-sm text-muted-foreground leading-relaxed">
 					<Trans>
-						Vigil exposes a read-only Model Context Protocol server, so an AI assistant (Claude Desktop, Claude
-						Code, …) can query your fleet — hosts, monitors, uptime and response-time reports. Create a key above,
-						then add this server to your MCP client.
+						Vigil exposes a read-only Model Context Protocol server, so an AI assistant (Claude Desktop, Claude Code, …)
+						can query your fleet — hosts, monitors, uptime and response-time reports. Create a key above, then add this
+						server to your MCP client.
 					</Trans>
 				</p>
 
@@ -247,7 +242,9 @@ export default memo(function ApiKeysSettings() {
 						</pre>
 					</div>
 					<p className="text-xs text-muted-foreground">
-						<Trans>Replace vk_… with a key created above. The assistant can read your data but cannot change anything.</Trans>
+						<Trans>
+							Replace vk_… with a key created above. The assistant can read your data but cannot change anything.
+						</Trans>
 					</p>
 				</div>
 
@@ -309,7 +306,9 @@ export default memo(function ApiKeysSettings() {
 							<Trans>Copy your API key now</Trans>
 						</DialogTitle>
 						<DialogDescription>
-							<Trans>This is the only time the full token is shown. Store it somewhere safe — you cannot see it again.</Trans>
+							<Trans>
+								This is the only time the full token is shown. Store it somewhere safe — you cannot see it again.
+							</Trans>
 						</DialogDescription>
 					</DialogHeader>
 					<div className="my-4 flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 p-3">

@@ -25,7 +25,15 @@ export interface MetricAlert {
  */
 export const metricAlertInfo: Record<
 	MetricAlertMetric,
-	{ unit: string; max: number; step: number; warning: number; critical: number; hysteresis: number; durationSeconds: number }
+	{
+		unit: string
+		max: number
+		step: number
+		warning: number
+		critical: number
+		hysteresis: number
+		durationSeconds: number
+	}
 > = {
 	// CPU% is a near-instantaneous sample (unlike loadavg, which is already a 5-min
 	// average), so it defaults to a 2-minute "sustained for" delay to avoid firing on
