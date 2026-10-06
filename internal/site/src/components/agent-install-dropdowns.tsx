@@ -3,8 +3,10 @@ import { installScriptCommand } from "@/lib/agent-install"
 import { copyToClipboard, getHubURL } from "@/lib/utils"
 import { DropdownMenuContent, DropdownMenuItem } from "./ui/dropdown-menu"
 
-export function copyInstallScriptCommand(publicKey: string, token: string) {
-	copyToClipboard(installScriptCommand({ version: globalThis.APP?.HUB_VERSION, publicKey, token, hubURL: getHubURL() }))
+export function copyInstallScriptCommand(publicKey: string, token: string, docker = false) {
+	copyToClipboard(
+		installScriptCommand({ version: globalThis.APP?.HUB_VERSION, publicKey, token, hubURL: getHubURL(), docker })
+	)
 }
 
 export function copyBinaryEnvCommand(publicKey: string, token: string) {

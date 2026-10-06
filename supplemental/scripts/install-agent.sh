@@ -105,6 +105,102 @@ warn_auto_update_unavailable() {
   echo "Warning: automatic updates are not available for Vigil Agent yet. Skipping auto-update setup."
 }
 
+# Succeeds when user $1 is a member of group $2.
+user_in_group() {
+  id -nG "$1" 2>/dev/null | tr ' ' '\n' | grep -qx "$2"
+}
+
+group_exists() {
+  if is_openwrt; then
+    grep -q "^$1:" /etc/group 2>/dev/null
+  else
+    getent group "$1" >/dev/null 2>&1
+  fi
+}
+
+add_user_to_group() {
+  if is_alpine; then
+    addgroup "$1" "$2"
+  elif is_openwrt; then
+    # No usermod on OpenWrt: append the user to the group's member list in /etc/group.
+    if grep -q "^$2:[^:]*:[^:]*:..*$" /etc/group; then
+      sed -i "s/^\($2:[^:]*:[^:]*:.*\)$/\1,$1/" /etc/group
+    else
+      sed -i "s/^\($2:[^:]*:[^:]*:\)$/\1$1/" /etc/group
+    fi
+  elif is_freebsd; then
+    pw group mod "$2" -m "$1"
+  else
+    usermod -aG "$2" "$1"
+  fi
+}
+
+remove_user_from_group() {
+  if is_alpine; then
+    delgroup "$1" "$2"
+  elif is_openwrt; then
+    sed -i -e "/^$2:/s/:$1\$/:/" -e "/^$2:/s/:$1,/:/" -e "/^$2:/s/,$1\$//" -e "/^$2:/s/,$1,/,/" /etc/group
+  elif is_freebsd; then
+    pw group mod "$2" -d "$1"
+  else
+    gpasswd -d "$1" "$2" >/dev/null
+  fi
+}
+
+# Docker socket access is opt-in: docker group membership is equivalent to root on the
+# host and bypasses the service sandboxing. --docker grants it, --no-docker revokes it,
+# and without either flag the current membership is left as is.
+apply_docker_access() {
+  if [ "$DOCKER_ACCESS" = "true" ]; then
+    if ! group_exists docker; then
+      echo "Docker access requested but no 'docker' group exists on this host; skipping."
+    elif user_in_group "$AGENT_USER" docker; then
+      echo "Docker socket access already granted to $AGENT_USER."
+    else
+      echo "Adding $AGENT_USER to the docker group (Docker socket access, equivalent to root on this host)..."
+      add_user_to_group "$AGENT_USER" docker
+    fi
+  elif [ "$DOCKER_ACCESS" = "false" ]; then
+    if user_in_group "$AGENT_USER" docker; then
+      echo "Removing $AGENT_USER from the docker group..."
+      remove_user_from_group "$AGENT_USER" docker
+    fi
+  elif user_in_group "$AGENT_USER" docker; then
+    echo "Keeping Docker socket access for $AGENT_USER (pass --no-docker to revoke it)."
+  elif group_exists docker; then
+    echo "Docker container inventory is disabled: the agent has no access to the Docker socket."
+    echo "To enable it, re-run this script with --docker (grants root-equivalent docker group membership)."
+  fi
+}
+
+# Installs made before the dedicated vigil-agent user ran as a generic "app" account; the
+# service definition tells them apart from an unrelated "app" user.
+legacy_service_user_in_use() {
+  if is_alpine || is_openwrt; then
+    [ -f /etc/init.d/vigil-agent ] && grep -Eq "command_user=\"$LEGACY_AGENT_USER\"|procd_set_param user $LEGACY_AGENT_USER\$" /etc/init.d/vigil-agent
+  elif is_freebsd; then
+    [ "$(sysrc -n vigil_agent_user 2>/dev/null)" = "$LEGACY_AGENT_USER" ]
+  else
+    [ -f /etc/systemd/system/vigil-agent.service ] && grep -qx "User=$LEGACY_AGENT_USER" /etc/systemd/system/vigil-agent.service
+  fi
+}
+
+print_legacy_user_notice() {
+  if id -u "$LEGACY_AGENT_USER" >/dev/null 2>&1; then
+    echo ""
+    echo "Note: the Vigil Agent no longer uses the '$LEGACY_AGENT_USER' account, which was left untouched"
+    echo "because it may belong to something else (groups: $(id -nG "$LEGACY_AGENT_USER" 2>/dev/null))."
+    if is_alpine; then
+      _remove_cmd="deluser $LEGACY_AGENT_USER"
+    elif is_openwrt; then
+      _remove_cmd="sed -i '/^$LEGACY_AGENT_USER:/d' /etc/passwd /etc/group /etc/shadow"
+    else
+      _remove_cmd="userdel $LEGACY_AGENT_USER"
+    fi
+    echo "If an earlier Vigil Agent install created it and nothing else uses it, remove it with: $_remove_cmd"
+  fi
+}
+
 # Generate FreeBSD rc service content
 generate_freebsd_rc_service() {
   cat <<'EOF'
@@ -122,7 +218,7 @@ generate_freebsd_rc_service() {
 # vigil_agent_env_file (str):  Vigil Agent env configuration file
 #                               Default: /usr/local/etc/vigil-agent/env
 # vigil_agent_user (str):      Vigil Agent daemon user
-#                               Default: app
+#                               Default: vigil-agent
 # vigil_agent_bin (str):       Path to the vigil-agent binary
 #                               Default: /usr/local/sbin/vigil-agent
 # vigil_agent_flags (str):     Extra flags passed to vigil-agent command invocation
@@ -135,7 +231,7 @@ rcvar=vigil_agent_enable
 
 load_rc_config $name
 : ${vigil_agent_enable:="YES"}
-: ${vigil_agent_user:="app"}
+: ${vigil_agent_user:="vigil-agent"}
 : ${vigil_agent_flags:=""}
 : ${vigil_agent_env_file:="/usr/local/etc/vigil-agent/env"}
 : ${vigil_agent_bin:="/usr/local/sbin/vigil-agent"}
@@ -238,6 +334,7 @@ KEY=""
 TOKEN=""
 HUB_URL=""
 AUTO_UPDATE_FLAG="" # empty string means unused, "true" warns and skips, "false" means skip
+DOCKER_ACCESS="" # "true" grants docker group membership, "false" revokes it, empty keeps the current state
 VERSION="latest"
 
 # Check for help flag
@@ -251,6 +348,10 @@ case "$1" in
   printf "  -url                  : Hub URL (optional for backwards compatibility)\n"
   printf "  -v, --version         : Version to install (default: latest)\n"
   printf "  -u                    : Uninstall Vigil Agent\n"
+  printf "  --docker              : Grant the agent Docker socket access (docker group) to inventory\n"
+  printf "                          containers. Equivalent to root on the host: only use it if you\n"
+  printf "                          want container monitoring. Kept on upgrades once granted.\n"
+  printf "  --no-docker           : Revoke Docker socket access granted earlier\n"
   printf "  --auto-update [VALUE] : Reserved for future use (currently ignored)\n"
   printf "                          VALUE can be true or false; the flag is accepted for compatibility.\n"
   printf "  --mirror [URL]        : Use GitHub proxy to resolve network timeout issues in mainland China\n"
@@ -301,6 +402,12 @@ while [ $# -gt 0 ]; do
     ;;
   -u)
     UNINSTALL=true
+    ;;
+  --docker)
+    DOCKER_ACCESS=true
+    ;;
+  --no-docker)
+    DOCKER_ACCESS=false
     ;;
   --mirror* | --china-mirrors*)
     # Check if there's a value after the = sign
@@ -368,6 +475,15 @@ else
   BIN_PATH="/opt/vigil-agent/vigil-agent"
 fi
 
+# The agent runs as a dedicated, unprivileged system user. Not "vigil": that is the native
+# hub's user (install-hub.sh), and an agent on the hub's host must not own the hub's data.
+# Installs made before this change used a generic "app" user (LEGACY_AGENT_USER), which
+# upgrades migrate away from without deleting it (the name is common, it may belong to
+# something else).
+AGENT_USER="vigil-agent"
+LEGACY_AGENT_USER="app"
+AGENT_STATE_DIR="/var/lib/vigil-agent"
+
 # Stop existing service if it exists (for upgrades)
 if [ "$UNINSTALL" != true ] && [ -f "$BIN_PATH" ]; then
   echo "Existing installation detected. Stopping service for upgrade..."
@@ -380,6 +496,13 @@ if [ "$UNINSTALL" != true ] && [ -f "$BIN_PATH" ]; then
   else
     systemctl stop vigil-agent.service 2>/dev/null || true
   fi
+fi
+
+# Detect an install that still runs as the legacy "app" user, before the uninstall or the
+# upgrade rewrites its service definition (see AGENT_USER above).
+LEGACY_INSTALL=false
+if legacy_service_user_in_use; then
+  LEGACY_INSTALL=true
 fi
 
 # Uninstall process
@@ -468,13 +591,23 @@ if [ "$UNINSTALL" = true ]; then
 
   echo "Removing the dedicated user for the agent service..."
   killall vigil-agent 2>/dev/null
-  if is_alpine || is_openwrt; then
-    deluser app 2>/dev/null
+  if is_openwrt; then
+    # No deluser on OpenWrt: drop the group membership and the account lines directly.
+    remove_user_from_group "$AGENT_USER" docker
+    sed -i "/^$AGENT_USER:/d" /etc/passwd /etc/group
+    [ -f /etc/shadow ] && sed -i "/^$AGENT_USER:/d" /etc/shadow
+  elif is_alpine; then
+    deluser "$AGENT_USER" 2>/dev/null
   elif is_freebsd; then
-    pw user del app 2>/dev/null
+    pw user del "$AGENT_USER" 2>/dev/null
   else
-    userdel app 2>/dev/null
+    userdel "$AGENT_USER" 2>/dev/null
   fi
+  if [ "$LEGACY_INSTALL" = true ]; then
+    print_legacy_user_notice
+  fi
+  # The state dir (/var/lib/vigil-agent, holding the fingerprint) is kept on purpose, so a
+  # reinstall comes back as the same host on the hub.
 
   echo "Vigil Agent has been uninstalled successfully!"
   exit 0
@@ -595,87 +728,16 @@ else
   exit 1
 fi
 
-# Create a dedicated user for the service if it doesn't exist
-AGENT_USER="app"
-echo "Configuring the dedicated user for the Vigil Agent service..."
-if is_alpine; then
-  if ! id -u app >/dev/null 2>&1; then
-    addgroup app
-    adduser -S -D -H -s /sbin/nologin -G app app
-  fi
-  # Add the user to the docker group to allow access to the Docker socket if group docker exists
-  if getent group docker >/dev/null 2>&1; then
-    echo "Adding app to docker group"
-    addgroup app docker
-  fi
-  
-elif is_openwrt; then
-  # Create app group first if it doesn't exist (check /etc/group directly)
-  if ! grep -q "^app:" /etc/group >/dev/null 2>&1; then
-    echo "app:x:999:" >> /etc/group
-  fi
-  
-  # Create app user if it doesn't exist (double-check to prevent duplicates)
-  if ! id -u app >/dev/null 2>&1 && ! grep -q "^app:" /etc/passwd >/dev/null 2>&1; then
-    echo "app:x:999:999::/nonexistent:/bin/false" >> /etc/passwd
-  fi
-  
-  # Add the user to the docker group if docker group exists and user is not already in it
-  if grep -q "^docker:" /etc/group >/dev/null 2>&1; then
-    echo "Adding app to docker group"
-    # Check if app is already in docker group
-    if ! grep "^docker:" /etc/group | grep -q "app"; then
-      # Add app to docker group by modifying /etc/group
-      # Handle both cases: group with existing members and group without members
-      if grep "^docker:" /etc/group | grep -q ":.*:.*$"; then
-        # Group has existing members, append with comma
-        sed -i 's/^docker:\([^:]*:[^:]*:\)\(.*\)$/docker:\1\2,app/' /etc/group
-      else
-        # Group has no members, just append
-        sed -i 's/^docker:\([^:]*:[^:]*:\)$/docker:\1app/' /etc/group
-      fi
-    fi
-  fi
-
-elif is_freebsd; then
-  if is_opnsense; then
-    echo "OPNsense detected: skipping user creation (using daemon user instead)"
-    AGENT_USER="daemon"
-  else
-    if ! id -u app >/dev/null 2>&1; then
-      pw user add app -d /nonexistent -s /usr/sbin/nologin -c "app user"
-    fi
-    # Add the user to the wheel group to allow self-updates
-    if pw group show wheel >/dev/null 2>&1; then
-      echo "Adding app to wheel group for self-updates"
-      pw group mod wheel -m app
-    fi
-  fi
-
-else
-  if ! id -u app >/dev/null 2>&1; then
-    useradd --system --home-dir /nonexistent --shell /bin/false app
-  fi
-  # Add the user to the docker group to allow access to the Docker socket if group docker exists
-  if getent group docker >/dev/null 2>&1; then
-    echo "Adding app to docker group"
-    usermod -aG docker app
-  fi
-  # Add the user to the disk group to allow access to disk devices if group disk exists
-  if getent group disk >/dev/null 2>&1; then
-    echo "Adding app to disk group"
-    usermod -aG disk app
-  fi
-fi
-
 # Create the directory for the Vigil Agent
 
+# The install dir holds the binary and the root-only env file: owned by root so the
+# service user can neither replace the binary nor read the secrets.
 if [ ! -d "$AGENT_DIR" ]; then
   echo "Creating the directory for the Vigil Agent..."
   mkdir -p "$AGENT_DIR"
-  chown "${AGENT_USER}:${AGENT_USER}" "$AGENT_DIR"
-  chmod 755 "$AGENT_DIR"
 fi
+chown 0:0 "$AGENT_DIR"
+chmod 755 "$AGENT_DIR"
 
 if [ ! -d "$BIN_DIR" ]; then
   mkdir -p "$BIN_DIR"
@@ -775,7 +837,7 @@ if [ -f "$BIN_PATH" ]; then
 fi
 
 mv vigil-agent "$BIN_PATH"
-chown "${AGENT_USER}:${AGENT_USER}" "$BIN_PATH"
+chown 0:0 "$BIN_PATH"
 chmod 755 "$BIN_PATH"
 
 # Set SELinux context if needed
@@ -784,9 +846,69 @@ set_selinux_context
 # Cleanup
 rm -rf "$TEMP_DIR"
 
-# Make sure /etc/machine-id exists for persistent fingerprint
-if [ ! -f /etc/machine-id ]; then
-  cat /proc/sys/kernel/random/uuid | tr -d '-' > /etc/machine-id
+# Migrate installs that ran as the legacy "app" user (detected above).
+if [ "$LEGACY_INSTALL" = true ]; then
+  echo "Migrating the agent service from the '$LEGACY_AGENT_USER' user to '$AGENT_USER'..."
+  # Keep Docker inventory working across the migration unless told otherwise: the legacy
+  # installer granted docker access unconditionally.
+  if [ -z "$DOCKER_ACCESS" ] && user_in_group "$LEGACY_AGENT_USER" docker; then
+    echo "The previous service user had Docker socket access; carrying it over (pass --no-docker to drop it)."
+    DOCKER_ACCESS=true
+  fi
+fi
+
+# Create the dedicated, unprivileged user for the service if it doesn't exist. This runs once
+# the new binary is verified, so a failed download leaves an existing install untouched.
+echo "Configuring the dedicated user for the Vigil Agent service..."
+if is_alpine; then
+  if ! id -u "$AGENT_USER" >/dev/null 2>&1; then
+    addgroup -S "$AGENT_USER"
+    adduser -S -D -H -h /nonexistent -s /sbin/nologin -G "$AGENT_USER" "$AGENT_USER"
+  fi
+
+elif is_openwrt; then
+  # No useradd on OpenWrt: pick the first free system id below 1000 and edit the files directly.
+  if ! id -u "$AGENT_USER" >/dev/null 2>&1 && ! grep -q "^$AGENT_USER:" /etc/passwd 2>/dev/null; then
+    AGENT_ID=999
+    while cut -d: -f3 /etc/passwd /etc/group | grep -qx "$AGENT_ID"; do
+      AGENT_ID=$((AGENT_ID - 1))
+    done
+    grep -q "^$AGENT_USER:" /etc/group || echo "$AGENT_USER:x:$AGENT_ID:" >> /etc/group
+    echo "$AGENT_USER:x:$AGENT_ID:$AGENT_ID::/nonexistent:/bin/false" >> /etc/passwd
+  fi
+
+elif is_freebsd; then
+  if is_opnsense; then
+    echo "OPNsense detected: skipping user creation (using daemon user instead)"
+    AGENT_USER="daemon"
+  elif ! id -u "$AGENT_USER" >/dev/null 2>&1; then
+    pw user add "$AGENT_USER" -d /nonexistent -s /usr/sbin/nologin -c "Vigil Agent"
+  fi
+
+else
+  if ! id -u "$AGENT_USER" >/dev/null 2>&1; then
+    # Reuse a leftover group of the same name: useradd --user-group refuses to create it twice.
+    if getent group "$AGENT_USER" >/dev/null 2>&1; then
+      AGENT_GROUP_OPT="-g $AGENT_USER"
+    else
+      AGENT_GROUP_OPT="--user-group"
+    fi
+    useradd --system $AGENT_GROUP_OPT --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin \
+      --comment "Vigil Agent" "$AGENT_USER"
+  fi
+fi
+
+apply_docker_access
+
+# The agent persists its fingerprint (its identity on the hub) here. systemd's
+# StateDirectory= also manages it, but OpenRC needs it created for the service user, and a
+# migration from the legacy user must hand the existing files over. Only that migration
+# recurses: the agent writes into this dir, and root should not chown its content blindly.
+mkdir -p "$AGENT_STATE_DIR"
+if [ "$LEGACY_INSTALL" = true ]; then
+  chown -R "${AGENT_USER}:${AGENT_USER}" "$AGENT_STATE_DIR"
+else
+  chown "${AGENT_USER}:${AGENT_USER}" "$AGENT_STATE_DIR"
 fi
 
 # Modify service installation part, add Alpine check before systemd service creation
@@ -799,14 +921,14 @@ if is_alpine; then
 name="vigil-agent"
 description="Vigil Agent Service"
 command="$BIN_PATH"
-command_user="app"
+command_user="$AGENT_USER"
 command_background="yes"
 pidfile="/run/\${RC_SVCNAME}.pid"
 output_log="/var/log/vigil-agent.log"
 error_log="/var/log/vigil-agent.err"
 
 start_pre() {
-    checkpath -f -m 0644 -o app:app "\$output_log" "\$error_log"
+    checkpath -f -m 0644 -o $AGENT_USER:$AGENT_USER "\$output_log" "\$error_log"
 }
 
 # Load KEY/TOKEN/HUB_URL from the root-only env file written at install time.
@@ -825,12 +947,18 @@ EOF
     write_shell_env_file "$AGENT_DIR/agent.env"
     rc-update add vigil-agent default
   else
-    echo "Alpine OpenRC service file already exists. Skipping creation."
+    if [ "$LEGACY_INSTALL" = true ]; then
+      echo "Switching the OpenRC service to the $AGENT_USER user..."
+      sed -i -e "s/^command_user=\"$LEGACY_AGENT_USER\"\$/command_user=\"$AGENT_USER\"/" \
+        -e "s/-o $LEGACY_AGENT_USER:$LEGACY_AGENT_USER /-o $AGENT_USER:$AGENT_USER /" /etc/init.d/vigil-agent
+    else
+      echo "Alpine OpenRC service file already exists. Skipping creation."
+    fi
   fi
 
   # Create log files with proper permissions
   touch /var/log/vigil-agent.log /var/log/vigil-agent.err
-  chown app:app /var/log/vigil-agent.log /var/log/vigil-agent.err
+  chown "$AGENT_USER:$AGENT_USER" /var/log/vigil-agent.log /var/log/vigil-agent.err
 
   # Start the service
   rc-service vigil-agent restart
@@ -867,9 +995,12 @@ start_service() {
     # Load KEY/TOKEN/HUB_URL from the root-only env file (values are
     # single-quote-escaped there, so sourcing cannot execute injected code).
     [ -r "$AGENT_DIR/agent.env" ] && . "$AGENT_DIR/agent.env"
+    # /var is a tmpfs on OpenWrt: recreate the state dir for the unprivileged user on each boot.
+    mkdir -p $AGENT_STATE_DIR
+    chown $AGENT_USER:$AGENT_USER $AGENT_STATE_DIR
     procd_open_instance
     procd_set_param command $BIN_PATH
-    procd_set_param user app
+    procd_set_param user $AGENT_USER
     procd_set_param pidfile /var/run/vigil-agent.pid
     procd_set_param env KEY="\$KEY" TOKEN="\$TOKEN" HUB_URL="\$HUB_URL"
     procd_set_param respawn
@@ -884,7 +1015,12 @@ EOF
     write_shell_env_file "$AGENT_DIR/agent.env"
     /etc/init.d/vigil-agent enable
   else
-    echo "OpenWRT init script already exists. Skipping creation."
+    if [ "$LEGACY_INSTALL" = true ]; then
+      echo "Switching the procd service to the $AGENT_USER user..."
+      sed -i "s/procd_set_param user $LEGACY_AGENT_USER\$/procd_set_param user $AGENT_USER/" /etc/init.d/vigil-agent
+    else
+      echo "OpenWRT init script already exists. Skipping creation."
+    fi
   fi
 
   # Start the service
@@ -999,18 +1135,24 @@ After=network-online.target
 [Service]
 EnvironmentFile=-$AGENT_DIR/agent.env
 ExecStart=$BIN_PATH
-User=app
+User=$AGENT_USER
+Group=$AGENT_USER
 Restart=on-failure
 RestartSec=5
 StateDirectory=vigil-agent
 
-# Security/sandboxing settings
+# Security/sandboxing settings (keep in sync with supplemental/debian/vigil-agent.service)
+NoNewPrivileges=yes
+PrivateTmp=yes
 KeyringMode=private
 LockPersonality=yes
 ProtectClock=yes
 ProtectHome=read-only
 ProtectHostname=yes
 ProtectKernelLogs=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
 ProtectSystem=strict
 RemoveIPC=yes
 RestrictSUIDSGID=true
@@ -1034,6 +1176,10 @@ EOF
     echo "$(systemctl status vigil-agent.service)"
     exit 1
   fi
+fi
+
+if [ "$LEGACY_INSTALL" = true ]; then
+  print_legacy_user_notice
 fi
 
 printf "\n\033[32mVigil Agent has been installed successfully!\033[0m\n"

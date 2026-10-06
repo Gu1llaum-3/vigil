@@ -322,6 +322,23 @@ Current rules (`supplemental/scripts/install-agent.sh`, `supplemental/debian/*`)
 When adding a new platform or service manager, follow this pattern — do not add a
 new inline-interpolation path.
 
+Service user and file ownership (`install-agent.sh`):
+
+- the agent runs as the dedicated system user `vigil-agent` — not `vigil`, which is the
+  native hub's user (`install-hub.sh`): an agent on the hub's host must not be able to
+  write the hub's data. (The `.deb` still uses `vigil`; see the packaging doc.)
+- the binary and `/opt/vigil-agent` are owned by root (`0755`), the env file is root
+  `0600`; only the state dir (`/var/lib/vigil-agent`, holding the fingerprint) belongs
+  to the service user. The agent must never be able to rewrite its own binary
+- the generated systemd unit carries the same sandboxing directives as
+  `supplemental/debian/vigil-agent.service`; change both together
+- installs from before this rule ran as a generic `app` user. Upgrades detect that from
+  the service definition, switch it to `vigil-agent` and hand over the state dir (the
+  fingerprint, i.e. the host's identity, is kept), but never delete `app`: the name is
+  common and may belong to something else
+- uninstall removes `vigil-agent` but keeps `/var/lib/vigil-agent` on purpose: the
+  fingerprint stays, so a reinstall comes back as the same host on the hub
+
 ## Docker Group Membership Is Root-Equivalent
 
 Adding the agent's service user to the `docker` group grants full control of the
@@ -331,7 +348,13 @@ systemd sandboxing (`ProtectSystem=strict`, etc.).
 Rules:
 
 - the Debian package makes this opt-in via the `vigil-agent/docker_access` debconf
-  question; do not make it automatic
+  question, and `install-agent.sh` via `--docker` (revoked with `--no-docker`); do not
+  make it automatic. Without either flag the script keeps the current membership, so an
+  upgrade never silently drops container inventory; the one carry-over is the migration
+  from the legacy `app` user, whose docker membership was granted unconditionally by
+  older installers
+- the agent never needs the `disk` group (no collector reads block devices); do not
+  add it back
 - the hub container image runs as a non-root uid (`10001`) and grants `CAP_NET_RAW`
   to the `ping` binary via `setcap` so the ping monitor still works without root —
   do not "fix" a ping failure by reverting the image to root

@@ -317,3 +317,24 @@ For most repository-specific issues, inspect these in order:
 3. `docs/conventions-and-gotchas.md`
 4. the subsystem-specific doc for hub, agent, frontend, or auth
 5. the high-signal files listed in `docs/ai/agent-navigation.md`
+
+## Containers Are Missing For A Host (Docker Inventory Empty)
+
+### Symptoms
+
+- a host that runs Docker shows no containers, or its Docker state is `permission_denied`
+
+### Cause
+
+- the agent's service user has no access to the Docker socket. Since the least-privilege installer change, `install-agent.sh` only grants it with `--docker` (docker group membership is root-equivalent); the `.deb` asks through the `vigil-agent/docker_access` debconf question
+
+### Fix
+
+- re-run the install script with `--docker` (or copy *Copy install script with Docker monitoring* from the *Add agent* dialog), or `dpkg-reconfigure vigil-agent` for the `.deb`
+- then restart the agent so it picks up the new group: the script does it; for the `.deb`, `systemctl restart vigil-agent`
+
+### Related Files
+
+- `supplemental/scripts/install-agent.sh`
+- `supplemental/debian/postinstall.sh`
+- `agent/collectors/docker.go`
