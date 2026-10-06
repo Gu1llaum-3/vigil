@@ -4,7 +4,7 @@
 
 ### Required
 
-- Go 1.26.2 or newer
+- Go 1.27.1 or newer (PocketBase ≥ 0.40 requires Go 1.27; see `docs/conventions-and-gotchas.md` → JSON v2)
 - Node.js 24.x with `npm`
 
 ### Optional But Useful

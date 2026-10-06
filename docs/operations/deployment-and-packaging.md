@@ -82,6 +82,8 @@ Release behavior:
 - tags containing a hyphen such as `v1.2.3-beta.1` or `v1.2.3-dev.1` are treated as prereleases
 - GitHub prereleases stay separate and are never promoted to `latest`
 - rerunning the same tag replaces existing release artifacts instead of failing on duplicate asset names
+- `docker-images.yml` does **not** build the frontend on the runner — the Dockerfile's `web-builder` stage does (and `internal/site/dist` is in `.dockerignore`); it uses the GitHub Actions BuildKit cache (`type=gha`) across the three platforms (`linux/amd64`, `linux/arm64`, `linux/arm/v7`)
+- `release.yml` installs Go from `go-version-file: go.mod`, so the `go` directive in `go.mod` **is** the toolchain used for release binaries — bump it to pick up Go security patch releases
 
 > **Note:** there is intentionally no agent Compose or combined hub+agent Compose. Agents are installed natively (see *Service Management And Install Scripts*).
 
@@ -97,6 +99,8 @@ Purpose:
 - produce a container image that serves the embedded web UI and PocketBase runtime
 - install the system `ping` binary used by the hub `ping` monitor type
 - pin the Go builder image to the patched Go toolchain version required by `go.mod`
+- stamp the release version into the binary: the `VERSION` build arg (passed by `docker-images.yml` as the git tag) is injected with the same `-X github.com/Gu1llaum-3/vigil.Version=…` flag as `.goreleaser.yml`, leading `v` stripped. Without it the binary keeps the in-source default (`0.1.0`), which breaks the version shown in the UI / `GET /api/app/info` and the `CHECK_UPDATES` comparison — so a local `docker build` reports `0.1.0` unless you pass `--build-arg VERSION=vX.Y.Z`
+- all three base images (`node`, `golang`, `alpine`) are pinned by tag **and** digest; Dependabot's `docker` ecosystem (`.github/dependabot.yml`, directory `/internal`) bumps both
 
 Operational note:
 
