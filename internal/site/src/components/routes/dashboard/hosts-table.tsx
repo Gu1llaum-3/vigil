@@ -2,13 +2,17 @@ import { Plural, Trans, useLingui } from "@lingui/react/macro"
 import {
 	type Column,
 	type ColumnDef,
-	type PaginationState,
-	type SortingState,
+	createPaginatedRowModel,
+	createSortedRowModel,
 	flexRender,
-	getCoreRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
+	type PaginationState,
+	rowPaginationFeature,
+	rowSortingFeature,
+	type SortingState,
+	sortFn_alphanumeric,
+	sortFn_text,
+	tableFeatures,
+	useTable,
 } from "@tanstack/react-table"
 import { ChevronDownIcon, XIcon } from "lucide-react"
 import { memo, useEffect, useMemo, useState } from "react"
@@ -93,7 +97,23 @@ function InfoBtn({ rows }: { rows: Array<{ label: string; value: string | number
 	)
 }
 
-function SortBtn({ column, children }: { column: Column<HostsOverviewRecord, unknown>; children: React.ReactNode }) {
+// Only sorting + pagination are used. The "auto" sortFn resolves string columns to the
+// registered alphanumeric/text fns (numbers fall back to the built-in basic sort), as in v8.
+const tableFeatureSet = tableFeatures({
+	rowSortingFeature,
+	rowPaginationFeature,
+	sortedRowModel: createSortedRowModel(),
+	paginatedRowModel: createPaginatedRowModel(),
+	sortFns: { alphanumeric: sortFn_alphanumeric, text: sortFn_text },
+})
+
+function SortBtn({
+	column,
+	children,
+}: {
+	column: Column<typeof tableFeatureSet, HostsOverviewRecord, unknown>
+	children: React.ReactNode
+}) {
 	const sorted = column.getIsSorted()
 	return (
 		<button
@@ -171,7 +191,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 		[t]
 	)
 
-	const columns: ColumnDef<HostsOverviewRecord>[] = useMemo(
+	const columns: ColumnDef<typeof tableFeatureSet, HostsOverviewRecord>[] = useMemo(
 		() => [
 			{
 				id: "connection",
@@ -314,16 +334,13 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 		[t, readOnly, mutes]
 	)
 
-	const table = useReactTable({
+	const table = useTable({
+		features: tableFeatureSet,
 		data: filteredHosts,
 		columns,
 		state: { sorting, pagination },
 		onSortingChange: setSorting,
 		onPaginationChange: setPagination,
-		getCoreRowModel: getCoreRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		manualFiltering: true,
 		autoResetPageIndex: false,
 	})
 
@@ -442,7 +459,7 @@ export const HostsTable = memo(function HostsTable({ hosts, filters, onFiltersCh
 						) : (
 							table.getRowModel().rows.map((row) => (
 								<TableRow key={row.id} className="group/row">
-									{row.getVisibleCells().map((cell) => (
+									{row.getAllCells().map((cell) => (
 										<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
 									))}
 								</TableRow>
