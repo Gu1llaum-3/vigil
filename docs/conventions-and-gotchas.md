@@ -369,6 +369,14 @@ Since PocketBase 0.40 (Go 1.27), `e.JSON(...)` and `e.BindBody(...)` go through 
 - `e.BindBody` stays case-insensitive on field names (PocketBase opts into `MatchCaseInsensitiveNames` for compatibility) but now rejects request bodies with duplicate keys.
 - Do not write a custom `UnmarshalJSON` that calls `json.Unmarshal` on an alias of the same type without checking it under Go 1.27: that pattern is what made PocketBase 0.37 overflow the stack on Go 1.27.
 
+## TanStack Table v9: APIs Exist Only For Registered Features
+
+The hosts and containers tables (`internal/site/src/components/routes/dashboard/*-table.tsx`) use TanStack Table v9 with an explicit `tableFeatures({...})` set (sorting + pagination only). These pitfalls fail quietly at runtime rather than at build time:
+
+- **An API from an unregistered feature is simply missing.** `row.getVisibleCells()`, column filtering, visibility, pinning, etc. need their feature (`columnVisibilityFeature`, …) in the `tableFeatures` call; without it the method is `undefined` at runtime. The tables render with `row.getAllCells()` (core) for that reason. Add the feature when you need its API.
+- **String sort functions resolve only if registered.** The default `sortFn: "auto"` picks `alphanumeric`/`text` for string columns from the `sortFns` slot (we register exactly those two, which reproduces v8 ordering); numbers fall back to the built-in basic sort. Using another named sort (e.g. `"datetime"`) requires registering `sortFn_datetime` there, otherwise it silently degrades to basic sorting.
+- Row/cell/column methods live on the prototype: call them on the instance (`row.getValue(id)`), never destructure them.
+
 ## Good Default Verification Habit
 
 For most non-trivial changes, the safe baseline is:

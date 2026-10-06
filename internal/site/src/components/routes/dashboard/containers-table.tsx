@@ -3,13 +3,17 @@ import { getPagePath } from "@nanostores/router"
 import {
 	type Column,
 	type ColumnDef,
-	type SortingState,
-	type PaginationState,
+	createPaginatedRowModel,
+	createSortedRowModel,
 	flexRender,
-	getCoreRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
+	type PaginationState,
+	rowPaginationFeature,
+	rowSortingFeature,
+	type SortingState,
+	sortFn_alphanumeric,
+	sortFn_text,
+	tableFeatures,
+	useTable,
 } from "@tanstack/react-table"
 import {
 	CheckIcon,
@@ -383,7 +387,25 @@ function ImageCell({ container }: { container: ContainerFleetEntry }) {
 	)
 }
 
-function SortBtn({ column, children }: { column: Column<ContainerFleetEntry, unknown>; children: React.ReactNode }) {
+// Only sorting + pagination are used. The "auto" sortFn resolves string columns to the
+// registered alphanumeric/text fns (numbers fall back to the built-in basic sort), as in v8.
+const tableFeatureSet = tableFeatures({
+	rowSortingFeature,
+	rowPaginationFeature,
+	sortedRowModel: createSortedRowModel(),
+	paginatedRowModel: createPaginatedRowModel(),
+	sortFns: { alphanumeric: sortFn_alphanumeric, text: sortFn_text },
+})
+
+type ContainerColumnDef = ColumnDef<typeof tableFeatureSet, ContainerFleetEntry>
+
+function SortBtn({
+	column,
+	children,
+}: {
+	column: Column<typeof tableFeatureSet, ContainerFleetEntry, unknown>
+	children: React.ReactNode
+}) {
 	const sorted = column.getIsSorted()
 	return (
 		<button
@@ -823,7 +845,7 @@ export const ContainersTable = memo(function ContainersTable({
 		[t]
 	)
 
-	const columns: ColumnDef<ContainerFleetEntry>[] = useMemo(
+	const columns: ContainerColumnDef[] = useMemo(
 		() => [
 			{
 				id: "host",
@@ -942,7 +964,7 @@ export const ContainersTable = memo(function ContainersTable({
 									onOpenAdvanced={() => setAdvancedOverrideEntry(c)}
 								/>
 							),
-						} as ColumnDef<ContainerFleetEntry>,
+						} as ContainerColumnDef,
 					]
 				: []),
 			{
@@ -965,21 +987,18 @@ export const ContainersTable = memo(function ContainersTable({
 						</div>
 					)
 				},
-			} as ColumnDef<ContainerFleetEntry>,
+			} as ContainerColumnDef,
 		],
 		[admin, readonly, mutes, overrides, setOverridePolicy, t]
 	)
 
-	const table = useReactTable({
+	const table = useTable({
+		features: tableFeatureSet,
 		data: filteredContainers,
 		columns,
 		state: { sorting, pagination },
 		onSortingChange: setSorting,
 		onPaginationChange: setPagination,
-		getCoreRowModel: getCoreRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		manualFiltering: true,
 		autoResetPageIndex: false,
 	})
 
@@ -1092,7 +1111,7 @@ export const ContainersTable = memo(function ContainersTable({
 						) : (
 							table.getRowModel().rows.map((row) => (
 								<TableRow key={row.id}>
-									{row.getVisibleCells().map((cell) => (
+									{row.getAllCells().map((cell) => (
 										<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
 									))}
 								</TableRow>
