@@ -7,6 +7,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# pnpm is the package manager (see packageManager in package.json); never commit an npm lockfile
+package-lock.json
+
 node_modules
 dist
 dist-ssr

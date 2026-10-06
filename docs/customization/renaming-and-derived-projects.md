@@ -159,8 +159,8 @@ If you rename visible user-facing strings, review localization assets.
 
 Relevant commands:
 
-- `npm run --prefix ./internal/site sync`
-- `npm run --prefix ./internal/site sync_and_purge`
+- `pnpm --dir ./internal/site sync`
+- `pnpm --dir ./internal/site sync_and_purge`
 
 Relevant files:
 
