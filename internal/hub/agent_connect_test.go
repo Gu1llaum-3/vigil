@@ -17,6 +17,7 @@ import (
 	appmeta "github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/agent"
 	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/Gu1llaum-3/vigil/internal/tests/pbtemplate"
 	"github.com/blang/semver"
 	"github.com/pocketbase/pocketbase/core"
 	pbtests "github.com/pocketbase/pocketbase/tests"
@@ -28,7 +29,8 @@ import (
 
 // Helper function to create a test hub without import cycle
 func createTestHub(t testing.TB) (*Hub, *pbtests.TestApp, error) {
-	testDataDir := t.TempDir()
+	// Start from the data dir migrated once by TestMain (main_test.go).
+	testDataDir := pbtemplate.DataDirFor(t.TempDir())
 	testApp, err := pbtests.NewTestApp(testDataDir)
 	if err != nil {
 		return nil, nil, err

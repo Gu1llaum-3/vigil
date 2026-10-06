@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Gu1llaum-3/vigil/internal/hub"
+	"github.com/Gu1llaum-3/vigil/internal/tests/pbtemplate"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
@@ -46,6 +47,7 @@ func NewTestHub(optTestDataDir ...string) (*TestHub, error) {
 //
 // It is the caller's responsibility to call app.Cleanup() when the app is no longer needed.
 func NewTestHubWithConfig(config core.BaseAppConfig) (*TestHub, error) {
+	config.DataDir = pbtemplate.DataDirFor(config.DataDir)
 	testApp, err := tests.NewTestAppWithConfig(config)
 	if err != nil {
 		return nil, err

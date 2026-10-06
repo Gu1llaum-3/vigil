@@ -19,6 +19,7 @@ import (
 
 func TestMakeLink(t *testing.T) {
 	hub, _ := appTests.NewTestHub(t.TempDir())
+	defer hub.Cleanup()
 
 	tests := []struct {
 		name     string
@@ -109,6 +110,7 @@ func TestMakeLink(t *testing.T) {
 
 func TestGetSSHKey(t *testing.T) {
 	hub, _ := appTests.NewTestHub(t.TempDir())
+	defer hub.Cleanup()
 
 	// Test Case 1: Key generation (no existing key)
 	t.Run("KeyGeneration", func(t *testing.T) {

@@ -22,6 +22,7 @@ env:
 jobs:
   go:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -47,6 +48,26 @@ jobs:
       # Linux runner, so the //go:build linux collector tests run too.
       - name: Test
         run: go test -tags=testing -timeout 20m ./...
+
+  # Same suite under the race detector, in parallel with the go job (several times
+  # slower, hence its own job and an explicit timeout).
+  race:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Placeholder frontend build
+        run: mkdir -p internal/site/dist && touch internal/site/dist/index.html
+
+      - name: Test with the race detector
+        run: go test -tags=testing -race -timeout 20m ./...
 
   frontend:
     runs-on: ubuntu-latest
