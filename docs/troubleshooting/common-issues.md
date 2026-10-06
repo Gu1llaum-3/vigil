@@ -37,6 +37,7 @@ make test
 
 - handshake fails during connection
 - agent logs show invalid signature or verification problems
+- the agent exits at startup with `no hub public key configured` (no `KEY`, `KEY_FILE` or `--key`, or the key file is empty)
 - hub never completes agent registration or online transition
 
 ### Common Causes
