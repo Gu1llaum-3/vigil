@@ -69,7 +69,7 @@ Typical use case:
 
 Path: `.github/workflows/release.yml`, triggered by a version tag. Its jobs run in sequence:
 
-1. `ci` — calls `.github/workflows/ci.yml` (Go vet + tests on Linux, frontend checks) on the tagged commit
+1. `ci` — calls `.github/workflows/ci.yml` (Go vet + tests on Linux, the same tests under the race detector, frontend checks) on the tagged commit
 2. `goreleaser` — `needs: ci`; publishes the Go binaries, archives, `.deb` packages and signed checksums
 3. `docker` — `needs: goreleaser`; builds and pushes the hub image to GHCR
 
