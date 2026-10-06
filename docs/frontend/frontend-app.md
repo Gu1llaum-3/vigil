@@ -162,7 +162,7 @@ This component demonstrates several frontend conventions used in the project:
 - route-aware links via the router helpers
 - admin-only UI branches
 - lazy loading for heavier UI pieces
-- a navbar-driven "Add agent" dialog for quick installation setup; its install-script command is built by `lib/agent-install.ts` and pinned to the hub version (see `docs/operations/deployment-and-packaging.md` → Version selection)
+- a navbar-driven "Add agent" dialog for quick installation setup — native install only (install script, or a raw binary launch command), since there is no agent container image; its install-script command is built by `lib/agent-install.ts` and pinned to the hub version (see `docs/operations/deployment-and-packaging.md` → Version selection)
 - direct links into PocketBase admin views for some advanced operations
 
 The hosts sidebar item shows a live red badge when one or more agents are not `connected`. It fetches the `agents` collection and subscribes to `agents` changes with a 1-second debounce, so connect/disconnect transitions update without a full page refresh.

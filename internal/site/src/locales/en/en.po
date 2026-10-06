@@ -387,8 +387,8 @@ msgid "Bearer token for protected topics"
 msgstr "Bearer token for protected topics"
 
 #: src/components/add-agent.tsx
-msgid "Binary"
-msgstr "Binary"
+#~ msgid "Binary"
+#~ msgstr "Binary"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Blue line for successful checks, red background for down periods."
@@ -620,18 +620,18 @@ msgid "Copy"
 msgstr "Copy"
 
 #: src/components/add-agent.tsx
-msgid "Copy a Docker-based install snippet for a new agent. The dialog uses the hub public key and the current enrollment token."
-msgstr "Copy a Docker-based install snippet for a new agent. The dialog uses the hub public key and the current enrollment token."
+#~ msgid "Copy a Docker-based install snippet for a new agent. The dialog uses the hub public key and the current enrollment token."
+#~ msgstr "Copy a Docker-based install snippet for a new agent. The dialog uses the hub public key and the current enrollment token."
 
 #: src/components/add-agent.tsx
-msgctxt "Button to copy docker compose file content"
-msgid "Copy docker compose"
-msgstr "Copy docker compose"
+#~ msgctxt "Button to copy docker compose file content"
+#~ msgid "Copy docker compose"
+#~ msgstr "Copy docker compose"
 
 #: src/components/add-agent.tsx
-msgctxt "Button to copy docker run command"
-msgid "Copy docker run"
-msgstr "Copy docker run"
+#~ msgctxt "Button to copy docker run command"
+#~ msgid "Copy docker run"
+#~ msgstr "Copy docker run"
 
 #: src/components/routes/settings/agents.tsx
 msgctxt "Environment variables"
