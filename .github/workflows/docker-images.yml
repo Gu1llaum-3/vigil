@@ -38,7 +38,7 @@ jobs:
 
       - name: Docker metadata
         id: metadata
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository }}
           flavor: |
@@ -50,7 +50,7 @@ jobs:
             type=raw,value=${{ github.ref_name }},enable=${{ contains(github.ref_name, '-') }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: ./internal/dockerfile_hub
