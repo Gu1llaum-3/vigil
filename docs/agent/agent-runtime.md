@@ -218,7 +218,7 @@ Each collector is a focused function that gathers one domain of host data:
 - `storage.go` — mounted filesystems and usage
 - `packages_debian.go` — installed packages and pending updates (APT)
 - `packages_redhat.go` — installed packages and pending updates (DNF/YUM)
-- `repositories_debian.go` — APT repository sources
+- `repositories_debian.go` — APT repository sources, in both formats: one-line `sources.list` / `sources.list.d/*.list` and deb822 `sources.list.d/*.sources` (the default on Debian 12+ images, Debian 13 and Ubuntu 24.04). A deb822 stanza yields one entry per URI × suite; only binary (`deb`) repositories are reported, and `Enabled: no` stanzas are kept with `enabled: false`
 - `repositories_redhat.go` — DNF/YUM repository sources
 - `reboot.go` — reboot-required detection
 - `docker.go` — read-only Docker inventory (container state, image refs, image IDs, repo digests, exit code for terminal states)
