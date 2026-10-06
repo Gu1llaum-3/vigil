@@ -117,9 +117,10 @@ release:
 
 # Keyless (OIDC) signing of the checksums file with cosign. The release workflow
 # installs cosign and runs with `id-token: write`, so no private key is needed.
-# Verify with:
-#   cosign verify-blob --certificate vigil_<ver>_checksums.txt.pem \
-#     --signature vigil_<ver>_checksums.txt.sig \
+# Cosign v3 writes a single Sigstore bundle (signature + certificate + transparency log
+# proof) instead of separate .sig/.pem files; releases up to v0.2.14-beta still ship those.
+# Verify with (cosign v3):
+#   cosign verify-blob --bundle vigil_<ver>_checksums.txt.sigstore.json \
 #     --certificate-identity-regexp 'https://github.com/Gu1llaum-3/vigil/.*' \
 #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
 #     vigil_<ver>_checksums.txt
@@ -127,11 +128,10 @@ signs:
   - cmd: cosign
     artifacts: checksum
     output: true
-    certificate: '${artifact}.pem'
+    signature: '${artifact}.sigstore.json'
     args:
       - sign-blob
-      - '--output-certificate=${certificate}'
-      - '--output-signature=${signature}'
+      - '--bundle=${signature}'
       - '${artifact}'
       - '--yes'
 
