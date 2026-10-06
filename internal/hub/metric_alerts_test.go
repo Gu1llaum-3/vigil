@@ -365,12 +365,12 @@ func TestThresholdForDisabledOverrideMutes(t *testing.T) {
 // per-agent override > global > built-in default (80/90 for cpu/memory/disk).
 func TestInstantSeverity(t *testing.T) {
 	cases := []struct {
-		name    string
-		eval    *metricAlertEvaluator
-		agent   string
-		metric  metricKind
-		value   float64
-		want    alertTier
+		name   string
+		eval   *metricAlertEvaluator
+		agent  string
+		metric metricKind
+		value  float64
+		want   alertTier
 	}{
 		{
 			name:   "vanilla install uses built-in default: 99.6%% CPU is critical",

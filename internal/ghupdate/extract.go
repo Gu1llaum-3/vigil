@@ -27,7 +27,7 @@ func extractTarGz(srcPath, destDir string) error {
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }() // read-only
 
 	gz, err := gzip.NewReader(src)
 	if err != nil {
@@ -70,10 +70,13 @@ func extractTarGz(srcPath, destDir string) error {
 			}
 			// Bound decompression to guard against a tar bomb writing an oversized file.
 			if _, err := io.Copy(outFile, io.LimitReader(tr, maxArchiveFileBytes)); err != nil {
-				outFile.Close()
+				_ = outFile.Close()
 				return err
 			}
-			outFile.Close()
+			// A failed close can mean the extracted binary was not fully written.
+			if err := outFile.Close(); err != nil {
+				return err
+			}
 		default:
 			// Skip symlinks, hardlinks, devices, fifos, etc. — they enable arbitrary
 			// file writes/links outside destDir and are never part of a release archive.
@@ -144,10 +147,13 @@ func extractFile(zipFile *zip.File, basePath string) error {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
 
-		_, err = io.Copy(f, r)
-		if err != nil {
+		if _, err := io.Copy(f, r); err != nil {
+			_ = f.Close()
+			return err
+		}
+		// A failed close can mean the extracted file was not fully written.
+		if err := f.Close(); err != nil {
 			return err
 		}
 	}

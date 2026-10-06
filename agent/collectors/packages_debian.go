@@ -154,7 +154,7 @@ func parseAptHistoryFile(path string) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only
 
 	if strings.HasSuffix(path, ".gz") {
 		gz, err := gzip.NewReader(f)

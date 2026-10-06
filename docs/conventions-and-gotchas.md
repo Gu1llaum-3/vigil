@@ -419,3 +419,9 @@ For most non-trivial changes, the safe baseline is:
 3. manually sanity-check the changed flow if it is user- or protocol-facing
 
 That habit will catch most repo-specific mistakes earlier than code review.
+
+## Lint Rules (`.golangci.yml`)
+
+- errcheck ignores, by configuration, errors that carry no information here: closing readers (HTTP bodies, archive readers), removing files that are no longer needed (`os.Remove`/`os.RemoveAll`), socket deadlines and close frames on connections being torn down. `(*os.File).Close` is **not** excluded, so the linter flags any unchecked close: a file that was **written** must be closed explicitly with the error returned (a failed close can mean a truncated file — see `internal/ghupdate`); a read-only file uses `defer func() { _ = f.Close() }()`
+- elsewhere, an ignored error is written `_ = f()` with a comment saying why it is safe; tests are exempt from errcheck
+- CI fails on any lint finding, any unformatted file and any vulnerability the code reaches (`govulncheck`). `govulncheck` and `pnpm audit --prod` query advisory databases, so a PR can turn red without any related change: a new advisory (bump the dependency, or Go itself for a stdlib one) or, for `pnpm audit`, a transient registry error (re-run)

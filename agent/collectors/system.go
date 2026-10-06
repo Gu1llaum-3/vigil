@@ -33,7 +33,7 @@ func collectOSInfo() common.OSInfo {
 	if err != nil {
 		return common.OSInfo{}
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only
 
 	fields := make(map[string]string)
 	scanner := bufio.NewScanner(f)

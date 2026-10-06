@@ -19,10 +19,6 @@ func monitorIPBlocked(ip net.IP, blockPrivate, allowAll bool) bool {
 	return netguard.IPBlocked(ip, blockPrivate, allowAll)
 }
 
-func monitorGuardPolicy() (blockPrivate, allowAll bool) {
-	return netguard.Policy()
-}
-
 // newGuardedDialer returns a dialer that refuses to connect to blocked addresses (see
 // netguard.IPBlocked), evaluated against the resolved IP at dial time.
 func newGuardedDialer() *net.Dialer {

@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/spf13/cobra"
 	app "github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/internal/ghupdate"
+	"github.com/spf13/cobra"
 )
 
 // Update updates app to the latest version

@@ -49,6 +49,40 @@ jobs:
       - name: Test
         run: go test -tags=testing -timeout 20m ./...
 
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Placeholder frontend build
+        run: mkdir -p internal/site/dist && touch internal/site/dist/index.html
+
+      - name: gofmt
+        run: |
+          unformatted=$(git ls-files '*.go' | xargs gofmt -l)
+          if [ -n "$unformatted" ]; then
+            echo "Not gofmt-formatted (run gofmt -w):"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      # Configuration in .golangci.yml.
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.14.0
+
+      # Fails only on vulnerabilities the code actually reaches.
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 -tags testing ./...
+
   # Same suite under the race detector, in parallel with the go job (several times
   # slower, hence its own job and an explicit timeout).
   race:
@@ -95,6 +129,10 @@ jobs:
 
       - name: Lint and format (biome)
         run: pnpm check
+
+      # Dependencies shipped in the bundle; build-only tools are not audited here.
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
 
       # The Vite build transpiles with SWC and never type-checks, so this is the only
       # place type errors are caught. It also compiles the lingui catalogs it imports.

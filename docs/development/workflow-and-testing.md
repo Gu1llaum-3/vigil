@@ -12,7 +12,7 @@
 - `mise` for pinned Go/Node/lefthook toolchains
 - `lefthook` for git hooks
 - `entr` for hot-reload during development
-- `golangci-lint` for Go linting
+- `golangci-lint` v2 for Go linting (`make lint`; configuration in `.golangci.yml`)
 
 The repository pins its local toolchain in `.mise.toml`.
 
@@ -21,11 +21,12 @@ After cloning, run `mise install` to match the repo versions.
 If you want the Git hooks enabled, run `lefthook install` once.
 
 The hooks run `gofmt` and Biome (`pnpm check`) on commit, and Go tests plus the frontend type check (`pnpm typecheck`, only when frontend files are pushed) before push.
-The `CI` workflow (`.github/workflows/ci.yml`, on pushes to `main` and `dev` and on pull requests, including Dependabot's) has three jobs:
+The `CI` workflow (`.github/workflows/ci.yml`, on pushes to `main` and `dev` and on pull requests, including Dependabot's) has four jobs:
 
 - `go` (ubuntu-latest): `go mod verify`, `go mod tidy -diff` (fails when `go.mod`/`go.sum` are not tidy), `go vet -tags=testing ./...` and `go test -tags=testing -timeout 20m ./...`. It runs on Linux, so the `//go:build linux` collector tests run too, and creates an empty `internal/site/dist/index.html` first because the hub embeds that directory.
+- `lint`: `gofmt` (fails on any unformatted tracked `.go` file), `golangci-lint` (`.golangci.yml`: the standard linters — errcheck, govet, ineffassign, staticcheck, unused — on the `testing` build tag) and `govulncheck` (fails only on vulnerabilities the code reaches). `make lint` runs the same three checks
 - `race`: the same suite under the race detector (`go test -tags=testing -race -timeout 20m ./...`), in parallel with `go`
-- `frontend`: Biome, the type check and the frontend build
+- `frontend`: Biome, `pnpm audit --prod --audit-level high` (dependencies shipped in the bundle; build-only tools such as `@lingui/cli` are not audited), the type check and the frontend build
 
 `ci.yml` is also a reusable workflow (`workflow_call`): the release workflow runs it on the tagged commit before publishing anything (see `docs/operations/deployment-and-packaging.md`). To reproduce the `go` job locally, run the same commands in a `golang` container on a clean copy (`git archive HEAD`), as a non-root user like the GitHub runner (and as root too: Docker builds run tests as root).
 
@@ -66,7 +67,7 @@ Output binaries are written under `build/`.
 - `make tidy`
   - runs `go mod tidy`
 - `make lint`
-  - runs `golangci-lint`
+  - runs `gofmt -l`, `golangci-lint` and `govulncheck`, like the CI `lint` job
 - `make clean`
   - cleans Go build output and removes `build/`
 

@@ -1,0 +1,34 @@
+# golangci-lint v2 configuration. Run with `make lint` (also run in CI).
+version: "2"
+
+run:
+  # Lint the test files too; they only compile with this tag.
+  build-tags:
+    - testing
+
+linters:
+  # errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  settings:
+    errcheck:
+      # Errors that carry no information here: closing a reader (HTTP bodies, archive
+      # readers), removing files we no longer need, and socket deadlines/close frames on
+      # connections that are being torn down anyway. (*os.File).Close is deliberately not
+      # excluded: closing a file that was *written* must be checked (call it explicitly
+      # and return its error, see internal/ghupdate); a read-only file is closed with
+      # `defer func() { _ = f.Close() }()`.
+      exclude-functions:
+        - (io.ReadCloser).Close
+        - (*compress/gzip.Reader).Close
+        - (*archive/zip.ReadCloser).Close
+        - os.Remove
+        - os.RemoveAll
+        - (*github.com/lxzan/gws.Conn).SetDeadline
+        - (*github.com/lxzan/gws.Conn).WriteClose
+        - (*github.com/lxzan/gws.Message).Close
+  exclusions:
+    rules:
+      # Tests ignore cleanup errors and call handlers for their side effects.
+      - path: _test\.go
+        linters:
+          - errcheck

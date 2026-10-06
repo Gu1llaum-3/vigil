@@ -33,7 +33,7 @@ func parseRepoFile(path string) ([]common.RepositoryInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only
 
 	var repos []common.RepositoryInfo
 	current := map[string]string{}

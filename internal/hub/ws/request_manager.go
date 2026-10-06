@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/fxamacker/cbor/v2"
 	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/lxzan/gws"
 )
 
@@ -47,7 +47,7 @@ func (rm *RequestManager) SendRequest(ctx context.Context, action common.WebSock
 
 	// Respect any caller-provided deadline. If none is set, apply a reasonable default
 	// so pending requests don't live forever if the agent never responds.
-	reqCtx := ctx
+	var reqCtx context.Context
 	var cancel context.CancelFunc
 	if _, hasDeadline := ctx.Deadline(); hasDeadline {
 		reqCtx, cancel = context.WithCancel(ctx)

@@ -17,9 +17,9 @@ import (
 )
 
 type containerMetricsState struct {
-	mu         sync.Mutex
-	prevNet    map[string]containerNetworkTotals
-	prevNetAt  map[string]time.Time
+	mu        sync.Mutex
+	prevNet   map[string]containerNetworkTotals
+	prevNetAt map[string]time.Time
 }
 
 type containerNetworkTotals struct {
@@ -65,12 +65,12 @@ func CollectContainerMetrics() common.ContainerMetricsSnapshotResponse {
 			continue
 		}
 		var raw struct {
-			ID      string `json:"ID"`
-			Name    string `json:"Name"`
-			CPUPerc string `json:"CPUPerc"`
-			MemPerc string `json:"MemPerc"`
+			ID       string `json:"ID"`
+			Name     string `json:"Name"`
+			CPUPerc  string `json:"CPUPerc"`
+			MemPerc  string `json:"MemPerc"`
 			MemUsage string `json:"MemUsage"`
-			NetIO   string `json:"NetIO"`
+			NetIO    string `json:"NetIO"`
 		}
 		if err := json.Unmarshal([]byte(line), &raw); err != nil {
 			continue

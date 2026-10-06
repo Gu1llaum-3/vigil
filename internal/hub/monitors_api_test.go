@@ -44,9 +44,9 @@ func TestMoveMonitorUpdatesGroup(t *testing.T) {
 			"Authorization": token,
 		},
 		Body:            jsonReader(map[string]any{"group": group.Id}),
-		ExpectedStatus:   http.StatusOK,
-		ExpectedContent:  []string{"\"group\":\"" + group.Id + "\""},
-		TestAppFactory:   func(t testing.TB) *pbTests.TestApp { return hub.TestApp },
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{"\"group\":\"" + group.Id + "\""},
+		TestAppFactory:  func(t testing.TB) *pbTests.TestApp { return hub.TestApp },
 	}
 
 	scenario.Test(t)

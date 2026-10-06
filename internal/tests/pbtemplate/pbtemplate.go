@@ -44,7 +44,7 @@ func Run(run func() int) int {
 	// The clone lives in its own temp dir; remove it whatever happens next.
 	defer os.RemoveAll(tmpl.DataDir())
 	// Close the databases (checkpointing SQLite) but keep the migrated files on disk.
-	if err := tmpl.ResetBootstrapState(); err != nil {
+	if err := tmpl.ClearBootstrap(); err != nil {
 		return run()
 	}
 
