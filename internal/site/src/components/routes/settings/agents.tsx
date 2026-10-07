@@ -168,23 +168,34 @@ const SectionEnrollmentToken = memo(() => {
 	const [checked, setChecked] = useState(false)
 	const [isPermanent, setIsPermanent] = useState(false)
 
-	async function updateToken(enable: number = -1, permanent: number = -1, forceNew: boolean = false) {
-		const data = await pb.send(`/api/app/agent-enrollment-token`, {
-			query: {
-				// sending an empty token makes the hub mint a fresh one, revoking the old value
-				token: forceNew ? "" : token,
-				enable,
-				permanent,
-			},
-		})
+	function applyState(data: { token: string; active: boolean; permanent?: boolean }) {
 		setToken(data.token)
 		setChecked(data.active)
 		setIsPermanent(!!data.permanent)
 		setIsLoading(false)
 	}
 
+	function showError(error: unknown) {
+		setIsLoading(false)
+		toast({ title: t`Error`, description: (error as Error).message, variant: "destructive" })
+	}
+
+	// The hub mints the token; regenerate replaces (and so revokes) the current value.
+	async function updateToken(enable: boolean, permanent: boolean, regenerate = false) {
+		try {
+			applyState(
+				await pb.send(`/api/app/agent-enrollment-token`, {
+					method: "POST",
+					body: { enable, permanent, regenerate },
+				})
+			)
+		} catch (error) {
+			showError(error)
+		}
+	}
+
 	useEffect(() => {
-		updateToken()
+		pb.send(`/api/app/agent-enrollment-token`, { method: "GET" }).then(applyState).catch(showError)
 	}, [])
 
 	return (
@@ -202,7 +213,7 @@ const SectionEnrollmentToken = memo(() => {
 							<Switch
 								checked={checked}
 								onCheckedChange={(checked) => {
-									updateToken(checked ? 1 : 0, isPermanent ? 1 : 0)
+									updateToken(checked, isPermanent)
 								}}
 							/>
 							<div className="min-w-0 flex-1 overflow-auto">
@@ -218,7 +229,7 @@ const SectionEnrollmentToken = memo(() => {
 										variant="ghost"
 										size="icon"
 										title={t`Regenerate (revokes the current token)`}
-										onClick={() => updateToken(1, isPermanent ? 1 : 0, true)}
+										onClick={() => updateToken(true, isPermanent, true)}
 									>
 										<RotateCwIcon className="w-4 h-4" />
 									</Button>
@@ -236,7 +247,7 @@ const SectionEnrollmentToken = memo(() => {
 								</div>
 								<Tabs
 									value={isPermanent ? "permanent" : "ephemeral"}
-									onValueChange={(value) => updateToken(1, value === "permanent" ? 1 : 0)}
+									onValueChange={(value) => updateToken(true, value === "permanent")}
 									className="mt-2"
 								>
 									<TabsList>

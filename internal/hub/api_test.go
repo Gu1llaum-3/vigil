@@ -78,14 +78,15 @@ func TestApiRoutesAuthentication(t *testing.T) {
 			TestAppFactory:  testAppFactory,
 		},
 		{
-			Name:   "GET /agent-enrollment-token - enable permanent should succeed",
-			Method: http.MethodGet,
-			URL:    "/api/app/agent-enrollment-token?enable=1&permanent=1&token=permanent-token-123",
+			Name:   "POST /agent-enrollment-token - enable permanent should succeed",
+			Method: http.MethodPost,
+			URL:    "/api/app/agent-enrollment-token",
+			Body:   jsonReader(map[string]any{"enable": true, "permanent": true}),
 			Headers: map[string]string{
 				"Authorization": userToken,
 			},
 			ExpectedStatus:  200,
-			ExpectedContent: []string{"\"permanent\":true", "permanent-token-123"},
+			ExpectedContent: []string{"\"permanent\":true", "\"active\":true"},
 			TestAppFactory:  testAppFactory,
 		},
 		{

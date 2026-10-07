@@ -380,7 +380,8 @@ An enrollment token allows a not-yet-registered agent to self-register.
 
 Current properties:
 
-- created from the hub side
+- minted by the hub (`security.RandomString(40)`) — a client-supplied value is never stored
+- managed through `/api/app/agent-enrollment-token` (non-readonly users, not superusers): `GET` is read-only and returns `{token, active, permanent}` (the permanent DB token, else the ephemeral in-memory one, else empty); `POST {"enable", "permanent", "regenerate"}` changes it. Enabling or switching permanence keeps the current value (install commands already copied keep working); `regenerate` replaces and so revokes it; `enable: false` revokes both copies. The POST requires `Content-Type: application/json` (no cross-site HTML form can drive it, even with `AUTO_LOGIN`/`TRUSTED_AUTH_HEADER`), changes are serialized (`enrollmentTokenMu`) and every in-memory copy of the user is dropped, so a regenerate really revokes. The credential never travels in a URL (access logs). A permanent token chosen by a client before this change stays until it is regenerated
 - associated with the user who created it
 - can be temporary or persistent
 - can be reused to register multiple agents, each of which gets its own persisted agent record after first successful connection
