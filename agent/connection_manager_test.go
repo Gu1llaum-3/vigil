@@ -205,6 +205,17 @@ func TestConnectionManager_StartWithInvalidConfig(t *testing.T) {
 	assert.Error(t, err, "Should error when starting already started connection manager")
 }
 
+// A configuration the agent can never connect with must stop it, not leave it running idle.
+func TestConnectionManager_StartFailsOnInvalidHubURL(t *testing.T) {
+	agent := createTestAgent(t)
+	t.Setenv(app.AgentEnvPrefix+"HUB_URL", "ftp://hub.example.com")
+	t.Setenv(app.AgentEnvPrefix+"TOKEN", "test-token")
+
+	err := agent.connectionManager.Start()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "HUB_URL must start with https://")
+}
+
 // TestConnectionManager_CloseWebSocket tests WebSocket closing
 func TestConnectionManager_CloseWebSocket(t *testing.T) {
 	agent := createTestAgent(t)

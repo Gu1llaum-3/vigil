@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os/signal"
 	"sync/atomic"
@@ -82,9 +83,11 @@ func (c *ConnectionManager) Start() error {
 		return errors.New("already started")
 	}
 
+	// A configuration the agent can never connect with (no or invalid HUB_URL, no token)
+	// stops it: running idle would look healthy to the service manager.
 	wsClient, err := newWebSocketClient(c.agent)
 	if err != nil {
-		slog.Warn("Error creating WebSocket client", "err", err)
+		return fmt.Errorf("invalid hub connection settings: %w", err)
 	}
 	c.wsClient = wsClient
 	c.eventChan = make(chan ConnectionEvent, 1)
