@@ -41,12 +41,20 @@ make test
 
 ### Cause
 
-The hub enables PocketBase's rate limiter at startup (`*:auth` allows 2 attempts per 3 seconds per client IP). Behind a reverse proxy without `TRUSTED_PROXY_IPS` + `TRUSTED_PROXY_HEADERS`, every client has the proxy's IP and shares one bucket. Client-IP headers set in the PocketBase dashboard are also ignored while `TRUSTED_PROXY_IPS` is empty (a startup warning says so).
+The hub enables PocketBase's rate limiter at startup (`*:auth` allows 2 attempts per 3 seconds per client IP, `/api/` 300 requests per 10 seconds). Every client that reaches the hub with the same IP shares those buckets:
+
+| Deployment | IP the hub sees | Fix |
+|---|---|---|
+| LAN, clients connect directly | one per machine | nothing to do |
+| Hub reached from one public IP (e.g. AWS whitelisted to the office IP, everyone behind its NAT) | the office IP, for everyone | `RATE_LIMIT_EXCLUDED_IPS=<office IP or CIDR>` (the firewall already keeps everyone else out) |
+| Behind a reverse proxy / load balancer (Caddy, nginx, AWS ALB…) | the proxy's IP | `TRUSTED_PROXY_IPS` + `TRUSTED_PROXY_HEADERS` (see below) |
+ Behind a reverse proxy without `TRUSTED_PROXY_IPS` + `TRUSTED_PROXY_HEADERS`, every client has the proxy's IP and shares one bucket. Client-IP headers set in the PocketBase dashboard are also ignored while `TRUSTED_PROXY_IPS` is empty (a startup warning says so).
 
 ### Fix
 
 - set `TRUSTED_PROXY_IPS` to the proxy's IP/CIDR and `TRUSTED_PROXY_HEADERS` to the header it sets (`X-Real-IP`, `CF-Connecting-IP`, …), then restart
 - tune a rule in the PocketBase dashboard (Settings → Rate limits); edited rules survive restarts, deleted Vigil rules come back
+- all users come from one address (office NAT): set `RATE_LIMIT_EXCLUDED_IPS` to it
 - as a last resort, `RATE_LIMITS=false` disables the limiter
 
 ### Related Files
