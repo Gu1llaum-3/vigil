@@ -214,7 +214,7 @@ Per-host policy for which filesystems the disk bar + disk alert consider. One ro
   - `notification_logs_manual_default_days`
   - `offline_agents_manual_default_days`
 - used by the retention cleanup logic and the admin purge settings UI
-- only monitoring events and notification logs currently have automatic age-based retention; hosts cleanup is manual-only and targets offline agents
+- only monitoring events and notification logs currently have automatic age-based retention; hosts cleanup is manual-only and targets offline agents, aged by `agents.last_seen` (written at every handshake and when the agent goes offline)
 
 ### `scheduled_jobs`
 

@@ -46,6 +46,7 @@ If you are adding backend behavior that needs app-wide state or helper methods, 
 - frontend serving behavior
 - custom API routes
 - connection and lifecycle hooks
+- the boot-time agent status reconciler (`startAgentStatusReconciler` in `agent_connect.go`: agents still `connected`, not seen since boot and without a live connection 60s after start are marked offline)
 
 Read it before changing initialization behavior because it is the coordination point for the hub runtime.
 

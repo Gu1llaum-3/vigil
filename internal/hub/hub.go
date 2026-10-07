@@ -136,6 +136,8 @@ func (h *Hub) StartHub() error {
 			slog.Warn("initial maintenance cache load failed", "err", err)
 		}
 		goSafe("maintenance cache ticker", func() { h.startMaintenanceCacheTicker(ctx) })
+		// mark offline the agents recorded as connected that do not come back after boot
+		h.startAgentStatusReconciler()
 		// start monitor scheduler
 		goSafe("monitor scheduler", func() { h.monitorScheduler.start(ctx) })
 		// start notification dispatcher

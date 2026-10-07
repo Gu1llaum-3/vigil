@@ -17,6 +17,7 @@ import (
 	"github.com/lxzan/gws"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 // agentConnectRequest holds information related to an agent's connection attempt.
@@ -383,19 +384,89 @@ func (h *Hub) manageAgentLifecycle(wsConn *ws.WsConn, agentId string) {
 	}
 }
 
+// agentBootReconcileDelay is how long the hub gives agents to reconnect after it starts
+// before it marks the ones still recorded as connected offline. Agents retry every 5–10s.
+var agentBootReconcileDelay = 60 * time.Second
+
+// startAgentStatusReconciler runs reconcileAgentStatuses once, agentBootReconcileDelay
+// after boot. The status in the database survives a hub restart, but the lifecycle
+// goroutine that would have marked a dead host offline does not: without this, a host that
+// died while the hub was down (or during the offline grace period) stays connected forever.
+func (h *Hub) startAgentStatusReconciler() {
+	bootedAt := time.Now()
+	delay := agentBootReconcileDelay
+	h.goAgent(func() {
+		select {
+		case <-time.After(delay):
+			h.reconcileAgentStatuses(bootedAt)
+		case <-h.agentCtx.Done():
+		}
+	})
+}
+
+// reconcileAgentStatuses marks offline (with the usual notification) every agent still
+// recorded as connected that has not connected since bootedAt and has no live connection.
+// last_seen is written by every handshake before the connection is stored in agentConns,
+// so an agent seen since boot is reconnecting (or inside its offline grace period) and is
+// left to its own lifecycle.
+func (h *Hub) reconcileAgentStatuses(bootedAt time.Time) {
+	boot := bootedAt.UTC().Format(types.DefaultDateLayout)
+	records, err := h.FindRecordsByFilter("agents", "status = 'connected' && (last_seen = '' || last_seen < {:boot})", "", 0, 0, dbx.Params{"boot": boot})
+	if err != nil {
+		slog.Warn("Agent status reconciliation failed", "err", err)
+		return
+	}
+	for _, rec := range records {
+		if h.agentCtx.Err() != nil {
+			return
+		}
+		if _, connected := h.agentConns.Load(rec.Id); connected {
+			continue
+		}
+		// Re-check inside the write transaction: a handshake may have saved the agent
+		// between the query and now.
+		marked := h.setAgentStatusIf(rec.Id, "offline", func(current *core.Record) bool {
+			lastSeen := current.GetDateTime("last_seen")
+			_, connected := h.agentConns.Load(current.Id)
+			return !connected && (lastSeen.IsZero() || lastSeen.Time().Before(bootedAt))
+		})
+		if marked {
+			slog.Info("Agent did not reconnect after hub start", "id", rec.Id, "name", rec.GetString("name"))
+		}
+	}
+}
+
 // setAgentStatus updates the status field of an agent record and emits a notification on transition.
 func (h *Hub) setAgentStatus(agentId, status string) {
-	rec, err := h.FindRecordById("agents", agentId)
-	if err != nil {
-		return
-	}
-	previous := rec.GetString("status")
-	if previous == status {
-		return
-	}
-	rec.Set("status", status)
-	if err := h.SaveNoValidate(rec); err != nil {
-		return
+	h.setAgentStatusIf(agentId, status, nil)
+}
+
+// setAgentStatusIf is setAgentStatus guarded by cond, evaluated on the current record in the
+// same transaction as the write. It reports whether the status changed. Going offline also
+// refreshes last_seen (otherwise only written at connection), so the offline-agent purge
+// counts from the moment the host was lost rather than from its last handshake.
+func (h *Hub) setAgentStatusIf(agentId, status string, cond func(*core.Record) bool) bool {
+	var rec *core.Record
+	var previous string
+	err := h.RunInTransaction(func(txApp core.App) error {
+		var err error
+		rec, err = txApp.FindRecordById("agents", agentId)
+		if err != nil {
+			return err
+		}
+		previous = rec.GetString("status")
+		if previous == status || (cond != nil && !cond(rec)) {
+			rec = nil
+			return nil
+		}
+		rec.Set("status", status)
+		if status == "offline" {
+			rec.Set("last_seen", time.Now())
+		}
+		return txApp.SaveNoValidate(rec)
+	})
+	if err != nil || rec == nil {
+		return false
 	}
 	evt := notifications.Event{
 		Kind:       notifications.KindForAgent(status),
@@ -409,6 +480,7 @@ func (h *Hub) setAgentStatus(agentId, status string) {
 		Current:  status,
 	}
 	h.emitNotification(evt)
+	return true
 }
 
 // updateAgentInfo persists capabilities and metadata returned by GetAgentInfo, and
