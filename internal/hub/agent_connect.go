@@ -3,8 +3,10 @@ package hub
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -128,9 +130,19 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	wsConn := ws.NewWsConnection(conn)
 	conn.Session().Store("wsConn", wsConn)
 
+	var agentID string
 	defer func() {
+		// A panic must still close the connection (the agent then reconnects cleanly)
+		// instead of leaving it registered with no lifecycle goroutine.
+		if r := recover(); r != nil {
+			slog.Error("Agent handshake panicked", "id", agentID, "panic", r, "stack", string(debug.Stack()))
+			if agentID != "" {
+				acr.hub.agentConns.CompareAndDelete(agentID, wsConn)
+			}
+			err = fmt.Errorf("agent handshake panicked: %v", r)
+		}
 		if err != nil {
-			wsConn.Close([]byte(err.Error()))
+			wsConn.Close([]byte("handshake failed"))
 		}
 	}()
 
@@ -152,6 +164,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	}
 
 	// Track the live connection for later hub-initiated requests.
+	agentID = agentRec.Id
 	acr.hub.registerAgentConn(agentRec.Id, wsConn)
 
 	// Fetch initial agent info (version, capabilities, metadata) and persist it.
@@ -341,6 +354,17 @@ const agentOfflineGracePeriod = 30 * time.Second
 // the agent status to offline when the connection drops.
 func (h *Hub) manageAgentLifecycle(wsConn *ws.WsConn, agentId string) {
 	slog.Info("Agent connected", "id", agentId)
+	defer func() {
+		// Without its lifecycle goroutine nobody would ever notice this connection dying:
+		// drop it, so the agent reconnects with a fresh one.
+		if r := recover(); r != nil {
+			slog.Error("Agent lifecycle panicked", "id", agentId, "panic", r, "stack", string(debug.Stack()))
+			if h.agentConns.CompareAndDelete(agentId, wsConn) {
+				h.markAgentOfflineUnlessReconnected(agentId)
+			}
+			wsConn.Close(nil)
+		}
+	}()
 	ticker := time.NewTicker(agentPingInterval)
 	defer ticker.Stop()
 	for {
@@ -540,6 +564,14 @@ func (h *Hub) goAgent(fn func()) bool {
 	h.agentWG.Add(1)
 	go func() {
 		defer h.agentWG.Done()
+		// Last line of defence: a bug in a goroutine started here must not take the hub
+		// (and every other agent) down. verifyWsConn and manageAgentLifecycle recover
+		// themselves first so they can also drop their connection.
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("agent connection goroutine recovered from panic", "panic", r, "stack", string(debug.Stack()))
+			}
+		}()
 		fn()
 	}()
 	return true

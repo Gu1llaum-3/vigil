@@ -175,3 +175,25 @@ func TestSilentAgentIsClosedDespitePeriodicRequests(t *testing.T) {
 
 	require.Eventually(t, func() bool { return !wsConn.IsConnected() }, 5*time.Second, 20*time.Millisecond)
 }
+
+// A request waiting on a connection that closes must fail right away, not at its timeout.
+func TestPendingRequestFailsWhenConnectionCloses(t *testing.T) {
+	wsConn := connectAgent(t, silentClient{})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	errs := make(chan error, 1)
+	go func() {
+		_, err := wsConn.GetHostSnapshot(ctx)
+		errs <- err
+	}()
+	require.Eventually(t, func() bool { return wsConn.requestManager.hasPendingRequests() }, 5*time.Second, 10*time.Millisecond)
+	_ = wsConn.conn.Load().NetConn().Close() // the network drops: the read loop ends, OnClose runs
+
+	select {
+	case err := <-errs:
+		assert.ErrorIs(t, err, gws.ErrConnClosed)
+	case <-time.After(5 * time.Second):
+		t.Fatal("the pending request waited for its timeout instead of failing on close")
+	}
+}

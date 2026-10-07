@@ -46,7 +46,9 @@ func GetUpgrader() *gws.Upgrader {
 		return upgrader
 	}
 	handler := &Handler{}
-	upgrader = gws.NewUpgrader(handler, &gws.ServerOption{})
+	// Recovery: a panic in a callback (OnMessage, OnClose…) ends that connection's read loop
+	// with a logged stack instead of crashing the hub.
+	upgrader = gws.NewUpgrader(handler, &gws.ServerOption{Recovery: gws.Recovery})
 	return upgrader
 }
 
@@ -100,6 +102,8 @@ func (h *Handler) OnClose(conn *gws.Conn, err error) {
 		return
 	}
 	wsConn.(*WsConn).conn.Store(nil)
+	// Fail the requests waiting for this agent now rather than at their timeout (up to 60s).
+	wsConn.(*WsConn).requestManager.Close()
 	// wait 5 seconds to allow reconnection before signaling down
 	go func(downChan weak.Pointer[chan struct{}]) {
 		time.Sleep(5 * time.Second)
@@ -149,6 +153,9 @@ func (ws *WsConn) handleAgentRequest(req *PendingRequest, handler ResponseHandle
 		return handler.Handle(agentResponse)
 
 	case <-req.Context.Done():
+		if ws.requestManager.closed.Load() {
+			return gws.ErrConnClosed
+		}
 		return req.Context.Err()
 	}
 }
