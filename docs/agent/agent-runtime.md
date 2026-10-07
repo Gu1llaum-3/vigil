@@ -173,7 +173,7 @@ Important behavior:
 
 - the hub sends a signature challenge over WebSocket
 - the agent verifies the signature against the configured public key set
-- only after success does the agent set `hubVerified = true`
+- only after success does the agent record that connection as verified (`verifiedConn`); a reconnect starts unverified, so every new connection must pass `CheckFingerprint` again
 
 All handlers other than the fingerprint challenge require hub verification first.
 

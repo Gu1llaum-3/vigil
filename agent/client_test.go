@@ -15,6 +15,7 @@ import (
 	"github.com/Gu1llaum-3/vigil/internal/common"
 
 	"github.com/fxamacker/cbor/v2"
+	"github.com/lxzan/gws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
@@ -273,7 +274,11 @@ func TestWebSocketClient_HandleHubRequest(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client.hubVerified = tc.hubVerified
+			conn := &gws.Conn{}
+			client.verifiedConn.Store(nil)
+			if tc.hubVerified {
+				client.verifiedConn.Store(conn)
+			}
 
 			// Create minimal request
 			hubRequest := &common.HubRequest[cbor.RawMessage]{
@@ -281,7 +286,7 @@ func TestWebSocketClient_HandleHubRequest(t *testing.T) {
 				Data:   cbor.RawMessage{},
 			}
 
-			err := client.handleHubRequest(hubRequest, nil)
+			err := client.handleHubRequest(conn, hubRequest, nil)
 
 			if tc.expectError {
 				require.Error(t, err)
@@ -500,4 +505,48 @@ func TestGetToken(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, expectedToken, token, "Whitespace should be stripped from token file content")
 	})
+}
+
+// The hub's identity is verified per connection: after a reconnect, whatever answers at
+// HUB_URL must pass CheckFingerprint again before it gets any data.
+func TestHubVerificationDoesNotSurviveReconnect(t *testing.T) {
+	agent := createTestAgent(t)
+	t.Setenv(app.AgentEnvPrefix+"HUB_URL", "http://localhost:8080")
+	t.Setenv(app.AgentEnvPrefix+"TOKEN", "test-token")
+	client, err := newWebSocketClient(agent)
+	require.NoError(t, err)
+
+	verified, reconnected := &gws.Conn{}, &gws.Conn{}
+	client.verifiedConn.Store(verified)
+
+	err = client.handleHubRequest(reconnected, &common.HubRequest[cbor.RawMessage]{Action: common.GetHostSnapshot}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "hub not verified")
+}
+
+// A connection already replaced by a reconnect closes late: that must not tear down the
+// live replacement, and its verification must not linger.
+func TestStaleConnectionCloseIsIgnored(t *testing.T) {
+	agent := createTestAgent(t)
+	t.Setenv(app.AgentEnvPrefix+"HUB_URL", "http://localhost:8080")
+	t.Setenv(app.AgentEnvPrefix+"TOKEN", "test-token")
+	client, err := newWebSocketClient(agent)
+	require.NoError(t, err)
+	agent.connectionManager.eventChan = make(chan ConnectionEvent, 1)
+
+	old, current := &gws.Conn{}, &gws.Conn{}
+	client.conn.Store(current)
+	client.verifiedConn.Store(old)
+
+	client.OnClose(old, nil)
+
+	select {
+	case ev := <-agent.connectionManager.eventChan:
+		t.Fatalf("stale close emitted %v", ev)
+	default:
+	}
+	assert.Nil(t, client.verifiedConn.Load())
+
+	client.OnClose(current, nil)
+	assert.Equal(t, WebSocketDisconnect, <-agent.connectionManager.eventChan)
 }

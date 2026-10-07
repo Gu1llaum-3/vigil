@@ -144,7 +144,7 @@ The agent verifies that signature using the configured hub public key or keys.
 
 If verification succeeds:
 
-- the agent marks `hubVerified = true`
+- the agent marks that connection as verified (`verifiedConn`; per connection, so a reconnect must verify again)
 - the agent responds with its stable fingerprint
 
 > **Known limitation — static challenge (deferred hardening).** The hub signs the agent's

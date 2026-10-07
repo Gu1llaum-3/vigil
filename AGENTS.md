@@ -239,7 +239,7 @@ Hub boot: startAgentStatusReconciler() [goroutine]
 ```
 
 **All handlers that are not `CheckFingerprint` require `HubVerified = true`.**
-The agent sets `hubVerified = true` only after successfully verifying the hub's SSH signature.
+The agent marks the connection as verified (`verifiedConn`) only after successfully verifying the hub's SSH signature; verification is per connection, so every reconnect must pass `CheckFingerprint` again.
 
 ---
 
