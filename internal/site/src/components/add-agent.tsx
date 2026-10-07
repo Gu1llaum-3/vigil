@@ -94,10 +94,8 @@ const AgentDialog = ({ open, setOpen }: { open: boolean; setOpen: (open: boolean
 		setError("")
 		try {
 			const enrollment = await pb.send<EnrollmentTokenResponse>("/api/app/agent-enrollment-token", {
-				query: {
-					token,
-					enable: 1,
-				},
+				method: "POST",
+				body: { enable: true },
 			})
 			setToken(enrollment.token)
 			setTokenActive(enrollment.active)

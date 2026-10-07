@@ -7,13 +7,14 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	app "github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/internal/ghupdate"
+	"github.com/Gu1llaum-3/vigil/internal/hub/expirymap"
 	"github.com/Gu1llaum-3/vigil/internal/hub/utils"
 	"github.com/blang/semver"
-	"github.com/google/uuid"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
@@ -203,6 +204,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	}
 	// get or manage agent enrollment tokens
 	apiAuth.GET("/agent-enrollment-token", h.getAgentEnrollmentToken).BindFunc(excludeReadOnlyRole)
+	apiAuth.POST("/agent-enrollment-token", h.setAgentEnrollmentToken).BindFunc(excludeReadOnlyRole)
 	// per-agent tokens for the admin/operator agents UI (the token field is hidden on the
 	// collection so it is not exposed fleet-wide); readonly users are excluded.
 	apiAuth.GET("/agent-tokens", h.getAgentTokens).BindFunc(excludeReadOnlyRole)
@@ -340,7 +342,6 @@ func (info *UpdateInfo) getUpdate(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, info)
 }
 
-// getAgentEnrollmentToken handles enrollment token management (create, read, delete).
 // getAgentTokens returns a map of agent id → token for the agents UI. The token field is
 // hidden on the agents collection (so it is not exposed via the generic collection API to
 // every authenticated user); this endpoint re-exposes it only to non-readonly users.
@@ -372,83 +373,112 @@ func (h *Hub) rotateAgentToken(e *core.RequestEvent) error {
 	return e.JSON(http.StatusOK, map[string]string{"token": token})
 }
 
+// enrollmentState is the response of the enrollment token endpoints.
+type enrollmentState struct {
+	Token     string `json:"token"`
+	Active    bool   `json:"active"`
+	Permanent bool   `json:"permanent"`
+}
+
+// currentEnrollmentToken returns the user's enrollment token: the permanent one stored in the
+// database, else the ephemeral in-memory one.
+func (h *Hub) currentEnrollmentToken(userID string) enrollmentState {
+	if rec, err := h.FindFirstRecordByFilter("agent_enrollment_tokens", "created_by = {:user}", dbx.Params{"user": userID}); err == nil {
+		return enrollmentState{Token: rec.GetString("token"), Active: true, Permanent: true}
+	}
+	if token, _, ok := enrollmentTokenMap.GetMap().GetByValue(userID); ok {
+		return enrollmentState{Token: token, Active: true}
+	}
+	return enrollmentState{}
+}
+
+// getAgentEnrollmentToken returns the user's enrollment token state. It is read-only: changes
+// go through POST (setAgentEnrollmentToken), so the credential never travels in a URL.
 func (h *Hub) getAgentEnrollmentToken(e *core.RequestEvent) error {
 	if e.Auth.IsSuperuser() {
 		return e.ForbiddenError("Superusers cannot use enrollment tokens", nil)
 	}
+	return e.JSON(http.StatusOK, h.currentEnrollmentToken(e.Auth.Id))
+}
 
-	tokenMap := enrollmentTokenMap.GetMap()
+// setAgentEnrollmentToken enables, disables, regenerates or changes the permanence of the
+// user's enrollment token. The value is always minted by the hub (a client-chosen value used
+// to be stored as is, however weak); enabling or changing permanence keeps the current value
+// so already copied install commands keep working, regenerate replaces (and so revokes) it.
+func (h *Hub) setAgentEnrollmentToken(e *core.RequestEvent) error {
+	if e.Auth.IsSuperuser() {
+		return e.ForbiddenError("Superusers cannot use enrollment tokens", nil)
+	}
+	// JSON only: a cross-site HTML form (form-urlencoded) cannot drive it, even with
+	// AUTO_LOGIN or TRUSTED_AUTH_HEADER where the browser carries no Authorization header.
+	if ct := e.Request.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		return e.BadRequestError("Content-Type must be application/json", nil)
+	}
+	var body struct {
+		Enable     bool `json:"enable"`
+		Permanent  bool `json:"permanent"`
+		Regenerate bool `json:"regenerate"`
+	}
+	if err := e.BindBody(&body); err != nil {
+		return e.BadRequestError("Invalid body", err)
+	}
 	userID := e.Auth.Id
-	query := e.Request.URL.Query()
-	token := query.Get("token")
-	enable := query.Get("enable")
-	permanent := query.Get("permanent")
+	tokenMap := enrollmentTokenMap.GetMap()
+	// Serialized: two concurrent changes (two tabs, a double click) would otherwise each
+	// mint a token, leaving one that the UI no longer shows valid for an hour.
+	enrollmentTokenMu.Lock()
+	defer enrollmentTokenMu.Unlock()
 
-	deletePermanent := func() error {
-		rec, err := h.FindFirstRecordByFilter("agent_enrollment_tokens", "created_by = {:user}", dbx.Params{"user": userID})
-		if err != nil {
-			return nil
-		}
-		return h.Delete(rec)
+	stored, storedErr := h.FindFirstRecordByFilter("agent_enrollment_tokens", "created_by = {:user}", dbx.Params{"user": userID})
+	token := ""
+	if storedErr == nil {
+		token = stored.GetString("token")
+	} else if ephemeral, _, ok := tokenMap.GetByValue(userID); ok {
+		token = ephemeral
+	}
+	if body.Enable && (token == "" || body.Regenerate) {
+		token = security.RandomString(40)
 	}
 
-	upsertPermanent := func(token string) error {
-		rec, err := h.FindFirstRecordByFilter("agent_enrollment_tokens", "created_by = {:user}", dbx.Params{"user": userID})
-		if err == nil {
-			rec.Set("token", token)
-			return h.Save(rec)
+	if !body.Enable || !body.Permanent {
+		if storedErr == nil {
+			if err := h.Delete(stored); err != nil {
+				return err
+			}
 		}
+		removeEnrollmentTokens(tokenMap, userID)
+		if !body.Enable {
+			return e.JSON(http.StatusOK, enrollmentState{})
+		}
+		tokenMap.Set(token, userID, time.Hour)
+		return e.JSON(http.StatusOK, enrollmentState{Token: token, Active: true})
+	}
+	if storedErr != nil {
 		col, err := h.FindCachedCollectionByNameOrId("agent_enrollment_tokens")
 		if err != nil {
 			return err
 		}
-		newRec := core.NewRecord(col)
-		newRec.Set("created_by", userID)
-		newRec.Set("token", token)
-		return h.Save(newRec)
+		stored = core.NewRecord(col)
+		stored.Set("created_by", userID)
 	}
-
-	if enable == "0" {
-		tokenMap.RemovebyValue(userID)
-		_ = deletePermanent()
-		return e.JSON(http.StatusOK, map[string]any{"token": token, "active": false, "permanent": false})
+	stored.Set("token", token)
+	if err := h.Save(stored); err != nil {
+		return err
 	}
+	// Only once the permanent copy exists, so a failed save does not revoke the token.
+	removeEnrollmentTokens(tokenMap, userID)
+	return e.JSON(http.StatusOK, enrollmentState{Token: token, Active: true, Permanent: true})
+}
 
-	if enable == "1" {
-		// Always invalidate any prior in-memory token for this user first, so re-issuing
-		// (e.g. the "Regenerate" action with an empty token) revokes a leaked value rather
-		// than leaving the old ephemeral token valid until it expires.
-		tokenMap.RemovebyValue(userID)
-		if token == "" {
-			token = uuid.New().String()
+// enrollmentTokenMu serializes enrollment token changes.
+var enrollmentTokenMu sync.Mutex
+
+// removeEnrollmentTokens drops every in-memory enrollment token of the user (RemovebyValue
+// only removes one entry).
+func removeEnrollmentTokens(tokenMap *expirymap.ExpiryMap[string], userID string) {
+	for {
+		if _, ok := tokenMap.RemovebyValue(userID); !ok {
+			return
 		}
-		if permanent == "1" {
-			if err := upsertPermanent(token); err != nil {
-				return err
-			}
-			return e.JSON(http.StatusOK, map[string]any{"token": token, "active": true, "permanent": true})
-		}
-		_ = deletePermanent()
-		tokenMap.Set(token, userID, time.Hour)
-		return e.JSON(http.StatusOK, map[string]any{"token": token, "active": true, "permanent": false})
 	}
-
-	if rec, err := h.FindFirstRecordByFilter("agent_enrollment_tokens", "created_by = {:user}", dbx.Params{"user": userID}); err == nil {
-		dbToken := rec.GetString("token")
-		if token == "" || token == dbToken {
-			return e.JSON(http.StatusOK, map[string]any{"token": dbToken, "active": true, "permanent": true})
-		}
-		return e.JSON(http.StatusOK, map[string]any{"token": token, "active": false, "permanent": false})
-	}
-
-	if token == "" {
-		if token, _, ok := tokenMap.GetByValue(userID); ok {
-			return e.JSON(http.StatusOK, map[string]any{"token": token, "active": true, "permanent": false})
-		}
-		token = uuid.New().String()
-	}
-
-	activeUser, ok := tokenMap.GetOk(token)
-	active := ok && activeUser == userID
-	return e.JSON(http.StatusOK, map[string]any{"token": token, "active": active, "permanent": false})
 }

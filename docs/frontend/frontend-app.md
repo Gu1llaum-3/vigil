@@ -400,7 +400,7 @@ Handles agent-related administration such as:
 - managing enrollment tokens
 - token generation helpers used by the UI
 
-The navbar also exposes a lightweight installation dialog that fetches the hub public key and the current enrollment token, then provides ready-to-copy Docker and binary installation commands for new agents.
+The navbar also exposes a lightweight installation dialog that fetches the hub public key and the current enrollment token (`GET`; enabling it is a `POST {enable: true}` — the hub mints the value), then provides ready-to-copy Docker and binary installation commands for new agents.
 
 The agents settings table prefers the persisted agent hostname (`agents.name`) over the record id. If more than one agent shares the same hostname, the UI appends a short fingerprint suffix for display-only disambiguation.
 
