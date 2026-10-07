@@ -441,6 +441,8 @@ POST /api/app/push/:pushToken
 
 The hub looks up the monitor by push_token (where `type='push'` and `active=true`), sets `last_push_at = time.Now()`, and saves via `SaveNoValidate`. The push check goroutine then reads `last_push_at` and computes elapsed time vs `interval + 30s`.
 
+The push token is a credential (it alone lets a caller keep the monitor up). The `monitors.push_token` field is hidden (migration `9_hide_monitor_push_token.go`): the scheduler saves every monitor on each check, and before that every authenticated browser subscribed to the collection received the token over realtime. `GET /api/app/monitors` and `/monitors/{id}` return `push_token`/`push_url` only to callers who can edit monitors (`canSeeMonitorSecrets`: not the `readonly` role, not a read-scoped API key); the MCP `list_monitors`/`get_monitor` tools never return them.
+
 ### How To Use A Push Monitor
 
 1. Create a monitor with type `push` in the Monitors page.
