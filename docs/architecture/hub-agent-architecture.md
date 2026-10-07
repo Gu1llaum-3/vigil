@@ -206,6 +206,13 @@ The agent connection manager has two states:
 
 It retries connection attempts on a ticker while disconnected.
 
+A connection that goes silent without closing (host powered off, kernel panic, network cut, a proxy that blackholes traffic) never produces a FIN or RST, and the hub's pings keep succeeding at the TCP level until the kernel gives up retransmitting — about 15 minutes on Linux. So the hub bounds silence instead. Each connection has a deadline (read and write, `defaultDeadline` = 70s in `ws.go`) that only moves forward, and only for two reasons (`RequestManager.receivedFrame` / `requestSent`):
+
+- a frame arrives from the agent (`OnMessage`, `OnPong` — the agent answers every 30s ping, `agent/client.go` `OnPing`): deadline = now + 70s;
+- the hub sends a request: the agent runs its handlers **on its read loop**, so during a slow snapshot (up to 45s) it sends nothing, not even pongs, yet it is alive. The deadline then covers the request's own deadline + 35s, capped at **140s after the agent was last heard from** — the cap keeps frequent polling (a short `METRICS_INTERVAL`, where a request is always in flight) from keeping a dead peer alive.
+
+`WsConn.Ping` never touches the deadline. A peer that stops answering hits it 70–140s after its last frame (depending on the requests in flight), the read loop fails and the normal close path below runs. Verified with a `SIGSTOP`ped agent (its kernel keeps ACKing): connection closed after ~97s, offline ~35s later, back online on `SIGCONT`. Keep any agent handler well under 140s minus the ping interval: an agent stuck in a handler longer than that (e.g. a `statfs` on a hung NFS mount) is now closed and shown offline, and only reconnects once the handler returns — before, the hub's own pings kept such an agent shown as connected.
+
 On the hub side, `WsConn.DownChan` is triggered after a short delay in `internal/hub/ws/ws.go`. That delay allows reconnection before the hub flips the agent to offline too aggressively.
 
 An additional **30-second grace period** (`agentOfflineGracePeriod`) is applied in `manageAgentLifecycle` after `DownChan` fires: the hub waits before writing `status=offline` and only does so if the agent has not already reconnected (checked via `agentConns.Load`). Combined with the `ws.go` delay, the total window before an offline status is committed is ~35 seconds. This prevents spurious offline notifications and status flaps caused by service restarts or binary upgrades.
