@@ -309,11 +309,13 @@ The monitor scheduler is the hub-side engine that drives uptime monitoring check
 
 | Type | Check mechanism |
 |------|----------------|
-| `http` | HTTP/HTTPS request with configurable method, accepted status codes, optional keyword match |
+| `http` | HTTP/HTTPS request with configurable method, accepted status codes (`http_accepted_codes`, JSON list of integers decoded with `UnmarshalJSONField`; empty = `[200]`; `createMonitor`/`updateMonitor` reject anything but a list of codes 100–599 with a 400 (`validateAcceptedCodes`), and a malformed stored value also falls back to `[200]`; redirects are followed, so the final status is the one compared), optional keyword match (`keyword`, `keyword_invert`, first 1 MiB of the body) |
 | `ping` | ICMP echo via the hub host's `ping` executable; measures round-trip latency from the hub itself |
 | `tcp` | TCP dial — success means the port is reachable |
 | `dns` | DNS lookup via Go resolver (supports A, AAAA, CNAME, MX, NS, TXT; optional custom DNS server) |
 | `push` | Passive — hub checks `last_push_at` against `interval + 30s` grace period |
+
+`checkHTTP` and `checkTCP` are covered by `monitor_checks_test.go` (httptest server / local listener with `MONITOR_ALLOW_PRIVATE_TARGETS=true`, plus the default SSRF block on loopback).
 
 ### Scheduler Lifecycle
 

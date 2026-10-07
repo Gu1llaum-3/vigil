@@ -370,19 +370,12 @@ func checkHTTP(ctx context.Context, monitor *core.Record) (status int, msg strin
 	keyword := monitor.GetString("keyword")
 	keywordInvert := monitor.GetBool("keyword_invert")
 
+	// http_accepted_codes is a JSON field: Get returns types.JSONRaw, so decode it. An
+	// empty, missing or malformed list keeps the default.
 	acceptedCodes := []int{200}
-	if raw := monitor.Get("http_accepted_codes"); raw != nil {
-		if codes, ok := raw.([]interface{}); ok && len(codes) > 0 {
-			parsed := make([]int, 0, len(codes))
-			for _, c := range codes {
-				if f, ok := c.(float64); ok {
-					parsed = append(parsed, int(f))
-				}
-			}
-			if len(parsed) > 0 {
-				acceptedCodes = parsed
-			}
-		}
+	var configured []int
+	if err := monitor.UnmarshalJSONField("http_accepted_codes", &configured); err == nil && len(configured) > 0 {
+		acceptedCodes = configured
 	}
 
 	// Optional per-monitor IP-family pin (auto/ipv4/ipv6): narrow the dial network so an
