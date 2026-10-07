@@ -2,6 +2,7 @@ package hub
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -375,6 +376,9 @@ func (h *Hub) createMonitor(e *core.RequestEvent) error {
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("Invalid body", err)
 	}
+	if err := validateAcceptedCodes(body); err != nil {
+		return e.BadRequestError(err.Error(), nil)
+	}
 
 	col, err := h.FindCachedCollectionByNameOrId("monitors")
 	if err != nil {
@@ -412,6 +416,9 @@ func (h *Hub) updateMonitor(e *core.RequestEvent) error {
 	var body map[string]any
 	if err := e.BindBody(&body); err != nil {
 		return e.BadRequestError("Invalid body", err)
+	}
+	if err := validateAcceptedCodes(body); err != nil {
+		return e.BadRequestError(err.Error(), nil)
 	}
 
 	// Write only the fields this request changes: the scheduler updates the status columns of
@@ -873,6 +880,27 @@ func (h *Hub) pushHeartbeat(e *core.RequestEvent) error {
 	monitor.Set("last_push_at", time.Now())
 	_ = h.SaveNoValidate(monitor)
 	return e.JSON(http.StatusOK, map[string]string{"msg": "ok"})
+}
+
+// validateAcceptedCodes rejects an http_accepted_codes value that checkHTTP could not use
+// (it would silently fall back to [200]): it must be a list of HTTP status codes.
+func validateAcceptedCodes(body map[string]any) error {
+	raw, ok := body["http_accepted_codes"]
+	if !ok || raw == nil {
+		return nil
+	}
+	errInvalid := errors.New("http_accepted_codes must be a list of HTTP status codes (100-599)")
+	codes, ok := raw.([]any)
+	if !ok {
+		return errInvalid
+	}
+	for _, c := range codes {
+		f, ok := c.(float64)
+		if !ok || f != math.Trunc(f) || f < 100 || f > 599 {
+			return errInvalid
+		}
+	}
+	return nil
 }
 
 func applyMonitorFields(rec *core.Record, body map[string]any) {
