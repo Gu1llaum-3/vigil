@@ -7,7 +7,11 @@ SKIP_WEB ?= false
 # Set executable extension based on target OS
 EXE_EXT := $(if $(filter windows,$(OS)),.exe,)
 
-.PHONY: tidy build-agent build-hub build-hub-dev build clean lint dev-server dev-agent dev-hub dev generate-locales build-web-ui pnpm-outdated
+# Third-party license notices, as shipped by the release (needs `pnpm install` in internal/site).
+notices:
+	sh supplemental/scripts/third-party-notices.sh
+
+.PHONY: notices tidy build-agent build-hub build-hub-dev build clean lint dev-server dev-agent dev-hub dev generate-locales build-web-ui pnpm-outdated
 .DEFAULT_GOAL := build
 
 clean:

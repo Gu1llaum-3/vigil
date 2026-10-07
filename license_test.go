@@ -42,7 +42,8 @@ func TestDebianCopyrightCarriesUpstreamNotices(t *testing.T) {
 func TestHubImageShipsLicense(t *testing.T) {
 	dockerfile, err := os.ReadFile("internal/dockerfile_hub")
 	require.NoError(t, err)
-	assert.Regexp(t, regexp.MustCompile(`(?m)^COPY (--\S+ )*LICENSE /usr/share/licenses/vigil/`), string(dockerfile))
+	assert.Regexp(t, regexp.MustCompile(`(?m)^COPY (--\S+ )*LICENSE( \S+)* /usr/share/licenses/vigil/`), string(dockerfile))
+	assert.Regexp(t, regexp.MustCompile(`(?m)^COPY .*THIRD_PARTY_NOTICE.* /usr/share/licenses/vigil/`), string(dockerfile))
 
 	// The hub image is built from the repository root, so LICENSE must stay in the build context.
 	ignore, err := os.Open(".dockerignore")
@@ -51,7 +52,8 @@ func TestHubImageShipsLicense(t *testing.T) {
 	scanner := bufio.NewScanner(ignore)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		assert.False(t, strings.HasPrefix(line, "LICENSE") || line == "*", ".dockerignore excludes LICENSE: %q", line)
+		assert.False(t, strings.HasPrefix(line, "LICENSE") || strings.HasPrefix(line, "THIRD_PARTY") || line == "*",
+			".dockerignore excludes a license file: %q", line)
 	}
 	require.NoError(t, scanner.Err())
 }
@@ -59,9 +61,14 @@ func TestHubImageShipsLicense(t *testing.T) {
 func TestReleasePackagingShipsLicense(t *testing.T) {
 	goreleaser, err := os.ReadFile(".goreleaser.yml")
 	require.NoError(t, err)
-	// goreleaser's default archive files include LICENSE*; an explicit files list must keep it.
-	if regexp.MustCompile(`(?m)^\s+files:`).Match(goreleaser) {
-		assert.Contains(t, string(goreleaser), "LICENSE", "archives[].files overrides the defaults but drops LICENSE")
-	}
-	assert.Contains(t, string(goreleaser), "src: ./supplemental/debian/copyright", "the .deb no longer installs the copyright file")
+	config := string(goreleaser)
+	// Each archive lists its files explicitly (the defaults would drop THIRD_PARTY_NOTICES).
+	archives := regexp.MustCompile(`(?ms)^archives:\n(.*?)^\S`).FindStringSubmatch(config)
+	require.NotNil(t, archives, "no archives section")
+	ids := strings.Count(archives[1], "  - id: ")
+	assert.Equal(t, ids, strings.Count(archives[1], "      - LICENSE\n"), "every archive must ship LICENSE")
+	assert.Equal(t, ids, strings.Count(archives[1], "      - THIRD_PARTY_NOTICES\n"), "every archive must ship THIRD_PARTY_NOTICES")
+	assert.Contains(t, config, "src: ./supplemental/debian/copyright", "the .deb no longer installs the copyright file")
+	assert.Contains(t, config, "src: ./THIRD_PARTY_NOTICES", "the .deb no longer installs THIRD_PARTY_NOTICES")
+	assert.Contains(t, config, "- sh supplemental/scripts/third-party-notices.sh", "THIRD_PARTY_NOTICES is no longer generated")
 }
