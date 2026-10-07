@@ -1,6 +1,7 @@
 // Package ghupdate implements a new command to self update the current
 // executable with the latest GitHub release. This is based on PocketBase's
-// ghupdate package with modifications.
+// ghupdate package with modifications (MIT, Copyright (c) 2022 - present,
+// Gani Georgiev; see LICENSE).
 package ghupdate
 
 import (

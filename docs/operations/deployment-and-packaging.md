@@ -183,6 +183,13 @@ Integrity:
 - the hub image build publishes provenance and an SBOM
 - goreleaser's `before` hook no longer runs `go mod tidy`, so the release never rewrites `go.mod`/`go.sum`: it builds exactly the committed files, whose tidiness CI checks (`go mod tidy -diff`). The hook runs `go mod verify` instead, a cheap check (the go command verifies every downloaded module against `go.sum` anyway)
 
+Licensing:
+
+- `LICENSE` carries the MIT notices of Vigil, Beszel (the project is derived from it) and PocketBase (`internal/ghupdate` is derived from its `ghupdate` package). All three use the identical MIT text, so one permission notice covers them
+- every artifact ships them: goreleaser archives include `LICENSE*` through goreleaser's default `files` (do not add an `archives[].files` override without listing `LICENSE`), the `.deb` installs the DEP-5 `supplemental/debian/copyright` (full license text, with a `Files: internal/ghupdate/*` stanza), and the hub image copies `LICENSE` to `/usr/share/licenses/vigil/LICENSE`
+- the install scripts and the self-updater only extract the binary from the archive; the notices ship in the downloaded archive itself
+- `license_test.go` (repo root) fails if a notice disappears from `LICENSE` or the DEP-5 file, if the Dockerfile stops copying `LICENSE` or `.dockerignore` excludes it, or if `.goreleaser.yml` drops the copyright file from the `.deb` or overrides the archive files without `LICENSE`
+
 If you rename the project or change binary names, this file must stay in sync with `app.go` and any install scripts.
 
 ## Hub Self-Update Flow
