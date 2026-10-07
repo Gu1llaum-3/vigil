@@ -319,6 +319,8 @@ Important variables:
 - `AUTO_LOGIN`
 - `TRUSTED_AUTH_HEADER`
 - `TRUSTED_PROXY_IPS`
+- `TRUSTED_PROXY_HEADERS`
+- `RATE_LIMITS`
 
 Behavior notes:
 
@@ -337,6 +339,28 @@ Behavior notes:
   unset while `TRUSTED_AUTH_HEADER` is configured, the header is ignored entirely and a
   warning is logged at startup — a misconfiguration can never open an auth bypass. The
   parsing/matching helpers (`parseTrustedProxies`, `remoteIPAllowed`) are unit-tested.
+- `TRUSTED_PROXY_HEADERS` (comma-separated, e.g. `X-Real-IP`) is copied into PocketBase's
+  `settings.TrustedProxy.Headers` at startup (`applyTrustedProxySettings` in
+  `internal/hub/rate_limits.go`, `UseLeftmostIP` forced off); when unset the stored value is
+  kept. PocketBase trusts those headers from **any** peer, so the hub binds
+  `bindTrustedProxyHeaderGuard` ahead of every PocketBase middleware (priority below CORS, so
+  before the superuser IP whitelist and the rate limiter): it deletes them from requests
+  whose `RemoteAddr` is not in `TRUSTED_PROXY_IPS` (empty allowlist → always deleted, with a
+  startup warning). `e.RealIP()` — the rate-limit key — is therefore the TCP peer unless a
+  trusted proxy vouches for the client. Headers set in the PocketBase dashboard follow the
+  same rule: without `TRUSTED_PROXY_IPS` they are now ignored.
+- Rate limiting: `applyRateLimitSettings` enables PocketBase's limiter on every start
+  (PocketBase v0.40 ships it disabled) unless `RATE_LIMITS=false`, and appends the rules of
+  `vigilRateLimitRules` whose label is missing — `*:auth` 2/3s (every auth collection,
+  superusers included; covers password, OTP and OAuth2), `*:requestOTP` and
+  `*:requestPasswordReset` 3/60s, `/api/app/agent-connect` 60/10s (generous: agents behind
+  one NAT share a bucket and retry every few seconds). PocketBase's own defaults (`*:create`
+  20/5s, `/api/batch` 3/1s, `/api/` 300/10s) stay. An existing rule with the same label is
+  never overwritten (whatever its audience — an audience-less duplicate would fail PocketBase's
+  prefix uniqueness check and stop the hub), so dashboard tuning survives restarts; a deleted
+  Vigil rule is re-added, and the enabled flag follows the env. The limiter keys on the full
+  client IP (an IPv6 /64 holder gets many keys) and there is no per-account lockout. Authenticated superusers bypass the limiter (PocketBase behavior). Over the limit the
+  API answers `429`.
 
 ## Agent Authentication Model
 

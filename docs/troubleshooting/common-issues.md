@@ -31,6 +31,29 @@ make test
 - `internal/tests/hub.go`
 - all `*_test.go` files with `//go:build testing`
 
+## Logins Or API Calls Fail With `429 Too Many Requests`
+
+### Symptoms
+
+- the login form reports "Too many attempts" after a couple of attempts (API clients get HTTP `429`)
+- several users, or agents, are throttled at the same time even though each one sends little
+- the request logs (PocketBase dashboard → Logs) show `triggered rate limit rule`
+
+### Cause
+
+The hub enables PocketBase's rate limiter at startup (`*:auth` allows 2 attempts per 3 seconds per client IP). Behind a reverse proxy without `TRUSTED_PROXY_IPS` + `TRUSTED_PROXY_HEADERS`, every client has the proxy's IP and shares one bucket. Client-IP headers set in the PocketBase dashboard are also ignored while `TRUSTED_PROXY_IPS` is empty (a startup warning says so).
+
+### Fix
+
+- set `TRUSTED_PROXY_IPS` to the proxy's IP/CIDR and `TRUSTED_PROXY_HEADERS` to the header it sets (`X-Real-IP`, `CF-Connecting-IP`, …), then restart
+- tune a rule in the PocketBase dashboard (Settings → Rate limits); edited rules survive restarts, deleted Vigil rules come back
+- as a last resort, `RATE_LIMITS=false` disables the limiter
+
+### Related Files
+
+- `internal/hub/rate_limits.go`
+- `internal/hub/api.go` (`registerMiddlewares`)
+
 ## The Agent Connects But Fails Verification
 
 ### Symptoms

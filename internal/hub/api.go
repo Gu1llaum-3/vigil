@@ -82,12 +82,14 @@ func (h *Hub) registerMiddlewares(se *core.ServeEvent) {
 	// real TCP peer (RemoteAddr — not X-Forwarded-For, which is itself spoofable) being in
 	// the TRUSTED_PROXY_IPS allowlist. Fail-safe: if the allowlist is empty (or unset), the
 	// header is ignored entirely, so a misconfiguration can never open an auth bypass.
+	rawAllow, _ := utils.GetEnv("TRUSTED_PROXY_IPS")
+	allowed, err := parseTrustedProxies(rawAllow)
+	if err != nil {
+		slog.Warn("TRUSTED_PROXY_IPS has invalid entries; they were ignored", "err", err)
+	}
+	// client-IP headers (TRUSTED_PROXY_HEADERS) are only honored from the same proxies
+	bindTrustedProxyHeaderGuard(se, allowed)
 	if trustedHeader, _ := utils.GetEnv("TRUSTED_AUTH_HEADER"); trustedHeader != "" {
-		rawAllow, _ := utils.GetEnv("TRUSTED_PROXY_IPS")
-		allowed, err := parseTrustedProxies(rawAllow)
-		if err != nil {
-			slog.Warn("TRUSTED_PROXY_IPS has invalid entries; they were ignored", "err", err)
-		}
 		if len(allowed) == 0 {
 			slog.Warn("TRUSTED_AUTH_HEADER is set but TRUSTED_PROXY_IPS is empty; the trusted header will be IGNORED (fail-safe). Set TRUSTED_PROXY_IPS to your reverse proxy IP/CIDR to enable header auth.")
 		}

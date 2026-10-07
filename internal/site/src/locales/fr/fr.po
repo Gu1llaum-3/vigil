@@ -3074,6 +3074,10 @@ msgstr "Jeton"
 msgid "Token (optional)"
 msgstr "Jeton (optionnel)"
 
+#: src/components/login/auth-form.tsx
+msgid "Too many attempts. Please wait before trying again."
+msgstr "Trop de tentatives. Patientez avant de réessayer."
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Topic URL"
 msgstr "URL du topic"

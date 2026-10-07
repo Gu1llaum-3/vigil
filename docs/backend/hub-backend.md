@@ -116,6 +116,8 @@ Patterns to follow:
 - add explicit admin-only bind functions for admin routes
 - keep auth and role checks close to route registration so intent stays obvious
 
+Rate limiting is PocketBase's own limiter (global middleware, priority -1000), switched on and given Vigil's rules in `initialize()` (`internal/hub/rate_limits.go`), so it covers custom `/api/app/*` routes too. `registerMiddlewares` binds `bindTrustedProxyHeaderGuard` ahead of all PocketBase middlewares (`apis.DefaultCorsMiddlewarePriority - 1`), which strips client-IP headers not sent by a `TRUSTED_PROXY_IPS` peer before the superuser IP whitelist or the limiter read `RealIP()`. Note that the hub's own `BindFunc` middlewares (API key, trusted auth header) run after the limiter, so API-key clients count as guests for its audience rules. See `docs/architecture/auth-and-data-model.md` for the rules and env vars.
+
 ## How To Add A New API Endpoint
 
 Typical workflow:

@@ -44,6 +44,15 @@ type PocketBaseAuthError = Error & {
 	}
 }
 
+// A rate-limited auth call (HTTP 429) gets its own message; any other failure keeps the
+// generic one, so the toast never tells which part of the credentials was wrong.
+export function loginErrorMessage(err: unknown): string | undefined {
+	if ((err as { status?: number } | null)?.status === 429) {
+		return t`Too many attempts. Please wait before trying again.`
+	}
+	return undefined
+}
+
 export const showLoginFaliedToast = (description = t`Please check your credentials and try again`) => {
 	toast({
 		title: t`Login attempt failed`,
@@ -130,7 +139,7 @@ export function UserAuthForm({
 				const mfaId = authError.response?.mfaId
 				if (!mfaId) {
 					onSubmitError?.()
-					showLoginFaliedToast()
+					showLoginFaliedToast(loginErrorMessage(err))
 					throw err
 				}
 				setMfaId(mfaId)
@@ -141,7 +150,7 @@ export function UserAuthForm({
 				} catch (err) {
 					console.log({ err })
 					onSubmitError?.()
-					showLoginFaliedToast()
+					showLoginFaliedToast(loginErrorMessage(err))
 				}
 			} finally {
 				setIsLoading(false)
@@ -184,7 +193,7 @@ export function UserAuthForm({
 			.then(() => {
 				$authenticated.set(pb.authStore.isValid)
 			})
-			.catch(showLoginFaliedToast)
+			.catch((err) => showLoginFaliedToast(loginErrorMessage(err)))
 			.finally(() => {
 				setIsOauthLoading(false)
 			})

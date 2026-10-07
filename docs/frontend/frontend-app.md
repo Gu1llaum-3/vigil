@@ -128,6 +128,10 @@ OAuth behavior depends on PocketBase auth methods plus hub-side configuration. P
 
 The frontend includes OTP request and entry flows that align with the hub and PocketBase MFA configuration.
 
+### Rate-Limited Attempts
+
+The hub enables PocketBase's rate limiter (`*:auth` = 2 attempts per 3 seconds per client IP). Every login form (password, OAuth2, OTP request/entry, forgot password) passes its error through `loginErrorMessage()` in `auth-form.tsx`: a `429` shows "Too many attempts…", anything else keeps the generic "check your credentials" text.
+
 ## Layout And Navigation
 
 The authenticated UI uses a persistent app shell:
