@@ -82,7 +82,7 @@ Read next:
 
 Watch for:
 
-- `hubVerified` gating
+- per-connection hub verification gating (`verifiedConn`)
 - token and public-key verification behavior
 - delayed disconnect signaling via `DownChan`
 

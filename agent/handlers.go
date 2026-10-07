@@ -12,11 +12,14 @@ import (
 	"github.com/Gu1llaum-3/vigil/agent/utils"
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/fxamacker/cbor/v2"
+	"github.com/lxzan/gws"
 )
 
 // HandlerContext provides context for request handlers.
 type HandlerContext struct {
-	Client      *WebSocketClient
+	Client *WebSocketClient
+	// Conn is the connection the request arrived on (hub verification is per connection).
+	Conn        *gws.Conn
 	Agent       *Agent
 	Request     *common.HubRequest[cbor.RawMessage]
 	RequestID   *uint32
@@ -134,7 +137,7 @@ func (h *PingHandler) Handle(hctx *HandlerContext) error {
 type CheckFingerprintHandler struct{}
 
 func (h *CheckFingerprintHandler) Handle(hctx *HandlerContext) error {
-	return hctx.Client.handleAuthChallenge(hctx.Request, hctx.RequestID)
+	return hctx.Client.handleAuthChallenge(hctx.Conn, hctx.Request, hctx.RequestID)
 }
 
 ////////////////////////////////////////////////////////////////////////////

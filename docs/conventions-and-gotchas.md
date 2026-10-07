@@ -189,6 +189,8 @@ Current rule:
 
 - `CheckFingerprint` is the special verification path
 - all other handlers depend on the verified hub state
+- verification is **per connection**: `WebSocketClient.verifiedConn` holds the `*gws.Conn` on which the hub passed `CheckFingerprint`, and `HandlerContext.HubVerified` is true only for requests arriving on that same connection. The client struct is reused across reconnects, so a plain boolean would let whatever answers at `HUB_URL` after a reconnect skip the check. Never cache verification on the client
+- replies go out on the connection the request came from (`HandlerContext.SendResponse` is bound to `hctx.Conn`), never on `client.conn`: after a reconnect that would hand data to a connection that has not verified the hub yet. A late `OnClose` from a connection already replaced is ignored, so it cannot tear down the live one
 
 If you add a new action or adjust handshake logic, keep this boundary intact.
 
