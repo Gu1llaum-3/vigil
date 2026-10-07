@@ -152,7 +152,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	}
 
 	// Track the live connection for later hub-initiated requests.
-	acr.hub.agentConns.Store(agentRec.Id, wsConn)
+	acr.hub.registerAgentConn(agentRec.Id, wsConn)
 
 	// Fetch initial agent info (version, capabilities, metadata) and persist it.
 	ctx, cancel := context.WithTimeout(acr.hub.agentCtx, 10*time.Second)
@@ -324,7 +324,9 @@ func (h *Hub) CreateAgent(record *AgentRecord, fingerprint, userId, version stri
 	return nil
 }
 
-const agentPingInterval = 30 * time.Second
+// agentPingInterval is how often the hub pings each connected agent (a var so tests can
+// shorten it).
+var agentPingInterval = 30 * time.Second
 
 // agentOfflineGracePeriod is the time to wait after a WebSocket disconnect before
 // marking an agent offline. This absorbs brief connection drops caused by service
@@ -366,18 +368,22 @@ func (h *Hub) manageAgentLifecycle(wsConn *ws.WsConn, agentId string) {
 			case <-h.agentCtx.Done():
 				return
 			}
-			if _, stillConnected := h.agentConns.Load(agentId); !stillConnected {
-				h.setAgentStatus(agentId, "offline")
-			}
+			h.markAgentOfflineUnlessReconnected(agentId)
 			return
 		case <-ticker.C:
 			if h.agentCtx.Err() != nil {
 				return
 			}
 			if err := wsConn.Ping(); err != nil {
-				h.agentConns.CompareAndDelete(agentId, wsConn)
-				h.setAgentStatus(agentId, "offline")
-				slog.Warn("Agent ping failed", "id", agentId, "err", err)
+				// Only the current connection speaks for the agent: after a restart the
+				// old connection's ticker can fire once the new one is already stored.
+				if h.agentConns.CompareAndDelete(agentId, wsConn) {
+					slog.Warn("Agent ping failed", "id", agentId, "err", err)
+					h.markAgentOfflineUnlessReconnected(agentId)
+				} else {
+					slog.Debug("Ping failed on a replaced agent connection", "id", agentId, "err", err)
+				}
+				wsConn.Close(nil)
 				return
 			}
 		}
@@ -436,13 +442,32 @@ func (h *Hub) reconcileAgentStatuses(bootedAt time.Time) {
 	}
 }
 
-// setAgentStatus updates the status field of an agent record and emits a notification on transition.
-func (h *Hub) setAgentStatus(agentId, status string) {
-	h.setAgentStatusIf(agentId, status, nil)
+// registerAgentConn stores the agent's live connection, then re-asserts status=connected.
+// The handshake wrote connected before this point, and an offline write from an older
+// connection (failed ping, end of a grace period) can land in between, when that older
+// connection was still the stored one; the re-assert repairs it.
+func (h *Hub) registerAgentConn(agentId string, wsConn *ws.WsConn) {
+	h.agentConns.Store(agentId, wsConn)
+	h.setAgentStatusIf(agentId, "connected", func(*core.Record) bool {
+		current, _ := h.agentConns.Load(agentId)
+		return current == wsConn
+	})
 }
 
-// setAgentStatusIf is setAgentStatus guarded by cond, evaluated on the current record in the
-// same transaction as the write. It reports whether the status changed. Going offline also
+// markAgentOfflineUnlessReconnected writes status=offline unless a newer connection for the
+// agent is registered in agentConns; the check runs in the write transaction. A reconnection
+// still between its handshake and registerAgentConn can be overwritten, and
+// registerAgentConn then restores connected.
+func (h *Hub) markAgentOfflineUnlessReconnected(agentId string) {
+	h.setAgentStatusIf(agentId, "offline", func(*core.Record) bool {
+		_, reconnected := h.agentConns.Load(agentId)
+		return !reconnected
+	})
+}
+
+// setAgentStatusIf updates the status field of an agent record and emits a notification on
+// transition, if cond (nil = always) holds for the current record in the same transaction as
+// the write. It reports whether the status changed. Going offline also
 // refreshes last_seen (otherwise only written at connection), so the offline-agent purge
 // counts from the moment the host was lost rather than from its last handshake.
 func (h *Hub) setAgentStatusIf(agentId, status string, cond func(*core.Record) bool) bool {
