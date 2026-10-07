@@ -414,6 +414,9 @@ func (h *Hub) updateMonitor(e *core.RequestEvent) error {
 		return e.BadRequestError("Invalid body", err)
 	}
 
+	// Write only the fields this request changes: the scheduler updates the status columns of
+	// the same row concurrently.
+	rec.IgnoreUnchangedFields(true)
 	applyMonitorFields(rec, body)
 
 	if rec.GetString("type") == "push" && rec.GetString("push_token") == "" {
@@ -446,6 +449,7 @@ func (h *Hub) moveMonitor(e *core.RequestEvent) error {
 		return e.BadRequestError("Invalid body", err)
 	}
 
+	rec.IgnoreUnchangedFields(true) // leave the scheduler's status columns alone
 	rec.Set("group", body.Group)
 	if err := h.SaveNoValidate(rec); err != nil {
 		return err
@@ -842,6 +846,7 @@ func (h *Hub) deleteMonitorGroup(e *core.RequestEvent) error {
 	// Ungroup monitors before deleting
 	orphans, _ := h.FindRecordsByFilter("monitors", "group = {:id}", "", 0, 0, dbx.Params{"id": id})
 	for _, m := range orphans {
+		m.IgnoreUnchangedFields(true) // leave the scheduler's status columns alone
 		m.Set("group", "")
 		_ = h.SaveNoValidate(m)
 	}
@@ -863,6 +868,8 @@ func (h *Hub) pushHeartbeat(e *core.RequestEvent) error {
 		// Don't reveal whether the token exists
 		return e.JSON(http.StatusOK, map[string]string{"msg": "ok"})
 	}
+	// Only last_push_at: a full-row save would race with the scheduler's result write.
+	monitor.IgnoreUnchangedFields(true)
 	monitor.Set("last_push_at", time.Now())
 	_ = h.SaveNoValidate(monitor)
 	return e.JSON(http.StatusOK, map[string]string{"msg": "ok"})

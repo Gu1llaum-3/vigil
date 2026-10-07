@@ -268,6 +268,10 @@ Why:
 
 Goroutine lifecycle is managed only from the API handlers (`createMonitor`, `updateMonitor`, `deleteMonitor`).
 
+## Rows Written Concurrently Need `IgnoreUnchangedFields(true)`
+
+PocketBase saves a `Record` as a full-row `UPDATE` by default, so a goroutine holding a copy loaded a few seconds ago silently reverts every column changed since. The monitor scheduler and the monitor API write the same `monitors` rows: `saveResult` re-reads the record in a transaction and writes only its own columns, the API handlers set `IgnoreUnchangedFields(true)`, and `doCheck` drops a check whose context was cancelled (the record it loaded predates the edit that cancelled it). Apply the same rule to any new background writer of a user-editable row. Agent status writes go through `setAgentStatusIf`, which re-reads the agent in a transaction.
+
 ## Dispatch Notifications Via Direct Call, Not Hooks
 
 The notification dispatcher (`h.notifier.Dispatch`) is called directly from business logic, not from PocketBase record hooks.

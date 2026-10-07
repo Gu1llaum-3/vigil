@@ -3,6 +3,8 @@ package hub
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -153,6 +155,13 @@ func (ms *MonitorScheduler) doCheck(ctx context.Context, monitorID string) {
 		return
 	}
 
+	// The monitor's own context is cancelled when it is edited, paused, deleted or when the
+	// hub stops: the check was interrupted, it did not fail. Saving it would write back the
+	// record loaded before the edit and log a false failure.
+	if ctx.Err() != nil {
+		return
+	}
+
 	// Inverted monitors treat a reachable target as the alert condition, so flip
 	// up<->down before the result is persisted and notifications are derived.
 	// Only reachability checks are invertible — never push (a missing heartbeat is
@@ -186,67 +195,110 @@ func (ms *MonitorScheduler) inStartupGracePeriod() bool {
 	return time.Since(ms.startedAt) < monitorStartupGracePeriod
 }
 
-func (ms *MonitorScheduler) saveResult(monitor *core.Record, status int, latencyMs int64, msg string) {
-	monitorID := monitor.Id
+var errMonitorChanged = errors.New("monitor changed during the check")
 
-	failureThreshold := monitor.GetInt("failure_threshold")
-	if monitor.Get("failure_threshold") == nil {
-		failureThreshold = 3
-	} else if failureThreshold < 0 {
-		failureThreshold = 0
+// checkConfigFields are the monitor fields a check result depends on.
+var checkConfigFields = []string{
+	"type", "url", "http_method", "http_accepted_codes", "keyword", "keyword_invert",
+	"hostname", "port", "dns_host", "dns_type", "dns_server", "ping_count",
+	"ping_per_request_timeout", "ping_ip_family", "ip_family", "inverted", "timeout",
+}
+
+// sameCheckConfig reports whether a and b would run the same check.
+func sameCheckConfig(a, b *core.Record) bool {
+	for _, f := range checkConfigFields {
+		if fmt.Sprint(a.Get(f)) != fmt.Sprint(b.Get(f)) {
+			return false
+		}
 	}
-	failureCount := monitor.GetInt("failure_count")
-	previousStatus := monitor.GetInt("status")
-	effectiveStatus := status
+	return true
+}
 
-	if status == monitorStatusUp {
-		failureCount = 0
-	} else {
-		failureCount++
-		if failureCount >= failureThreshold && !ms.shouldDelayDownTransition(previousStatus, failureThreshold) {
-			effectiveStatus = monitorStatusDown
+// saveResult records a check result. The monitor passed in is the one the check loaded and
+// may be stale (edited or deleted while the check ran), so the result is applied to a fresh
+// copy inside a transaction, and only the scheduler-owned columns are written: concurrent
+// edits from the API are kept, and a deleted monitor gets no event.
+func (ms *MonitorScheduler) saveResult(loaded *core.Record, status int, latencyMs int64, msg string) {
+	monitorID := loaded.Id
+	var monitor *core.Record
+	var previousStatus, effectiveStatus int
+
+	err := ms.hub.RunInTransaction(func(txApp core.App) error {
+		var err error
+		monitor, err = txApp.FindRecordById("monitors", monitorID)
+		if err != nil {
+			return err
+		}
+		// Paused or reconfigured while the check ran (the edit is saved before the check is
+		// cancelled): the result measured the old target, drop it.
+		if !monitor.GetBool("active") || !sameCheckConfig(loaded, monitor) {
+			return errMonitorChanged
+		}
+
+		failureThreshold := monitor.GetInt("failure_threshold")
+		if monitor.Get("failure_threshold") == nil {
+			failureThreshold = 3
+		} else if failureThreshold < 0 {
+			failureThreshold = 0
+		}
+		failureCount := monitor.GetInt("failure_count")
+		previousStatus = monitor.GetInt("status")
+		effectiveStatus = status
+
+		if status == monitorStatusUp {
+			failureCount = 0
 		} else {
-			effectiveStatus = previousStatus
+			failureCount++
+			if failureCount >= failureThreshold && !ms.shouldDelayDownTransition(previousStatus, failureThreshold) {
+				effectiveStatus = monitorStatusDown
+			} else {
+				effectiveStatus = previousStatus
+			}
 		}
-	}
 
-	// A failed check that is still UNDER the failure threshold is recorded as "pending" so
-	// the sparkline shows amber before red. This keys on the failure count, not on
-	// effectiveStatus: once the count reaches the threshold the check is recorded as down
-	// even if the startup grace delays the monitor's own status flip — so a genuine outage
-	// during a hub restart still counts toward downtime instead of being hidden as pending.
-	// The monitor's own status and the notification path are unaffected.
-	eventStatus := status
-	if status == monitorStatusDown && failureCount < failureThreshold {
-		eventStatus = monitorStatusPending
-	}
-
-	now := time.Now().UTC()
-	// Flag the check if it falls inside an active maintenance window covering this monitor, so
-	// the uptime aggregates can exclude it. Read from the in-memory cache → no DB query here.
-	inMaintenance := ms.hub.monitorUnderMaintenance(monitorID, now)
-
-	col, err := ms.hub.FindCachedCollectionByNameOrId("monitor_events")
-	if err == nil {
-		event := core.NewRecord(col)
-		event.Set("monitor", monitorID)
-		event.Set("status", eventStatus)
-		event.Set("latency_ms", latencyMs)
-		event.Set("msg", msg)
-		event.Set("checked_at", now)
-		event.Set("maintenance", inMaintenance)
-		if saveErr := ms.hub.SaveNoValidate(event); saveErr != nil {
-			slog.Warn("Failed to save monitor event", "monitor", monitorID, "err", saveErr)
+		// A failed check that is still UNDER the failure threshold is recorded as "pending" so
+		// the sparkline shows amber before red. This keys on the failure count, not on
+		// effectiveStatus: once the count reaches the threshold the check is recorded as down
+		// even if the startup grace delays the monitor's own status flip — so a genuine outage
+		// during a hub restart still counts toward downtime instead of being hidden as pending.
+		// The monitor's own status and the notification path are unaffected.
+		eventStatus := status
+		if status == monitorStatusDown && failureCount < failureThreshold {
+			eventStatus = monitorStatusPending
 		}
-	}
 
-	monitor.Set("failure_count", failureCount)
-	monitor.Set("status", effectiveStatus)
-	monitor.Set("last_checked_at", time.Now())
-	monitor.Set("last_latency_ms", latencyMs)
-	monitor.Set("last_msg", msg)
-	if saveErr := ms.hub.SaveNoValidate(monitor); saveErr != nil {
-		slog.Warn("Failed to update monitor status", "monitor", monitorID, "err", saveErr)
+		now := time.Now().UTC()
+		// Flag the check if it falls inside an active maintenance window covering this monitor, so
+		// the uptime aggregates can exclude it. Read from the in-memory cache → no DB query here.
+		inMaintenance := ms.hub.monitorUnderMaintenance(monitorID, now)
+
+		col, err := txApp.FindCachedCollectionByNameOrId("monitor_events")
+		if err == nil {
+			event := core.NewRecord(col)
+			event.Set("monitor", monitorID)
+			event.Set("status", eventStatus)
+			event.Set("latency_ms", latencyMs)
+			event.Set("msg", msg)
+			event.Set("checked_at", now)
+			event.Set("maintenance", inMaintenance)
+			if err := txApp.SaveNoValidate(event); err != nil {
+				return fmt.Errorf("save monitor event: %w", err)
+			}
+		}
+
+		monitor.IgnoreUnchangedFields(true)
+		monitor.Set("failure_count", failureCount)
+		monitor.Set("status", effectiveStatus)
+		monitor.Set("last_checked_at", time.Now())
+		monitor.Set("last_latency_ms", latencyMs)
+		monitor.Set("last_msg", msg)
+		return txApp.SaveNoValidate(monitor)
+	})
+	if errors.Is(err, sql.ErrNoRows) || errors.Is(err, errMonitorChanged) {
+		return // deleted, paused or reconfigured while the check ran
+	}
+	if err != nil {
+		slog.Warn("Failed to update monitor status", "monitor", monitorID, "err", err)
 		return
 	}
 
