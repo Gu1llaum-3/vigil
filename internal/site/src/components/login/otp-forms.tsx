@@ -9,7 +9,7 @@ import { $router } from "../router"
 import { buttonVariants } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
-import { showLoginFaliedToast } from "./auth-form"
+import { loginErrorMessage, showLoginFaliedToast } from "./auth-form"
 
 type OtpRequestError = Error & { message?: string }
 
@@ -24,7 +24,7 @@ export function OtpInputForm({ otpId, mfaId }: { otpId: string; mfaId: string })
 				$authenticated.set(true)
 			})
 			.catch((err) => {
-				showLoginFaliedToast(err.message)
+				showLoginFaliedToast(loginErrorMessage(err) ?? err.message)
 			})
 	}
 
@@ -69,7 +69,7 @@ export function OtpRequestForm({
 			} catch (e) {
 				const error = e as OtpRequestError
 				onSubmitError?.()
-				showLoginFaliedToast(error.message)
+				showLoginFaliedToast(loginErrorMessage(error) ?? error.message)
 			} finally {
 				setIsLoading(false)
 				setEmail("")

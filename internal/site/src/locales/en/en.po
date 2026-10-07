@@ -3069,6 +3069,10 @@ msgstr "Token"
 msgid "Token (optional)"
 msgstr "Token (optional)"
 
+#: src/components/login/auth-form.tsx
+msgid "Too many attempts. Please wait before trying again."
+msgstr "Too many attempts. Please wait before trying again."
+
 #: src/components/routes/settings/notifications.tsx
 msgid "Topic URL"
 msgstr "Topic URL"

@@ -227,6 +227,8 @@ func (h *Hub) initialize(app core.App) error {
 		h.appURL = appURL
 		settings.Meta.AppURL = appURL
 	}
+	applyRateLimitSettings(settings)
+	applyTrustedProxySettings(settings)
 	if err := app.Save(settings); err != nil {
 		return err
 	}

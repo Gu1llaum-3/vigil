@@ -9,11 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { toast } from "../ui/use-toast"
+import { loginErrorMessage } from "./auth-form"
 
-const showLoginFaliedToast = () => {
+const showLoginFaliedToast = (description = t`Please check your credentials and try again`) => {
 	toast({
 		title: t`Login attempt failed`,
-		description: t`Please check your credentials and try again`,
+		description,
 		variant: "destructive",
 	})
 }
@@ -44,7 +45,7 @@ export default function ForgotPassword({
 				})
 			} catch (e) {
 				onSubmitError?.()
-				showLoginFaliedToast()
+				showLoginFaliedToast(loginErrorMessage(e))
 			} finally {
 				setIsLoading(false)
 				setEmail("")

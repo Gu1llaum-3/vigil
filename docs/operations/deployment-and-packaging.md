@@ -50,6 +50,8 @@ Typical use case:
 - local evaluation
 - simple single-service deployment
 
+Behind a reverse proxy (Caddy, Traefik, nginx, a Cloudflare tunnel…) set `TRUSTED_PROXY_IPS` to the proxy's address or network (with Docker, the exact subnet of the compose network the proxy is on, not all of `172.16.0.0/12`) and `TRUSTED_PROXY_HEADERS` to the client-IP header it sets (`X-Real-IP`, `CF-Connecting-IP`, or `X-Forwarded-For` for a single proxy). Without them the rate limiter, which is on by default, sees every client as the proxy and puts them all in one bucket — two failed logins in 3 seconds anywhere would then block every login for everyone, and all agents share the `/api/app/agent-connect` budget (60 per 10s: a large fleet then takes a few minutes to reconnect after a hub restart). Once the hub trusts a proxy, do not leave port 8090 reachable around it: publish it on `127.0.0.1` (or not at all) — a client hitting 8090 directly may arrive from the Docker gateway, inside the trusted range, and choose its own client IP (the same applies to `TRUSTED_AUTH_HEADER`).
+
 ### Hub Dev Compose
 
 Path:

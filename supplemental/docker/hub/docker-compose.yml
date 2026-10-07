@@ -9,6 +9,15 @@ services:
     restart: unless-stopped
     ports:
       - '8090:8090'
+    # Behind a reverse proxy, tell the hub which peer is the proxy and which header carries
+    # the client IP. Otherwise the rate limiter (on by default) sees every client as the
+    # proxy and one user's failed logins throttle everybody. Then publish the port on
+    # loopback only ('127.0.0.1:8090:8090', or not at all if the proxy shares the compose
+    # network): a client reaching 8090 directly can arrive from the Docker gateway, inside the
+    # trusted range, and pick its own client IP. Trust the proxy's exact subnet, not 172.16/12.
+    # environment:
+    #   TRUSTED_PROXY_IPS: '172.20.0.0/16'
+    #   TRUSTED_PROXY_HEADERS: 'X-Real-IP'
     # Runtime hardening. The image already runs as a non-root uid (10001) with a single
     # static binary, so locking it down further is cheap:
     #   - no-new-privileges blocks privilege escalation via setuid/file-caps;
