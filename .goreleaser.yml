@@ -6,6 +6,9 @@ before:
   hooks:
     # go.mod/go.sum are checked by CI (go mod tidy -diff); never rewrite them at build time.
     - go mod verify
+    # Writes THIRD_PARTY_NOTICES (licenses of the Go modules and npm packages we ship);
+    # needs the frontend dependencies installed. Fails on a forbidden/unknown license.
+    - sh supplemental/scripts/third-party-notices.sh
 
 builds:
   - id: vigil
@@ -60,6 +63,10 @@ archives:
       {{ .Binary }}_
       {{- .Os }}_
       {{- .Arch }}
+    files:
+      - LICENSE
+      - README.md
+      - THIRD_PARTY_NOTICES
     format_overrides:
       - goos: windows
         formats: [zip]
@@ -72,6 +79,10 @@ archives:
       {{ .Binary }}_
       {{- .Os }}_
       {{- .Arch }}
+    files:
+      - LICENSE
+      - README.md
+      - THIRD_PARTY_NOTICES
     format_overrides:
       - goos: windows
         formats: [zip]
@@ -95,6 +106,9 @@ nfpms:
       - src: ./supplemental/debian/copyright
         dst: usr/share/doc/vigil-agent/copyright
         packager: deb
+      - src: ./THIRD_PARTY_NOTICES
+        dst: usr/share/doc/vigil-agent/THIRD_PARTY_NOTICES
+        packager: deb
       - src: ./supplemental/debian/lintian-overrides
         dst: usr/share/lintian/overrides/vigil-agent
         packager: deb
@@ -110,7 +124,15 @@ nfpms:
         templates: ./supplemental/debian/templates
         config: ./supplemental/debian/config.sh
 
+checksum:
+  # hash (and so sign) the standalone copy attached to the release too
+  extra_files:
+    - glob: ./THIRD_PARTY_NOTICES
+
 release:
+  # also attached on its own: the hub image build downloads it from the release
+  extra_files:
+    - glob: ./THIRD_PARTY_NOTICES
   prerelease: auto
   make_latest: true
   draft: false

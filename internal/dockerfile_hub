@@ -58,8 +58,10 @@ RUN addgroup -g 10001 vigil \
 	&& adduser -D -u 10001 -G vigil vigil
 
 COPY --from=builder /out/vigil /app/vigil
-# MIT notices (Vigil, Beszel, PocketBase) must travel with the binary.
-COPY LICENSE /usr/share/licenses/vigil/LICENSE
+# License notices must travel with the binary: Vigil's (with Beszel and PocketBase) and
+# THIRD_PARTY_NOTICES, which the release workflow puts in the build context. The bracket
+# makes it optional, so a local build without it still works.
+COPY LICENSE THIRD_PARTY_NOTICE[S] /usr/share/licenses/vigil/
 
 # The data dir resolves to /vigil_data because the working directory is "/" and
 # the hub's DefaultDataDir is the relative path "vigil_data". Do NOT add a WORKDIR
