@@ -30,6 +30,10 @@ type RequestManager struct {
 	conn        *gws.Conn
 	pendingReqs map[RequestID]*PendingRequest
 	nextID      atomic.Uint32
+
+	deadlineMu sync.Mutex
+	deadlineAt time.Time
+	lastHeard  time.Time
 }
 
 // NewRequestManager creates a new request manager for a WebSocket connection
@@ -37,6 +41,7 @@ func NewRequestManager(conn *gws.Conn) *RequestManager {
 	rm := &RequestManager{
 		conn:        conn,
 		pendingReqs: make(map[RequestID]*PendingRequest),
+		lastHeard:   time.Now(),
 	}
 	return rm
 }
@@ -71,6 +76,11 @@ func (rm *RequestManager) SendRequest(ctx context.Context, action common.WebSock
 		Id:     (*uint32)(&reqID),
 		Action: action,
 		Data:   data,
+	}
+
+	// Give a busy agent until the request's own deadline (plus a margin) to answer.
+	if requestDeadline, ok := reqCtx.Deadline(); ok {
+		rm.requestSent(requestDeadline)
 	}
 
 	// Send the request
@@ -176,6 +186,45 @@ func (rm *RequestManager) cancelRequest(reqID RequestID) {
 	if req, exists := rm.pendingReqs[reqID]; exists {
 		req.Cancel()
 		delete(rm.pendingReqs, reqID)
+	}
+}
+
+// The connection deadline (read and write) only moves forward, and only for two reasons:
+//   - a frame arrived from the agent (receivedFrame): the deadline becomes now + the deadline;
+//   - a request was sent (requestSent): the agent runs its handlers on its read loop, so it
+//     sends nothing, not even pongs, while a slow snapshot runs. The deadline then covers the
+//     request's own deadline plus half the deadline, but never beyond twice the deadline
+//     after the agent was last heard from: a peer that stays silent that long is dead, even
+//     when the hub polls it more often than its requests time out.
+//
+// The hub's own pings never extend it.
+
+func (rm *RequestManager) receivedFrame() {
+	now := time.Now()
+	rm.deadlineMu.Lock()
+	defer rm.deadlineMu.Unlock()
+	rm.lastHeard = now
+	rm.extendDeadlineLocked(now.Add(time.Duration(deadlineNanos.Load())))
+}
+
+func (rm *RequestManager) requestSent(requestDeadline time.Time) {
+	d := time.Duration(deadlineNanos.Load())
+	rm.deadlineMu.Lock()
+	defer rm.deadlineMu.Unlock()
+	t := requestDeadline.Add(d / 2)
+	if limit := rm.lastHeard.Add(2 * d); t.After(limit) {
+		t = limit
+	}
+	rm.extendDeadlineLocked(t)
+}
+
+func (rm *RequestManager) extendDeadlineLocked(t time.Time) {
+	if !t.After(rm.deadlineAt) {
+		return
+	}
+	rm.deadlineAt = t
+	if rm.conn != nil {
+		_ = rm.conn.SetDeadline(t)
 	}
 }
 

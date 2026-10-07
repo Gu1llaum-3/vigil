@@ -154,7 +154,8 @@ func TestWsConn_RequestAgentInfo_RequestFormat(t *testing.T) {
 
 // TestDeadlineConstant tests that the deadline constant is reasonable
 func TestDeadlineConstant(t *testing.T) {
-	assert.Equal(t, 70*time.Second, deadline, "Deadline should be 70 seconds")
+	assert.Equal(t, 70*time.Second, defaultDeadline, "Deadline should be 70 seconds")
+	assert.Equal(t, int64(defaultDeadline), deadlineNanos.Load())
 }
 
 // TestCommonActions tests that the common actions are properly defined

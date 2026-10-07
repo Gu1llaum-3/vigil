@@ -13,9 +13,16 @@ import (
 	"github.com/lxzan/gws"
 )
 
-const (
-	deadline = 70 * time.Second
-)
+// defaultDeadline is how long a connection may stay silent: it is pushed forward only by
+// frames received from the agent.
+const defaultDeadline = 70 * time.Second
+
+// deadlineNanos holds the deadline in use; atomic so tests can shorten it while read loops run.
+var deadlineNanos atomic.Int64
+
+func init() { deadlineNanos.Store(int64(defaultDeadline)) }
+
+func nextDeadline() time.Time { return time.Now().Add(time.Duration(deadlineNanos.Load())) }
 
 // Handler implements the WebSocket event handler for agent connections.
 type Handler struct {
@@ -55,12 +62,12 @@ func NewWsConnection(conn *gws.Conn) *WsConn {
 
 // OnOpen sets a deadline for the WebSocket connection.
 func (h *Handler) OnOpen(conn *gws.Conn) {
-	conn.SetDeadline(time.Now().Add(deadline))
+	receivedFrame(conn)
 }
 
 // OnMessage routes incoming WebSocket messages to the request manager.
 func (h *Handler) OnMessage(conn *gws.Conn, message *gws.Message) {
-	conn.SetDeadline(time.Now().Add(deadline))
+	receivedFrame(conn)
 	if message.Opcode != gws.OpcodeBinary || message.Data.Len() == 0 {
 		return
 	}
@@ -70,6 +77,20 @@ func (h *Handler) OnMessage(conn *gws.Conn, message *gws.Message) {
 		return
 	}
 	wsConn.(*WsConn).requestManager.handleResponse(message)
+}
+
+// OnPong extends the deadline: the agent answered a ping, so the connection is alive.
+func (h *Handler) OnPong(conn *gws.Conn, _ []byte) {
+	receivedFrame(conn)
+}
+
+// receivedFrame records that the agent was heard from and extends the deadline.
+func receivedFrame(conn *gws.Conn) {
+	if wsConn, ok := conn.Session().Load("wsConn"); ok {
+		wsConn.(*WsConn).requestManager.receivedFrame()
+		return
+	}
+	conn.SetDeadline(nextDeadline())
 }
 
 // OnClose handles WebSocket connection closures and triggers reconnection after a delay.
@@ -99,13 +120,14 @@ func (ws *WsConn) Close(msg []byte) {
 	}
 }
 
-// Ping sends a ping frame to keep the connection alive.
+// Ping sends a ping frame; the agent answers with a pong (OnPong). It never touches the
+// deadline: otherwise the hub's own pings would keep a dead peer (power loss, network cut)
+// "connected" until TCP gives up, minutes later. See RequestManager.receivedFrame.
 func (ws *WsConn) Ping() error {
 	conn := ws.conn.Load()
 	if conn == nil {
 		return gws.ErrConnClosed
 	}
-	conn.SetDeadline(time.Now().Add(deadline))
 	return conn.WritePing(nil)
 }
 
