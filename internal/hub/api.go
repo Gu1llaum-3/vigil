@@ -306,7 +306,7 @@ func (h *Hub) getInfo(e *core.RequestEvent) error {
 		CheckUpdate bool   `json:"cu"`
 	}
 	info := infoResponse{
-		Key:     h.pubKey,
+		Key:     h.publicKey(),
 		Version: app.Version,
 	}
 	if optIn, _ := utils.GetEnv("CHECK_UPDATES"); optIn == "true" {

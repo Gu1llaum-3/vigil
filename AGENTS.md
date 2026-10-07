@@ -304,7 +304,7 @@ h.Save(rec)
 2. **Agent token** — per-agent token stored in `agents.token`, checked at every reconnection
 3. **Hub identity verification** — hub signs the agent token with its ED25519 private key; agent verifies against hub's public key (`KEY` env var). Prevents impersonation of the hub.
 
-The hub's keypair is stored as `<datadir>/id_ed25519` and generated on first run.
+The hub's keypair is stored as `<datadir>/id_ed25519` and generated on first run. `Hub.GetSSHKey` loads it once (at startup) and caches the signer and public key under `keyMu`; handshakes and `/api/app/info` reuse it, so replacing the file takes effect only after a hub restart.
 The hub's public key is served at `GET /api/app/info` (authenticated).
 
 ---

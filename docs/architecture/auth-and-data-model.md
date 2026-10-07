@@ -412,6 +412,7 @@ Behavior:
 - generated automatically on first run if missing
 - private key stays local to the hub
 - public key is exposed via `GET /api/app/info`
+- loaded once at startup and cached (`Hub.GetSSHKey`, under `keyMu`): replacing or removing the file takes effect only after a hub restart, and a file removed mid-run never turns into a new identity
 
 Relevant files:
 

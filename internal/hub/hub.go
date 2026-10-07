@@ -28,9 +28,12 @@ import (
 // Hub is the application. It embeds the PocketBase app and keeps references to subcomponents.
 type Hub struct {
 	core.App
-	um                       *users.UserManager
+	um *users.UserManager
+	// keyMu guards the hub key: loaded once, then read by every agent handshake and /info.
+	keyMu                    sync.Mutex
 	pubKey                   string
 	signer                   ssh.Signer
+	signerDir                string
 	appURL                   string
 	agentConns               sync.Map // agentID (string) → *ws.WsConn
 	systemNotificationReadAt sync.Map // userID (string) → map[string]string
@@ -286,14 +289,32 @@ func (h *Hub) bootstrapInitialUsers(app core.App) error {
 
 // GetSSHKey generates an ED25519 key pair if it doesn't exist and returns the signer.
 func (h *Hub) GetSSHKey(dataDir string) (ssh.Signer, error) {
-	if h.signer != nil {
-		return h.signer, nil
-	}
-
 	if dataDir == "" {
 		dataDir = h.DataDir()
 	}
+	h.keyMu.Lock()
+	defer h.keyMu.Unlock()
+	if h.signer != nil && h.signerDir == dataDir {
+		return h.signer, nil
+	}
+	signer, err := loadOrCreateSSHKey(dataDir, h.Logger())
+	if err != nil {
+		return nil, err
+	}
+	h.signer, h.signerDir = signer, dataDir
+	h.pubKey = strings.TrimSuffix(string(ssh.MarshalAuthorizedKey(signer.PublicKey())), "\n")
+	return signer, nil
+}
 
+// publicKey returns the hub's public key in authorized_keys format ("" before it is loaded).
+func (h *Hub) publicKey() string {
+	h.keyMu.Lock()
+	defer h.keyMu.Unlock()
+	return h.pubKey
+}
+
+// loadOrCreateSSHKey reads <dataDir>/id_ed25519, generating it on first run.
+func loadOrCreateSSHKey(dataDir string, logger *slog.Logger) (ssh.Signer, error) {
 	privateKeyPath := path.Join(dataDir, "id_ed25519")
 
 	existingKey, err := os.ReadFile(privateKeyPath)
@@ -302,8 +323,6 @@ func (h *Hub) GetSSHKey(dataDir string) (ssh.Signer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse private key: %s", err)
 		}
-		pubKeyBytes := ssh.MarshalAuthorizedKey(private.PublicKey())
-		h.pubKey = strings.TrimSuffix(string(pubKeyBytes), "\n")
 		return private, nil
 	} else if !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to read %s: %w", privateKeyPath, err)
@@ -322,14 +341,13 @@ func (h *Hub) GetSSHKey(dataDir string) (ssh.Signer, error) {
 		return nil, fmt.Errorf("failed to write private key to %q: err: %w", privateKeyPath, err)
 	}
 
-	sshPrivate, _ := ssh.NewSignerFromSigner(privKey)
-	pubKeyBytes := ssh.MarshalAuthorizedKey(sshPrivate.PublicKey())
-	h.pubKey = strings.TrimSuffix(string(pubKeyBytes), "\n")
-
-	h.Logger().Info("ed25519 key pair generated successfully.")
-	h.Logger().Info("Saved to: " + privateKeyPath)
-
-	return sshPrivate, err
+	sshPrivate, err := ssh.NewSignerFromSigner(privKey)
+	if err != nil {
+		return nil, err
+	}
+	logger.Info("ed25519 key pair generated successfully.")
+	logger.Info("Saved to: " + privateKeyPath)
+	return sshPrivate, nil
 }
 
 // MakeLink formats a link with the app URL and path segments.
