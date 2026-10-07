@@ -233,6 +233,9 @@ Hub side (agent_connect.go):
                    ├─ Ping every 30s
                    ├─ DownChan → status=offline
                    └─ delete from Hub.agentConns on disconnect
+
+Hub boot: startAgentStatusReconciler() [goroutine]
+  └─ after 60s: agents still status=connected, last_seen before boot, no agentConns entry → offline (+ notification)
 ```
 
 **All handlers that are not `CheckFingerprint` require `HubVerified = true`.**
