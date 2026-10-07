@@ -79,10 +79,11 @@ The hub enables PocketBase's rate limiter at startup (`*:auth` allows 2 attempts
 
 ### Fix
 
-1. fetch the current hub public key from `/api/app/info`
-2. update the agent key configuration
-3. restart the agent
-4. verify the agent is talking to the intended hub URL
+1. if you replaced the hub keypair file, restart the hub first (the key is loaded once at startup; until then `/api/app/info` still returns the old one)
+2. fetch the current hub public key from `/api/app/info`
+3. update the agent key configuration
+4. restart the agent
+5. verify the agent is talking to the intended hub URL
 
 ### Related Files
 
