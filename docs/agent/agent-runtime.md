@@ -159,7 +159,7 @@ Concurrency model: everything above runs on the single `Start` event loop gorout
 
 The WebSocket client is responsible for:
 
-- reading `HUB_URL`
+- reading `HUB_URL` and checking it (`checkHubURL`): `https://`/`wss://` connect over `wss`, `http://`/`ws://` over plaintext `ws` with a startup warning (the token and inventories travel in cleartext), any other scheme or a missing host is refused. An unusable configuration (no or invalid `HUB_URL`, no token) makes `Start` fail and the agent exit, instead of running idle while looking healthy to systemd (under the shipped units, `Restart=on-failure` then retries every 5s, so a fixed config or a late `TOKEN_FILE` recovers on its own); the error never echoes URL credentials (`u.Redacted()`)
 - reading the token from env or file
 - building the `/api/app/agent-connect` URL
 - opening the WebSocket session

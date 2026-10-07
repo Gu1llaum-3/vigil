@@ -61,6 +61,9 @@ func newWebSocketClient(agent *Agent) (client *WebSocketClient, err error) {
 	if err != nil {
 		return nil, errors.New("invalid hub URL")
 	}
+	if err := checkHubURL(client.hubURL); err != nil {
+		return nil, err
+	}
 	// build the TLS config for the hub connection (verifies the hub certificate by
 	// default; opt-in to a custom CA or, explicitly, to skipping verification).
 	client.tlsConfig, err = buildHubTLSConfig(client.hubURL.Hostname(), utils.GetEnv)
@@ -131,6 +134,24 @@ func getToken() (string, error) {
 	return strings.TrimSpace(string(tokenBytes)), nil
 }
 
+// checkHubURL rejects a HUB_URL the agent cannot connect to safely: only http(s) and ws(s)
+// are accepted (anything else used to fall back to cleartext ws), and a host is required.
+// A plaintext scheme is allowed, for LAN hubs, but it sends the agent token and every
+// inventory unencrypted, so it is logged loudly.
+func checkHubURL(u *url.URL) error {
+	switch u.Scheme {
+	case "https", "wss":
+	case "http", "ws":
+		slog.Warn("HUB_URL is not encrypted (http:// or ws://): the agent token and all host data travel in cleartext. Use https:// unless the network between agent and hub is trusted.", "hub", u.Host)
+	default:
+		return fmt.Errorf("HUB_URL must start with https:// (or http:// on a trusted network), got %q", u.Redacted())
+	}
+	if u.Host == "" {
+		return fmt.Errorf("HUB_URL has no host: %q", u.Redacted())
+	}
+	return nil
+}
+
 // getOptions returns the WebSocket client options, creating them if necessary.
 // It configures the connection URL, TLS settings, and authentication headers.
 func (client *WebSocketClient) getOptions() *gws.ClientOption {
@@ -138,8 +159,8 @@ func (client *WebSocketClient) getOptions() *gws.ClientOption {
 		return client.options
 	}
 
-	// update the hub url to use websocket scheme and api path
-	if client.hubURL.Scheme == "https" {
+	// update the hub url to use websocket scheme and api path (checkHubURL accepted it)
+	if client.hubURL.Scheme == "https" || client.hubURL.Scheme == "wss" {
 		client.hubURL.Scheme = "wss"
 	} else {
 		client.hubURL.Scheme = "ws"

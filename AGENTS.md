@@ -340,7 +340,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 
 | Variable | Description | Required |
 |---|---|---|
-| `HUB_URL` | Full URL of the hub (e.g. `https://hub.example.com`) | Yes |
+| `HUB_URL` | Full URL of the hub (e.g. `https://hub.example.com`). `https://`/`wss://` → encrypted `wss`; `http://`/`ws://` → plaintext `ws`, accepted for trusted networks with a startup warning; anything else (or no host) stops the agent with an error. | Yes |
 | `TOKEN` | Enrollment token or agent token | Yes (or `TOKEN_FILE`) |
 | `TOKEN_FILE` | Path to a file containing the token | Alt. to `TOKEN` |
 | `KEY` | Hub's public key for identity verification | Yes (or `KEY_FILE` / `--key`) |
