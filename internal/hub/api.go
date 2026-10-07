@@ -203,11 +203,11 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 		apiAuth.GET("/update", updateInfo.getUpdate)
 	}
 	// get or manage agent enrollment tokens
-	apiAuth.GET("/agent-enrollment-token", h.getAgentEnrollmentToken).BindFunc(excludeReadOnlyRole)
+	apiAuth.GET("/agent-enrollment-token", h.getAgentEnrollmentToken).BindFunc(excludeReadOnlyRole, rejectReadOnlyApiKey)
 	apiAuth.POST("/agent-enrollment-token", h.setAgentEnrollmentToken).BindFunc(excludeReadOnlyRole)
 	// per-agent tokens for the admin/operator agents UI (the token field is hidden on the
 	// collection so it is not exposed fleet-wide); readonly users are excluded.
-	apiAuth.GET("/agent-tokens", h.getAgentTokens).BindFunc(excludeReadOnlyRole)
+	apiAuth.GET("/agent-tokens", h.getAgentTokens).BindFunc(excludeReadOnlyRole, rejectReadOnlyApiKey)
 	// rotate a per-agent token server-side (cryptographically strong, replaces the old
 	// client-generated token).
 	apiAuth.POST("/agents/{id}/rotate-token", h.rotateAgentToken).BindFunc(excludeReadOnlyRole)

@@ -117,6 +117,16 @@ func (h *Hub) authenticateApiKey(e *core.RequestEvent) error {
 	return e.Next()
 }
 
+// rejectReadOnlyApiKey guards GET routes that return credentials (agent tokens, the
+// enrollment token): a read-scoped key promises to read data, not secrets that let its holder
+// enroll or impersonate agents. Read-write keys and browser sessions pass.
+func rejectReadOnlyApiKey(e *core.RequestEvent) error {
+	if scope, _ := e.Get(apiKeyScopeContextKey).(string); scope == apiScopeRead {
+		return e.ForbiddenError("This API key is read-only and cannot read credentials.", nil)
+	}
+	return e.Next()
+}
+
 // touchApiKeyLastUsed records last_used_at, throttled to at most once per minute so a busy
 // key does not cause a DB write on every request. Best-effort: failures are ignored.
 func (h *Hub) touchApiKeyLastUsed(rec *core.Record) {
