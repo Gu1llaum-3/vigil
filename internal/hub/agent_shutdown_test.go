@@ -98,3 +98,23 @@ func TestGoAgentAfterStop(t *testing.T) {
 	// Stopping twice is harmless (OnTerminate and the test cleanup may both call it).
 	hub.stopAgentConnections()
 }
+
+// A panic in a connection goroutine must not take the hub down, nor leak the wait group.
+func TestGoAgentRecoversPanics(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	require.True(t, hub.goAgent(func() { panic("boom") }))
+
+	done := make(chan struct{})
+	go func() {
+		hub.agentWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the panicking goroutine never released the wait group")
+	}
+}

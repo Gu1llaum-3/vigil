@@ -30,6 +30,9 @@ type RequestManager struct {
 	conn        *gws.Conn
 	pendingReqs map[RequestID]*PendingRequest
 	nextID      atomic.Uint32
+	// closed is set once the connection is gone: pending requests are cancelled and report
+	// gws.ErrConnClosed instead of a context error.
+	closed atomic.Bool
 
 	deadlineMu sync.Mutex
 	deadlineAt time.Time
@@ -48,6 +51,9 @@ func NewRequestManager(conn *gws.Conn) *RequestManager {
 
 // SendRequest sends a request and returns a channel for the response
 func (rm *RequestManager) SendRequest(ctx context.Context, action common.WebSocketAction, data any) (*PendingRequest, error) {
+	if rm.closed.Load() {
+		return nil, gws.ErrConnClosed
+	}
 	reqID := RequestID(rm.nextID.Add(1))
 
 	// Respect any caller-provided deadline. If none is set, apply a reasonable default
@@ -239,6 +245,7 @@ func (rm *RequestManager) deleteRequest(reqID RequestID) {
 func (rm *RequestManager) Close() {
 	rm.Lock()
 	defer rm.Unlock()
+	rm.closed.Store(true)
 
 	// Cancel all pending requests
 	for _, req := range rm.pendingReqs {
