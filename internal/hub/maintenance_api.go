@@ -106,7 +106,7 @@ func validateMaintenancePayload(body *maintenancePayload) error {
 		if err != nil || end == "" {
 			return errors.New("a one-time window needs a valid end")
 		}
-		if !(end > start) {
+		if end <= start {
 			return errors.New("end must be after start")
 		}
 		body.StartAt, body.EndAt = start, end

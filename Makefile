@@ -14,8 +14,12 @@ clean:
 	go clean
 	rm -rf ./build
 
+# Same checks as the CI lint job (configuration in .golangci.yml).
 lint:
-	golangci-lint run
+	@unformatted=$$(git ls-files '*.go' | xargs gofmt -l); \
+	if [ -n "$$unformatted" ]; then echo "Not gofmt-formatted:"; echo "$$unformatted"; exit 1; fi
+	golangci-lint run ./...
+	go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 -tags testing ./...
 
 test:
 	go test -tags=testing ./...

@@ -41,11 +41,23 @@ type Hub struct {
 	maintenanceCache         maintenanceWindowCache
 	diskRules                diskRuleCache
 	credentialsKey           []byte
+
+	// agentCtx is cancelled when the hub stops; the per-connection goroutines
+	// (verifyWsConn, manageAgentLifecycle) and their agent requests derive from it,
+	// and agentWG lets the shutdown wait for them before the database closes.
+	agentCtx   context.Context
+	stopAgents context.CancelFunc
+	agentWG    sync.WaitGroup
+	// agentMu guards agentsStopped against goAgent, so no goroutine is added once the
+	// shutdown has started waiting.
+	agentMu       sync.Mutex
+	agentsStopped bool
 }
 
 // NewHub creates a new Hub instance with default configuration.
 func NewHub(app core.App) *Hub {
 	hub := &Hub{App: app}
+	hub.agentCtx, hub.stopAgents = context.WithCancel(context.Background())
 	hub.um = users.NewUserManager(hub)
 	hub.monitorScheduler = newMonitorScheduler(hub)
 	hub.notifier = notifications.New(hub)
@@ -148,6 +160,7 @@ func (h *Hub) StartHub() error {
 
 	h.App.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
 		cancel()
+		h.stopAgentConnections()
 		return e.Next()
 	})
 

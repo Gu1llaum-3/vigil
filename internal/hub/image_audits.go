@@ -355,13 +355,14 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 			}
 			result.LatestDigest = remoteDigest
 			result.LatestImageID = remoteDigest
-			if target.LocalDigest == "" {
+			switch target.LocalDigest {
+			case "":
 				result.Status = imageAuditStatusUnknown
 				result.LineStatus = imageAuditStatusUnknown
-			} else if target.LocalDigest == remoteDigest {
+			case remoteDigest:
 				result.Status = imageAuditStatusUpToDate
 				result.LineStatus = imageAuditStatusUpToDate
-			} else {
+			default:
 				result.Status = imageAuditStatusUpdateAvailable
 				if target.Policy == imageAuditPolicySemverMajor {
 					result.LineStatus = imageAuditLineStatusMinorAvailable
@@ -382,13 +383,14 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 			}
 			result.LatestDigest = remoteDigest
 			result.LatestImageID = remoteDigest
-			if target.LocalDigest == "" {
+			switch target.LocalDigest {
+			case "":
 				result.Status = imageAuditStatusUnknown
 				result.LineStatus = imageAuditStatusUnknown
-			} else if target.LocalDigest == remoteDigest {
+			case remoteDigest:
 				result.Status = imageAuditStatusUpToDate
 				result.LineStatus = imageAuditStatusUpToDate
-			} else {
+			default:
 				result.Status = imageAuditStatusUpdateAvailable
 				result.LineStatus = imageAuditLineStatusTagRebuilt
 			}

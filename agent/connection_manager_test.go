@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"net"
 	"net/url"
 	"sync"
 	"testing"
@@ -167,8 +168,9 @@ func TestConnectionManager_ConnectWithRateLimit(t *testing.T) {
 	agent := createTestAgent(t)
 	cm := agent.connectionManager
 
-	// Set up environment for WebSocket client creation
-	t.Setenv(app.AgentEnvPrefix+"HUB_URL", "ws://localhost:8080")
+	// Set up environment for WebSocket client creation, pointing at a port nothing
+	// listens on (a fixed port like 8080 may be taken by a local hub).
+	t.Setenv(app.AgentEnvPrefix+"HUB_URL", "ws://"+closedLocalAddr(t))
 	t.Setenv(app.AgentEnvPrefix+"TOKEN", "test-token")
 
 	// Create WebSocket client
@@ -181,14 +183,14 @@ func TestConnectionManager_ConnectWithRateLimit(t *testing.T) {
 
 	// Test that connection is rate limited
 	err = cm.startWebSocketConnection()
-	assert.Error(t, err, "Should error due to rate limiting")
+	require.Error(t, err, "Should error due to rate limiting")
 	assert.Contains(t, err.Error(), "already connecting", "Error should indicate rate limiting")
 
 	// Test connection after rate limit expires
 	cm.wsClient.lastConnectAttempt = time.Now().Add(-10 * time.Second)
 	err = cm.startWebSocketConnection()
 	// This will fail due to no actual server, but should not be rate limited
-	assert.Error(t, err, "Connection should fail but not due to rate limiting")
+	require.Error(t, err, "Connection should fail but not due to rate limiting")
 	assert.NotContains(t, err.Error(), "already connecting", "Error should not indicate rate limiting")
 }
 
@@ -335,4 +337,15 @@ func TestConnectionManager_ConnectedClearsScheduledRetry(t *testing.T) {
 
 	assert.Equal(t, WebSocketConnected, cm.State())
 	assert.Nil(t, cm.retryC, "connecting should cancel the scheduled retry")
+}
+
+// closedLocalAddr returns a loopback address with no listener: it binds a free port and
+// releases it, so a connection attempt is refused instead of reaching a local service.
+func closedLocalAddr(t *testing.T) string {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	addr := l.Addr().String()
+	require.NoError(t, l.Close())
+	return addr
 }

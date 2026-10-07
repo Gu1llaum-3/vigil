@@ -507,7 +507,8 @@ func checkTCP(ctx context.Context, monitor *core.Record) (status int, msg string
 	if err != nil {
 		return monitorStatusDown, fmt.Sprintf("Connection failed: %s", err)
 	}
-	conn.Close()
+	// The check only needed the connection to open.
+	_ = conn.Close()
 	return monitorStatusUp, "TCP connection successful"
 }
 

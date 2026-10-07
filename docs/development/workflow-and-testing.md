@@ -12,7 +12,7 @@
 - `mise` for pinned Go/Node/lefthook toolchains
 - `lefthook` for git hooks
 - `entr` for hot-reload during development
-- `golangci-lint` for Go linting
+- `golangci-lint` v2 for Go linting (`make lint`; configuration in `.golangci.yml`)
 
 The repository pins its local toolchain in `.mise.toml`.
 
@@ -20,8 +20,21 @@ After cloning, run `mise install` to match the repo versions.
 
 If you want the Git hooks enabled, run `lefthook install` once.
 
-The hooks run `gofmt` and Biome (`pnpm check`) on commit, and Go tests plus the frontend type check (`pnpm typecheck`, only when frontend files are pushed) before push.
-The `CI` workflow (`.github/workflows/ci.yml`, on pushes to `main` and on pull requests) runs Biome, the type check and the frontend build. Frontend builds are also part of the release and Docker image workflows.
+The hooks (`lefthook.yml`) are a local convenience; CI runs the same checks and more, so they are optional:
+
+- pre-commit: `gofmt -w` on the staged Go files, which are then re-staged so the commit holds the formatted version (`stage_fixed`). With a partially staged file, lefthook sets the unstaged changes aside and restores them afterwards; if they touch lines gofmt reformatted, the restore fails ("Couldn't restore unstaged files") and they are left in the `lefthook auto backup` stash, and Biome (`pnpm check`) when frontend files are staged
+- pre-push: the Go tests (creating the empty `internal/site/dist/index.html` the hub needs to compile, like CI) and the frontend type check (`pnpm typecheck`) when frontend files are pushed
+
+Note: `lefthook run <hook>` (e.g. to try a hook by hand) installs the hooks into `.git/hooks` if they are missing; `lefthook uninstall` removes them again.
+
+The `CI` workflow (`.github/workflows/ci.yml`, on pushes to `main` and `dev` and on pull requests, including Dependabot's) has four jobs:
+
+- `go` (ubuntu-latest): `go mod verify`, `go mod tidy -diff` (fails when `go.mod`/`go.sum` are not tidy), `go vet -tags=testing ./...` and `go test -tags=testing -timeout 20m ./...`. It runs on Linux, so the `//go:build linux` collector tests run too, and creates an empty `internal/site/dist/index.html` first because the hub embeds that directory.
+- `lint`: `gofmt` (fails on any unformatted tracked `.go` file), `golangci-lint` (`.golangci.yml`: the standard linters — errcheck, govet, ineffassign, staticcheck, unused — on the `testing` build tag) and `govulncheck` (fails only on vulnerabilities the code reaches). `make lint` runs the same three checks
+- `race`: the same suite under the race detector (`go test -tags=testing -race -timeout 20m ./...`), in parallel with `go`
+- `frontend`: Biome, `pnpm audit --prod --audit-level high` (dependencies shipped in the bundle; build-only tools such as `@lingui/cli` are not audited), the type check and the frontend build
+
+`ci.yml` is also a reusable workflow (`workflow_call`): the release workflow runs it on the tagged commit before publishing anything (see `docs/operations/deployment-and-packaging.md`). To reproduce the `go` job locally, run the same commands in a `golang` container on a clean copy (`git archive HEAD`), as a non-root user like the GitHub runner (and as root too: Docker builds run tests as root).
 
 ## Main Make Targets
 
@@ -60,7 +73,7 @@ Output binaries are written under `build/`.
 - `make tidy`
   - runs `go mod tidy`
 - `make lint`
-  - runs `golangci-lint`
+  - runs `gofmt -l`, `golangci-lint` and `govulncheck`, like the CI `lint` job
 - `make clean`
   - cleans Go build output and removes `build/`
 
@@ -154,7 +167,27 @@ Without the build tag:
 - editors may show misleading “No packages found” messages for test files
 - your verification may appear to pass while not actually running the intended tests
 
+### Tests Must Not Depend On The User Or The Host
+
+Go tests run as root in CI containers and Docker builds, and as a regular user on laptops. Keep them independent of both:
+
+- for a path that must not be creatable, use a child of a regular file (`uncreatableDir` in `agent/data_dir_test.go`); root can create `/invalid/path`
+- skip permission-denial cases when `os.Geteuid() == 0` (root bypasses directory permissions)
+- clear the env variables the code reads, in both forms: the `VIGIL_AGENT_`/`VIGIL_HUB_` prefixed name wins even when empty, and developers often export `TOKEN`, `KEY` or `DATA_DIR` for `make dev-agent`
+- do not assume a fixed local port is free (a dev hub may listen on it): bind `127.0.0.1:0` and close it to get a refused address
+- never let a test write to real system or home locations: point `HOME` at `t.TempDir()`, and skip a case that would create `/var/lib/...` as root
+- use `require.Error` before reading `err.Error()`, so a missing error fails the test instead of panicking and hiding the rest of the package
+- do not depend on the host's package state: package-manager tests use fake `apt-get`/`dnf` binaries with recorded outputs (`agent/collectors/testdata/`)
+
+Check agent changes in both modes, e.g. `docker run --rm -v "$PWD":/src -w /src golang:1.27 go test -tags=testing ./agent/...` and the same with `--user 1000:1000 -e HOME=/tmp -e GOCACHE=/tmp/gocache -e GOPATH=/tmp/gopath`.
+
 ## Test Helpers
+
+Hub tests start from a data dir migrated once per test binary: `internal/hub/main_test.go` calls `pbtemplate.Run` (`internal/tests/pbtemplate`) from `TestMain`, and both `tests.NewTestHub(t.TempDir())` and the in-package `createTestHub` clone it (`pbtemplate.DataDirFor`) instead of an empty dir. Replaying the ~40 migrations for every test used to dominate the suite (`internal/hub`: ~22 s → ~7 s, and ~420 s → ~45 s under `-race`). Two rules follow:
+
+- a migration that reads environment variables while it runs (today `initial-settings.go`: `USER_EMAIL`/`USER_PASSWORD`) cannot be reflected by the shared dir: list its variables in `migrationEnvVars` (`internal/tests/pbtemplate`), so tests that set them migrate from scratch
+- call `Cleanup()` on every test hub, or its cloned data dir stays in `$TMPDIR`
+- a new test package that creates many hubs should get the same `TestMain`
 
 Useful helpers include:
 

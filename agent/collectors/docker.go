@@ -119,10 +119,10 @@ func enrichContainers(ctx context.Context, containers []common.ContainerInfo) er
 	}
 
 	var inspected []struct {
-		ID     string `json:"Id"`
-		Name   string `json:"Name"`
-		Image  string `json:"Image"`
-		State  struct {
+		ID    string `json:"Id"`
+		Name  string `json:"Name"`
+		Image string `json:"Image"`
+		State struct {
 			Status   string `json:"Status"`
 			ExitCode int    `json:"ExitCode"`
 		} `json:"State"`

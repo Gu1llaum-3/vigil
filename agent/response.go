@@ -1,8 +1,8 @@
 package agent
 
 import (
-	"github.com/fxamacker/cbor/v2"
 	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/fxamacker/cbor/v2"
 )
 
 // newAgentResponse creates an AgentResponse with CBOR-encoded data.

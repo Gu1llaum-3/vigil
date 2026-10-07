@@ -57,6 +57,11 @@ func (h *Hub) handleAgentConnect(e *core.RequestEvent) error {
 func (acr *agentConnectRequest) agentConnect() (err error) {
 	var agentVersion string
 
+	// The hub is shutting down: no new connection goroutines.
+	if acr.hub.agentCtx.Err() != nil {
+		return acr.sendResponseError(acr.res, http.StatusServiceUnavailable, "Hub is shutting down")
+	}
+
 	acr.token, agentVersion, err = acr.validateAgentHeaders(acr.req.Header)
 	if err != nil {
 		return acr.sendResponseError(acr.res, http.StatusBadRequest, "")
@@ -90,7 +95,11 @@ func (acr *agentConnectRequest) agentConnect() (err error) {
 		return acr.sendResponseError(acr.res, http.StatusInternalServerError, "WebSocket upgrade failed")
 	}
 
-	go acr.verifyWsConn(conn, agentRecords)
+	if !acr.hub.goAgent(func() { _ = acr.verifyWsConn(conn, agentRecords) }) {
+		// The hub started stopping after the check above; the connection is already
+		// upgraded, so close it instead of answering 503.
+		_ = conn.WriteClose(1001, []byte("hub shutting down"))
+	}
 	return nil
 }
 
@@ -131,7 +140,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 		return err
 	}
 
-	agentFingerprint, err := wsConn.GetFingerprint(context.Background(), acr.token, signer)
+	agentFingerprint, err := wsConn.GetFingerprint(acr.hub.agentCtx, acr.token, signer)
 	if err != nil {
 		return err
 	}
@@ -145,7 +154,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	acr.hub.agentConns.Store(agentRec.Id, wsConn)
 
 	// Fetch initial agent info (version, capabilities, metadata) and persist it.
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(acr.hub.agentCtx, 10*time.Second)
 	defer cancel()
 	if info, infoErr := wsConn.GetAgentInfo(ctx); infoErr == nil {
 		acr.hub.updateAgentInfo(agentRec.Id, info, firstEnroll)
@@ -154,7 +163,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	}
 
 	// Collect initial host snapshot.
-	snapshotCtx, snapshotCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	snapshotCtx, snapshotCancel := context.WithTimeout(acr.hub.agentCtx, 60*time.Second)
 	defer snapshotCancel()
 	if snapshot, snapshotErr := wsConn.GetHostSnapshot(snapshotCtx); snapshotErr == nil {
 		acr.hub.upsertHostSnapshot(agentRec.Id, snapshot)
@@ -163,7 +172,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	}
 
 	// Collect initial lightweight host metrics so the monitoring views populate immediately.
-	metricsCtx, metricsCancel := context.WithTimeout(context.Background(), hostMetricsRequestTimeout)
+	metricsCtx, metricsCancel := context.WithTimeout(acr.hub.agentCtx, hostMetricsRequestTimeout)
 	defer metricsCancel()
 	if metrics, metricsErr := wsConn.GetHostMetrics(metricsCtx); metricsErr == nil {
 		acr.hub.persistHostMetrics(agentRec.Id, metrics)
@@ -171,7 +180,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 		slog.Warn("Failed to fetch host metrics", "agent", agentRec.logName(), "id", agentRec.Id, "err", metricsErr)
 	}
 
-	containerMetricsCtx, containerMetricsCancel := context.WithTimeout(context.Background(), containerMetricsRequestTimeout)
+	containerMetricsCtx, containerMetricsCancel := context.WithTimeout(acr.hub.agentCtx, containerMetricsRequestTimeout)
 	defer containerMetricsCancel()
 	if metrics, metricsErr := wsConn.GetContainerMetrics(containerMetricsCtx); metricsErr == nil {
 		acr.hub.insertContainerMetricSample(agentRec.Id, metrics)
@@ -180,7 +189,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	}
 
 	// Keep the connection alive and detect disconnection.
-	go acr.hub.manageAgentLifecycle(wsConn, agentRec.Id)
+	acr.hub.goAgent(func() { acr.hub.manageAgentLifecycle(wsConn, agentRec.Id) })
 	return nil
 }
 
@@ -199,7 +208,8 @@ func (acr *agentConnectRequest) validateAgentHeaders(headers http.Header) (strin
 func (acr *agentConnectRequest) sendResponseError(res http.ResponseWriter, code int, message string) error {
 	res.WriteHeader(code)
 	if message != "" {
-		res.Write([]byte(message))
+		// The client may already be gone; nothing to do about it.
+		_, _ = res.Write([]byte(message))
 	}
 	return nil
 }
@@ -332,18 +342,37 @@ func (h *Hub) manageAgentLifecycle(wsConn *ws.WsConn, agentId string) {
 	defer ticker.Stop()
 	for {
 		select {
+		case <-h.agentCtx.Done():
+			// The hub is stopping: the agent did not go offline, the hub did. Close the
+			// connection here too, in case it was stored after stopAgentConnections
+			// closed the others.
+			h.agentConns.CompareAndDelete(agentId, wsConn)
+			wsConn.Close([]byte("hub shutting down"))
+			return
 		case <-wsConn.DownChan:
+			// select picks randomly among ready cases: never write a status because of
+			// a shutdown that is already under way.
+			if h.agentCtx.Err() != nil {
+				return
+			}
 			// CompareAndDelete ensures we only remove this specific WsConn pointer.
 			// A rapid restart may have already stored a new WsConn for the same
 			// agentId — a plain Delete would evict it and leave the hub blind.
 			h.agentConns.CompareAndDelete(agentId, wsConn)
 			slog.Info("Agent disconnected", "id", agentId)
-			time.Sleep(agentOfflineGracePeriod)
+			select {
+			case <-time.After(agentOfflineGracePeriod):
+			case <-h.agentCtx.Done():
+				return
+			}
 			if _, stillConnected := h.agentConns.Load(agentId); !stillConnected {
 				h.setAgentStatus(agentId, "offline")
 			}
 			return
 		case <-ticker.C:
+			if h.agentCtx.Err() != nil {
+				return
+			}
 			if err := wsConn.Ping(); err != nil {
 				h.agentConns.CompareAndDelete(agentId, wsConn)
 				h.setAgentStatus(agentId, "offline")
@@ -401,4 +430,37 @@ func (h *Hub) updateAgentInfo(agentId string, info common.AgentInfoResponse, fir
 		rec.Set("tags", info.Tags)
 	}
 	_ = h.SaveNoValidate(rec)
+}
+
+// goAgent runs fn as a per-connection goroutine tracked by stopAgentConnections. It
+// returns false, without running fn, once the hub is stopping.
+func (h *Hub) goAgent(fn func()) bool {
+	h.agentMu.Lock()
+	defer h.agentMu.Unlock()
+	if h.agentsStopped {
+		return false
+	}
+	h.agentWG.Add(1)
+	go func() {
+		defer h.agentWG.Done()
+		fn()
+	}()
+	return true
+}
+
+// stopAgentConnections refuses new agent connections, cancels the in-flight agent
+// requests, closes the live connections and waits for their goroutines to return, so
+// none of them writes to the database once it is closed. Safe to call more than once.
+func (h *Hub) stopAgentConnections() {
+	h.agentMu.Lock()
+	h.agentsStopped = true
+	h.agentMu.Unlock()
+	h.stopAgents()
+	h.agentConns.Range(func(_, v any) bool {
+		if wsConn, ok := v.(*ws.WsConn); ok {
+			wsConn.Close([]byte("hub shutting down"))
+		}
+		return true
+	})
+	h.agentWG.Wait()
 }

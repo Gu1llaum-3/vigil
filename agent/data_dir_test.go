@@ -8,10 +8,19 @@ import (
 	"runtime"
 	"testing"
 
+	app "github.com/Gu1llaum-3/vigil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	app "github.com/Gu1llaum-3/vigil"
 )
+
+// uncreatableDir returns a path no user can create, root included: its parent is a
+// regular file. (A path like /invalid/path is creatable by root, e.g. in a CI container.)
+func uncreatableDir(t *testing.T, name string) string {
+	t.Helper()
+	file := filepath.Join(t.TempDir(), "regular-file")
+	require.NoError(t, os.WriteFile(file, nil, 0o644))
+	return filepath.Join(file, name)
+}
 
 func TestGetDataDir(t *testing.T) {
 	// Test with explicit dataDir parameter
@@ -49,21 +58,30 @@ func TestGetDataDir(t *testing.T) {
 
 	// Test with invalid explicit dataDir
 	t.Run("invalid explicit data dir", func(t *testing.T) {
-		invalidPath := "/invalid/path/that/cannot/be/created"
-		_, err := GetDataDir(invalidPath)
+		_, err := GetDataDir(uncreatableDir(t, "data"))
 		assert.Error(t, err)
 	})
 
-	// Test fallback behavior (empty dataDir, no env var)
-	t.Run("fallback to default directories", func(t *testing.T) {
-		// This will try platform-specific defaults, which may or may not work
-		// We're mainly testing that it doesn't panic and returns some result
-		result, err := GetDataDir()
-		// We don't assert success/failure here since it depends on system permissions
-		// Just verify we get a string result if no error
-		if err == nil {
-			assert.NotEmpty(t, result)
+	// Test fallback behavior (empty dataDir, no env var): creating /var/lib/vigil-agent
+	// fails for a regular user, so the agent falls back to ~/.config.
+	t.Run("fallback to the user config directory", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows uses app-data directories")
 		}
+		if os.Geteuid() == 0 {
+			t.Skip("as root the fallback would create the real /var/lib data directory")
+		}
+		if _, err := os.Stat(filepath.Join("/var/lib", app.AgentDataDirName)); err == nil {
+			t.Skip("the system data directory exists on this host")
+		}
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv(app.AgentEnvPrefix+"DATA_DIR", "")
+		t.Setenv("DATA_DIR", "")
+
+		result, err := GetDataDir()
+		require.NoError(t, err)
+		assert.Equal(t, filepath.Join(home, ".config", app.AgentConfigDirName), result)
 	})
 }
 
@@ -79,7 +97,7 @@ func TestTestDataDirs(t *testing.T) {
 	// Test with multiple directories, first one valid
 	t.Run("multiple dirs - first valid", func(t *testing.T) {
 		tempDir := t.TempDir()
-		invalidDir := "/invalid/path"
+		invalidDir := uncreatableDir(t, "data")
 		result, err := testDataDirs([]string{tempDir, invalidDir})
 		require.NoError(t, err)
 		assert.Equal(t, tempDir, result)
@@ -88,7 +106,7 @@ func TestTestDataDirs(t *testing.T) {
 	// Test with multiple directories, second one valid
 	t.Run("multiple dirs - second valid", func(t *testing.T) {
 		tempDir := t.TempDir()
-		invalidDir := "/invalid/path"
+		invalidDir := uncreatableDir(t, "data")
 		result, err := testDataDirs([]string{invalidDir, tempDir})
 		require.NoError(t, err)
 		assert.Equal(t, tempDir, result)
@@ -110,9 +128,9 @@ func TestTestDataDirs(t *testing.T) {
 
 	// Test with no valid directories
 	t.Run("no valid directories", func(t *testing.T) {
-		invalidPaths := []string{"/invalid/path1", "/invalid/path2"}
+		invalidPaths := []string{uncreatableDir(t, "data1"), uncreatableDir(t, "data2")}
 		_, err := testDataDirs(invalidPaths)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "data directory not found")
 	})
 }
@@ -157,7 +175,7 @@ func TestIsValidDataDir(t *testing.T) {
 		require.NoError(t, err)
 
 		valid, err := isValidDataDir(tempFile, false)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.False(t, valid)
 		assert.Contains(t, err.Error(), "is not a directory")
 	})
@@ -189,7 +207,7 @@ func TestDirectoryExists(t *testing.T) {
 		require.NoError(t, err)
 
 		exists, err := directoryExists(tempFile)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.False(t, exists)
 		assert.Contains(t, err.Error(), "is not a directory")
 	})
@@ -217,6 +235,9 @@ func TestDirectoryIsWritable(t *testing.T) {
 	t.Run("non-writable directory", func(t *testing.T) {
 		if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
 			t.Skip("Skipping non-writable directory test on", runtime.GOOS)
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses directory permissions")
 		}
 
 		tempDir := t.TempDir()

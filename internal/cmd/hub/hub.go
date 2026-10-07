@@ -84,7 +84,10 @@ func newHealthCmd() *cobra.Command {
 		},
 	}
 	healthCmd.Flags().StringVar(&baseURL, "url", "", "base URL")
-	healthCmd.MarkFlagRequired("url")
+	// Only fails for an unknown flag name, i.e. a programming error.
+	if err := healthCmd.MarkFlagRequired("url"); err != nil {
+		panic(err)
+	}
 	return healthCmd
 }
 

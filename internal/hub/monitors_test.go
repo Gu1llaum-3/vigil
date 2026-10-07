@@ -189,12 +189,12 @@ func TestFamilyNetwork(t *testing.T) {
 	cases := []struct {
 		network, ipFamily, want string
 	}{
-		{"tcp", "", "tcp"},         // auto → unchanged (dual-stack Happy Eyeballs)
-		{"tcp", "ipv4", "tcp4"},    // pin IPv4
-		{"tcp", "ipv6", "tcp6"},    // pin IPv6
-		{"tcp4", "ipv6", "tcp6"},   // explicit network still honors the pin
-		{"tcp", "garbage", "tcp"},  // unknown value → unchanged
-		{"udp", "ipv4", "udp"},     // non-tcp networks pass through
+		{"tcp", "", "tcp"},        // auto → unchanged (dual-stack Happy Eyeballs)
+		{"tcp", "ipv4", "tcp4"},   // pin IPv4
+		{"tcp", "ipv6", "tcp6"},   // pin IPv6
+		{"tcp4", "ipv6", "tcp6"},  // explicit network still honors the pin
+		{"tcp", "garbage", "tcp"}, // unknown value → unchanged
+		{"udp", "ipv4", "udp"},    // non-tcp networks pass through
 	}
 	for _, tc := range cases {
 		if got := familyNetwork(tc.network, tc.ipFamily); got != tc.want {

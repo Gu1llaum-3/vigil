@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Gu1llaum-3/vigil/internal/hub"
+	"github.com/Gu1llaum-3/vigil/internal/tests/pbtemplate"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
@@ -46,6 +47,7 @@ func NewTestHub(optTestDataDir ...string) (*TestHub, error) {
 //
 // It is the caller's responsibility to call app.Cleanup() when the app is no longer needed.
 func NewTestHubWithConfig(config core.BaseAppConfig) (*TestHub, error) {
+	config.DataDir = pbtemplate.DataDirFor(config.DataDir)
 	testApp, err := tests.NewTestAppWithConfig(config)
 	if err != nil {
 		return nil, err
@@ -117,7 +119,9 @@ func (h *TestHub) Cleanup() {
 func GetHubWithUser(t *testing.T) (*TestHub, *core.Record) {
 	hub, err := NewTestHub(t.TempDir())
 	assert.NoError(t, err)
-	hub.StartHub()
+	// Registers the hub's hooks; starting the server itself always fails on a test
+	// app ("not a pocketbase app"), which is expected.
+	_ = hub.StartHub()
 
 	// Create a test user
 	user, err := CreateUser(hub, "test@example.com", "password")

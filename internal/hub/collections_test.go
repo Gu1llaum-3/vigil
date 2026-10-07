@@ -5,10 +5,10 @@ package hub_test
 import (
 	"testing"
 
+	appTests "github.com/Gu1llaum-3/vigil/internal/tests"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	appTests "github.com/Gu1llaum-3/vigil/internal/tests"
 )
 
 func TestCollectionRulesDefault(t *testing.T) {

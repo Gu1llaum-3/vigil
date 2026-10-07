@@ -89,8 +89,8 @@ func (hb *Heartbeat) Start(stop <-chan struct{}) {
 		"method", hb.config.Method,
 	)
 
-	// Send an initial heartbeat immediately on startup.
-	hb.send()
+	// Send an initial heartbeat immediately on startup (send logs its own errors).
+	_ = hb.send()
 
 	ticker := time.NewTicker(time.Duration(hb.config.Interval) * time.Second)
 	defer ticker.Stop()
@@ -100,7 +100,7 @@ func (hb *Heartbeat) Start(stop <-chan struct{}) {
 		case <-stop:
 			return
 		case <-ticker.C:
-			hb.send()
+			_ = hb.send()
 		}
 	}
 }

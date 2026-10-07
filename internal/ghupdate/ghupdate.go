@@ -324,13 +324,13 @@ func downloadFile(
 	if err != nil {
 		return err
 	}
-	defer dest.Close()
 
 	if _, err := io.Copy(dest, res.Body); err != nil {
+		_ = dest.Close()
 		return err
 	}
-
-	return nil
+	// A failed close can mean the download was not fully written.
+	return dest.Close()
 }
 
 // isCrossDeviceError checks if the error is due to a cross-device link
@@ -345,26 +345,31 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func() { _ = sourceFile.Close() }() // read-only
 
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
 
 	// Copy the file contents
 	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		_ = destFile.Close()
 		return err
 	}
 
 	// Preserve the original file permissions
 	sourceInfo, err := sourceFile.Stat()
 	if err != nil {
+		_ = destFile.Close()
 		return err
 	}
-
-	return destFile.Chmod(sourceInfo.Mode())
+	if err := destFile.Chmod(sourceInfo.Mode()); err != nil {
+		_ = destFile.Close()
+		return err
+	}
+	// A failed close can mean the copy was not fully written.
+	return destFile.Close()
 }
 
 // archiveSuffix returns the release asset name for a binary, matching the archives

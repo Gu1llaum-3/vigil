@@ -19,6 +19,7 @@ import (
 
 func TestMakeLink(t *testing.T) {
 	hub, _ := appTests.NewTestHub(t.TempDir())
+	defer hub.Cleanup()
 
 	tests := []struct {
 		name     string
@@ -109,6 +110,7 @@ func TestMakeLink(t *testing.T) {
 
 func TestGetSSHKey(t *testing.T) {
 	hub, _ := appTests.NewTestHub(t.TempDir())
+	defer hub.Cleanup()
 
 	// Test Case 1: Key generation (no existing key)
 	t.Run("KeyGeneration", func(t *testing.T) {
@@ -191,7 +193,7 @@ func TestGetSSHKey(t *testing.T) {
 					return os.WriteFile(filepath.Join(dir, "id_ed25519"), []byte("this is not a valid SSH key"), 0600)
 				},
 				errorCheck: func(t *testing.T, err error) {
-					assert.Error(t, err)
+					require.Error(t, err)
 					assert.Contains(t, err.Error(), "ssh: no key found")
 				},
 			},
@@ -218,7 +220,7 @@ func TestGetSSHKey(t *testing.T) {
 					return os.WriteFile(filepath.Join(dir, "id_ed25519"), []byte{}, 0600)
 				},
 				errorCheck: func(t *testing.T, err error) {
-					assert.Error(t, err)
+					require.Error(t, err)
 					// The error from attempting to parse an empty file
 					assert.Contains(t, err.Error(), "ssh: no key found")
 				},

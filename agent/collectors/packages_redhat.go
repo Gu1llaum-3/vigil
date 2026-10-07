@@ -5,6 +5,7 @@ package collectors
 import (
 	"bufio"
 	"context"
+	"errors"
 	"os/exec"
 	"strings"
 	"time"
@@ -16,7 +17,9 @@ func collectPackagesRedHat(ctx context.Context) (common.PackageInfo, error) {
 	info := common.PackageInfo{}
 
 	outdated, err := dnfOutdatedPackages(ctx)
-	if err == nil {
+	if err != nil {
+		logPendingUpdatesError("dnf", err)
+	} else {
 		info.Outdated = outdated
 		info.OutdatedCount = len(outdated)
 		for _, p := range outdated {
@@ -42,9 +45,16 @@ func collectPackagesRedHat(ctx context.Context) (common.PackageInfo, error) {
 }
 
 func dnfOutdatedPackages(ctx context.Context) ([]common.OutdatedPackage, error) {
-	// dnf check-update exits with code 100 when updates are available, 0 when none
+	// dnf check-update exits with 100 when updates are available, 0 when there are
+	// none, and 1 on errors (e.g. no reachable repository).
 	cmd := exec.CommandContext(ctx, "dnf", "check-update", "--quiet")
-	out, _ := cmd.Output() // ignore error: exit 100 is normal
+	out, err := cmd.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if !errors.As(err, &exitErr) || exitErr.ExitCode() != 100 {
+			return nil, err
+		}
+	}
 
 	securityPkgs := dnfSecurityPackages(ctx)
 
@@ -59,7 +69,12 @@ func dnfOutdatedPackages(ctx context.Context) ([]common.OutdatedPackage, error) 
 		if len(parts) < 2 {
 			continue
 		}
-		// Lines: "package.arch  new_version  repo"
+		// Lines: "package.arch  new_version  repo". Under "Obsoleting Packages", each
+		// entry is followed by the installed package it replaces, whose repo is
+		// "@<origin>": that one is not a pending update.
+		if len(parts) >= 3 && strings.HasPrefix(parts[2], "@") {
+			continue
+		}
 		namearch := parts[0]
 		candidate := parts[1]
 		name := namearch

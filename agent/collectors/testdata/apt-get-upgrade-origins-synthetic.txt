@@ -1,0 +1,6 @@
+Inst esm-app-pkg [1.0-1] (1.0-1ubuntu0.1+esm1 UbuntuESMApps:22.04/jammy-apps-security [amd64])
+Inst esm-infra-pkg [2.0-1] (2.0-1ubuntu0.1+esm1 UbuntuESM:22.04/jammy-infra-security [amd64])
+Inst buster-pkg [3.0-1] (3.0-1+deb10u1 Debian-Security:10/oldoldstable [amd64])
+Inst vendor-tool [4.0] (4.1 vendor:stable/foo-security-tools [amd64])
+Inst plain-pkg [5.0] (5.1 Debian:12.15/stable [all])
+Inst new-pkg (6.0-1 Debian:12.15/stable [amd64])

@@ -212,6 +212,8 @@ An additional **30-second grace period** (`agentOfflineGracePeriod`) is applied 
 
 Ping failures bypass the grace period and mark the agent offline immediately, since a failed ping indicates a genuinely dead connection rather than a planned restart.
 
+The per-connection goroutines (`verifyWsConn`, `manageAgentLifecycle`) are tied to the hub's lifetime: they are started through `Hub.goAgent` (tracked by a `WaitGroup`), and their agent requests use contexts derived from `Hub.agentCtx` instead of `context.Background()`. `Hub.stopAgentConnections()` — called from `OnTerminate` and by the test hub cleanup — refuses new agent connections (`503`; a connection already upgraded when the shutdown starts is closed, because `goAgent` refuses to start its goroutine once stopping), cancels in-flight agent requests, closes the live connections (and the lifecycle goroutine closes any connection registered after that) and waits for those goroutines, so none of them writes to the database after it is closed. A hub shutdown never marks agents `offline` (the lifecycle goroutine returns without writing, including during the grace period). Start any new per-connection goroutine with `goAgent` (and handle its `false` return) and derive its contexts from `agentCtx`. `WsConn.conn` is an atomic pointer because the read loop clears it on close while other goroutines ping or close the connection. The hub's other background goroutines (snapshot and metrics tickers, notification dispatcher, monitor checks) are cancelled on terminate but not yet awaited.
+
 This behavior matters when debugging brief network interruptions.
 
 ## Current Transport Truth

@@ -52,7 +52,7 @@ func parseAptSourcesFile(path string) ([]common.RepositoryInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only
 
 	var repos []common.RepositoryInfo
 	scanner := bufio.NewScanner(f)
@@ -124,7 +124,7 @@ func parseDeb822SourcesFile(path string) ([]common.RepositoryInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only
 
 	var repos []common.RepositoryInfo
 	stanza := map[string]string{}

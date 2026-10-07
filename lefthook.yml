@@ -1,8 +1,13 @@
+# Optional local hooks (`lefthook install`); CI runs the same checks and more.
 pre-commit:
   parallel: true
   commands:
     gofmt:
-      run: "git diff --cached --name-only --diff-filter=ACM -- '*.go' | while IFS= read -r file; do [ -n \"$file\" ] && gofmt -w \"$file\"; done"
+      glob: "*.go"
+      # Format the staged Go files and re-stage them, so the commit holds the
+      # formatted version (not only the working tree).
+      run: gofmt -w {staged_files}
+      stage_fixed: true
     frontend-check:
       glob: "internal/site/**/*.{ts,tsx,js,mjs,cjs,json,css}"
       run: pnpm --dir ./internal/site check
@@ -11,7 +16,8 @@ pre-push:
   parallel: true
   commands:
     go-test:
-      run: go test -tags=testing ./...
+      # The hub embeds internal/site/dist, which a fresh clone does not have yet.
+      run: mkdir -p internal/site/dist && touch internal/site/dist/index.html && go test -tags=testing ./...
     frontend-typecheck:
       glob: "internal/site/**/*.{ts,tsx,json}"
       run: pnpm --dir ./internal/site typecheck
