@@ -121,6 +121,8 @@ func (h *Hub) registerMCPReadTools(s *mcpsdk.Server) {
 		if err != nil {
 			return nil, monitorsOutput{}, err
 		}
+		// An assistant never needs the push token (it would let it fake heartbeats).
+		redactMonitorGroupSecrets(groups)
 		return nil, monitorsOutput{Groups: groups}, nil
 	})
 
@@ -136,6 +138,7 @@ func (h *Hub) registerMCPReadTools(s *mcpsdk.Server) {
 		if err != nil {
 			return nil, MonitorRecord{}, err
 		}
+		redactMonitorSecrets(&rec)
 		return nil, rec, nil
 	})
 

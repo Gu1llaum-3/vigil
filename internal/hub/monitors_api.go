@@ -274,7 +274,35 @@ func (h *Hub) getMonitor(e *core.RequestEvent) error {
 	if err != nil {
 		return e.NotFoundError("Monitor not found", nil)
 	}
+	if !canSeeMonitorSecrets(e) {
+		redactMonitorSecrets(&rec)
+	}
 	return e.JSON(http.StatusOK, rec)
+}
+
+// canSeeMonitorSecrets reports whether the caller may get monitor push tokens: anyone who can
+// edit monitors (the push URL is shown to copy into the job), not a readonly user nor a
+// read-scoped API key. The token alone lets its holder send heartbeats, i.e. keep a push
+// monitor "up" while the job it watches is dead.
+func canSeeMonitorSecrets(e *core.RequestEvent) bool {
+	if e.Auth == nil || e.Auth.GetString("role") == "readonly" {
+		return false
+	}
+	scope, _ := e.Get(apiKeyScopeContextKey).(string)
+	return scope != apiScopeRead
+}
+
+func redactMonitorSecrets(r *MonitorRecord) {
+	r.PushToken = ""
+	r.PushURL = ""
+}
+
+func redactMonitorGroupSecrets(groups []*MonitorGroupResponse) {
+	for _, g := range groups {
+		for i := range g.Monitors {
+			redactMonitorSecrets(&g.Monitors[i])
+		}
+	}
 }
 
 // buildMonitorDetail returns a single monitor with its current status, metrics and recent
@@ -294,6 +322,9 @@ func (h *Hub) getMonitors(e *core.RequestEvent) error {
 	result, err := h.buildMonitorsResponse()
 	if err != nil {
 		return err
+	}
+	if !canSeeMonitorSecrets(e) {
+		redactMonitorGroupSecrets(result)
 	}
 	return e.JSON(http.StatusOK, result)
 }

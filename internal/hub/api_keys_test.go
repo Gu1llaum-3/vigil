@@ -49,8 +49,31 @@ func TestApiKeyAuthentication(t *testing.T) {
 	require.NoError(t, err)
 
 	testAppFactory := func(t testing.TB) *pbTests.TestApp { return hub.TestApp }
+	_, err = appTests.CreateRecord(hub, "monitors", map[string]any{
+		"name": "key-push-monitor", "type": "push", "push_token": "key-secret-push-token", "active": false,
+	})
+	require.NoError(t, err)
 
 	scenarios := []appTests.ApiScenario{
+		{
+			Name:               "read key gets monitors without push tokens",
+			Method:             http.MethodGet,
+			URL:                "/api/app/monitors",
+			Headers:            map[string]string{"Authorization": readToken},
+			ExpectedStatus:     200,
+			ExpectedContent:    []string{"key-push-monitor"},
+			NotExpectedContent: []string{"key-secret-push-token"},
+			TestAppFactory:     testAppFactory,
+		},
+		{
+			Name:            "read-write key gets the push token",
+			Method:          http.MethodGet,
+			URL:             "/api/app/monitors",
+			Headers:         map[string]string{"Authorization": rwToken},
+			ExpectedStatus:  200,
+			ExpectedContent: []string{"key-secret-push-token"},
+			TestAppFactory:  testAppFactory,
+		},
 		{
 			Name:            "read key cannot read agent tokens",
 			Method:          http.MethodGet,

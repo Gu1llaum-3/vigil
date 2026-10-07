@@ -30,7 +30,26 @@ func TestMcpEndpoint(t *testing.T) {
 
 	initBody := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}`
 
+	_, err = appTests.CreateRecord(hub, "monitors", map[string]any{
+		"name": "cron", "type": "push", "push_token": "mcp-secret-push-token", "active": false,
+	})
+	require.NoError(t, err)
+
 	scenarios := []appTests.ApiScenario{
+		{
+			Name:   "MCP list_monitors never returns push tokens",
+			Method: http.MethodPost,
+			URL:    "/api/mcp",
+			Headers: map[string]string{
+				"Authorization": readToken,
+				"Accept":        "application/json, text/event-stream",
+			},
+			Body:               strings.NewReader(`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_monitors","arguments":{}}}`),
+			ExpectedStatus:     200,
+			ExpectedContent:    []string{"cron"},
+			NotExpectedContent: []string{"mcp-secret-push-token"},
+			TestAppFactory:     testAppFactory,
+		},
 		{
 			Name:   "MCP initialize succeeds with a read API key",
 			Method: http.MethodPost,
