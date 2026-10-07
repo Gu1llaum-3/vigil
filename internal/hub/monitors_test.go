@@ -20,6 +20,7 @@ func TestSaveResultStartupGraceOnlyAppliesToUnknownMonitors(t *testing.T) {
 	monitor, err := createTestRecord(hub, "monitors", map[string]any{
 		"name":              "API",
 		"type":              "http",
+		"active":            true,
 		"status":            monitorStatusUp,
 		"failure_count":     0,
 		"failure_threshold": 3,
@@ -47,6 +48,7 @@ func TestSaveResultKeepsUnknownMonitorsInStartupGrace(t *testing.T) {
 	monitor, err := createTestRecord(hub, "monitors", map[string]any{
 		"name":              "API",
 		"type":              "http",
+		"active":            true,
 		"status":            monitorStatusUnknown,
 		"failure_count":     0,
 		"failure_threshold": 3,
@@ -74,6 +76,7 @@ func TestSaveResultWritesPendingUnderThreshold(t *testing.T) {
 	monitor, err := createTestRecord(hub, "monitors", map[string]any{
 		"name":              "API",
 		"type":              "http",
+		"active":            true,
 		"status":            monitorStatusUp,
 		"failure_count":     0,
 		"failure_threshold": 3,
@@ -83,19 +86,25 @@ func TestSaveResultWritesPendingUnderThreshold(t *testing.T) {
 	ms := newMonitorScheduler(hub)
 	// Past the startup grace so threshold transitions apply immediately.
 	ms.startedAt = time.Now().Add(-time.Hour)
+	// saveResult writes a fresh copy, so read the stored status back.
+	storedStatus := func() int {
+		rec, err := hub.FindRecordById("monitors", monitor.Id)
+		require.NoError(t, err)
+		return rec.GetInt("status")
+	}
 
 	// Two failing checks under the threshold: events are pending, monitor stays up.
 	ms.saveResult(monitor, monitorStatusDown, 0, "fail 1")
 	ms.saveResult(monitor, monitorStatusDown, 0, "fail 2")
-	require.Equal(t, monitorStatusUp, monitor.GetInt("status"), "monitor must stay up under threshold")
+	require.Equal(t, monitorStatusUp, storedStatus(), "monitor must stay up under threshold")
 
 	// Third failing check hits the threshold: event is down, monitor flips down.
 	ms.saveResult(monitor, monitorStatusDown, 0, "fail 3")
-	require.Equal(t, monitorStatusDown, monitor.GetInt("status"))
+	require.Equal(t, monitorStatusDown, storedStatus())
 
 	// Recovery: event is up.
 	ms.saveResult(monitor, monitorStatusUp, 12, "ok")
-	require.Equal(t, monitorStatusUp, monitor.GetInt("status"))
+	require.Equal(t, monitorStatusUp, storedStatus())
 
 	countByStatus := func(status int) int {
 		events, err := hub.FindRecordsByFilter("monitor_events",
@@ -121,6 +130,7 @@ func TestSaveResultGraceWindowOutageStillRecordsDown(t *testing.T) {
 	monitor, err := createTestRecord(hub, "monitors", map[string]any{
 		"name":              "API",
 		"type":              "http",
+		"active":            true,
 		"status":            monitorStatusUnknown,
 		"failure_count":     0,
 		"failure_threshold": 2,
@@ -133,7 +143,10 @@ func TestSaveResultGraceWindowOutageStillRecordsDown(t *testing.T) {
 	ms.saveResult(monitor, monitorStatusDown, 0, "fail 1") // count 1 < 2 → pending
 	ms.saveResult(monitor, monitorStatusDown, 0, "fail 2") // count 2 ≥ 2 → down, but grace keeps status unknown
 
-	require.Equal(t, monitorStatusUnknown, monitor.GetInt("status"), "grace must keep the monitor unknown")
+	stored, err := hub.FindRecordById("monitors", monitor.Id)
+	require.NoError(t, err)
+	require.Equal(t, monitorStatusUnknown, stored.GetInt("status"), "grace must keep the monitor unknown")
+	require.Equal(t, 2, stored.GetInt("failure_count"))
 
 	countByStatus := func(status int) int {
 		events, err := hub.FindRecordsByFilter("monitor_events",
@@ -154,6 +167,7 @@ func TestSaveResultFlagsMaintenance(t *testing.T) {
 	monitor, err := createTestRecord(hub, "monitors", map[string]any{
 		"name":              "API",
 		"type":              "http",
+		"active":            true,
 		"status":            monitorStatusUp,
 		"failure_count":     0,
 		"failure_threshold": 1,
@@ -214,6 +228,7 @@ func TestMonitorIPFamilyColumnPersists(t *testing.T) {
 	mon, err := createTestRecord(hub, "monitors", map[string]any{
 		"name":      "API",
 		"type":      "http",
+		"active":    true,
 		"url":       "https://example.com",
 		"ip_family": "ipv4",
 	})

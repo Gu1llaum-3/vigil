@@ -360,10 +360,15 @@ Goroutine start/stop is **only triggered from the API handlers**, not from Pocke
 
 ### Result Persistence
 
-`saveResult(monitor, status, latencyMs, msg)`:
+`doCheck` drops the result when the monitor's own context was cancelled during the check (edit, pause, delete, hub shutdown — `updateMonitor` saves, then `stopMonitor` cancels the in-flight check): an interrupted check is not a failure, and saving it would write back the record loaded before the edit. A check that hits its own `timeout` is a real failure and is saved.
 
-1. inserts a `monitor_events` record via `SaveNoValidate`
-2. updates the monitor record fields (`status`, `failure_count`, `last_checked_at`, `last_latency_ms`, `last_msg`) via `SaveNoValidate`
+`saveResult(monitor, status, latencyMs, msg)` treats the record it gets as possibly stale and, in one transaction on a **fresh copy**:
+
+1. computes the failure count, effective status and event status from the stored values
+2. inserts a `monitor_events` record via `SaveNoValidate`
+3. updates only the scheduler-owned columns (`status`, `failure_count`, `last_checked_at`, `last_latency_ms`, `last_msg`) with `IgnoreUnchangedFields(true)` + `SaveNoValidate`
+
+The event and the status are written atomically. A monitor deleted, paused or reconfigured (any field in `checkConfigFields`) while its check ran gets no event and no status change: `updateMonitor` saves before it cancels the check, so a check past its cancellation test can still meet the edited record. The API writes on the same rows (`updateMonitor`, `moveMonitor`, `pushHeartbeat`, `deleteMonitorGroup`) also use `IgnoreUnchangedFields(true)`, so a user edit and a check result never overwrite each other's columns. PocketBase's default `Record` save is a full-row `UPDATE` — keep that flag on any new write to `monitors`.
 
 Monitors also have a `failure_threshold` field. The default is `3`, `0` means instant down, and the scheduler flips the monitor to `down` after that many consecutive failures.
 
