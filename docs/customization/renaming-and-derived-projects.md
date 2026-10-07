@@ -113,6 +113,8 @@ Important targets:
 
 These files are easy to miss because they are not part of the main runtime code path.
 
+Keep the upstream MIT notices (Beszel, PocketBase) in `LICENSE` and `supplemental/debian/copyright` when you rename: add your own copyright line, never replace theirs. `license_test.go` checks they are still there.
+
 ## Files To Review During Rename
 
 ### Core Metadata

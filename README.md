@@ -94,4 +94,4 @@ make dev
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE). Vigil is derived from [Beszel](https://github.com/henrygd/beszel) (MIT, © 2024 henrygd) and its self-updater from [PocketBase](https://github.com/pocketbase/pocketbase)'s `ghupdate` package (MIT, © 2022 - present, Gani Georgiev); their notices are kept in LICENSE and shipped with every release archive, the `.deb` and the hub image.
