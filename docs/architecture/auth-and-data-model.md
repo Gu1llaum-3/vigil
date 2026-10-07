@@ -321,6 +321,7 @@ Important variables:
 - `TRUSTED_PROXY_IPS`
 - `TRUSTED_PROXY_HEADERS`
 - `RATE_LIMITS`
+- `RATE_LIMIT_EXCLUDED_IPS`
 
 Behavior notes:
 
@@ -361,6 +362,11 @@ Behavior notes:
   Vigil rule is re-added, and the enabled flag follows the env. The limiter keys on the full
   client IP (an IPv6 /64 holder gets many keys) and there is no per-account lockout. Authenticated superusers bypass the limiter (PocketBase behavior). Over the limit the
   API answers `429`.
+- `RATE_LIMIT_EXCLUDED_IPS` (IPs/CIDRs) sets `settings.RateLimits.ExcludedIPs`: PocketBase skips the
+  limiter for those client IPs (`e.RealIP()`, so after the trusted-proxy guard). Meant for a hub
+  that every user reaches from one address (office NAT, hub whitelisted to the office IP): without
+  it they share the `*:auth` and `/api/` buckets. Invalid entries are dropped (PocketBase would
+  otherwise reject the settings and stop the hub); unset keeps the stored value.
 
 ## Agent Authentication Model
 

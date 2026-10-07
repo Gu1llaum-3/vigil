@@ -3,6 +3,7 @@ package hub
 import (
 	"log/slog"
 	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 
@@ -47,6 +48,29 @@ func applyRateLimitSettings(settings *core.Settings) {
 			settings.RateLimits.Rules = append(settings.RateLimits.Rules, rule)
 		}
 	}
+	if raw, ok := utils.GetEnv("RATE_LIMIT_EXCLUDED_IPS"); ok {
+		settings.RateLimits.ExcludedIPs = parseExcludedIPs(raw)
+	}
+}
+
+// parseExcludedIPs reads RATE_LIMIT_EXCLUDED_IPS: client IPs and CIDRs never rate limited,
+// typically the public IP of an office whose users all reach the hub through one NAT
+// address and would otherwise share every bucket. Invalid entries are dropped with a
+// warning: PocketBase would reject the settings and the hub would not start.
+func parseExcludedIPs(raw string) []string {
+	excluded := []string{}
+	for _, entry := range strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' || r == '\n' }) {
+		if _, err := netip.ParsePrefix(entry); err == nil {
+			excluded = append(excluded, entry)
+			continue
+		}
+		if _, err := netip.ParseAddr(entry); err == nil {
+			excluded = append(excluded, entry)
+			continue
+		}
+		slog.Warn("RATE_LIMIT_EXCLUDED_IPS: ignoring invalid IP or CIDR", "entry", entry)
+	}
+	return excluded
 }
 
 // hasRateLimitRule matches on the label only: PocketBase rejects "*:auth" next to an

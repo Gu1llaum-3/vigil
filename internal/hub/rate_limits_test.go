@@ -216,3 +216,60 @@ func TestTrustedProxyHeaderIgnoredWithoutAllowlist(t *testing.T) {
 	req.Header.Set("X-Real-IP", "203.0.113.7")
 	assert.Equal(t, "10.1.2.3", serveTestRequest(t, hub, testApp, req).Body.String())
 }
+
+func passwordAuthStatuses(t *testing.T, hub *Hub, app core.App, remoteAddr string, n int) []int {
+	t.Helper()
+	statuses := make([]int, 0, n)
+	for range n {
+		req := httptest.NewRequest(http.MethodPost, "/api/collections/users/auth-with-password",
+			strings.NewReader(`{"identity":"nobody@example.com","password":"wrong-password"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = remoteAddr
+		statuses = append(statuses, serveTestRequest(t, hub, app, req).Code)
+	}
+	return statuses
+}
+
+func TestRateLimitsDisabledByEnv(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	t.Setenv("RATE_LIMITS", "false")
+	applyRateLimitSettings(testApp.Settings())
+	require.NoError(t, testApp.Save(testApp.Settings()))
+
+	assert.NotContains(t, passwordAuthStatuses(t, hub, testApp, "198.51.100.9:5555", 4), http.StatusTooManyRequests)
+}
+
+func TestApplyRateLimitExcludedIPs(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	settings := testApp.Settings()
+	settings.RateLimits.ExcludedIPs = []string{"192.0.2.1"}
+	applyRateLimitSettings(settings)
+	assert.Equal(t, []string{"192.0.2.1"}, settings.RateLimits.ExcludedIPs, "unset env keeps the stored value")
+
+	t.Setenv("RATE_LIMIT_EXCLUDED_IPS", " 203.0.113.10, 10.0.0.0/8 2001:db8::/32,not-an-ip,")
+	applyRateLimitSettings(settings)
+	assert.Equal(t, []string{"203.0.113.10", "10.0.0.0/8", "2001:db8::/32"}, settings.RateLimits.ExcludedIPs,
+		"invalid entries are dropped so PocketBase validation cannot stop the hub")
+	require.NoError(t, testApp.Save(settings))
+}
+
+func TestExcludedIPIsNotRateLimited(t *testing.T) {
+	hub, testApp, err := createTestHub(t)
+	require.NoError(t, err)
+	defer cleanupTestHub(hub, testApp)
+
+	t.Setenv("RATE_LIMIT_EXCLUDED_IPS", "203.0.113.0/24")
+	applyRateLimitSettings(testApp.Settings())
+	require.NoError(t, testApp.Save(testApp.Settings()))
+
+	assert.NotContains(t, passwordAuthStatuses(t, hub, testApp, "203.0.113.10:4444", 4), http.StatusTooManyRequests,
+		"the excluded office IP is never throttled")
+	assert.Equal(t, http.StatusTooManyRequests, passwordAuthStatuses(t, hub, testApp, "198.51.100.9:5555", 3)[2],
+		"everyone else still is")
+}
