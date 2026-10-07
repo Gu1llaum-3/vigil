@@ -10,8 +10,9 @@ install**. You authenticate with a Vigil API key.
 ## 1. Create an API key
 
 In the web UI: **Settings → API keys → New key**. Give it a name (e.g. `mcp`) and copy the
-token (`vk_…`) — it is shown **only once**. Keys are **read-only** today: the assistant can
-read everything you can see, but cannot change anything.
+token (`vk_…`) — it is shown **only once**. Pick the `read` scope unless the assistant must
+change things: a `read` key can read the fleet and monitors but cannot change anything, and is
+refused on the routes that return credentials (agent tokens, the enrollment token).
 
 You can revoke a key at any time from the same page (the **Regenerate** button issues a fresh
 token and invalidates the old one).
