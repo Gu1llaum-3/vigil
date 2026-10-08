@@ -199,9 +199,10 @@ Per-host policy for which filesystems the disk bar + disk alert consider. One ro
 
 - created by migration `19_create_system_notifications.go`
 - append-only internal event feed for the navbar bell and `/notifications` page; independent from external notification delivery rules/channels
-- fields: `event_kind`, `category` (`monitors`/`agents`/`container_images`), `severity`, `resource_type`, `resource_id`, `resource_name`, `title`, `message`, `payload`, `occurred_at`
+- fields: `event_kind`, `category` (`monitors`/`agents`/`container_images`/`host_metrics` — the last added to the select by `v1_0001`), `severity`, `resource_type`, `resource_id`, `resource_name`, `title`, `message`, `payload`, `occurred_at`
 - list/view rules: authenticated users; create/update/delete forbidden from the API (written only by backend)
 - read state is per-user and stored in `user_settings.settings.system_notifications_last_read_at_by_category`; bell visibility is controlled by `system_notifications_enabled_events`
+- indexed on `(category, occurred_at)` and `(event_kind, occurred_at)`, plus `occurred_at` (added by migration `v1_0001_system_notifications_retention.go`); purged by the daily retention job after `data_retention_settings.system_notifications_retention_days` (90 by default)
 
 ### `data_retention_settings`
 
@@ -210,11 +211,12 @@ Per-host policy for which filesystems the disk bar + disk alert consider. One ro
 - fields:
   - `monitor_events_retention_days`
   - `notification_logs_retention_days`
+  - `system_notifications_retention_days` (migration `v1_0001_system_notifications_retention.go`; empty on older hubs = default 90)
   - `monitor_events_manual_default_days`
   - `notification_logs_manual_default_days`
   - `offline_agents_manual_default_days`
 - used by the retention cleanup logic and the admin purge settings UI
-- only monitoring events and notification logs currently have automatic age-based retention; hosts cleanup is manual-only and targets offline agents, aged by `agents.last_seen` (written at every handshake and when the agent goes offline)
+- monitoring events, notification logs and the in-app notification feed (`system_notifications`) have automatic age-based retention; hosts cleanup is manual-only and targets offline agents, aged by `agents.last_seen` (written at every handshake and when the agent goes offline)
 
 ### `scheduled_jobs`
 

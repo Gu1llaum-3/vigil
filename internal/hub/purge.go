@@ -3,10 +3,12 @@ package hub
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 const (
@@ -16,6 +18,7 @@ const (
 	autoRetentionCronExpr                    = "0 0 * * *"
 	defaultMonitorEventsRetentionDays        = 30
 	defaultNotificationLogsRetentionDays     = 30
+	defaultSystemNotificationsRetentionDays  = 90
 	defaultMonitorEventsManualDefaultDays    = 180
 	defaultNotificationLogsManualDefaultDays = 180
 	defaultOfflineAgentsManualDefaultDays    = 180
@@ -26,18 +29,21 @@ var allowedAutoRetentionDays = map[int]bool{30: true, 90: true, 180: true, 360: 
 type DataRetentionSettings struct {
 	MonitorEventsRetentionDays        int `json:"monitor_events_retention_days"`
 	NotificationLogsRetentionDays     int `json:"notification_logs_retention_days"`
+	SystemNotificationsRetentionDays  int `json:"system_notifications_retention_days"`
 	MonitorEventsManualDefaultDays    int `json:"monitor_events_manual_default_days"`
 	NotificationLogsManualDefaultDays int `json:"notification_logs_manual_default_days"`
 	OfflineAgentsManualDefaultDays    int `json:"offline_agents_manual_default_days"`
 }
 
 type AutomaticRetentionRunResult struct {
-	MonitorEventsDeleted    int    `json:"monitor_events_deleted"`
-	NotificationLogsDeleted int    `json:"notification_logs_deleted"`
-	Status                  string `json:"status"`
-	Error                   string `json:"error,omitempty"`
-	RanAt                   string `json:"ran_at"`
-	SucceededAt             string `json:"succeeded_at,omitempty"`
+	MonitorEventsDeleted    int `json:"monitor_events_deleted"`
+	NotificationLogsDeleted int `json:"notification_logs_deleted"`
+	// SystemNotificationsDeleted counts the in-app notification feed entries purged.
+	SystemNotificationsDeleted int    `json:"system_notifications_deleted"`
+	Status                     string `json:"status"`
+	Error                      string `json:"error,omitempty"`
+	RanAt                      string `json:"ran_at"`
+	SucceededAt                string `json:"succeeded_at,omitempty"`
 }
 
 func normalizeAutoRetentionDays(days, fallback int) int {
@@ -58,6 +64,7 @@ func normalizeRetentionSettings(input DataRetentionSettings) DataRetentionSettin
 	return DataRetentionSettings{
 		MonitorEventsRetentionDays:        normalizeAutoRetentionDays(input.MonitorEventsRetentionDays, defaultMonitorEventsRetentionDays),
 		NotificationLogsRetentionDays:     normalizeAutoRetentionDays(input.NotificationLogsRetentionDays, defaultNotificationLogsRetentionDays),
+		SystemNotificationsRetentionDays:  normalizeAutoRetentionDays(input.SystemNotificationsRetentionDays, defaultSystemNotificationsRetentionDays),
 		MonitorEventsManualDefaultDays:    normalizeManualDefaultDays(input.MonitorEventsManualDefaultDays, defaultMonitorEventsManualDefaultDays),
 		NotificationLogsManualDefaultDays: normalizeManualDefaultDays(input.NotificationLogsManualDefaultDays, defaultNotificationLogsManualDefaultDays),
 		OfflineAgentsManualDefaultDays:    normalizeManualDefaultDays(input.OfflineAgentsManualDefaultDays, defaultOfflineAgentsManualDefaultDays),
@@ -83,6 +90,7 @@ func (h *Hub) getOrCreateRetentionSettingsRecord() (*core.Record, error) {
 	defaults := defaultRetentionSettings()
 	rec.Set("monitor_events_retention_days", defaults.MonitorEventsRetentionDays)
 	rec.Set("notification_logs_retention_days", defaults.NotificationLogsRetentionDays)
+	rec.Set("system_notifications_retention_days", defaults.SystemNotificationsRetentionDays)
 	rec.Set("monitor_events_manual_default_days", defaults.MonitorEventsManualDefaultDays)
 	rec.Set("notification_logs_manual_default_days", defaults.NotificationLogsManualDefaultDays)
 	rec.Set("offline_agents_manual_default_days", defaults.OfflineAgentsManualDefaultDays)
@@ -96,6 +104,7 @@ func retentionSettingsFromRecord(rec *core.Record) DataRetentionSettings {
 	return normalizeRetentionSettings(DataRetentionSettings{
 		MonitorEventsRetentionDays:        rec.GetInt("monitor_events_retention_days"),
 		NotificationLogsRetentionDays:     rec.GetInt("notification_logs_retention_days"),
+		SystemNotificationsRetentionDays:  rec.GetInt("system_notifications_retention_days"),
 		MonitorEventsManualDefaultDays:    rec.GetInt("monitor_events_manual_default_days"),
 		NotificationLogsManualDefaultDays: rec.GetInt("notification_logs_manual_default_days"),
 		OfflineAgentsManualDefaultDays:    rec.GetInt("offline_agents_manual_default_days"),
@@ -118,6 +127,7 @@ func (h *Hub) updateRetentionSettings(input DataRetentionSettings) (DataRetentio
 	settings := normalizeRetentionSettings(input)
 	rec.Set("monitor_events_retention_days", settings.MonitorEventsRetentionDays)
 	rec.Set("notification_logs_retention_days", settings.NotificationLogsRetentionDays)
+	rec.Set("system_notifications_retention_days", settings.SystemNotificationsRetentionDays)
 	rec.Set("monitor_events_manual_default_days", settings.MonitorEventsManualDefaultDays)
 	rec.Set("notification_logs_manual_default_days", settings.NotificationLogsManualDefaultDays)
 	rec.Set("offline_agents_manual_default_days", settings.OfflineAgentsManualDefaultDays)
@@ -188,6 +198,20 @@ func (h *Hub) purgeAllNotificationLogs() (int, error) {
 	return count, deleteRows(h, "DELETE FROM notification_logs", nil)
 }
 
+// purgeSystemNotificationsOlderThan trims the in-app notification feed (the navbar bell).
+func (h *Hub) purgeSystemNotificationsOlderThan(days int) (int, error) {
+	if days <= 0 {
+		return 0, fmt.Errorf("days must be greater than 0")
+	}
+	cutoff := types.NowDateTime().AddDate(0, 0, -days).String()
+	params := dbx.Params{"cutoff": cutoff}
+	count, err := countRows(h, "SELECT COUNT(*) AS count FROM system_notifications WHERE occurred_at < {:cutoff}", params)
+	if err != nil || count == 0 {
+		return count, err
+	}
+	return count, deleteRows(h, "DELETE FROM system_notifications WHERE occurred_at < {:cutoff}", params)
+}
+
 func (h *Hub) purgeOfflineAgentsOlderThan(days int) (int, error) {
 	if days <= 0 {
 		return 0, fmt.Errorf("days must be greater than 0")
@@ -236,34 +260,26 @@ func (h *Hub) runAutomaticRetentionPurge() AutomaticRetentionRunResult {
 		return result
 	}
 
-	monitorDeleted, monitorErr := h.purgeMonitorEventsOlderThan(settings.MonitorEventsRetentionDays)
-	notificationDeleted, notificationErr := h.purgeNotificationLogsOlderThan(settings.NotificationLogsRetentionDays)
-	result.MonitorEventsDeleted = monitorDeleted
-	result.NotificationLogsDeleted = notificationDeleted
-
-	if monitorErr != nil || notificationErr != nil {
-		switch {
-		case monitorErr != nil && notificationErr != nil:
-			result.Error = fmt.Sprintf("monitor events: %v; notification logs: %v", monitorErr, notificationErr)
-		case monitorErr != nil:
-			result.Error = fmt.Sprintf("monitor events: %v", monitorErr)
-		default:
-			result.Error = fmt.Sprintf("notification logs: %v", notificationErr)
+	var failures []string
+	purge := func(what string, days int, run func(int) (int, error)) int {
+		deleted, err := run(days)
+		if err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %v", what, err))
+			slog.Warn("retention purge: failed to purge "+what, "days", days, "err", err)
+			return deleted
 		}
+		slog.Info("retention purge: purged "+what, "days", days, "deleted", deleted)
+		return deleted
+	}
+	result.MonitorEventsDeleted = purge("monitor events", settings.MonitorEventsRetentionDays, h.purgeMonitorEventsOlderThan)
+	result.NotificationLogsDeleted = purge("notification logs", settings.NotificationLogsRetentionDays, h.purgeNotificationLogsOlderThan)
+	result.SystemNotificationsDeleted = purge("in-app notifications", settings.SystemNotificationsRetentionDays, h.purgeSystemNotificationsOlderThan)
+
+	if len(failures) > 0 {
+		result.Error = strings.Join(failures, "; ")
 	} else {
 		result.Status = "success"
 		result.SucceededAt = ranAt.Format(time.RFC3339)
-	}
-
-	if monitorErr != nil {
-		slog.Warn("retention purge: failed to purge monitor events", "days", settings.MonitorEventsRetentionDays, "err", monitorErr)
-	} else {
-		slog.Info("retention purge: purged monitor events", "days", settings.MonitorEventsRetentionDays, "deleted", monitorDeleted)
-	}
-	if notificationErr != nil {
-		slog.Warn("retention purge: failed to purge notification logs", "days", settings.NotificationLogsRetentionDays, "err", notificationErr)
-	} else {
-		slog.Info("retention purge: purged notification logs", "days", settings.NotificationLogsRetentionDays, "deleted", notificationDeleted)
 	}
 
 	return result

@@ -40,6 +40,17 @@ func (h *Hub) updatePurgeSettings(e *core.RequestEvent) error {
 	if !allowedAutoRetentionDays[input.NotificationLogsRetentionDays] {
 		return e.BadRequestError(fmt.Sprintf("invalid notification_logs_retention_days: %d", input.NotificationLogsRetentionDays), nil)
 	}
+	// Absent (a client older than the setting): keep the current value.
+	if input.SystemNotificationsRetentionDays == 0 {
+		current, err := h.getRetentionSettings()
+		if err != nil {
+			return err
+		}
+		input.SystemNotificationsRetentionDays = current.SystemNotificationsRetentionDays
+	}
+	if !allowedAutoRetentionDays[input.SystemNotificationsRetentionDays] {
+		return e.BadRequestError(fmt.Sprintf("invalid system_notifications_retention_days: %d", input.SystemNotificationsRetentionDays), nil)
+	}
 	if input.MonitorEventsManualDefaultDays <= 0 || input.NotificationLogsManualDefaultDays <= 0 || input.OfflineAgentsManualDefaultDays <= 0 {
 		return e.BadRequestError("manual default days must be greater than 0", nil)
 	}
