@@ -94,15 +94,44 @@ yet the migration silently no-ops. That **masks** the ordering hazard rather tha
 fixing it (and on a fresh DB the intended change may simply be skipped), so it is
 not a pattern to copy. `27_` happens to be safe because it still sorts after `0_`.
 
-This is why `8_add_monitor_inverted.go` (which alters the `monitors` collection
-from `3_create_monitors.go`) uses an `8_` prefix instead of the next sequential
-`32_`: `8_` sorts after all single-digit migrations, so `monitors` is guaranteed
-to exist when it runs. When adding a migration that touches `users`, `agents`,
-`host_snapshots`, `monitors`, or the notification collections (created in
-single-digit migrations), pick a prefix that sorts after that source migration —
-do not assume numeric order, and do not rely on the `return nil` guard to paper
-over bad ordering. Renaming already-shipped migration files is unsafe (the
-`_migrations` table tracks them by filename and would re-run them).
+The released files keep their names (renaming one is unsafe: the `_migrations`
+table tracks them by filename and would re-run it), which is why some later ones
+carry single-digit prefixes (`8_add_monitor_inverted.go`, `9_hide_monitor_push_token.go`:
+`monitors` must exist when they run).
+
+**Rule for new migrations: name them `v1_NNNN_<what>.go`** (`v1_0001_…`, `v1_0002_…`).
+`v` sorts after every released file (digits and `initial-settings.go`), so a new
+migration always runs after all the collections exist, and the four digits keep them
+in order among themselves. Two tests in `internal/migrations/upgrade_test.go` enforce it:
+
+- `TestMigrationOrder` freezes the list of pre-scheme migrations (`legacyMigrations`,
+  in applied order — never edit it) and fails if one is renamed or removed, if a new
+  file sorts among them, or if the `v1_` files are not numbered `0001`, `0002`, … with
+  no gap or duplicate (so a new migration can only come after every existing one);
+- `TestUpgradeMatchesFreshInstall` migrates databases created by released hubs
+  (`internal/migrations/testdata/data-<tag>.db.gz`) and compares their schema with a
+  fresh install's: every collection's definition, fields and options, rules, indexes
+  (as a set), field order and table columns (type, not-null, default, primary key).
+  For the v0.1.0 fixture only (PocketBase 0.37), the `users`/`_superusers` auth settings
+  whose PocketBase defaults changed since (token lifetimes, MFA window, email templates)
+  are ignored: PocketBase keeps existing values, and no Vigil migration sets them. It
+  also catches an edit to a released migration: the fresh path gets the change, the
+  upgraded one does not — ship a new migration instead. Not covered: data written by
+  migrations (settings, records).
+
+To add a fixture for a new release (do it for every release that ships migrations):
+
+```bash
+git worktree add --detach /tmp/vigil-<tag> <tag>
+cd /tmp/vigil-<tag> && mkdir -p internal/site/dist && echo '<html></html>' > internal/site/dist/index.html
+go build -o /tmp/vigil-<tag>-hub ./internal/cmd/hub && cd -
+mkdir /tmp/db-<tag> && env -i HOME=$HOME PATH=/usr/bin:/bin /tmp/vigil-<tag>-hub migrate up --dir /tmp/db-<tag>
+gzip -9 -c /tmp/db-<tag>/data.db > internal/migrations/testdata/data-<tag>.db.gz
+git worktree remove --force /tmp/vigil-<tag>
+```
+
+then list it in `upgradeFixtures` (`env -i` keeps `USER_EMAIL`/`USER_PASSWORD`
+and other variables out of the migration).
 
 ## Treat WebSocket As The Real Transport
 

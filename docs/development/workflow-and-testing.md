@@ -183,6 +183,8 @@ Check agent changes in both modes, e.g. `docker run --rm -v "$PWD":/src -w /src 
 
 ## Test Helpers
 
+Migrations have their own tests (`internal/migrations/upgrade_test.go`): an order guard and an upgrade test that migrates databases created by released hubs (`internal/migrations/testdata/`) and compares their schema with a fresh install's. See `docs/conventions-and-gotchas.md` → Migrations for the naming rule and how to add a fixture.
+
 Hub tests start from a data dir migrated once per test binary: `internal/hub/main_test.go` calls `pbtemplate.Run` (`internal/tests/pbtemplate`) from `TestMain`, and both `tests.NewTestHub(t.TempDir())` and the in-package `createTestHub` clone it (`pbtemplate.DataDirFor`) instead of an empty dir. Replaying the ~40 migrations for every test used to dominate the suite (`internal/hub`: ~22 s → ~7 s, and ~420 s → ~45 s under `-race`). Two rules follow:
 
 - a migration that reads environment variables while it runs (today `initial-settings.go`: `USER_EMAIL`/`USER_PASSWORD`) cannot be reflected by the shared dir: list its variables in `migrationEnvVars` (`internal/tests/pbtemplate`), so tests that set them migrate from scratch
