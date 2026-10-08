@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -90,8 +91,8 @@ func (h *Hub) getDashboard(e *core.RequestEvent) error {
 // repositories + containers). Shared by the /dashboard HTTP handler and the MCP
 // fleet_summary tool; the "summary" entry is a DashboardSummary.
 func (h *Hub) buildDashboard() (map[string]any, error) {
-	// Fetch all agents
-	agentRecords, err := h.FindAllRecords("agents")
+	// Fetch all agents (a host awaiting approval is not part of the fleet yet)
+	agentRecords, err := h.FindAllRecords("agents", dbx.NewExp("status != {:awaiting}", dbx.Params{"awaiting": agentStatusAwaitingApproval}))
 	if err != nil {
 		return nil, err
 	}

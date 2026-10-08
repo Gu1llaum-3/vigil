@@ -13,6 +13,10 @@ const (
 	EventContainerImageUpdateAvailable EventKind = "container_image.update_available"
 	EventHostMetricExceeded            EventKind = "host.metric_exceeded"
 	EventHostMetricRecovered           EventKind = "host.metric_normal"
+	// EventAgentDuplicateFingerprint: a host enrolled with the enrollment token using the
+	// fingerprint of a host that has its own token — a reinstall, or someone holding the
+	// enrollment token posing as that host.
+	EventAgentDuplicateFingerprint EventKind = "agent.duplicate_fingerprint"
 )
 
 // ResourceRef identifies the resource that triggered the event.
@@ -67,8 +71,8 @@ func (k EventKind) Severity() string {
 	switch k {
 	case EventMonitorDown, EventAgentOffline:
 		return "critical"
-	case EventHostMetricExceeded:
-		// Usually overridden per-tier (warning/critical); warning is the safe floor.
+	case EventHostMetricExceeded, EventAgentDuplicateFingerprint:
+		// Metric: usually overridden per-tier (warning/critical); warning is the safe floor.
 		return "warning"
 	default:
 		return "info"

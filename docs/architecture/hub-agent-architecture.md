@@ -173,8 +173,10 @@ The hub then:
 Once identity is established, the hub requests `GetAgentInfo` and persists:
 
 - version
-- capabilities (including `"docker": true/false` when the Docker collector is available)
+- capabilities (including `"docker": true/false` when the Docker collector is available, and `"agent_token": true` for agents that handle `SetAgentToken`)
 - metadata
+
+If the agent has the `agent_token` capability and its token is not one the hub issued for it (`token_issued` false) or may be shared (an enrollment token, or several records carry it), the hub then issues it a token of its own (`SetAgentToken`). A host that presented the fingerprint of a host with an issued token through the enrollment token stops here: it is **awaiting approval**, nothing is collected (see `docs/architecture/auth-and-data-model.md` → Agent Token).
 
 ### Step 5b: Hub Collects Initial Snapshot
 

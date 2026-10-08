@@ -58,6 +58,23 @@ func (ws *WsConn) GetAgentInfo(ctx context.Context) (common.AgentInfoResponse, e
 	return result, err
 }
 
+// ackHandler accepts any successful response.
+type ackHandler struct{}
+
+func (ackHandler) Handle(common.AgentResponse) error { return nil }
+
+// SetAgentToken gives the agent its own token; it returns once the agent has stored it.
+func (ws *WsConn) SetAgentToken(ctx context.Context, token string) error {
+	if !ws.IsConnected() {
+		return gws.ErrConnClosed
+	}
+	req, err := ws.requestManager.SendRequest(ctx, common.SetAgentToken, common.SetAgentTokenRequest{Token: token})
+	if err != nil {
+		return err
+	}
+	return ws.handleAgentRequest(req, ackHandler{})
+}
+
 ////////////////////////////////////////////////////////////////////////////
 // Host snapshot (used to collect full system state from the agent)
 ////////////////////////////////////////////////////////////////////////////

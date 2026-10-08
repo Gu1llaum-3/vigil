@@ -326,7 +326,8 @@ func buildHostOverviewRecord(agent *core.Record, snapshot *common.HostSnapshotRe
 }
 
 func (h *Hub) loadHostsOverview() ([]HostOverviewRecord, error) {
-	agentRecords, err := h.FindAllRecords("agents")
+	// A host awaiting approval is not part of the fleet yet (Settings → Agents lists it).
+	agentRecords, err := h.FindAllRecords("agents", dbx.NewExp("status != {:awaiting}", dbx.Params{"awaiting": agentStatusAwaitingApproval}))
 	if err != nil {
 		return nil, err
 	}

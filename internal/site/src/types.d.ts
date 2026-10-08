@@ -17,8 +17,12 @@ export interface AgentRecord extends RecordModel {
 	name: string
 	token: string
 	fingerprint: string
-	status: "pending" | "connected" | "offline"
+	status: "pending" | "connected" | "offline" | "awaiting_approval"
 	version: string
+	/** the token was minted by the hub for this agent (not a shared enrollment token) */
+	token_issued?: boolean
+	/** awaiting approval: the host whose fingerprint this one presented */
+	duplicate_of?: string
 	last_seen: string
 	capabilities: Record<string, unknown>
 	metadata: Record<string, unknown>

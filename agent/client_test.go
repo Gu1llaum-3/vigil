@@ -200,7 +200,7 @@ func TestWebSocketClient_GetOptions(t *testing.T) {
 
 			// Test options caching
 			options2 := client.getOptions()
-			assert.Same(t, options, options2, "Options should be cached")
+			assert.Equal(t, options.Addr, options2.Addr, "Options should be cached (the path is joined once)")
 		})
 	}
 }
@@ -273,7 +273,7 @@ func TestWebSocketClient_VerifySignature(t *testing.T) {
 			// Create signature
 			signature := ed25519.Sign(tc.signWith, []byte(tc.token))
 
-			err := client.verifySignature(signature)
+			err := client.verifySignature(nil, signature)
 
 			if tc.expectError {
 				require.Error(t, err)

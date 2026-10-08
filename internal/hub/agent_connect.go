@@ -19,6 +19,7 @@ import (
 	"github.com/lxzan/gws"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/security"
 	"github.com/pocketbase/pocketbase/tools/types"
 )
 
@@ -82,8 +83,12 @@ func (acr *agentConnectRequest) agentConnect() (err error) {
 		}
 	}
 
-	// Find matching agent records for this token
-	agentRecords := getAgentsByToken(acr.token, acr.hub)
+	// Find matching agent records for this token. A database error is not a verdict on the
+	// token: answering 401 would make agents give up on their own token.
+	agentRecords, err := getAgentsByToken(acr.token, acr.hub)
+	if err != nil {
+		return acr.sendResponseError(acr.res, http.StatusServiceUnavailable, "Hub database unavailable")
+	}
 	if len(agentRecords) == 0 && !acr.isEnrollmentToken {
 		return acr.sendResponseError(acr.res, http.StatusUnauthorized, "Invalid token")
 	}
@@ -114,7 +119,15 @@ type AgentRecord struct {
 	Status      string `db:"status"`
 	Version     string `db:"version"`
 	Name        string `db:"name"`
+	TokenIssued bool   `db:"token_issued"`
 }
+
+// agentStatusAwaitingApproval: a host that enrolled with the enrollment token using the
+// fingerprint of a host that has its own token. Nothing is collected from it until an admin
+// approves it, merges it into the host it claims to be (duplicate_of), or rejects it.
+const agentStatusAwaitingApproval = "awaiting_approval"
+
+func (a AgentRecord) awaitingApproval() bool { return a.Status == agentStatusAwaitingApproval }
 
 // logName returns a human-readable label for the agent (its hostname-derived name),
 // falling back to the record id when no name is set yet.
@@ -170,8 +183,27 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	// Fetch initial agent info (version, capabilities, metadata) and persist it.
 	ctx, cancel := context.WithTimeout(acr.hub.agentCtx, 10*time.Second)
 	defer cancel()
+	if agentRec.awaitingApproval() {
+		// Keep the connection (approving or merging needs it) and show the admin what the
+		// host says it is, but collect nothing and issue nothing until a decision.
+		if info, infoErr := wsConn.GetAgentInfo(ctx); infoErr == nil {
+			acr.hub.updateAgentInfo(agentRec.Id, info, false)
+		}
+		if !acr.hub.goAgent(func() { acr.hub.manageAgentLifecycle(wsConn, agentRec.Id) }) {
+			wsConn.Close([]byte("hub shutting down"))
+		}
+		return nil
+	}
+
 	if info, infoErr := wsConn.GetAgentInfo(ctx); infoErr == nil {
 		acr.hub.updateAgentInfo(agentRec.Id, info, firstEnroll)
+		// Issue a token of its own to a capable agent whose token the hub did not mint, or
+		// that may be shared (it connected with an enrollment token, or several records carry
+		// it): until then, anyone holding that token can present this host's fingerprint.
+		shared := acr.isEnrollmentToken || len(agentRecords) > 1 || !agentRec.TokenIssued
+		if hasCapability(info.Capabilities, common.AgentTokenCapability) && shared {
+			acr.hub.issueAgentToken(ctx, wsConn, agentRec)
+		}
 	} else {
 		slog.Warn("Failed to fetch agent info", "agent", agentRec.logName(), "id", agentRec.Id, "err", infoErr)
 	}
@@ -229,12 +261,12 @@ func (acr *agentConnectRequest) sendResponseError(res http.ResponseWriter, code 
 }
 
 // getAgentsByToken retrieves all agent records for a given token.
-func getAgentsByToken(token string, h *Hub) []AgentRecord {
+func getAgentsByToken(token string, h *Hub) ([]AgentRecord, error) {
 	var records []AgentRecord
-	_ = h.DB().NewQuery("SELECT id, token, fingerprint, status, version, name FROM agents WHERE token = {:token}").
+	err := h.DB().NewQuery("SELECT id, token, fingerprint, status, version, name, token_issued FROM agents WHERE token = {:token}").
 		Bind(dbx.Params{"token": token}).
 		All(&records)
-	return records
+	return records, err
 }
 
 // findOrUpsertAgent validates an agent fingerprint or creates a new agent record.
@@ -248,13 +280,18 @@ func (acr *agentConnectRequest) findOrUpsertAgent(agentRecords []AgentRecord, fi
 	// Match existing agent by fingerprint
 	for _, rec := range agentRecords {
 		if rec.Fingerprint == fingerprint {
-			// Matching fingerprint - update status, version, and last_seen
-			if err := acr.hub.UpdateAgent(&rec, fingerprint, "connected", version); err != nil {
+			// Matching fingerprint - update status, version, and last_seen (a host awaiting
+			// approval stays so)
+			status := "connected"
+			if rec.awaitingApproval() {
+				status = agentStatusAwaitingApproval
+			}
+			if err := acr.hub.UpdateAgent(&rec, fingerprint, status, version); err != nil {
 				return rec, false, err
 			}
 			return rec, false, nil
 		}
-		if rec.Fingerprint == "" {
+		if rec.Fingerprint == "" && !rec.awaitingApproval() {
 			// First connection of a pre-created agent: store the fingerprint. This is
 			// still a first enrollment, so env-declared tags may be seeded.
 			if err := acr.hub.UpdateAgent(&rec, fingerprint, "connected", version); err != nil {
@@ -267,6 +304,12 @@ func (acr *agentConnectRequest) findOrUpsertAgent(agentRecords []AgentRecord, fi
 
 	// Enrollment token path - create new agent
 	if acr.isEnrollmentToken && acr.userId != "" {
+		// A host that has its own token never re-attaches through the enrollment token:
+		// whoever presents its fingerprint with the shared token (a reinstall, or someone
+		// posing as it) waits for an admin's decision, collecting nothing meanwhile.
+		if existing := acr.hub.recordHeldByTokenAgent(fingerprint); existing != nil {
+			return acr.hub.awaitApproval(existing, fingerprint, acr.token, acr.userId, version)
+		}
 		newRec := AgentRecord{Token: acr.token}
 		if err := acr.hub.CreateAgent(&newRec, fingerprint, acr.userId, version); err != nil {
 			return newRec, false, err
@@ -280,6 +323,96 @@ func (acr *agentConnectRequest) findOrUpsertAgent(agentRecords []AgentRecord, fi
 	}
 
 	return AgentRecord{}, false, errors.New("no matching agent record")
+}
+
+// issueAgentToken replaces the token an agent connected with by one of its own. The agent
+// stores it first (keeping the previous one as a fallback); the record is updated only once
+// the agent has acknowledged it. If the save fails, the agent's new token is rejected and it
+// falls back to the previous one, which the record still holds.
+func (h *Hub) issueAgentToken(ctx context.Context, wsConn *ws.WsConn, agentRec AgentRecord) {
+	token := security.RandomString(40)
+	if err := wsConn.SetAgentToken(ctx, token); err != nil {
+		slog.Warn("Failed to issue the agent its own token", "agent", agentRec.logName(), "id", agentRec.Id, "err", err)
+		return
+	}
+	rec, err := h.FindRecordById("agents", agentRec.Id)
+	if err != nil {
+		return
+	}
+	rec.Set("token", token)
+	rec.Set("token_issued", true)
+	if err := h.SaveNoValidate(rec); err != nil {
+		slog.Warn("Failed to save the agent's own token", "agent", agentRec.logName(), "id", agentRec.Id, "err", err)
+		return
+	}
+	slog.Info("Issued the agent its own token", "agent", agentRec.logName(), "id", agentRec.Id)
+}
+
+// recordHeldByTokenAgent returns the record with this fingerprint whose token the hub issued
+// (the host has a token of its own), if any.
+func (h *Hub) recordHeldByTokenAgent(fingerprint string) *core.Record {
+	// Oldest first: after an "approve as a new host", two records may share the fingerprint.
+	recs, err := h.FindRecordsByFilter("agents", "fingerprint = {:fp} && token_issued = true && status != {:awaiting}",
+		"created", 1, 0, dbx.Params{"fp": fingerprint, "awaiting": agentStatusAwaitingApproval})
+	if err != nil || len(recs) == 0 {
+		return nil
+	}
+	return recs[0]
+}
+
+// awaitApproval records a host claiming the fingerprint of existing as awaiting approval (one
+// pending record per claimed host, reused on reconnect) and tells the admins once.
+func (h *Hub) awaitApproval(existing *core.Record, fingerprint, token, userID, version string) (AgentRecord, bool, error) {
+	if pending, err := h.FindFirstRecordByFilter("agents", "duplicate_of = {:existing} && fingerprint = {:fp}",
+		dbx.Params{"existing": existing.Id, "fp": fingerprint}); err == nil {
+		pending.Set("token", token)
+		pending.Set("version", version)
+		pending.Set("last_seen", time.Now())
+		if err := h.SaveNoValidate(pending); err != nil {
+			return AgentRecord{}, false, err
+		}
+		return AgentRecord{Id: pending.Id, Token: token, Fingerprint: fingerprint, Status: agentStatusAwaitingApproval, Name: pending.GetString("name")}, false, nil
+	}
+	collection, err := h.FindCachedCollectionByNameOrId("agents")
+	if err != nil {
+		return AgentRecord{}, false, err
+	}
+	rec := core.NewRecord(collection)
+	rec.Set("token", token)
+	rec.Set("fingerprint", fingerprint)
+	rec.Set("status", agentStatusAwaitingApproval)
+	rec.Set("duplicate_of", existing.Id)
+	rec.Set("version", version)
+	rec.Set("last_seen", time.Now())
+	if userID != "" {
+		rec.Set("created_by", userID)
+	}
+	if err := h.SaveNoValidate(rec); err != nil {
+		return AgentRecord{}, false, err
+	}
+	slog.Warn("A host enrolled with the fingerprint of a host that has its own token; it awaits approval",
+		"fingerprint", fingerprint, "existing", existing.Id, "pending", rec.Id)
+	h.emitNotification(notifications.Event{
+		Kind:       notifications.EventAgentDuplicateFingerprint,
+		OccurredAt: time.Now(),
+		// Keyed on the claimed host: throttling and mutes follow it, not each new record.
+		Resource: notifications.ResourceRef{ID: existing.Id, Name: existing.GetString("name"), Type: "agent"},
+		Details:  map[string]any{"pending_id": rec.Id, "existing_name": existing.GetString("name")},
+	})
+	return AgentRecord{Id: rec.Id, Token: token, Fingerprint: fingerprint, Status: agentStatusAwaitingApproval}, true, nil
+}
+
+func agentRecordHasCapability(rec *core.Record, capability string) bool {
+	var caps map[string]any
+	if err := rec.UnmarshalJSONField("capabilities", &caps); err != nil {
+		return false
+	}
+	return hasCapability(caps, capability)
+}
+
+func hasCapability(caps map[string]any, capability string) bool {
+	enabled, _ := caps[capability].(bool)
+	return enabled
 }
 
 // UpdateAgent updates an agent's fingerprint, status, version, and last_seen.
@@ -472,9 +605,9 @@ func (h *Hub) reconcileAgentStatuses(bootedAt time.Time) {
 // connection was still the stored one; the re-assert repairs it.
 func (h *Hub) registerAgentConn(agentId string, wsConn *ws.WsConn) {
 	h.agentConns.Store(agentId, wsConn)
-	h.setAgentStatusIf(agentId, "connected", func(*core.Record) bool {
+	h.setAgentStatusIf(agentId, "connected", func(rec *core.Record) bool {
 		current, _ := h.agentConns.Load(agentId)
-		return current == wsConn
+		return current == wsConn && rec.GetString("status") != agentStatusAwaitingApproval
 	})
 }
 
@@ -483,9 +616,9 @@ func (h *Hub) registerAgentConn(agentId string, wsConn *ws.WsConn) {
 // still between its handshake and registerAgentConn can be overwritten, and
 // registerAgentConn then restores connected.
 func (h *Hub) markAgentOfflineUnlessReconnected(agentId string) {
-	h.setAgentStatusIf(agentId, "offline", func(*core.Record) bool {
+	h.setAgentStatusIf(agentId, "offline", func(current *core.Record) bool {
 		_, reconnected := h.agentConns.Load(agentId)
-		return !reconnected
+		return !reconnected && current.GetString("status") != agentStatusAwaitingApproval
 	})
 }
 
