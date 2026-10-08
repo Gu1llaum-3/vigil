@@ -158,6 +158,7 @@ Actions are defined as `uint8` constants in `internal/common/common-ws.go`.
 | 3 | `GetHostSnapshot` | Hub → Agent | Full system snapshot (OS, resources, storage, packages, repos, reboot, Docker) |
 | 4 | `GetHostMetrics` | Hub → Agent | Lightweight host monitoring metrics (CPU, memory, root disk, network throughput) |
 | 5 | `GetContainerMetrics` | Hub → Agent | Lightweight running-container monitoring metrics (CPU, memory, network throughput) |
+| 6 | `SetAgentToken` | Hub → Agent | Gives the agent its own token, replacing a shared (enrollment) one; the agent stores it in `<data-dir>/agent-token` and uses it from then on |
 
 **Adding a new action:**
 1. Add a constant in `internal/common/common-ws.go` (append only — never reorder)
@@ -226,6 +227,8 @@ Hub side (agent_connect.go):
               ├─ GetFingerprint()      // hub signs token → agent verifies
               ├─ findOrUpsertAgent()   // upsert agents record in DB; store WsConn in Hub.agentConns
               ├─ GetAgentInfo()        // fetch version/capabilities/metadata
+              ├─ SetAgentToken()       // capable agent without an issued token → its own token (agent stores, then hub saves)
+              │                        // (awaiting approval: stops after GetAgentInfo, nothing collected)
               ├─ GetHostSnapshot()     // collect full snapshot (60s timeout) → upsertHostSnapshot()
               ├─ GetHostMetrics()      // collect lightweight host metrics → sample + current records
               ├─ GetContainerMetrics() // collect lightweight container metrics → append-only samples
@@ -301,7 +304,7 @@ h.Save(rec)
 
 ### Agent auth
 1. **Enrollment token** — shared token for self-registering new agents (ephemeral 1h or permanent in DB)
-2. **Agent token** — per-agent token stored in `agents.token`, checked at every reconnection
+2. **Agent token** — per-agent token stored in `agents.token`, checked at every reconnection. A capable agent (`capabilities.agent_token`) whose token the hub did not mint (`token_issued` false) or may be shared (enrollment token, several records carrying it) is issued a unique one (`SetAgentToken`: the agent stores it first, then the hub saves it and sets `token_issued`). Holding the enrollment token therefore no longer lets anyone attach to an enrolled host by sending its fingerprint (a hash of its hostname): such a connection becomes a host **awaiting approval** (`status = awaiting_approval`, `duplicate_of` = the claimed host; nothing collected, not in the fleet, `agent.duplicate_fingerprint` notification never suppressed by maintenance) until an admin merges it (reinstall; refused while the claimed host is connected unless forced), approves it (different machine) or rejects it (`internal/hub/agent_approval.go`). The identity fields cannot be changed through the collection API by non-superusers (`protectAgentIdentityFields`). Agents older than the capability keep the shared token until they upgrade — see `docs/architecture/auth-and-data-model.md` → Agent Token for the transition risk
 3. **Hub identity verification** — hub signs the agent token with its ED25519 private key; agent verifies against hub's public key (`KEY` env var). Prevents impersonation of the hub.
 
 The hub's keypair is stored as `<datadir>/id_ed25519` and generated on first run. `Hub.GetSSHKey` loads it once (at startup) and caches the signer and public key under `keyMu`; handshakes and `/api/app/info` reuse it, so replacing the file takes effect only after a hub restart.
@@ -341,7 +344,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | Variable | Description | Required |
 |---|---|---|
 | `HUB_URL` | Full URL of the hub (e.g. `https://hub.example.com`). `https://`/`wss://` → encrypted `wss`; `http://`/`ws://` → plaintext `ws`, accepted for trusted networks with a startup warning; anything else (or no host) stops the agent with an error. | Yes |
-| `TOKEN` | Enrollment token or agent token | Yes (or `TOKEN_FILE`) |
+| `TOKEN` | Enrollment token or agent token. After enrollment the hub issues the agent a token of its own (stored in `<data-dir>/agent-token`, bound to the hub URL or the hub key, never sent over a weaker transport), which then takes precedence. `TOKEN` is used again only if it is **changed** after that, and only once the hub refuses the stored tokens (a deliberate reconfiguration, e.g. after rotating an offline host's token); a host deleted on the hub stays revoked instead of re-enrolling. | Yes (or `TOKEN_FILE`) until a token is issued |
 | `TOKEN_FILE` | Path to a file containing the token | Alt. to `TOKEN` |
 | `KEY` | Hub's public key for identity verification | Yes (or `KEY_FILE` / `--key`) |
 | `KEY_FILE` | Path to a file containing the hub's public key | Alt. to `KEY` |

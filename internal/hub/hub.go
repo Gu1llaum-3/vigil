@@ -175,6 +175,8 @@ func (h *Hub) StartHub() error {
 	// security: a non-admin/non-superuser request must not be able to self-assign a
 	// privileged role via a crafted create payload (self-service API / OAuth sign-up).
 	h.App.OnRecordCreateRequest("users").BindFunc(h.um.EnforceUserRoleOnCreate)
+	// The identity fields of an agent change only through the hub (see agent_approval.go).
+	h.App.OnRecordUpdateRequest("agents").BindFunc(protectAgentIdentityFields)
 
 	// Stop monitor goroutine when the record is deleted (cascade from user action)
 	h.App.OnRecordAfterDeleteSuccess("monitors").BindFunc(func(e *core.RecordEvent) error {

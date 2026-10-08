@@ -17,6 +17,8 @@ var defaultTitles = map[EventKind]*template.Template{
 		`{{.Current}}: {{index .Details "metric"}} high on "{{.Resource.Name}}"`)),
 	EventHostMetricRecovered: template.Must(template.New("").Parse(
 		`{{index .Details "metric"}} back to normal on "{{.Resource.Name}}"`)),
+	EventAgentDuplicateFingerprint: template.Must(template.New("").Parse(
+		`A host claiming to be "{{.Resource.Name}}" awaits approval`)),
 }
 
 var defaultBodies = map[EventKind]*template.Template{
@@ -34,6 +36,8 @@ var defaultBodies = map[EventKind]*template.Template{
 		`{{index .Details "metric"}} usage on "{{.Resource.Name}}" is {{printf "%.1f" (index .Details "value")}}{{index .Details "unit"}}{{if index .Details "mount"}} on {{index .Details "mount"}}{{end}}{{if index .Details "load_raw"}} (load {{printf "%.2f" (index .Details "load_raw")}} across {{index .Details "cores"}} cores){{end}} ({{.Current}} threshold {{printf "%g" (index .Details "threshold")}}{{index .Details "unit"}})`)),
 	EventHostMetricRecovered: template.Must(template.New("").Parse(
 		`{{index .Details "metric"}} usage on "{{.Resource.Name}}" recovered ({{printf "%.1f" (index .Details "value")}}{{index .Details "unit"}})`)),
+	EventAgentDuplicateFingerprint: template.Must(template.New("").Parse(
+		`A host connected with the enrollment token using the fingerprint of "{{.Resource.Name}}", which already has its own token. Nothing is collected from it until an admin decides in Settings → Agents: merge it into "{{.Resource.Name}}" if you reinstalled that host, approve it if it is a different machine, reject it otherwise (and regenerate the enrollment token).`)),
 }
 
 // RenderMessage produces a (title, body) pair for the given event using the default templates.

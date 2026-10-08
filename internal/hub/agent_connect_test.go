@@ -212,7 +212,7 @@ func TestGetAgentsByToken(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			records := getAgentsByToken(tc.token, hub)
+			records := agentsByTokenForTest(t, tc.token, hub)
 
 			require.Len(t, records, tc.expectLen)
 			if tc.expectedId != "" {
@@ -525,13 +525,13 @@ func TestFindOrUpsertAgentAllowsEnrollmentTokenReuse(t *testing.T) {
 		agentSemVer:       semver.MustParse("1.0.0"),
 	}
 
-	newAgent, firstEnroll, err := acr.findOrUpsertAgent(getAgentsByToken(sharedToken, hub), "new-fingerprint")
+	newAgent, firstEnroll, err := acr.findOrUpsertAgent(agentsByTokenForTest(t, sharedToken, hub), "new-fingerprint")
 	require.NoError(t, err)
 	assert.True(t, firstEnroll, "creating a new record is a first enrollment")
 	assert.NotEmpty(t, newAgent.Id)
 	assert.Equal(t, "new-fingerprint", newAgent.Fingerprint)
 
-	agentRecords := getAgentsByToken(sharedToken, hub)
+	agentRecords := agentsByTokenForTest(t, sharedToken, hub)
 	require.Len(t, agentRecords, 2)
 
 	fingerprints := []string{agentRecords[0].Fingerprint, agentRecords[1].Fingerprint}
@@ -562,7 +562,7 @@ func TestFindOrUpsertAgentReconnectIsNotFirstEnrollment(t *testing.T) {
 		agentSemVer: semver.MustParse("1.0.0"),
 	}
 
-	rec, firstEnroll, err := acr.findOrUpsertAgent(getAgentsByToken(token, hub), "known-fingerprint")
+	rec, firstEnroll, err := acr.findOrUpsertAgent(agentsByTokenForTest(t, token, hub), "known-fingerprint")
 	require.NoError(t, err)
 	assert.False(t, firstEnroll, "a matching-fingerprint reconnect is not a first enrollment")
 	assert.NotEmpty(t, rec.Id)
@@ -980,4 +980,11 @@ func TestAgentWebSocketIntegration(t *testing.T) {
 			t.Logf("%s - Fingerprint: %s", tc.description, finalFingerprint)
 		})
 	}
+}
+
+func agentsByTokenForTest(t *testing.T, token string, hub *Hub) []AgentRecord {
+	t.Helper()
+	records, err := getAgentsByToken(token, hub)
+	require.NoError(t, err)
+	return records
 }

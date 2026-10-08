@@ -35,6 +35,11 @@ func (h *Hub) emitNotification(evt notifications.Event) {
 // window. Both gates run at the single emitNotification chokepoint.
 func (h *Hub) isNotificationSuppressed(evt notifications.Event) bool {
 	now := time.Now()
+	if evt.Kind == notifications.EventAgentDuplicateFingerprint {
+		// A security event: neither a maintenance window (predictable when recurring) nor a
+		// mute set for a noisy host may hide a possible impersonation.
+		return false
+	}
 	return h.resourceMuted(evt, now) || h.underMaintenance(evt, now)
 }
 

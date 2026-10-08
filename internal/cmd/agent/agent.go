@@ -158,7 +158,12 @@ func handleFingerprint() {
 		if err := agent.DeleteFingerprint(dataDir); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("Fingerprint reset. A new one will be generated on next start.")
+		// A new fingerprint is a new identity: the token issued to the old one would only
+		// be refused as a fingerprint mismatch, so enroll again with the configured TOKEN.
+		if err := agent.DeleteAgentToken(dataDir); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Fingerprint reset. A new one will be generated on next start, and the agent will enroll again with its configured token.")
 	default:
 		log.Fatalf("Unknown command: %q\n\n%s", subCmd, fingerprintUsage())
 	}

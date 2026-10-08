@@ -17,6 +17,9 @@ const (
 	GetHostMetrics // 4
 	// GetContainerMetrics requests lightweight running-container monitoring metrics from the agent.
 	GetContainerMetrics // 5
+	// SetAgentToken gives the agent its own credential, replacing a shared (enrollment)
+	// token; the agent persists it and uses it from then on.
+	SetAgentToken // 6
 )
 
 // HubRequest defines the structure for requests sent from hub to agent.
@@ -43,6 +46,15 @@ type FingerprintRequest struct {
 type FingerprintResponse struct {
 	Fingerprint string `cbor:"0,keyasint"`
 }
+
+// SetAgentTokenRequest carries the per-agent token minted by the hub.
+type SetAgentTokenRequest struct {
+	Token string `cbor:"0,keyasint"`
+}
+
+// AgentTokenCapability is the GetAgentInfo capability an agent sets when it handles
+// SetAgentToken. Older agents keep the token they were configured with.
+const AgentTokenCapability = "agent_token"
 
 // AgentInfoResponse is returned by the agent for GetAgentInfo requests.
 type AgentInfoResponse struct {

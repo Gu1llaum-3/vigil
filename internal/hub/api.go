@@ -11,9 +11,11 @@ import (
 	"time"
 
 	app "github.com/Gu1llaum-3/vigil"
+	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/Gu1llaum-3/vigil/internal/ghupdate"
 	"github.com/Gu1llaum-3/vigil/internal/hub/expirymap"
 	"github.com/Gu1llaum-3/vigil/internal/hub/utils"
+	"github.com/Gu1llaum-3/vigil/internal/hub/ws"
 	"github.com/blang/semver"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/apis"
@@ -211,6 +213,11 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	// rotate a per-agent token server-side (cryptographically strong, replaces the old
 	// client-generated token).
 	apiAuth.POST("/agents/{id}/rotate-token", h.rotateAgentToken).BindFunc(excludeReadOnlyRole)
+	// Hosts awaiting approval (an enrollment with the fingerprint of a host that has its own
+	// token): an admin decision, see agent_approval.go.
+	apiAuth.POST("/agents/{id}/approve", h.approveAgent).BindFunc(requireAdminRole)
+	apiAuth.POST("/agents/{id}/merge", h.mergeAgent).BindFunc(requireAdminRole)
+	apiAuth.POST("/agents/{id}/reject", h.rejectAgent).BindFunc(requireAdminRole)
 	// handle agent websocket connection
 	apiNoAuth.GET("/agent-connect", h.handleAgentConnect)
 	// fleet patch audit dashboard
@@ -358,19 +365,42 @@ func (h *Hub) getAgentTokens(e *core.RequestEvent) error {
 }
 
 // rotateAgentToken generates a new cryptographically strong token for an agent and saves
-// it server-side, returning the new value. Replaces the previous client-generated token.
+// it server-side, returning the new value and whether the connected agent already got it.
 func (h *Hub) rotateAgentToken(e *core.RequestEvent) error {
 	id := e.Request.PathValue("id")
 	rec, err := h.FindRecordById("agents", id)
 	if err != nil {
 		return e.NotFoundError("Agent not found", err)
 	}
+	if rec.GetString("status") == agentStatusAwaitingApproval {
+		return e.JSON(http.StatusConflict, map[string]string{"message": "This host awaits approval: merge, approve or reject it first"})
+	}
 	token := security.RandomString(40)
+	// A connected agent that handles SetAgentToken gets the new token right away (agent
+	// first, see issueAgentToken), so rotating needs no reconfiguration on the host. Any
+	// other agent must be reconfigured with the new token.
+	pushed := false
+	if conn, ok := h.agentConns.Load(id); ok && agentRecordHasCapability(rec, common.AgentTokenCapability) {
+		ctx, cancel := context.WithTimeout(e.Request.Context(), 10*time.Second)
+		defer cancel()
+		if err := conn.(*ws.WsConn).SetAgentToken(ctx, token); err != nil {
+			// The agent may still have stored it: it keeps the current token as a fallback.
+			return e.InternalServerError("The agent did not confirm the new token; the current token stays valid", err)
+		}
+		pushed = true
+	}
+	// Re-read: pushing took up to 10s, during which the scheduler or the UI may have
+	// changed the record; save only the token.
+	if fresh, err := h.FindRecordById("agents", id); err == nil {
+		rec = fresh
+	}
+	rec.IgnoreUnchangedFields(true)
 	rec.Set("token", token)
+	rec.Set("token_issued", true)
 	if err := h.SaveNoValidate(rec); err != nil {
 		return err
 	}
-	return e.JSON(http.StatusOK, map[string]string{"token": token})
+	return e.JSON(http.StatusOK, map[string]any{"token": token, "pushed": pushed})
 }
 
 // enrollmentState is the response of the enrollment token endpoints.

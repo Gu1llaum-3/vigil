@@ -20,6 +20,7 @@ const EVENT_VALUES = [
 	"container_image.update_available",
 	"host.metric_exceeded",
 	"host.metric_normal",
+	"agent.duplicate_fingerprint",
 ] as const
 
 type NotificationHistoryProps = {

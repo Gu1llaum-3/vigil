@@ -289,6 +289,14 @@ msgstr "App Token"
 msgid "Apply"
 msgstr "Apply"
 
+#: src/components/routes/settings/agents.tsx
+msgid "Approve as a new host"
+msgstr "Approve as a new host"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Approve this host as a new, separate host? Only do this if it is a different machine (for example one sharing the hostname)."
+msgstr "Approve this host as a new, separate host? Only do this if it is a different machine (for example one sharing the hostname)."
+
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "Arch"
 #~ msgstr "Arch"
@@ -356,6 +364,11 @@ msgstr "Average memory utilization"
 #: src/components/routes/monitors.tsx
 msgid "Avg 24h"
 msgstr "Avg 24h"
+
+#. placeholder {0}: displayNames.get(agent.duplicate_of ?? "") ?? agent.duplicate_of
+#: src/components/routes/settings/agents.tsx
+msgid "Awaiting approval: claims to be {0}"
+msgstr "Awaiting approval: claims to be {0}"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Back"
@@ -1336,6 +1349,10 @@ msgstr "Host"
 msgid "Host back online"
 msgstr "Host back online"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Host enrolled with an existing host's fingerprint"
+msgstr "Host enrolled with an existing host's fingerprint"
+
 #: src/components/routes/host-detail.tsx
 msgid "Host is offline"
 msgstr "Host is offline"
@@ -1770,6 +1787,14 @@ msgstr "Memory now"
 #: src/components/routes/host-detail.tsx
 msgid "Memory usage"
 msgstr "Memory usage"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Merge into the host it claims to be (reinstall)"
+msgstr "Merge into the host it claims to be (reinstall)"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Merge this host into the host it claims to be? Only do this if you reinstalled that host: it will take over its record, history and token."
+msgstr "Merge this host into the host it claims to be? Only do this if you reinstalled that host: it will take over its record, history and token."
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Message"
@@ -2536,6 +2561,14 @@ msgstr "Registry"
 msgid "Registry credentials"
 msgstr "Registry credentials"
 
+#: src/components/routes/settings/agents.tsx
+msgid "Reject"
+msgstr "Reject"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Reject this host? Its record is deleted. If it was not yours, also regenerate the enrollment token."
+msgstr "Reject this host? Its record is deleted. If it was not yours, also regenerate the enrollment token."
+
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/notifications.tsx
@@ -2830,6 +2863,10 @@ msgstr "Settings saved"
 msgid "Severity"
 msgstr "Severity"
 
+#: src/components/routes/settings/agents.tsx
+msgid "shared"
+msgstr "shared"
+
 #. placeholder {0}: tags.length
 #: src/components/host-tags.tsx
 msgid "Show all {0} tags"
@@ -2959,6 +2996,18 @@ msgstr "Test failed"
 msgid "Test sent"
 msgstr "Test sent"
 
+#: src/components/routes/settings/agents.tsx
+msgid "The agent is offline or too old to receive it: reconfigure it with the new token."
+msgstr "The agent is offline or too old to receive it: reconfigure it with the new token."
+
+#: src/components/routes/settings/agents.tsx
+msgid "The agent received its new token."
+msgstr "The agent received its new token."
+
+#: src/components/routes/settings/agents.tsx
+msgid "The host it claims to be is connected right now, so this one is probably not a reinstall of it. Merge anyway and disconnect the current one?"
+msgstr "The host it claims to be is connected right now, so this one is probably not a reinstall of it. Merge anyway and disconnect the current one?"
+
 #: src/components/routes/settings/jobs.tsx
 msgid "The job ran successfully."
 msgstr "The job ran successfully."
@@ -2987,6 +3036,10 @@ msgstr "This group contains {0} monitor(s). They will be moved to No group."
 #: src/components/routes/settings/api-keys.tsx
 msgid "This is the only time the full token is shown. Store it somewhere safe — you cannot see it again."
 msgstr "This is the only time the full token is shown. Store it somewhere safe — you cannot see it again."
+
+#: src/components/routes/settings/agents.tsx
+msgid "This token was not issued by the hub for this host (it may be shared, e.g. an enrollment token): anyone holding it can present this host's fingerprint. Upgrade the agent, or rotate the token."
+msgstr "This token was not issued by the hub for this host (it may be shared, e.g. an enrollment token): anyone holding it can present this host's fingerprint. Upgrade the agent, or rotate the token."
 
 #: src/components/routes/settings/purge.tsx
 msgid "This will delete notification logs older than {notificationDays} days."
@@ -3068,6 +3121,10 @@ msgstr "Token"
 #: src/components/routes/settings/notifications.tsx
 msgid "Token (optional)"
 msgstr "Token (optional)"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Token rotated"
+msgstr "Token rotated"
 
 #: src/components/login/auth-form.tsx
 msgid "Too many attempts. Please wait before trying again."

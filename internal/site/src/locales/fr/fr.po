@@ -294,6 +294,14 @@ msgstr "Jeton d'application"
 msgid "Apply"
 msgstr "Appliquer"
 
+#: src/components/routes/settings/agents.tsx
+msgid "Approve as a new host"
+msgstr "Approuver comme nouvel hôte"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Approve this host as a new, separate host? Only do this if it is a different machine (for example one sharing the hostname)."
+msgstr "Approuver cet hôte comme un nouvel hôte distinct ? Uniquement s'il s'agit d'une autre machine (par exemple une qui partage le hostname)."
+
 #: src/components/routes/dashboard/hosts-table.tsx
 #~ msgid "Arch"
 #~ msgstr "Arch"
@@ -361,6 +369,11 @@ msgstr "Utilisation moyenne de la mémoire"
 #: src/components/routes/monitors.tsx
 msgid "Avg 24h"
 msgstr "Moy. 24h"
+
+#. placeholder {0}: displayNames.get(agent.duplicate_of ?? "") ?? agent.duplicate_of
+#: src/components/routes/settings/agents.tsx
+msgid "Awaiting approval: claims to be {0}"
+msgstr "En attente d'approbation : se présente comme {0}"
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Back"
@@ -1341,6 +1354,10 @@ msgstr "Hôte"
 msgid "Host back online"
 msgstr "Hôte de nouveau en ligne"
 
+#: src/components/routes/settings/notifications.tsx
+msgid "Host enrolled with an existing host's fingerprint"
+msgstr "Hôte enrôlé avec l'empreinte d'un hôte existant"
+
 #: src/components/routes/host-detail.tsx
 msgid "Host is offline"
 msgstr "L'hôte est hors ligne"
@@ -1775,6 +1792,14 @@ msgstr "Mémoire actuelle"
 #: src/components/routes/host-detail.tsx
 msgid "Memory usage"
 msgstr "Utilisation mémoire"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Merge into the host it claims to be (reinstall)"
+msgstr "Fusionner avec l'hôte qu'il prétend être (réinstallation)"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Merge this host into the host it claims to be? Only do this if you reinstalled that host: it will take over its record, history and token."
+msgstr "Fusionner cet hôte avec l'hôte qu'il prétend être ? Uniquement si vous avez réinstallé cet hôte : il reprendra son record, son historique et son jeton."
 
 #: src/components/routes/monitor-detail.tsx
 msgid "Message"
@@ -2541,6 +2566,14 @@ msgstr "Registre"
 msgid "Registry credentials"
 msgstr "Identifiants registres"
 
+#: src/components/routes/settings/agents.tsx
+msgid "Reject"
+msgstr "Rejeter"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Reject this host? Its record is deleted. If it was not yours, also regenerate the enrollment token."
+msgstr "Rejeter cet hôte ? Son record est supprimé. S'il n'était pas à vous, régénérez aussi le jeton d'enrôlement."
+
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
 #: src/components/routes/notifications.tsx
@@ -2835,6 +2868,10 @@ msgstr "Paramètres enregistrés"
 msgid "Severity"
 msgstr "Sévérité"
 
+#: src/components/routes/settings/agents.tsx
+msgid "shared"
+msgstr "partagé"
+
 #. placeholder {0}: tags.length
 #: src/components/host-tags.tsx
 msgid "Show all {0} tags"
@@ -2964,6 +3001,18 @@ msgstr "Test échoué"
 msgid "Test sent"
 msgstr "Test envoyé"
 
+#: src/components/routes/settings/agents.tsx
+msgid "The agent is offline or too old to receive it: reconfigure it with the new token."
+msgstr "L'agent est hors ligne ou trop ancien pour le recevoir : reconfigurez-le avec le nouveau jeton."
+
+#: src/components/routes/settings/agents.tsx
+msgid "The agent received its new token."
+msgstr "L'agent a reçu son nouveau jeton."
+
+#: src/components/routes/settings/agents.tsx
+msgid "The host it claims to be is connected right now, so this one is probably not a reinstall of it. Merge anyway and disconnect the current one?"
+msgstr "L'hôte qu'il prétend être est connecté en ce moment : celui-ci n'en est probablement pas une réinstallation. Fusionner quand même et déconnecter l'actuel ?"
+
 #: src/components/routes/settings/jobs.tsx
 msgid "The job ran successfully."
 msgstr "La tâche s'est exécutée avec succès."
@@ -2992,6 +3041,10 @@ msgstr "Ce dossier contient {0} sonde(s). Elles seront déplacées vers Sans dos
 #: src/components/routes/settings/api-keys.tsx
 msgid "This is the only time the full token is shown. Store it somewhere safe — you cannot see it again."
 msgstr "C'est la seule fois où le jeton complet est affiché. Conservez-le en lieu sûr — vous ne pourrez plus le revoir."
+
+#: src/components/routes/settings/agents.tsx
+msgid "This token was not issued by the hub for this host (it may be shared, e.g. an enrollment token): anyone holding it can present this host's fingerprint. Upgrade the agent, or rotate the token."
+msgstr "Ce jeton n'a pas été émis par le hub pour cet hôte (il peut être partagé, par exemple un jeton d'enrôlement) : quiconque le détient peut présenter l'empreinte de cet hôte. Mettez l'agent à jour ou renouvelez le jeton."
 
 #: src/components/routes/settings/purge.tsx
 msgid "This will delete notification logs older than {notificationDays} days."
@@ -3073,6 +3126,10 @@ msgstr "Jeton"
 #: src/components/routes/settings/notifications.tsx
 msgid "Token (optional)"
 msgstr "Jeton (optionnel)"
+
+#: src/components/routes/settings/agents.tsx
+msgid "Token rotated"
+msgstr "Jeton renouvelé"
 
 #: src/components/login/auth-form.tsx
 msgid "Too many attempts. Please wait before trying again."

@@ -7,8 +7,12 @@ import {
 	CopyIcon,
 	FingerprintIcon,
 	KeyIcon,
+	MergeIcon,
 	MoreHorizontalIcon,
 	RotateCwIcon,
+	ShieldAlertIcon,
+	ShieldCheckIcon,
+	ShieldXIcon,
 	TagIcon,
 	Trash2Icon,
 	XIcon,
@@ -30,12 +34,12 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/components/ui/use-toast"
-import { isReadOnlyUser, pb } from "@/lib/api"
+import { isAdmin, isReadOnlyUser, pb } from "@/lib/api"
 import { copyToClipboard, getHubURL } from "@/lib/utils"
 import type { AgentRecord } from "@/types"
 
 const pbAgentOptions = {
-	fields: "id,name,token,fingerprint,status,version,last_seen,tags",
+	fields: "id,name,token,fingerprint,status,version,last_seen,tags,token_issued,duplicate_of",
 }
 
 function sortAgents(agents: AgentRecord[]) {
@@ -284,6 +288,8 @@ function getStatusIcon(status: string) {
 			return <CheckIcon className="size-4 text-emerald-600" />
 		case "offline":
 			return <XIcon className="size-4 text-red-600" />
+		case "awaiting_approval":
+			return <ShieldAlertIcon className="size-4 text-amber-600" />
 		default:
 			return <span className="size-4 rounded-full bg-muted-foreground/60" />
 	}
@@ -354,14 +360,33 @@ const SectionTable = memo(({ agents = [], tokens = {} }: { agents: AgentRecord[]
 				<TableBody className="whitespace-pre">
 					{agents.map((agent) => (
 						<TableRow key={agent.id}>
-							<TableCell className="font-medium ps-5 py-2 max-w-60 truncate">{displayNames.get(agent.id)}</TableCell>
+							<TableCell className="font-medium ps-5 py-2 max-w-60 truncate">
+								{displayNames.get(agent.id)}
+								{agent.status === "awaiting_approval" && (
+									<div className="text-xs font-normal text-amber-700 dark:text-amber-500 whitespace-normal">
+										<Trans>
+											Awaiting approval: claims to be {displayNames.get(agent.duplicate_of ?? "") ?? agent.duplicate_of}
+										</Trans>
+									</div>
+								)}
+							</TableCell>
 							<TableCell className="py-2">
 								<span className="inline-flex items-center gap-2" title={agent.status || "unknown"}>
 									{getStatusIcon(agent.status)}
 									<span className="sr-only">{agent.status || "unknown"}</span>
 								</span>
 							</TableCell>
-							<TableCell className="font-mono text-[0.95em] py-2">{tokens[agent.id] ?? ""}</TableCell>
+							<TableCell className="font-mono text-[0.95em] py-2">
+								{tokens[agent.id] ?? ""}
+								{!agent.token_issued && agent.status !== "awaiting_approval" && (
+									<span
+										className="ms-2 rounded border px-1 font-sans text-xs text-amber-700 dark:text-amber-500"
+										title={t`This token was not issued by the hub for this host (it may be shared, e.g. an enrollment token): anyone holding it can present this host's fingerprint. Upgrade the agent, or rotate the token.`}
+									>
+										<Trans>shared</Trans>
+									</span>
+								)}
+							</TableCell>
 							<TableCell className="font-mono text-[0.95em] py-2">{agent.fingerprint}</TableCell>
 							<TableCell className="py-2">
 								{agent.tags && agent.tags.length > 0 ? (
@@ -388,7 +413,15 @@ async function updateAgent(agent: AgentRecord, rotateToken = false, resetFingerp
 		if (rotateToken) {
 			// Token rotation is server-side (cryptographically strong; the token field is
 			// hidden on the collection so it cannot be set from the client).
-			await pb.send(`/api/app/agents/${agent.id}/rotate-token`, { method: "POST" })
+			const rotated = await pb.send<{ token: string; pushed: boolean }>(`/api/app/agents/${agent.id}/rotate-token`, {
+				method: "POST",
+			})
+			toast({
+				title: t`Token rotated`,
+				description: rotated.pushed
+					? t`The agent received its new token.`
+					: t`The agent is offline or too old to receive it: reconfigure it with the new token.`,
+			})
 		}
 		if (resetFingerprint) {
 			await pb.collection("agents").update(agent.id, { fingerprint: "" })
@@ -411,6 +444,41 @@ async function deleteAgent(agent: AgentRecord) {
 		})
 	}
 }
+// Decisions on a host awaiting approval (admin only): it connected with the enrollment token
+// using the fingerprint of a host that has its own token.
+async function decideAgent(agent: AgentRecord, decision: "merge" | "approve" | "reject") {
+	const question = {
+		merge: t`Merge this host into the host it claims to be? Only do this if you reinstalled that host: it will take over its record, history and token.`,
+		approve: t`Approve this host as a new, separate host? Only do this if it is a different machine (for example one sharing the hostname).`,
+		reject: t`Reject this host? Its record is deleted. If it was not yours, also regenerate the enrollment token.`,
+	}[decision]
+	if (!window.confirm(question)) {
+		return
+	}
+	try {
+		await pb.send(`/api/app/agents/${agent.id}/${decision}`, { method: "POST" })
+	} catch (caught: unknown) {
+		let error = caught
+		const status = (error as { status?: number }).status
+		// The host it claims to be is connected right now: the strongest sign of impersonation.
+		if (
+			decision === "merge" &&
+			status === 409 &&
+			window.confirm(
+				t`The host it claims to be is connected right now, so this one is probably not a reinstall of it. Merge anyway and disconnect the current one?`
+			)
+		) {
+			try {
+				await pb.send(`/api/app/agents/${agent.id}/merge`, { method: "POST", query: { force: 1 } })
+				return
+			} catch (forced: unknown) {
+				error = forced
+			}
+		}
+		toast({ title: t`Error`, description: (error as Error).message, variant: "destructive" })
+	}
+}
+
 const ActionsButtonTable = memo(({ agent, token }: { agent: AgentRecord; token: string }) => {
 	const envVar = `HUB_URL=${getHubURL()}\nTOKEN=${token}`
 	const copyEnv = () => copyToClipboard(envVar)
@@ -435,6 +503,23 @@ const ActionsButtonTable = memo(({ agent, token }: { agent: AgentRecord; token: 
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">
+					{agent.status === "awaiting_approval" && isAdmin() && (
+						<>
+							<DropdownMenuItem onSelect={() => decideAgent(agent, "merge")}>
+								<MergeIcon className="me-2.5 size-4" />
+								<Trans>Merge into the host it claims to be (reinstall)</Trans>
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => decideAgent(agent, "approve")}>
+								<ShieldCheckIcon className="me-2.5 size-4" />
+								<Trans>Approve as a new host</Trans>
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => decideAgent(agent, "reject")} className="text-destructive">
+								<ShieldXIcon className="me-2.5 size-4" />
+								<Trans>Reject</Trans>
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+						</>
+					)}
 					<DropdownMenuItem onClick={copyYaml}>
 						<CopyIcon className="me-2.5 size-4" />
 						<Trans>Copy YAML</Trans>
@@ -452,7 +537,7 @@ const ActionsButtonTable = memo(({ agent, token }: { agent: AgentRecord; token: 
 						<RotateCwIcon className="me-2.5 size-4" />
 						<Trans>Rotate token</Trans>
 					</DropdownMenuItem>
-					{agent.fingerprint && (
+					{agent.fingerprint && (isAdmin() || !agent.token_issued) && (
 						<DropdownMenuItem onSelect={() => updateAgent(agent, false, true)}>
 							<Trash2Icon className="me-2.5 size-4" />
 							<Trans>Reset fingerprint</Trans>

@@ -49,6 +49,7 @@ func NewHandlerRegistry() *HandlerRegistry {
 	registry.Register(common.GetHostSnapshot, &GetHostSnapshotHandler{})
 	registry.Register(common.GetHostMetrics, &GetHostMetricsHandler{})
 	registry.Register(common.GetContainerMetrics, &GetContainerMetricsHandler{})
+	registry.Register(common.SetAgentToken, &SetAgentTokenHandler{})
 	return registry
 }
 
@@ -86,7 +87,8 @@ func (h *GetAgentInfoHandler) Handle(hctx *HandlerContext) error {
 	info := map[string]any{
 		"version": app.Version,
 		"capabilities": map[string]any{
-			"docker": collectors.DockerAvailable(),
+			"docker":                    collectors.DockerAvailable(),
+			common.AgentTokenCapability: true,
 		},
 		"metadata": map[string]any{
 			"hostname": hostname,

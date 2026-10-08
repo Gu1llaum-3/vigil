@@ -10,7 +10,9 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,9 +37,18 @@ type WebSocketClient struct {
 	agent   *Agent            // Reference to the parent agent
 	// conn is the active connection; atomic because the event loop replaces it while the
 	// previous connection's read loop may still run.
-	conn               atomic.Pointer[gws.Conn]
-	hubURL             *url.URL                            // Parsed hub URL for connection
-	token              string                              // Authentication token for hub registration
+	conn   atomic.Pointer[gws.Conn]
+	hubURL *url.URL // Parsed hub URL for connection
+	// tokenMu guards token: the hub may issue a new one (SetAgentToken, read loop) while the
+	// event loop reconnects.
+	tokenMu sync.Mutex
+	token   string // token sent to the hub: the stored per-agent token, else the configured one
+	// configuredToken is TOKEN / TOKEN_FILE (usually the enrollment token), the fallback when
+	// the hub rejects the stored token.
+	configuredToken string
+	hubKey          string // canonical hub URL the stored token is bound to
+	// rejections counts consecutive 401 answers to the current token (event loop only).
+	rejections         int
 	fingerprint        string                              // System fingerprint for identification
 	hubRequest         *common.HubRequest[cbor.RawMessage] // Reusable request structure for message parsing
 	lastConnectAttempt time.Time                           // Timestamp of last connection attempt
@@ -70,13 +81,22 @@ func newWebSocketClient(agent *Agent) (client *WebSocketClient, err error) {
 	if err != nil {
 		return nil, err
 	}
-	// get registration token
-	client.token, err = getToken()
-	if err != nil {
-		return nil, err
-	}
-
 	client.agent = agent
+	client.hubKey = hubKeyFor(client.hubURL)
+	// The token issued to this agent by this hub wins over the configured one, which is
+	// typically the enrollment token shared by every host (see tokenCandidates); the
+	// configured token is only required while the hub has not issued one.
+	var configuredErr error
+	client.configuredToken, configuredErr = getToken()
+	candidates := client.tokenCandidates()
+	if len(candidates) == 0 {
+		if configuredErr != nil {
+			return nil, configuredErr
+		}
+		return nil, errors.New("must set TOKEN or TOKEN_FILE")
+	}
+	client.token = candidates[0]
+
 	client.hubRequest = &common.HubRequest[cbor.RawMessage]{}
 	client.fingerprint = agent.getFingerprint()
 
@@ -156,7 +176,7 @@ func checkHubURL(u *url.URL) error {
 // It configures the connection URL, TLS settings, and authentication headers.
 func (client *WebSocketClient) getOptions() *gws.ClientOption {
 	if client.options != nil {
-		return client.options
+		return client.connectOptions()
 	}
 
 	// update the hub url to use websocket scheme and api path (checkHubURL accepted it)
@@ -172,11 +192,91 @@ func (client *WebSocketClient) getOptions() *gws.ClientOption {
 		TlsConfig: client.tlsConfig,
 		RequestHeader: http.Header{
 			"User-Agent": []string{getUserAgent()},
-			"X-Token":    []string{client.token},
 			"X-App":      []string{app.Version},
 		},
 	}
-	return client.options
+	return client.connectOptions()
+}
+
+// connectOptions returns a copy of the cached options carrying the current token, so the
+// token can change between connections without racing a dial in progress.
+func (client *WebSocketClient) connectOptions() *gws.ClientOption {
+	opts := *client.options
+	opts.RequestHeader = client.options.RequestHeader.Clone()
+	opts.RequestHeader.Set("X-Token", client.currentToken())
+	return &opts
+}
+
+func (client *WebSocketClient) currentToken() string {
+	client.tokenMu.Lock()
+	defer client.tokenMu.Unlock()
+	return client.token
+}
+
+func (client *WebSocketClient) setToken(token string) {
+	client.tokenMu.Lock()
+	defer client.tokenMu.Unlock()
+	client.token = token
+}
+
+// rejectionsBeforeFallback is how many consecutive 401 answers a token gets before the next
+// candidate is tried: a single one may be transient.
+const rejectionsBeforeFallback = 3
+
+// tokenCandidates lists the tokens to try, in order: the token issued by this hub, then the
+// one it replaced (the hub keeps accepting it until it has saved the new one), then the
+// configured TOKEN only if it changed since the issuance (a deliberate reconfiguration,
+// e.g. after rotating the token of an offline host) — last, because re-running the install
+// command rewrites TOKEN with the current enrollment token. An unchanged configured token is
+// never used again: a host deleted on the hub stays revoked, and a hub outage cannot make it
+// re-enroll. Without an issued token: the configured one.
+func (client *WebSocketClient) tokenCandidates() []string {
+	var candidates []string
+	add := func(t string) {
+		if t != "" && !slices.Contains(candidates, t) {
+			candidates = append(candidates, t)
+		}
+	}
+	stored, ok := loadAgentToken(client.agent.dataDir, client.hubKey, keyFingerprints(client.agent.keys))
+	if !ok {
+		add(client.configuredToken)
+		return candidates
+	}
+	add(stored.Token)
+	add(stored.Previous)
+	if client.configuredToken != "" && (stored.Configured == "" || tokenDigest(client.configuredToken) != stored.Configured) {
+		add(client.configuredToken)
+	}
+	return candidates
+}
+
+// handleConnectError moves to the next token candidate once the hub has rejected the
+// current one rejectionsBeforeFallback times in a row (host deleted on the hub, token
+// rotated while offline), wrapping around so a transient rejection is never final. gws
+// reports the hub's answer only as this message.
+func (client *WebSocketClient) handleConnectError(err error) {
+	if err == nil || !strings.Contains(err.Error(), "unexpected status code: 401") {
+		client.rejections = 0
+		return
+	}
+	client.rejections++
+	if client.rejections < rejectionsBeforeFallback {
+		return
+	}
+	client.rejections = 0
+	candidates := client.tokenCandidates()
+	if len(candidates) == 0 {
+		return
+	}
+	current := client.currentToken()
+	next := candidates[0]
+	if i := slices.Index(candidates, current); i >= 0 {
+		next = candidates[(i+1)%len(candidates)]
+	}
+	if next != current {
+		slog.Warn("The hub keeps rejecting the agent token; trying the next one")
+		client.setToken(next)
+	}
 }
 
 // Connect establishes a WebSocket connection to the hub.
@@ -187,10 +287,14 @@ func (client *WebSocketClient) Connect() (err error) {
 	// make sure previous connection is closed
 	client.Close()
 
-	conn, _, err := gws.NewClient(client, client.getOptions())
+	opts := client.getOptions()
+	conn, _, err := gws.NewClient(client, opts)
+	client.handleConnectError(err)
 	if err != nil {
 		return err
 	}
+	// The hub proves its identity by signing the token sent on this connection.
+	conn.Session().Store(sentTokenKey, opts.RequestHeader.Get("X-Token"))
 	client.conn.Store(conn)
 
 	go conn.ReadLoop()
@@ -257,11 +361,12 @@ func (client *WebSocketClient) handleAuthChallenge(conn *gws.Conn, msg *common.H
 		return err
 	}
 
-	if err := client.verifySignature(authRequest.Signature); err != nil {
+	if err := client.verifySignature(conn, authRequest.Signature); err != nil {
 		return err
 	}
 
 	client.verifiedConn.Store(conn)
+	confirmAgentToken(client.agent.dataDir, client.sentToken(conn), client.configuredToken)
 	client.agent.connectionManager.eventChan <- WebSocketConnect
 
 	response := &common.FingerprintResponse{
@@ -271,14 +376,52 @@ func (client *WebSocketClient) handleAuthChallenge(conn *gws.Conn, msg *common.H
 	return client.sendResponse(conn, response, requestID)
 }
 
-// verifySignature verifies the signature of the token using the public keys.
-func (client *WebSocketClient) verifySignature(signature []byte) (err error) {
+// Connection session keys: the token sent on that connection, and the fingerprint of the
+// hub key that verified it.
+const (
+	sentTokenKey   = "token"
+	verifiedKeyKey = "hubKey"
+)
+
+// sentToken returns the token sent on conn ("" if unknown).
+func (client *WebSocketClient) sentToken(conn *gws.Conn) string {
+	if conn == nil {
+		return ""
+	}
+	if t, ok := conn.Session().Load(sentTokenKey); ok {
+		return t.(string)
+	}
+	return ""
+}
+
+// verifiedKeyFingerprint returns the fingerprint of the hub key that verified conn.
+func (client *WebSocketClient) verifiedKeyFingerprint(conn *gws.Conn) string {
+	if conn == nil {
+		return ""
+	}
+	if fp, ok := conn.Session().Load(verifiedKeyKey); ok {
+		return fp.(string)
+	}
+	return ""
+}
+
+// verifySignature verifies the hub's signature of the token sent on conn.
+func (client *WebSocketClient) verifySignature(conn *gws.Conn, signature []byte) (err error) {
+	token := client.currentToken()
+	if conn != nil {
+		if sent, ok := conn.Session().Load(sentTokenKey); ok {
+			token = sent.(string)
+		}
+	}
 	for _, pubKey := range client.agent.keys {
 		sig := ssh.Signature{
 			Format: pubKey.Type(),
 			Blob:   signature,
 		}
-		if err = pubKey.Verify([]byte(client.token), &sig); err == nil {
+		if err = pubKey.Verify([]byte(token), &sig); err == nil {
+			if conn != nil {
+				conn.Session().Store(verifiedKeyKey, ssh.FingerprintSHA256(pubKey))
+			}
 			return nil
 		}
 	}

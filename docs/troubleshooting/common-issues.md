@@ -92,6 +92,25 @@ The hub enables PocketBase's rate limiter at startup (`*:auth` allows 2 attempts
 - `agent/client.go`
 - `agent/keys.go`
 
+## A Host Is "Awaiting Approval" (Notification: Host Enrolled With An Existing Host's Fingerprint)
+
+### Cause
+
+A connection with the enrollment token presented the fingerprint of a host whose token the hub issued. The hub cannot tell a reinstall from someone holding the enrollment token posing as that host, so the newcomer waits (Settings → Agents, shield icon, "claims to be …") and nothing is collected from it.
+
+### Fix
+
+First work out which one is the impostor — **do not rotate a token while that is unclear**: rotation pushes the new token to whichever agent is connected to that record.
+
+- you reinstalled that host (or wiped its data directory): **Merge** — the pending host takes over the original record and its history (it must be connected)
+- it is another machine with the same hostname (e.g. `raspberrypi`): **Approve as a new host**
+- you did neither: **Reject**, regenerate the enrollment token, and check the hosts that held it.
+- the pending host is the *real* one and the original record is held by an impostor (only possible for a record that still had a shared token, see "Transition risk" in `docs/architecture/auth-and-data-model.md`; signs: the original record's `last_seen`, version or data changed while the real host was down, or the real host is the one now pending): regenerate the enrollment token **first**, then delete the original record (its pending claimants go with it) — the impostor loses its token. Put the new enrollment token in the real host's `TOKEN` and restart its agent: its stored token is refused, the changed `TOKEN` is tried and it enrolls as a new host. Investigate how the enrollment token leaked.
+
+## An Agent Keeps Getting 401 After Its Host Was Deleted Or Its Token Rotated
+
+The agent only uses its issued token (and the one before it), plus the configured `TOKEN` if it was changed after issuance. A host deleted on the hub stays revoked. To bring it back: set the token shown in Settings → Agents (after a rotation) or a new enrollment token as `TOKEN` and restart the agent, or run `vigil-agent fingerprint reset` to enroll it as a new host.
+
 ## The Agent Registers As A New Machine Unexpectedly
 
 ### Symptoms

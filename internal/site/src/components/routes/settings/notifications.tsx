@@ -43,6 +43,7 @@ const ALL_EVENTS = [
 	"container_image.update_available",
 	"host.metric_exceeded",
 	"host.metric_normal",
+	"agent.duplicate_fingerprint",
 ]
 const BELL_EVENTS = ALL_EVENTS
 
@@ -684,6 +685,8 @@ function BellEventLabel({ event }: { event: string }) {
 			return <Trans>Host metric threshold exceeded</Trans>
 		case "host.metric_normal":
 			return <Trans>Host metric back to normal</Trans>
+		case "agent.duplicate_fingerprint":
+			return <Trans>Host enrolled with an existing host's fingerprint</Trans>
 		default:
 			return <>{event}</>
 	}
