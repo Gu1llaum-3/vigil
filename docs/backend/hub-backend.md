@@ -650,6 +650,8 @@ Fields:
 
 ### Automatic retention
 
+Every purge of an append-only table (`purgeOlderThan` and `purgeAll` in `internal/hub/purge.go`: monitor events, notification logs, in-app notifications, host and container metric samples; the offline-hosts purge deletes records one by one) deletes in batches of 5000 rows (`purgeBatchSize`, by `rowid`), each batch its own write transaction (an error returns the count already deleted), so the SQLite writer lock is released between batches instead of blocking metric and monitor writes for the whole purge, and finds its rows through an index on the table's time column (`TestRetentionPurgesUseTimeIndexes` checks the query plan; the indexes missing on samples and notification logs come from `v1_0002_time_column_indexes.go`). The cutoff is compared in PocketBase's stored date format. The fleet metrics aggregate pins the `collected_at` index (`INDEXED BY`), since the planner may otherwise read every sample through `(agent, collected_at)`; if that index was removed (PocketBase dashboard) it logs a warning and runs unhinted. Adding the indexes (`v1_0002`) runs once at the first start after the upgrade and takes longer on a large database.
+
 `StartHub()` registers application cron jobs through a shared scheduled-jobs registry backed by PocketBase cron.
 
 Current automatic behavior:
