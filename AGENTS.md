@@ -91,6 +91,7 @@ When a task clearly matches one of the docs below, read the relevant doc before 
 │   ├── client.go                   # WebSocket client, auth challenge handling
 │   ├── connection_manager.go       # State machine (Disconnected ↔ WebSocketConnected)
 │   ├── handlers.go                 # Handler registry + built-in handlers (incl. GetHostSnapshotHandler/GetHostMetricsHandler/GetContainerMetricsHandler)
+│   ├── hub_challenge.go            # Hub signature verification (nonce, downgrade record)
 │   ├── keys.go                     # ParseKeys() for SSH public key parsing
 │   ├── response.go                 # newAgentResponse() helper
 │   ├── fingerprint.go              # Stable agent identity (persisted to disk)
@@ -224,7 +225,7 @@ Hub side (agent_connect.go):
   handleAgentConnect()
     └─ agentConnect()                  // validate headers, upgrade to WS
          └─ verifyWsConn() [goroutine]
-              ├─ GetFingerprint()      // hub signs token → agent verifies
+              ├─ GetFingerprint()      // hub signs nonce + token → agent verifies
               ├─ findOrUpsertAgent()   // upsert agents record in DB; store WsConn in Hub.agentConns
               ├─ GetAgentInfo()        // fetch version/capabilities/metadata
               ├─ SetAgentToken()       // capable agent without an issued token → its own token (agent stores, then hub saves)
@@ -305,7 +306,7 @@ h.Save(rec)
 ### Agent auth
 1. **Enrollment token** — shared token for self-registering new agents (ephemeral 1h or permanent in DB)
 2. **Agent token** — per-agent token stored in `agents.token`, checked at every reconnection. A capable agent (`capabilities.agent_token`) whose token the hub did not mint (`token_issued` false) or may be shared (enrollment token, several records carrying it) is issued a unique one (`SetAgentToken`: the agent stores it first, then the hub saves it and sets `token_issued`). Holding the enrollment token therefore no longer lets anyone attach to an enrolled host by sending its fingerprint (a hash of its hostname): such a connection becomes a host **awaiting approval** (`status = awaiting_approval`, `duplicate_of` = the claimed host; nothing collected, not in the fleet, `agent.duplicate_fingerprint` notification never suppressed by maintenance) until an admin merges it (reinstall; refused while the claimed host is connected unless forced), approves it (different machine) or rejects it (`internal/hub/agent_approval.go`). The identity fields cannot be changed through the collection API by non-superusers (`protectAgentIdentityFields`). Agents older than the capability keep the shared token until they upgrade — see `docs/architecture/auth-and-data-model.md` → Agent Token for the transition risk
-3. **Hub identity verification** — hub signs the agent token with its ED25519 private key; agent verifies against hub's public key (`KEY` env var). Prevents impersonation of the hub.
+3. **Hub identity verification** — hub signs the agent token and the agent's per-connection nonce (`X-Nonce`, `common.HubChallenge`) with its ED25519 private key; agent verifies against hub's public key (`KEY` env var). Prevents impersonation of the hub, and a captured signature cannot be replayed. Hubs older than the nonce sign the token alone; the agent accepts that only from a key that never signed a nonce (recorded in `<data-dir>/hub-challenge`), so the handshake cannot be downgraded.
 
 The hub's keypair is stored as `<datadir>/id_ed25519` and generated on first run. `Hub.GetSSHKey` loads it once (at startup) and caches the signer and public key under `keyMu`; handshakes and `/api/app/info` reuse it, so replacing the file takes effect only after a hub restart.
 The hub's public key is served at `GET /api/app/info` (authenticated).
@@ -349,11 +350,11 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `KEY` | Hub's public key for identity verification | Yes (or `KEY_FILE` / `--key`) |
 | `KEY_FILE` | Path to a file containing the hub's public key | Alt. to `KEY` |
 | `HUB_CA_FILE` | PEM bundle to trust for the hub TLS certificate (private CA / self-signed hub / pinning) | No |
-| `HUB_TLS_INSECURE` | `true` disables hub TLS certificate verification. **Development only** — a MITM can then steal the agent token *and* capture the (static, replayable) hub-identity signature, defeating both auth directions. Never set in production; use `HUB_CA_FILE` for private CAs instead. | No |
+| `HUB_TLS_INSECURE` | `true` disables hub TLS certificate verification. **Development only** — a MITM can then steal the agent token and, by relaying the challenge to the real hub, pass as the hub, defeating both auth directions. Never set in production; use `HUB_CA_FILE` for private CAs instead. | No |
 | `LOG_LEVEL` | `debug`, `warn`, `error` | No |
 | `TAGS` | Comma-separated free-text tags (e.g. `prod,eu-west`) reported via `GetAgentInfo`. The hub applies them **only when it first creates the agent record** (enrollment), so they seed provisioning automation without ever overwriting tags later managed from the UI. | No |
 
-The agent verifies the hub's TLS certificate against the system trust store by default. Use `HUB_CA_FILE` for a private CA / self-signed hub; `HUB_TLS_INSECURE=true` disables verification entirely (development only). Because the hub-identity challenge is a static signature over the token (see `docs/architecture/hub-agent-architecture.md`, "Known limitation — static challenge"), `HUB_TLS_INSECURE` is the realistic way an attacker captures a replayable hub signature — so keeping TLS verification on is the primary mitigation until the nonce-based handshake lands.
+The agent verifies the hub's TLS certificate against the system trust store by default. Use `HUB_CA_FILE` for a private CA / self-signed hub; `HUB_TLS_INSECURE=true` disables verification entirely (development only). The hub-identity signature covers a per-connection nonce, so it cannot be replayed, but a man in the middle with broken TLS can still relay it live to the real hub (see `docs/architecture/hub-agent-architecture.md`, "Known limitation — live relay") — keeping TLS verification on is the defense.
 
 The hub public key is mandatory: without `KEY`, `KEY_FILE` or `--key` (or when they contain no key), the agent exits at startup with `no hub public key configured`. There is no mode that skips hub identity verification.
 
@@ -509,7 +510,7 @@ Do not reread every doc by default. Instead:
 Use this task-to-doc map for the final documentation check:
 
 - Hub runtime, protocol, or connection lifecycle changes: `docs/architecture/hub-agent-architecture.md`
-- Auth, collections, users, roles, tokens, settings, or env changes: `docs/architecture/auth-and-data-model.md`
+- Auth, collections, users, roles, tokens, settings, or env changes: `docs/architecture/auth-and-data-model.md` (and `SECURITY.md` when a security assumption or known limitation changes)
 - Hub API, middleware, startup, heartbeat, or update-command changes: `docs/backend/hub-backend.md`
 - Agent CLI, fingerprint, data-dir, handshake, health, or handler changes: `docs/agent/agent-runtime.md`
 - Frontend routing, login, settings, stores, base-path, or i18n changes: `docs/frontend/frontend-app.md`

@@ -131,7 +131,13 @@ func saveAgentToken(dataDir string, stored storedAgentToken) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dataDir, agentTokenFileName+".*")
+	return writeDataFile(dataDir, agentTokenFileName, data)
+}
+
+// writeDataFile durably replaces <dataDir>/<name> with data (0600, through a temporary file
+// renamed into place so a crash never leaves a truncated file).
+func writeDataFile(dataDir, name string, data []byte) error {
+	tmp, err := os.CreateTemp(dataDir, name+".*")
 	if err != nil {
 		return err
 	}
@@ -144,7 +150,7 @@ func saveAgentToken(dataDir string, stored storedAgentToken) error {
 		_ = tmp.Close()
 		return err
 	}
-	// On disk before the agent acknowledges: the hub switches to this token right after.
+	// On disk before the agent acknowledges (the hub switches to an issued token right after).
 	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()
 		return err
@@ -152,7 +158,7 @@ func saveAgentToken(dataDir string, stored storedAgentToken) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(tmp.Name(), filepath.Join(dataDir, agentTokenFileName)); err != nil {
+	if err := os.Rename(tmp.Name(), filepath.Join(dataDir, name)); err != nil {
 		return err
 	}
 	// Make the rename itself durable (best effort: not every platform syncs directories).

@@ -124,7 +124,7 @@ The agent creates a WebSocket client using:
 
 - `HUB_URL`
 - `TOKEN` or `TOKEN_FILE`
-- headers `X-Token` and `X-App`
+- headers `X-Token`, `X-App` and `X-Nonce` (a fresh random challenge nonce per connection, `common.NewChallengeNonce`)
 
 The URL is transformed into the hub endpoint `/api/app/agent-connect`.
 
@@ -132,34 +132,31 @@ The URL is transformed into the hub endpoint `/api/app/agent-connect`.
 
 The hub:
 
-- validates agent headers
+- validates agent headers (an `X-Nonce` that is present must be 64 lowercase hex characters; agents older than the nonce send none)
 - checks whether the token matches an existing agent or an enrollment token
 - upgrades the HTTP request to WebSocket
 
 ### Step 3: Hub Challenges Agent
 
-After upgrade, the hub signs the agent token with its private ED25519 key and sends a `CheckFingerprint` request.
+After upgrade, the hub signs `common.HubChallenge(nonce, token)` — `"vigil-hub-challenge-v1\x00" + nonce + "\x00" + token`, the token and the nonce sent on that connection — with its private ED25519 key, and sends a `CheckFingerprint` request. An agent older than the nonce sent none: the hub then signs the token alone, as before.
 
-The agent verifies that signature using the configured hub public key or keys.
+The agent verifies that signature using the configured hub public key or keys, against the token and nonce recorded in that connection's session.
 
 If verification succeeds:
 
 - the agent marks that connection as verified (`verifiedConn`; per connection, so a reconnect must verify again)
 - the agent responds with its stable fingerprint
 
-> **Known limitation — static challenge (deferred hardening).** The hub signs the agent's
-> *token* itself (`challenge := []byte(token)` in `internal/hub/ws/handlers.go GetFingerprint`),
-> not a fresh per-connection nonce. Because ED25519 is deterministic and enrollment tokens are
-> intentionally shared across agents, the resulting signature is constant for a given (hub key,
-> token) pair, so it is replayable: anyone who already knows the token and has observed one valid
-> signature (a compromised sibling agent on the same token, or a one-time capture via a
-> `HUB_TLS_INSECURE` MITM) can replay it to impersonate the hub to other agents on that token.
-> Impact is bounded — the agent's handler set is read-only (snapshot/metrics), so an impersonator
-> can pull inventory but cannot drive arbitrary commands. The proper fix (agent-generated nonce
-> per connection, hub signs `nonce || token || fingerprint`, with version-skew handling for the
-> agent auto-update window) is deferred to a dedicated branch. **Mitigation today:** never run
-> agents with `HUB_TLS_INSECURE=true` outside development — it is the realistic path to capturing
-> a replayable signature; always verify the hub TLS certificate (system trust or `HUB_CA_FILE`).
+**Replay protection.** A signature is good for one nonce only, so a captured one cannot be replayed on another connection. A hub older than the nonce still signs the token alone (a static, replayable signature): the agent accepts that form only from a hub key that has never signed a nonce. The first nonce signature from a key records it in `<data-dir>/hub-challenge` (`agent/hub_challenge.go`), and from then on a static signature from that key is refused (`refusing a replayable signature`) — an attacker cannot downgrade the handshake. Rolling the hub back below the nonce therefore locks out the agents that already met the new one, until `hub-challenge` is deleted on them and they are restarted.
+
+The protection has limits: agents older than the nonce still accept the static signature; an upgraded agent accepts it until its first nonce handshake with that key (a fresh install, or an unreadable `hub-challenge`); and anyone holding a valid token — the shared enrollment token included — can obtain the static signature for it from an upgraded hub by omitting `X-Nonce`, to replay against such agents. All three require breaking TLS on the agent's link.
+
+> **Known limitation — live relay.** The nonce stops replay, not relaying: a man in the middle
+> that broke TLS (`HUB_TLS_INSECURE`, plaintext `ws://`) sees the agent token in the request
+> headers and can open its own connection to the real hub with that token and the agent's nonce,
+> then pass the hub's signature on. TLS verification remains the defense against an active
+> attacker on the path; never run agents with `HUB_TLS_INSECURE=true` outside development, and
+> verify the hub certificate (system trust or `HUB_CA_FILE`).
 
 ### Step 4: Hub Matches Or Creates Agent Record
 
