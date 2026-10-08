@@ -443,6 +443,7 @@ Current responsibilities:
 
 - configure automatic retention for `monitor_events`
 - configure automatic retention for `notification_logs`
+- configure automatic retention for `system_notifications` (in-app notifications, default 90 days)
 - run manual purge actions for:
   - probe history
   - notification history

@@ -9,6 +9,7 @@ import (
 	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 const systemNotificationsCollection = "system_notifications"
@@ -121,33 +122,28 @@ func (h *Hub) getSystemNotifications(e *core.RequestEvent) error {
 		return err
 	}
 
-	filter, params := systemNotificationFilter(e, false)
-	records, err := h.FindRecordsByFilter(systemNotificationsCollection, filter, "-occurred_at", 0, 0, params)
+	where := systemNotificationFilter(e)
+	if e.Request.URL.Query().Get("status") == "unread" {
+		unread := unreadSystemNotificationsExpr(prefs, systemNotificationCategories)
+		if where == nil {
+			where = unread
+		} else {
+			where = dbx.And(where, unread)
+		}
+	}
+	// One more than the page, to tell whether another page follows.
+	records, err := h.querySystemNotifications(where, limit+1, (page-1)*limit)
 	if err != nil {
 		return err
 	}
-
-	status := e.Request.URL.Query().Get("status")
-	items := make([]systemNotificationResponse, 0, limit)
-	skipped := 0
-	start := (page - 1) * limit
-	hasMore := false
-	for _, rec := range records {
-		entry := h.systemNotificationRecordToResponse(rec, prefs)
-		if status == "unread" && entry.Read {
-			continue
-		}
-		if skipped < start {
-			skipped++
-			continue
-		}
-		if len(items) >= limit {
-			hasMore = true
-			break
-		}
-		items = append(items, entry)
+	hasMore := len(records) > limit
+	if hasMore {
+		records = records[:limit]
 	}
-
+	items := make([]systemNotificationResponse, 0, len(records))
+	for _, rec := range records {
+		items = append(items, h.systemNotificationRecordToResponse(rec, prefs))
+	}
 	return e.JSON(http.StatusOK, systemNotificationsPageResponse{Items: items, Page: page, Limit: limit, HasMore: hasMore})
 }
 
@@ -165,32 +161,70 @@ func (h *Hub) getUnreadSystemNotifications(e *core.RequestEvent) error {
 		return err
 	}
 
-	records, err := h.FindRecordsByFilter(systemNotificationsCollection, "", "-occurred_at", 0, 0)
+	var categories []string
+	var events []any
+	for _, cat := range systemNotificationCategories {
+		if prefs.EnabledCategories[cat] {
+			categories = append(categories, cat)
+		}
+	}
+	for _, kind := range systemNotificationEventKinds {
+		if prefs.EnabledEvents[kind] {
+			events = append(events, kind)
+		}
+	}
+	response := systemNotificationUnreadResponse{Items: []systemNotificationResponse{}}
+	if len(categories) == 0 || len(events) == 0 {
+		return e.JSON(http.StatusOK, response)
+	}
+	where := dbx.And(dbx.In("event_kind", events...), unreadSystemNotificationsExpr(prefs, categories))
+
+	if err := h.DB().Select("COUNT(*)").From(systemNotificationsCollection).Where(where).Row(&response.Count); err != nil {
+		return err
+	}
+	records, err := h.querySystemNotifications(where, limit, 0)
 	if err != nil {
 		return err
 	}
-
-	items := make([]systemNotificationResponse, 0, limit)
-	count := 0
 	for _, rec := range records {
-		category := rec.GetString("category")
-		if !prefs.EnabledCategories[category] {
-			continue
-		}
-		if !prefs.EnabledEvents[rec.GetString("event_kind")] {
-			continue
-		}
-		entry := h.systemNotificationRecordToResponse(rec, prefs)
-		if entry.Read {
-			continue
-		}
-		count++
-		if len(items) < limit {
-			items = append(items, entry)
-		}
+		response.Items = append(response.Items, h.systemNotificationRecordToResponse(rec, prefs))
 	}
+	return e.JSON(http.StatusOK, response)
+}
 
-	return e.JSON(http.StatusOK, systemNotificationUnreadResponse{Count: count, Items: items})
+// querySystemNotifications returns a page of the feed matching where, newest first; the
+// filtering and paging happen in SQL (indexes on occurred_at and (category, occurred_at)).
+func (h *Hub) querySystemNotifications(where dbx.Expression, limit, offset int) ([]*core.Record, error) {
+	query := h.RecordQuery(systemNotificationsCollection)
+	if where != nil { // dbx renders a nil condition as "()"
+		query = query.AndWhere(where)
+	}
+	var records []*core.Record
+	err := query.OrderBy("occurred_at DESC", "id DESC").Limit(int64(limit)).Offset(int64(offset)).All(&records)
+	return records, err
+}
+
+// unreadSystemNotificationsExpr matches the entries of categories newer than the user's read
+// cursor for their category (all of them for a category never read). It must agree with the
+// Read flag computed by systemNotificationRecordToResponse.
+func unreadSystemNotificationsExpr(prefs systemNotificationUserPreferences, categories []string) dbx.Expression {
+	clauses := make([]dbx.Expression, 0, len(categories))
+	for _, cat := range categories {
+		inCategory := dbx.HashExp{"category": cat}
+		lastRead, err := time.Parse(time.RFC3339, prefs.LastReadAtByCategory[cat])
+		if err != nil {
+			clauses = append(clauses, inCategory)
+			continue
+		}
+		// occurred_at is stored at millisecond precision, so comparing with the cursor
+		// truncated to the millisecond gives the same answer as comparing with the cursor.
+		cursor, _ := types.ParseDateTime(lastRead.UTC())
+		clauses = append(clauses, dbx.And(inCategory, dbx.NewExp("occurred_at > {:cursor_"+cat+"}", dbx.Params{"cursor_" + cat: cursor.String()})))
+	}
+	if len(clauses) == 0 {
+		return dbx.NewExp("0")
+	}
+	return dbx.Or(clauses...)
 }
 
 func (h *Hub) markSystemNotificationsRead(e *core.RequestEvent) error {
@@ -385,28 +419,26 @@ func parsePageLimit(e *core.RequestEvent, defaultLimit, maxLimit int) (int, int,
 	return page, limit, nil
 }
 
-func systemNotificationFilter(e *core.RequestEvent, enabledOnly bool) (string, dbx.Params) {
-	filter := ""
-	params := dbx.Params{}
-	addClause := func(clause, key string, value any) {
-		if filter != "" {
-			filter += " && "
+var likeEscaper = strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
+
+// systemNotificationFilter builds the history filters from the query string (nil: none).
+func systemNotificationFilter(e *core.RequestEvent) dbx.Expression {
+	query := e.Request.URL.Query()
+	clauses := []dbx.Expression{}
+	for _, field := range []string{"category", "severity", "event_kind"} {
+		if value := query.Get(field); value != "" {
+			clauses = append(clauses, dbx.HashExp{field: value})
 		}
-		filter += clause
-		params[key] = value
 	}
-	if category := e.Request.URL.Query().Get("category"); category != "" {
-		addClause("category = {:category}", "category", category)
+	if q := strings.TrimSpace(query.Get("q")); q != "" {
+		// dbx.Like escapes the wildcards but adds no ESCAPE clause, which SQLite needs.
+		pattern := "%" + likeEscaper.Replace(q) + "%"
+		clauses = append(clauses, dbx.NewExp(
+			`(resource_name LIKE {:q} ESCAPE '\' OR title LIKE {:q} ESCAPE '\' OR message LIKE {:q} ESCAPE '\')`,
+			dbx.Params{"q": pattern}))
 	}
-	if severity := e.Request.URL.Query().Get("severity"); severity != "" {
-		addClause("severity = {:severity}", "severity", severity)
+	if len(clauses) == 0 {
+		return nil
 	}
-	if eventKind := e.Request.URL.Query().Get("event_kind"); eventKind != "" {
-		addClause("event_kind = {:event_kind}", "event_kind", eventKind)
-	}
-	if q := strings.TrimSpace(e.Request.URL.Query().Get("q")); q != "" {
-		addClause("(resource_name ~ {:q} || title ~ {:q} || message ~ {:q})", "q", q)
-	}
-	_ = enabledOnly
-	return filter, params
+	return dbx.And(clauses...)
 }

@@ -623,14 +623,17 @@ GET   /api/app/system-notifications/preferences
 PATCH /api/app/system-notifications/preferences
 ```
 
+The unread count, the bell items and the history pages are filtered and paged in SQL (`querySystemNotifications`, `unreadSystemNotificationsExpr`: per enabled category, `occurred_at` after that category's read cursor; enabled event kinds as `IN`), so a request costs one indexed query, not a scan of the whole feed. `status=unread` on the history filters in the query too, so its pages stay full.
+
 Read state is per-user and per-category in `user_settings.settings.system_notifications_last_read_at_by_category`. Bell visibility is stored in `user_settings.settings.system_notifications_enabled_events` and legacy category visibility in `system_notifications_enabled_categories`. Re-enabling a disabled category sets its read cursor to the current time so old events do not flood the bell.
 
 ## Data Retention And Manual Purge
 
-The hub is also responsible for lifecycle cleanup of the two append-only high-growth collections:
+The hub is also responsible for lifecycle cleanup of the append-only high-growth collections:
 
 - `monitor_events`
 - `notification_logs`
+- `system_notifications` (the in-app feed behind the bell)
 
 ### Stored settings
 
@@ -640,6 +643,7 @@ Fields:
 
 - `monitor_events_retention_days`
 - `notification_logs_retention_days`
+- `system_notifications_retention_days` (30/90/180/360, default 90; a `PATCH /api/app/purge/settings` without it keeps the current value)
 - `monitor_events_manual_default_days`
 - `notification_logs_manual_default_days`
 - `offline_agents_manual_default_days`
@@ -652,6 +656,7 @@ Current automatic behavior:
 
 - delete `monitor_events` older than the configured retention window
 - delete `notification_logs` older than the configured retention window
+- delete `system_notifications` older than the configured retention window (`purgeSystemNotificationsOlderThan`; the run result reports `system_notifications_deleted`)
 
 Current non-behavior:
 
@@ -675,7 +680,7 @@ Global scheduled job state is stored in the `scheduled_jobs` collection. Each jo
 
 The currently registered jobs are:
 
-- `vigilAutoRetention` — deletes old monitor and notification history according to retention settings
+- `vigilAutoRetention` — deletes old monitor and notification history and old in-app notifications according to retention settings
 - `vigilContainerImageAudit` — audits Docker image tags used by the current Docker container inventory and persists the result in `container_image_audits`
 
 The image-audit job is read-only: it does not ask agents to start, stop, or restart containers, and it does not mutate workloads on remote hosts.

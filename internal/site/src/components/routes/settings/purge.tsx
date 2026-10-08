@@ -76,6 +76,7 @@ const PurgeSettingsPage = memo(() => {
 
 	const [monitorRetention, setMonitorRetention] = useState("30")
 	const [notificationRetention, setNotificationRetention] = useState("30")
+	const [feedRetention, setFeedRetention] = useState("90")
 	const [monitorManualDays, setMonitorManualDays] = useState("30")
 	const [notificationManualDays, setNotificationManualDays] = useState("30")
 	const [offlineAgentsManualDays, setOfflineAgentsManualDays] = useState("180")
@@ -90,6 +91,7 @@ const PurgeSettingsPage = memo(() => {
 				setSettings(res)
 				setMonitorRetention(String(res.monitor_events_retention_days))
 				setNotificationRetention(String(res.notification_logs_retention_days))
+				setFeedRetention(String(res.system_notifications_retention_days))
 				setMonitorManualDays(String(res.monitor_events_retention_days))
 				setNotificationManualDays(String(res.notification_logs_retention_days))
 				setOfflineAgentsManualDays(String(res.offline_agents_manual_default_days))
@@ -108,9 +110,10 @@ const PurgeSettingsPage = memo(() => {
 		if (!settings) return false
 		return (
 			monitorRetention !== String(settings.monitor_events_retention_days) ||
-			notificationRetention !== String(settings.notification_logs_retention_days)
+			notificationRetention !== String(settings.notification_logs_retention_days) ||
+			feedRetention !== String(settings.system_notifications_retention_days)
 		)
-	}, [settings, monitorRetention, notificationRetention])
+	}, [settings, monitorRetention, notificationRetention, feedRetention])
 
 	useEffect(() => {
 		setMonitorManualDays(monitorRetention)
@@ -130,6 +133,7 @@ const PurgeSettingsPage = memo(() => {
 			const updated = await apiPatch<PurgeSettings>("/api/app/purge/settings", {
 				monitor_events_retention_days: Number(monitorRetention),
 				notification_logs_retention_days: Number(notificationRetention),
+				system_notifications_retention_days: Number(feedRetention),
 				monitor_events_manual_default_days: settings?.monitor_events_manual_default_days ?? Number(monitorRetention),
 				notification_logs_manual_default_days:
 					settings?.notification_logs_manual_default_days ?? Number(notificationRetention),
@@ -210,8 +214,8 @@ const PurgeSettingsPage = memo(() => {
 							</CardTitle>
 							<CardDescription>
 								<Trans>
-									A background job runs daily and deletes monitoring events and notification logs older than the
-									configured retention window.
+									A background job runs daily and deletes monitoring events, notification logs and in-app notifications
+									older than the configured retention window.
 								</Trans>
 							</CardDescription>
 						</CardHeader>
@@ -227,6 +231,12 @@ const PurgeSettingsPage = memo(() => {
 									<Trans>Notification History Retention (days)</Trans>
 								</Label>
 								<RetentionSegment value={notificationRetention} onChange={setNotificationRetention} />
+							</div>
+							<div className="grid gap-2">
+								<Label>
+									<Trans>In-App Notifications Retention (days)</Trans>
+								</Label>
+								<RetentionSegment value={feedRetention} onChange={setFeedRetention} />
 							</div>
 							<div className="flex justify-end">
 								<Button disabled={!hasChanges || saving} onClick={save}>

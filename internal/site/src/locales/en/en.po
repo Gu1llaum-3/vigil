@@ -112,8 +112,12 @@ msgid "5-minute load per CPU core (1.0 = fully utilized)"
 msgstr "5-minute load per CPU core (1.0 = fully utilized)"
 
 #: src/components/routes/settings/purge.tsx
-msgid "A background job runs daily and deletes monitoring events and notification logs older than the configured retention window."
-msgstr "A background job runs daily and deletes monitoring events and notification logs older than the configured retention window."
+#~ msgid "A background job runs daily and deletes monitoring events and notification logs older than the configured retention window."
+#~ msgstr "A background job runs daily and deletes monitoring events and notification logs older than the configured retention window."
+
+#: src/components/routes/settings/purge.tsx
+msgid "A background job runs daily and deletes monitoring events, notification logs and in-app notifications older than the configured retention window."
+msgstr "A background job runs daily and deletes monitoring events, notification logs and in-app notifications older than the configured retention window."
 
 #: src/components/routes/monitors.tsx
 msgid "A unique push URL will be generated automatically. Use it in a cron job or script to send heartbeats."
@@ -1476,6 +1480,10 @@ msgstr "Image updates"
 #: src/components/routes/settings/notifications.tsx
 msgid "In-app bell"
 msgstr "In-app bell"
+
+#: src/components/routes/settings/purge.tsx
+msgid "In-App Notifications Retention (days)"
+msgstr "In-App Notifications Retention (days)"
 
 #: src/components/routes/settings/maintenance.tsx
 msgid "Info"

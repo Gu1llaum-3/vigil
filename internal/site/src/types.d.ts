@@ -126,6 +126,7 @@ export interface NotificationLogsPage {
 export interface PurgeSettings {
 	monitor_events_retention_days: number
 	notification_logs_retention_days: number
+	system_notifications_retention_days: number
 	monitor_events_manual_default_days: number
 	notification_logs_manual_default_days: number
 	offline_agents_manual_default_days: number
