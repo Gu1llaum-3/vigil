@@ -114,7 +114,7 @@ The collection is tied to the user that created the enrollment token.
 - append-only host monitoring history
 - one record per collected host metrics sample
 - fields: `agent` (relation→agents, cascadeDelete=true), `cpu_percent`, `memory_total_bytes`, `memory_used_bytes`, `memory_used_percent`, `disk_total_bytes`, `disk_used_bytes`, `disk_used_percent`, `network_rx_bps`, `network_tx_bps`, `collected_at`
-- indexed on `(agent, collected_at)` for per-host chart queries
+- indexed on `(agent, collected_at)` for per-host chart queries, and on `collected_at` (migration `v1_0002_time_column_indexes.go`) for the retention purge and the fleet metrics range
 - written only by the hub after polling connected agents over WebSocket
 
 ### `host_metric_current`
@@ -191,7 +191,7 @@ Per-host policy for which filesystems the disk bar + disk alert consider. One ro
 - created by migration `5_create_notifications.go` and extended by `6_notification_in_app.go`
 - append-only delivery log written by the dispatcher via `SaveNoValidate`
 - fields: `rule` (relation→notification_rules, cascadeDelete=true), `channel` (relation→notification_channels, cascadeDelete=true), `created_by` (relation→users), `channel_kind` (text), `event_kind` (text), `resource_id`, `resource_name`, `resource_type`, `status` (select: `sent`/`failed`/`throttled`), `error` (text), `payload_preview` (text), `sent_at`
-- indexed on `(rule, sent_at)`, `(resource_id, sent_at)`, and `(created_by, sent_at)`
+- indexed on `(rule, sent_at)`, `(resource_id, sent_at)`, `(created_by, sent_at)`, and `sent_at` (migration `v1_0002_time_column_indexes.go`, for the retention purge)
 - the extra `created_by` and `channel_kind` fields exist so the frontend can subscribe in realtime only to the current user's relevant notification logs and distinguish virtual `in-app` deliveries from external providers
 - list/view rules: admin only; create/update/delete forbidden from the API (written only by backend)
 

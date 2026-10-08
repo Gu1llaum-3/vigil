@@ -137,79 +137,90 @@ func (h *Hub) updateRetentionSettings(input DataRetentionSettings) (DataRetentio
 	return settings, nil
 }
 
-func countRows(app core.App, query string, params dbx.Params) (int, error) {
-	if params == nil {
-		params = dbx.Params{}
-	}
-	var row struct {
-		Count int `db:"count"`
-	}
-	err := app.DB().NewQuery(query).Bind(params).One(&row)
-	return row.Count, err
+// purgeBatchSize bounds each retention DELETE, so the SQLite writer lock is released between
+// batches instead of being held for the whole purge (metric and monitor writes wait on it).
+var purgeBatchSize = 5000
+
+// retentionPurgeTarget is an append-only table purged by age; column is its time column,
+// which must be indexed (TestRetentionPurgesUseTimeIndexes).
+type retentionPurgeTarget struct {
+	table, column string
 }
 
-func deleteRows(app core.App, query string, params dbx.Params) error {
-	if params == nil {
-		params = dbx.Params{}
+var (
+	monitorEventsPurge          = retentionPurgeTarget{"monitor_events", "checked_at"}
+	notificationLogsPurge       = retentionPurgeTarget{"notification_logs", "sent_at"}
+	systemNotificationsPurge    = retentionPurgeTarget{"system_notifications", "occurred_at"}
+	hostMetricSamplesPurge      = retentionPurgeTarget{"host_metric_samples", "collected_at"}
+	containerMetricSamplesPurge = retentionPurgeTarget{"container_metric_samples", "collected_at"}
+)
+
+var retentionPurgeTargets = []retentionPurgeTarget{
+	monitorEventsPurge, notificationLogsPurge, systemNotificationsPurge, hostMetricSamplesPurge, containerMetricSamplesPurge,
+}
+
+// selectBatchSQL selects the next batch to delete (rowid: PocketBase ids are a TEXT primary
+// key, not the rowid alias).
+func (t retentionPurgeTarget) selectBatchSQL() string {
+	return "SELECT rowid FROM " + t.table + " WHERE " + t.column + " < {:cutoff} LIMIT {:limit}"
+}
+
+// purgeOlderThan deletes the rows of target older than days, in batches of purgeBatchSize,
+// and returns how many it deleted. The cutoff uses the format PocketBase stores dates in, so
+// the comparison is exact.
+func (h *Hub) purgeOlderThan(target retentionPurgeTarget, days int) (int, error) {
+	if days <= 0 {
+		return 0, fmt.Errorf("days must be greater than 0")
 	}
-	_, err := app.DB().NewQuery(query).Bind(params).Execute()
-	return err
+	return h.deleteInBatches(target.table, target.selectBatchSQL(), dbx.Params{"cutoff": types.NowDateTime().AddDate(0, 0, -days).String()})
+}
+
+// purgeAll empties table, in batches like the age-based purges.
+func (h *Hub) purgeAll(table string) (int, error) {
+	return h.deleteInBatches(table, "SELECT rowid FROM "+table+" LIMIT {:limit}", dbx.Params{})
+}
+
+// deleteInBatches deletes the rows selected by selectBatch (a rowid query taking {:limit}),
+// purgeBatchSize at a time, each batch its own write transaction. On error it returns how
+// many rows the earlier batches deleted.
+func (h *Hub) deleteInBatches(table, selectBatch string, params dbx.Params) (int, error) {
+	params["limit"] = purgeBatchSize
+	deleted := 0
+	for {
+		res, err := h.DB().NewQuery("DELETE FROM " + table + " WHERE rowid IN (" + selectBatch + ")").Bind(params).Execute()
+		if err != nil {
+			return deleted, err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return deleted, err
+		}
+		deleted += int(n)
+		if n < int64(purgeBatchSize) {
+			return deleted, nil
+		}
+	}
 }
 
 func (h *Hub) purgeMonitorEventsOlderThan(days int) (int, error) {
-	if days <= 0 {
-		return 0, fmt.Errorf("days must be greater than 0")
-	}
-	cutoff := time.Now().UTC().AddDate(0, 0, -days)
-	params := dbx.Params{"cutoff": cutoff}
-	count, err := countRows(h, "SELECT COUNT(*) AS count FROM monitor_events WHERE checked_at < {:cutoff}", params)
-	if err != nil || count == 0 {
-		return count, err
-	}
-	return count, deleteRows(h, "DELETE FROM monitor_events WHERE checked_at < {:cutoff}", params)
+	return h.purgeOlderThan(monitorEventsPurge, days)
 }
 
 func (h *Hub) purgeAllMonitorEvents() (int, error) {
-	count, err := countRows(h, "SELECT COUNT(*) AS count FROM monitor_events", nil)
-	if err != nil || count == 0 {
-		return count, err
-	}
-	return count, deleteRows(h, "DELETE FROM monitor_events", nil)
+	return h.purgeAll(monitorEventsPurge.table)
 }
 
 func (h *Hub) purgeNotificationLogsOlderThan(days int) (int, error) {
-	if days <= 0 {
-		return 0, fmt.Errorf("days must be greater than 0")
-	}
-	cutoff := time.Now().UTC().AddDate(0, 0, -days)
-	params := dbx.Params{"cutoff": cutoff}
-	count, err := countRows(h, "SELECT COUNT(*) AS count FROM notification_logs WHERE sent_at < {:cutoff}", params)
-	if err != nil || count == 0 {
-		return count, err
-	}
-	return count, deleteRows(h, "DELETE FROM notification_logs WHERE sent_at < {:cutoff}", params)
+	return h.purgeOlderThan(notificationLogsPurge, days)
 }
 
 func (h *Hub) purgeAllNotificationLogs() (int, error) {
-	count, err := countRows(h, "SELECT COUNT(*) AS count FROM notification_logs", nil)
-	if err != nil || count == 0 {
-		return count, err
-	}
-	return count, deleteRows(h, "DELETE FROM notification_logs", nil)
+	return h.purgeAll(notificationLogsPurge.table)
 }
 
 // purgeSystemNotificationsOlderThan trims the in-app notification feed (the navbar bell).
 func (h *Hub) purgeSystemNotificationsOlderThan(days int) (int, error) {
-	if days <= 0 {
-		return 0, fmt.Errorf("days must be greater than 0")
-	}
-	cutoff := types.NowDateTime().AddDate(0, 0, -days).String()
-	params := dbx.Params{"cutoff": cutoff}
-	count, err := countRows(h, "SELECT COUNT(*) AS count FROM system_notifications WHERE occurred_at < {:cutoff}", params)
-	if err != nil || count == 0 {
-		return count, err
-	}
-	return count, deleteRows(h, "DELETE FROM system_notifications WHERE occurred_at < {:cutoff}", params)
+	return h.purgeOlderThan(systemNotificationsPurge, days)
 }
 
 func (h *Hub) purgeOfflineAgentsOlderThan(days int) (int, error) {

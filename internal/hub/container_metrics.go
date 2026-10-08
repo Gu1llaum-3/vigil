@@ -3,7 +3,6 @@ package hub
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -211,14 +210,5 @@ func (h *Hub) getHostContainerMetricsLatest(e *core.RequestEvent) error {
 }
 
 func (h *Hub) purgeContainerMetricSamplesOlderThan(days int) (int, error) {
-	if days <= 0 {
-		return 0, fmt.Errorf("days must be greater than 0")
-	}
-	cutoff := time.Now().UTC().AddDate(0, 0, -days)
-	params := dbx.Params{"cutoff": cutoff}
-	count, err := countRows(h, "SELECT COUNT(*) AS count FROM container_metric_samples WHERE collected_at < {:cutoff}", params)
-	if err != nil || count == 0 {
-		return count, err
-	}
-	return count, deleteRows(h, "DELETE FROM container_metric_samples WHERE collected_at < {:cutoff}", params)
+	return h.purgeOlderThan(containerMetricSamplesPurge, days)
 }

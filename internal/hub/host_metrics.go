@@ -4,17 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/common"
 	"github.com/Gu1llaum-3/vigil/internal/hub/ws"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 const (
@@ -518,28 +519,42 @@ type fleetMetricsBucketRow struct {
 	AvgLoad     sql.NullFloat64 `db:"avg_load"`
 }
 
+const fleetMetricsTimeIndex = "idx_host_metric_samples_collected_at"
+
 // loadFleetMetricsSeries aggregates host_metric_samples in SQL into per-(agent, time-bucket)
 // averages for every metric, returning one series per host per metric (agents in
 // first-appearance order). Only ~one row per bucket is materialized, not every raw sample.
+// The planner may prefer the (agent, collected_at) index for the GROUP BY, which reads every
+// sample; the hint pins the collected_at index (migration v1_0002), which reads only the
+// range. If that index is gone (edited in the PocketBase dashboard), the query runs unhinted.
 func (h *Hub) loadFleetMetricsSeries(since time.Time, bucketSeconds int, names map[string]string) (map[string][]FleetMetricSeries, error) {
 	if bucketSeconds < 1 {
 		bucketSeconds = 60
 	}
 	var rows []fleetMetricsBucketRow
-	err := h.DB().
-		NewQuery(`SELECT
-			agent,
-			(CAST(strftime('%s', collected_at) AS INTEGER) / {:bucket}) * {:bucket} AS bucket_start,
-			AVG(cpu_percent) AS avg_cpu,
-			AVG(memory_used_percent) AS avg_memory,
-			AVG(disk_used_percent) AS avg_disk,
-			AVG(load5) AS avg_load
-		FROM host_metric_samples
-		WHERE collected_at >= {:since}
-		GROUP BY agent, bucket_start
-		ORDER BY agent, bucket_start`).
-		Bind(dbx.Params{"since": since.UTC(), "bucket": bucketSeconds}).
-		All(&rows)
+	cutoff, _ := types.ParseDateTime(since.UTC())
+	query := func(from string) error {
+		rows = nil
+		return h.DB().
+			NewQuery(`SELECT
+				agent,
+				(CAST(strftime('%s', collected_at) AS INTEGER) / {:bucket}) * {:bucket} AS bucket_start,
+				AVG(cpu_percent) AS avg_cpu,
+				AVG(memory_used_percent) AS avg_memory,
+				AVG(disk_used_percent) AS avg_disk,
+				AVG(load5) AS avg_load
+			FROM ` + from + `
+			WHERE collected_at >= {:since}
+			GROUP BY agent, bucket_start
+			ORDER BY agent, bucket_start`).
+			Bind(dbx.Params{"since": cutoff.String(), "bucket": bucketSeconds}).
+			All(&rows)
+	}
+	err := query("host_metric_samples INDEXED BY " + fleetMetricsTimeIndex)
+	if err != nil && strings.Contains(err.Error(), "no such index") {
+		slog.Warn("Fleet metrics: index missing, querying without it", "index", fleetMetricsTimeIndex)
+		err = query("host_metric_samples")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -603,14 +618,5 @@ func parseMetricsHistoryRange(raw string) time.Duration {
 }
 
 func (h *Hub) purgeHostMetricSamplesOlderThan(days int) (int, error) {
-	if days <= 0 {
-		return 0, fmt.Errorf("days must be greater than 0")
-	}
-	cutoff := time.Now().UTC().AddDate(0, 0, -days)
-	params := dbx.Params{"cutoff": cutoff}
-	count, err := countRows(h, "SELECT COUNT(*) AS count FROM host_metric_samples WHERE collected_at < {:cutoff}", params)
-	if err != nil || count == 0 {
-		return count, err
-	}
-	return count, deleteRows(h, "DELETE FROM host_metric_samples WHERE collected_at < {:cutoff}", params)
+	return h.purgeOlderThan(hostMetricSamplesPurge, days)
 }
