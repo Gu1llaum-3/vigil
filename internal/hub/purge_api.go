@@ -68,6 +68,10 @@ func (h *Hub) runPurge(e *core.RequestEvent) error {
 		return e.BadRequestError("Invalid request body", err)
 	}
 
+	if input.Mode == "older_than_days" && input.Days <= 0 {
+		return e.BadRequestError("days must be greater than 0", nil)
+	}
+
 	var (
 		deleted int
 		err     error
