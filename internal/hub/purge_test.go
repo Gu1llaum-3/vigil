@@ -35,7 +35,7 @@ func newPurgeTestEnv(t *testing.T) purgeTestEnv {
 // row creates a row of collection dated at, with the fields that collection requires.
 func (env purgeTestEnv) row(t *testing.T, collection string, at time.Time) string {
 	t.Helper()
-	fields := map[string]any{}
+	var fields map[string]any
 	switch collection {
 	case "monitor_events":
 		fields = map[string]any{"monitor": env.monitor.Id, "status": 1, "checked_at": at}
