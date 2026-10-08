@@ -45,6 +45,7 @@ Use this folder when you need implementation context, extension guidance, or tas
 ### I need to work on auth, users, tokens, or settings
 
 - `architecture/auth-and-data-model.md`
+- `../SECURITY.md` (operator-facing threat model and known limitations — keep it in sync)
 - `backend/hub-backend.md`
 - `frontend/frontend-app.md`
 

@@ -29,6 +29,7 @@ type agentConnectRequest struct {
 	req               *http.Request
 	res               http.ResponseWriter
 	token             string
+	nonce             string // challenge nonce sent by the agent; "" for agents older than it
 	agentSemVer       semver.Version
 	isEnrollmentToken bool
 	userId            string
@@ -166,7 +167,7 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 		return err
 	}
 
-	agentFingerprint, err := wsConn.GetFingerprint(acr.hub.agentCtx, acr.token, signer)
+	agentFingerprint, err := wsConn.GetFingerprint(acr.hub.agentCtx, acr.token, acr.nonce, signer)
 	if err != nil {
 		return err
 	}
@@ -239,7 +240,8 @@ func (acr *agentConnectRequest) verifyWsConn(conn *gws.Conn, agentRecords []Agen
 	return nil
 }
 
-// validateAgentHeaders extracts and validates token and version from HTTP headers.
+// validateAgentHeaders extracts and validates token and version from HTTP headers, and
+// records the challenge nonce (optional: agents older than it send none).
 func (acr *agentConnectRequest) validateAgentHeaders(headers http.Header) (string, string, error) {
 	token := headers.Get("X-Token")
 	agentVersion := headers.Get("X-App")
@@ -247,6 +249,11 @@ func (acr *agentConnectRequest) validateAgentHeaders(headers http.Header) (strin
 	if agentVersion == "" || token == "" || len(token) > 64 {
 		return "", "", errors.New("missing or invalid headers")
 	}
+	nonce := headers.Get(common.ChallengeNonceHeader)
+	if nonce != "" && !common.ValidChallengeNonce(nonce) {
+		return "", "", errors.New("invalid challenge nonce")
+	}
+	acr.nonce = nonce
 	return token, agentVersion, nil
 }
 

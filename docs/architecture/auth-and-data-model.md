@@ -416,7 +416,7 @@ Known limits: (1) all holders of the enrollment token presenting the same finger
 
 ### 3. Hub Identity Verification
 
-The hub proves its identity by signing the agent token with the hub private key.
+The hub proves its identity by signing the agent token together with a nonce the agent sent on that connection (`X-Nonce`, `common.HubChallenge`) with the hub private key, so a captured signature cannot be replayed. Agents older than the nonce send none and get a signature over the token alone; an upgraded agent accepts that static form only from a hub key that never signed a nonce (see `docs/architecture/hub-agent-architecture.md`, Step 3).
 
 The agent verifies that signature with the configured public key from:
 

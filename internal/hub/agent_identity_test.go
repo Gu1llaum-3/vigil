@@ -122,6 +122,11 @@ func TestEnrolledAgentGetsItsOwnToken(t *testing.T) {
 	assert.Len(t, issued, 40)
 	assert.NotEqual(t, env.enrollment, issued)
 	assert.Contains(t, storedTokenIn(dir), issued)
+	// The hub proved its identity by signing the agent's nonce: the agent recorded its key,
+	// and will refuse a static (replayable) signature from it from now on.
+	challenge, err := os.ReadFile(filepath.Join(dir, "hub-challenge"))
+	require.NoError(t, err)
+	assert.Contains(t, string(challenge), ssh.FingerprintSHA256(env.key))
 
 	// A real reconnect: the hub drops the connection, the agent comes back with its token.
 	env.hub.dropAgentConn(victim.Id)

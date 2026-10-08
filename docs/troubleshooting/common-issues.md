@@ -68,6 +68,7 @@ The hub enables PocketBase's rate limiter at startup (`*:auth` allows 2 attempts
 
 - handshake fails during connection
 - agent logs show invalid signature or verification problems
+- agent logs show `refusing a replayable signature`
 - the agent exits at startup with `no hub public key configured` (no `KEY`, `KEY_FILE` or `--key`, or the key file is empty)
 - hub never completes agent registration or online transition
 
@@ -76,6 +77,7 @@ The hub enables PocketBase's rate limiter at startup (`*:auth` allows 2 attempts
 - wrong `KEY` or `KEY_FILE`
 - stale hub public key after changing hub data dir or keypair
 - token or connection target points to a different hub than expected
+- `refusing a replayable signature`: the hub answered with a signature over the token alone (a hub older than the challenge nonce) although its key has signed nonces for this agent before. Either the hub was rolled back to an older version, or something between the agent and the hub replays an old signature — check `HUB_URL`, the TLS setup and who answers on it. After a deliberate rollback, delete `<data-dir>/hub-challenge` on the agents **and restart them** (the record is also held in memory), or upgrade the hub again
 
 ### Fix
 

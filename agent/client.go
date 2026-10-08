@@ -22,7 +22,6 @@ import (
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/lxzan/gws"
-	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -56,6 +55,9 @@ type WebSocketClient struct {
 	// Verification is per connection: after a reconnect, the hub must prove it again.
 	verifiedConn atomic.Pointer[gws.Conn]
 	tlsConfig    *tls.Config // TLS config for the hub connection (verifies by default)
+	// nonceKeys are the fingerprints of the hub keys that have signed a nonce (hub_challenge.go).
+	nonceKeysMu sync.Mutex
+	nonceKeys   []string
 }
 
 // newWebSocketClient creates a new WebSocket client for the given agent.
@@ -99,6 +101,7 @@ func newWebSocketClient(agent *Agent) (client *WebSocketClient, err error) {
 
 	client.hubRequest = &common.HubRequest[cbor.RawMessage]{}
 	client.fingerprint = agent.getFingerprint()
+	client.nonceKeys = loadNonceKeys(agent.dataDir)
 
 	return client, nil
 }
@@ -199,11 +202,13 @@ func (client *WebSocketClient) getOptions() *gws.ClientOption {
 }
 
 // connectOptions returns a copy of the cached options carrying the current token, so the
-// token can change between connections without racing a dial in progress.
+// token can change between connections without racing a dial in progress, and a fresh
+// challenge nonce.
 func (client *WebSocketClient) connectOptions() *gws.ClientOption {
 	opts := *client.options
 	opts.RequestHeader = client.options.RequestHeader.Clone()
 	opts.RequestHeader.Set("X-Token", client.currentToken())
+	opts.RequestHeader.Set(common.ChallengeNonceHeader, common.NewChallengeNonce())
 	return &opts
 }
 
@@ -293,8 +298,9 @@ func (client *WebSocketClient) Connect() (err error) {
 	if err != nil {
 		return err
 	}
-	// The hub proves its identity by signing the token sent on this connection.
+	// The hub proves its identity by signing the token and the nonce sent on this connection.
 	conn.Session().Store(sentTokenKey, opts.RequestHeader.Get("X-Token"))
+	conn.Session().Store(sentNonceKey, opts.RequestHeader.Get(common.ChallengeNonceHeader))
 	client.conn.Store(conn)
 
 	go conn.ReadLoop()
@@ -376,10 +382,11 @@ func (client *WebSocketClient) handleAuthChallenge(conn *gws.Conn, msg *common.H
 	return client.sendResponse(conn, response, requestID)
 }
 
-// Connection session keys: the token sent on that connection, and the fingerprint of the
-// hub key that verified it.
+// Connection session keys: the token and the challenge nonce sent on that connection, and
+// the fingerprint of the hub key that verified it.
 const (
 	sentTokenKey   = "token"
+	sentNonceKey   = "nonce"
 	verifiedKeyKey = "hubKey"
 )
 
@@ -405,27 +412,25 @@ func (client *WebSocketClient) verifiedKeyFingerprint(conn *gws.Conn) string {
 	return ""
 }
 
-// verifySignature verifies the hub's signature of the token sent on conn.
-func (client *WebSocketClient) verifySignature(conn *gws.Conn, signature []byte) (err error) {
-	token := client.currentToken()
+// verifySignature verifies the hub's signature of the token and nonce sent on conn.
+func (client *WebSocketClient) verifySignature(conn *gws.Conn, signature []byte) error {
+	token, nonce := client.currentToken(), ""
 	if conn != nil {
 		if sent, ok := conn.Session().Load(sentTokenKey); ok {
 			token = sent.(string)
 		}
-	}
-	for _, pubKey := range client.agent.keys {
-		sig := ssh.Signature{
-			Format: pubKey.Type(),
-			Blob:   signature,
-		}
-		if err = pubKey.Verify([]byte(token), &sig); err == nil {
-			if conn != nil {
-				conn.Session().Store(verifiedKeyKey, ssh.FingerprintSHA256(pubKey))
-			}
-			return nil
+		if sent, ok := conn.Session().Load(sentNonceKey); ok {
+			nonce = sent.(string)
 		}
 	}
-	return errors.New("invalid signature - check KEY value")
+	fp, err := client.verifyHubSignature(token, nonce, signature)
+	if err != nil {
+		return err
+	}
+	if conn != nil {
+		conn.Session().Store(verifiedKeyKey, fp)
+	}
+	return nil
 }
 
 // Close closes the WebSocket connection gracefully.

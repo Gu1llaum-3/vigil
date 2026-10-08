@@ -163,14 +163,15 @@ func (ws *WsConn) GetContainerMetrics(ctx context.Context) (common.ContainerMetr
 // Fingerprint handling (used for WebSocket authentication)
 ////////////////////////////////////////////////////////////////////////////
 
-// GetFingerprint authenticates with the agent using SSH signature and returns the agent's fingerprint.
-func (ws *WsConn) GetFingerprint(ctx context.Context, token string, signer ssh.Signer) (common.FingerprintResponse, error) {
+// GetFingerprint proves the hub's identity to the agent by signing the token sent on this
+// connection together with the agent's challenge nonce (common.HubChallenge), and returns the
+// agent's fingerprint.
+func (ws *WsConn) GetFingerprint(ctx context.Context, token, nonce string, signer ssh.Signer) (common.FingerprintResponse, error) {
 	if !ws.IsConnected() {
 		return common.FingerprintResponse{}, gws.ErrConnClosed
 	}
 
-	challenge := []byte(token)
-	signature, err := signer.Sign(nil, challenge)
+	signature, err := signer.Sign(nil, common.HubChallenge(nonce, token))
 	if err != nil {
 		return common.FingerprintResponse{}, err
 	}

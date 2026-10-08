@@ -86,6 +86,7 @@ func TestValidateAgentHeaders(t *testing.T) {
 		expectError   bool
 		expectedToken string
 		expectedAgent string
+		expectedNonce string
 	}{
 		{
 			name: "valid headers",
@@ -135,6 +136,26 @@ func TestValidateAgentHeaders(t *testing.T) {
 			},
 			expectError: true,
 		},
+		{
+			name: "valid challenge nonce",
+			headers: http.Header{
+				"X-Token": []string{"valid-token-123"},
+				"X-App":   []string{"0.5.0"},
+				"X-Nonce": []string{strings.Repeat("0a", 32)},
+			},
+			expectedToken: "valid-token-123",
+			expectedAgent: "0.5.0",
+			expectedNonce: strings.Repeat("0a", 32),
+		},
+		{
+			name: "malformed challenge nonce",
+			headers: http.Header{
+				"X-Token": []string{"valid-token-123"},
+				"X-App":   []string{"0.5.0"},
+				"X-Nonce": []string{"not-a-nonce"},
+			},
+			expectError: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -148,6 +169,7 @@ func TestValidateAgentHeaders(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, tc.expectedToken, token)
 				assert.Equal(t, tc.expectedAgent, agentVersion)
+				assert.Equal(t, tc.expectedNonce, acr.nonce, "no nonce from an agent older than it")
 			}
 		})
 	}
