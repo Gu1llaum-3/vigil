@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -110,6 +109,10 @@ func checkUpgrade(current, latestTag string, allowMajor bool) (upgradeDecision, 
 type updater struct {
 	config         Config
 	currentVersion string
+	// executable returns the path of the binary to replace and rename moves files
+	// (os.Executable and os.Rename when nil; replaced in tests).
+	executable func() (string, error)
+	rename     func(oldpath, newpath string) error
 }
 
 func Update(config Config) (updated bool, err error) {
@@ -150,6 +153,14 @@ func (p *updater) update() (updated bool, err error) {
 
 	if p.config.HttpClient == nil {
 		p.config.HttpClient = http.DefaultClient
+	}
+
+	if p.executable == nil {
+		p.executable = os.Executable
+	}
+
+	if p.rename == nil {
+		p.rename = os.Rename
 	}
 
 	var latest *release
@@ -228,12 +239,11 @@ func (p *updater) update() (updated bool, err error) {
 
 	ColorPrint(ColorYellow, "Replacing the executable...")
 
-	oldExec, err := os.Executable()
+	oldExec, err := p.executable()
 	if err != nil {
 		return false, err
 	}
 	renamedOldExec := oldExec + ".old"
-	defer os.Remove(renamedOldExec)
 
 	newExec := filepath.Join(extractDir, p.config.ArchiveExecutable)
 	if _, err := os.Stat(newExec); err != nil {
@@ -245,34 +255,30 @@ func (p *updater) update() (updated bool, err error) {
 	}
 
 	// rename the current executable
-	if err := os.Rename(oldExec, renamedOldExec); err != nil {
+	if err := p.rename(oldExec, renamedOldExec); err != nil {
 		return false, fmt.Errorf("failed to rename the current executable: %w", err)
 	}
 
-	tryToRevertExecChanges := func() {
-		if revertErr := os.Rename(renamedOldExec, oldExec); revertErr != nil {
-			slog.Debug(
-				"Failed to revert executable",
-				slog.String("old", renamedOldExec),
-				slog.String("new", oldExec),
-				slog.String("error", revertErr.Error()),
-			)
+	// failReplace puts the current executable back. When that fails too, renamedOldExec is
+	// the only copy left: it is kept and named in the error.
+	failReplace := func(err error) error {
+		if revertErr := p.rename(renamedOldExec, oldExec); revertErr != nil {
+			return fmt.Errorf("failed replacing the executable: %w; restoring it failed too (%v): the previous executable is %s, move it back to %s", err, revertErr, renamedOldExec, oldExec)
 		}
+		return fmt.Errorf("failed replacing the executable: %w", err)
 	}
 
 	// replace with the extracted binary
-	if err := os.Rename(newExec, oldExec); err != nil {
+	if err := p.rename(newExec, oldExec); err != nil {
 		// If rename fails due to cross-device link, try copying instead
-		if isCrossDeviceError(err) {
-			if err := copyFile(newExec, oldExec); err != nil {
-				tryToRevertExecChanges()
-				return false, fmt.Errorf("failed replacing the executable: %w", err)
-			}
-		} else {
-			tryToRevertExecChanges()
-			return false, fmt.Errorf("failed replacing the executable: %w", err)
+		if !isCrossDeviceError(err) {
+			return false, failReplace(err)
+		}
+		if err := copyFile(newExec, oldExec); err != nil {
+			return false, failReplace(err)
 		}
 	}
+	_ = os.Remove(renamedOldExec)
 
 	ColorPrint(colorGray, "---")
 	ColorPrint(ColorGreen, "Update completed successfully!")
