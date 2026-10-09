@@ -471,7 +471,8 @@ if is_freebsd; then
 
     # Create cron job in /etc/cron.d
     cat >/etc/cron.d/vigil-hub <<EOF
-# Vigil Hub daily update job
+# Vigil Hub daily update job (the updater restarts vigil-hub with service(8), in /usr/sbin)
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 12 8 * * * root $BIN_PATH update >/dev/null 2>&1
 EOF
     chmod 644 /etc/cron.d/vigil-hub
@@ -556,6 +557,11 @@ Type=oneshot
 User=vigil
 Group=vigil
 ExecStart=$BIN_PATH update
+# The updater cannot restart the hub unprivileged: it leaves .restart-pending next to the
+# binary, and this step (run as root, "+") restarts vigil-hub so the new version takes over
+# (it backs the data up before running its migrations). New major versions are never
+# installed automatically: run "$BIN_PATH update --allow-major" after reading the notes.
+ExecStartPost=+/bin/sh -c 'if [ -e "$HUB_DIR/.restart-pending" ]; then rm -f "$HUB_DIR/.restart-pending"; systemctl try-restart vigil-hub.service; fi'
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict

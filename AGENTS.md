@@ -334,6 +334,7 @@ The hub's public key is served at `GET /api/app/info` (authenticated).
 | `HEARTBEAT_INTERVAL` | Seconds between heartbeat pings | `60` |
 | `HEARTBEAT_METHOD` | HTTP method for heartbeat (`GET`, `POST`) | `POST` |
 | `CHECK_UPDATES` | Enable GitHub update check endpoint | — |
+| `PRE_UPDATE_BACKUP` | `false` skips the backup the hub makes before applying pending migrations on an existing database (`vigil_data/backups/pre_update_*.zip`, last 3 kept; `serve`/`migrate up` only). A failed backup otherwise stops the start. | `true` |
 | `SNAPSHOT_INTERVAL` | Interval between periodic snapshot collections (e.g. `5m`, `10m`, `1h`) | `15m` |
 | `METRICS_INTERVAL` | Interval between periodic lightweight host metrics collections (e.g. `30s`, `1m`) | `1m` |
 | `MONITORS_STATS_INTERVAL` | Interval at which the monitors-list aggregate cache (uptime 24h/30d, avg latency, recent-checks sparkline) is recomputed in the background (min `5s`). Lower = fresher list aggregates, more frequent `monitor_events` scans. Monitor up/down status is always live regardless. | `30s` |

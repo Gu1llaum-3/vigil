@@ -392,3 +392,22 @@ For most repository-specific issues, inspect these in order:
 - `supplemental/scripts/install-agent.sh`
 - `supplemental/debian/postinstall.sh`
 - `agent/collectors/docker.go`
+
+## The Hub Refuses To Start: "backup before migrations failed"
+
+### Symptoms
+
+- after an update, the hub exits at start with `backup before migrations failed (…)`
+
+### Cause
+
+The new version has migrations to apply, and the hub backs the data directory up before running them (`vigil_data/backups/pre_update_*.zip`). The backup failed, usually for lack of disk space (it needs about twice the data directory), or — with PocketBase's S3 backup storage enabled — because S3 is unreachable. The service manager keeps restarting the hub, and each start retries the backup.
+
+### Fix
+
+- free disk space (old `vigil_data/backups/*.zip` files are candidates), then start again
+- or, if you have your own backup, start once with `PRE_UPDATE_BACKUP=false`
+
+## The Hub Did Not Update Past A Major Version
+
+The self-updater (and so the daily timer) never installs a new major version on its own — `0.x → 1.0` included; the log says `is a new major version … not installed automatically`. Read the release notes, then run `sudo /opt/vigil/vigil update --allow-major`.

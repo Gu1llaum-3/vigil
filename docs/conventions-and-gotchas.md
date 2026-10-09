@@ -133,6 +133,12 @@ git worktree remove --force /tmp/vigil-<tag>
 then list it in `upgradeFixtures` (`env -i` keeps `USER_EMAIL`/`USER_PASSWORD`
 and other variables out of the migration).
 
+The hub backs the database up before applying pending **Vigil** migrations
+(`internal/hub/pre_update_backup.go`), but PocketBase's own system migrations run inside
+its bootstrap, before that backup. When bumping PocketBase, check whether the new version
+adds system migrations (`core.SystemMigrations`, `migrations/` in its module); if so, the
+release notes must tell operators to back up by hand before upgrading.
+
 ## Treat WebSocket As The Real Transport
 
 The real transport path in this repository is WebSocket.
