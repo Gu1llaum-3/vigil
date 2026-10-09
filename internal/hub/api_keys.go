@@ -97,7 +97,8 @@ func (h *Hub) authenticateApiKey(e *core.RequestEvent) error {
 		return e.Next()
 	}
 	scope := rec.GetString("scope")
-	if scope != apiScopeReadWrite {
+	// A readonly user only holds read keys, even one created before it was made readonly.
+	if scope != apiScopeReadWrite || user.GetString("role") == "readonly" {
 		scope = apiScopeRead
 	}
 	// A read-only key may only perform safe methods. The MCP endpoint is exempt from this
@@ -198,6 +199,9 @@ func (h *Hub) createApiKey(e *core.RequestEvent) error {
 	scope := body.Scope
 	if scope != apiScopeReadWrite {
 		scope = apiScopeRead
+	}
+	if scope == apiScopeReadWrite && e.Auth.GetString("role") == "readonly" {
+		return e.ForbiddenError("Readonly users can only create read API keys.", nil)
 	}
 
 	// Validate expires_at explicitly: PocketBase's date field silently coerces an

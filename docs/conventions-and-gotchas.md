@@ -216,6 +216,25 @@ Gotcha:
 - plain `go test ./...` may not execute the test suite you think it does
 - editors may show confusing “No packages found” warnings for test files
 
+## Role Boundaries Are Pinned By Tables
+
+`internal/hub/authorization_test.go` holds the role each route Vigil adds requires
+(`routeAccessTable`, compared with the routes read off the built router and called as every
+role, a superuser and read / read-write API keys), the routes returning secrets
+(`credentialRoutes`), the five API rules of every collection (`collectionRules`), the auth
+collections' manage/auth rules and the hidden secret fields. A new route or collection fails
+these tests until it has an entry: decide its access deliberately, then add it. Changing an
+entry changes a security boundary — review it as such (e.g. a `users` update rule letting a
+user edit its own record would let it make itself admin).
+
+Two things the role middlewares do not show:
+
+- `requireAdminRole` reads `users.role`: a PocketBase **superuser** gets 403 on the admin
+  routes (it administers PocketBase, not the app), while it passes `excludeReadOnlyRole`
+- API keys add their own limits on top of the owner's role: a `read` key gets safe methods
+  only and no credentials (`rejectReadOnlyApiKey`), and a readonly user's keys are always
+  `read`
+
 ## `hubVerified` Is A Real Security Boundary
 
 Agent handlers should not be treated as generally callable before hub verification completes.

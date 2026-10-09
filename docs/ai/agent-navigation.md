@@ -23,6 +23,7 @@ Remember:
 
 - custom app routes live under `/api/app/*`
 - auth and role middleware are defined in `internal/hub/api.go`
+- the role every route requires and every collection's API rules are pinned in `internal/hub/authorization_test.go` (`routeAccessTable`, `collectionRules`): a new route or collection needs an entry
 
 ### Change Auth, Roles, Users, Tokens, Or Settings
 
