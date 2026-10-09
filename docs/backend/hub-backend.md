@@ -127,7 +127,8 @@ Typical workflow:
 2. choose the right route group
 3. bind any required admin middleware
 4. implement the handler on `*Hub`
-5. update related frontend or tests if the endpoint is consumed there
+5. add the route to `routeAccessTable` in `internal/hub/authorization_test.go` with the role it requires (public, any authenticated user, non-readonly, admin), and to `credentialRoutes` if it returns a secret (then bind `rejectReadOnlyApiKey`): `TestRouteTableMatchesTheRouter` reads the routes off the built router (any group, helper or file) and fails on one missing from the table, and `TestRouteRoles` calls every route as anonymous, readonly, user, admin, superuser and with read / read-write API keys, checking the role middlewares refuse exactly the callers below the required one
+6. update related frontend or tests if the endpoint is consumed there
 
 Examples:
 
