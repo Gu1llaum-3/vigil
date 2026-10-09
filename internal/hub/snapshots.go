@@ -95,7 +95,10 @@ func (h *Hub) collectAllSnapshots(ctx context.Context) (refreshed, failed int) {
 // refreshSnapshots is the HTTP handler for POST /api/app/refresh-snapshots.
 // It triggers an immediate snapshot collection for all connected agents.
 func (h *Hub) refreshSnapshots(e *core.RequestEvent) error {
-	refreshed, failed := h.collectAllSnapshots(e.Request.Context())
+	var refreshed, failed int
+	if !h.runBackground(func() { refreshed, failed = h.collectAllSnapshots(e.Request.Context()) }) {
+		return e.Error(http.StatusServiceUnavailable, "The hub is stopping.", nil)
+	}
 	return e.JSON(http.StatusOK, map[string]int{"refreshed": refreshed, "failed": failed})
 }
 

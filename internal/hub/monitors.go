@@ -86,7 +86,10 @@ func (ms *MonitorScheduler) startMonitor(monitorID string) {
 	}
 	monCtx, cancel := context.WithCancel(ms.ctx)
 	ms.cancels.Store(monitorID, cancel)
-	goSafe("monitor check", func() { ms.runMonitor(monCtx, monitorID) })
+	if !ms.hub.goBackground("monitor check", func() { ms.runMonitor(monCtx, monitorID) }) {
+		ms.cancels.Delete(monitorID)
+		cancel() // the hub is stopping
+	}
 }
 
 // stopMonitor cancels the check goroutine for a monitor.

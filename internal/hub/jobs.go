@@ -232,7 +232,7 @@ func (h *Hub) registerScheduledJobs() error {
 		job := job
 		schedule := h.effectiveJobSchedule(job)
 		if err := h.Cron().Add(job.Key, schedule, func() {
-			_, _ = h.runScheduledJob(job)
+			h.runBackground(func() { _, _ = h.runScheduledJob(job) })
 		}); err != nil {
 			return err
 		}
@@ -253,6 +253,6 @@ func (h *Hub) updateJobSchedule(job ScheduledJobDefinition, schedule string) err
 		return err
 	}
 	return h.Cron().Add(job.Key, schedule, func() {
-		_, _ = h.runScheduledJob(job)
+		h.runBackground(func() { _, _ = h.runScheduledJob(job) })
 	})
 }

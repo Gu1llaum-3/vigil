@@ -330,14 +330,28 @@ func TestDispatchRetries(t *testing.T) {
 		env.d.retryDelays = []time.Duration{time.Hour, time.Hour, time.Hour}
 		env.provider.failures = 100
 		env.rule(map[string]any{"events": []string{"monitor.down"}, "channels": []string{env.channel(nil)}})
-		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-		defer cancel()
-		env.d.process(ctx, monitorDown("m1"))
+		env.d.sendTimeout = 50 * time.Millisecond
+		env.d.process(context.Background(), monitorDown("m1"))
 		assert.Equal(t, 1, env.provider.attempts)
 		logs := env.logs()
 		require.Len(t, logs, 1)
 		assert.Equal(t, "failed", logs[0].Status)
 		assert.Equal(t, "context deadline exceeded (last error: boom)", logs[0].Error)
+	})
+	// A delivery cut short by the hub stopping is not the channel's failure: no log, no
+	// breaker count.
+	t.Run("hub stopping", func(t *testing.T) {
+		env := newDispatchEnv(t)
+		env.d.retryDelays = []time.Duration{time.Hour, time.Hour, time.Hour}
+		env.provider.failures = 100
+		channel := env.channel(nil)
+		env.rule(map[string]any{"events": []string{"monitor.down"}, "channels": []string{channel}})
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel()
+		env.d.process(ctx, monitorDown("m1"))
+		assert.Equal(t, 1, env.provider.attempts)
+		assert.Empty(t, env.logs())
+		assert.Empty(t, env.d.breakers)
 	})
 }
 
