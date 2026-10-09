@@ -73,6 +73,38 @@ type Config struct {
 
 	// MirrorHost is an optional host used for mirrored release API and downloads.
 	MirrorHost string
+
+	// AllowMajor allows updating to a new major version (0.x → 1.x included), which may
+	// change behaviour or require manual steps; refused by default.
+	AllowMajor bool
+}
+
+type upgradeDecision int
+
+const (
+	upgradeNone         upgradeDecision = iota // already on that version or newer
+	upgradeAllowed                             // newer, same major (or AllowMajor)
+	upgradeMajorRefused                        // newer major, AllowMajor not set
+)
+
+// checkUpgrade decides whether to move from the running version to the latest release tag.
+func checkUpgrade(current, latestTag string, allowMajor bool) (upgradeDecision, error) {
+	currentVersion, err := semver.Parse(strings.TrimPrefix(current, "v"))
+	if err != nil {
+		return upgradeNone, fmt.Errorf("cannot parse the running version %q: %w", current, err)
+	}
+	newVersion, err := semver.Parse(strings.TrimPrefix(latestTag, "v"))
+	if err != nil {
+		return upgradeNone, fmt.Errorf("cannot parse the latest release tag %q: %w", latestTag, err)
+	}
+	switch {
+	case newVersion.LTE(currentVersion):
+		return upgradeNone, nil
+	case newVersion.Major > currentVersion.Major && !allowMajor:
+		return upgradeMajorRefused, nil
+	default:
+		return upgradeAllowed, nil
+	}
 }
 
 type updater struct {
@@ -132,11 +164,16 @@ func (p *updater) update() (updated bool, err error) {
 		return false, err
 	}
 
-	currentVersion := semver.MustParse(strings.TrimPrefix(p.currentVersion, "v"))
-	newVersion := semver.MustParse(strings.TrimPrefix(latest.Tag, "v"))
-
-	if newVersion.LTE(currentVersion) {
+	decision, err := checkUpgrade(p.currentVersion, latest.Tag, p.config.AllowMajor)
+	if err != nil {
+		return false, err
+	}
+	switch decision {
+	case upgradeNone:
 		ColorPrintf(ColorGreen, "You already have the latest version %s.", p.currentVersion)
+		return false, nil
+	case upgradeMajorRefused:
+		ColorPrintf(ColorYellow, "Version %s is a new major version (running %s): not installed automatically. Read its release notes, then run the update with --allow-major.", latest.Tag, p.currentVersion)
 		return false, nil
 	}
 

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 	// Embed the IANA timezone database in the binary so time.LoadLocation works in any
 	// runtime environment — notably the Alpine/scratch Docker image, which ships without
@@ -32,11 +33,44 @@ func main() {
 		return
 	}
 
+	// update only replaces the binary: it must not open (or migrate) the database, nor
+	// need a writable working directory (the systemd update unit runs from /).
+	if len(os.Args) > 1 && os.Args[1] == "update" {
+		cmd := newUpdateCmd()
+		cmd.SetArgs(os.Args[2:])
+		if err := cmd.Execute(); err != nil {
+			os.Exit(1)
+		}
+		return
+	}
+
 	baseApp := getBaseApp()
-	hub := hub.NewHub(baseApp)
-	if err := hub.StartHub(); err != nil {
+	h := hub.NewHub(baseApp)
+	// Resolved at bootstrap: PocketBase registers serve and superuser in Start.
+	h.BackupBeforeMigrations(func() bool {
+		cmd, args, err := baseApp.RootCmd.Find(os.Args[1:])
+		return err == nil && appliesMigrations(cmd, args)
+	})
+	if err := h.StartHub(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// appliesMigrations reports whether cmd (with its remaining args) runs the pending
+// migrations: serve, and migrate up (migrate's default).
+func appliesMigrations(cmd *cobra.Command, args []string) bool {
+	switch cmd.Name() {
+	case "serve":
+		return true
+	case "migrate":
+		for _, arg := range args {
+			if !strings.HasPrefix(arg, "-") {
+				return arg == "up"
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // getBaseApp creates a new PocketBase app with the default config
@@ -50,14 +84,8 @@ func getBaseApp() *pocketbase.PocketBase {
 	baseApp.RootCmd.Version = app.Version
 	baseApp.RootCmd.Use = app.AppName
 	baseApp.RootCmd.Short = ""
-	// add update command
-	updateCmd := &cobra.Command{
-		Use:   "update",
-		Short: "Update " + app.AppName + " to the latest version",
-		Run:   hub.Update,
-	}
-	updateCmd.Flags().Bool("china-mirrors", false, "Use the configured release mirror instead of GitHub")
-	baseApp.RootCmd.AddCommand(updateCmd)
+	// add update command (listed in the help; main runs it without the app)
+	baseApp.RootCmd.AddCommand(newUpdateCmd())
 	// add health command
 	baseApp.RootCmd.AddCommand(newHealthCmd())
 
@@ -68,6 +96,17 @@ func getBaseApp() *pocketbase.PocketBase {
 	})
 
 	return baseApp
+}
+
+func newUpdateCmd() *cobra.Command {
+	updateCmd := &cobra.Command{
+		Use:   "update",
+		Short: "Update " + app.AppName + " to the latest version",
+		Run:   hub.Update,
+	}
+	updateCmd.Flags().Bool("china-mirrors", false, "Use the configured release mirror instead of GitHub")
+	updateCmd.Flags().Bool("allow-major", false, "Also install a new major version (read its release notes first)")
+	return updateCmd
 }
 
 func newHealthCmd() *cobra.Command {

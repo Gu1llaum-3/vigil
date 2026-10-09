@@ -202,21 +202,29 @@ The hub update command is implemented in:
 - `internal/hub/update.go`
 - `internal/ghupdate/*`
 
+`vigil update` runs before the PocketBase app is created (`internal/cmd/hub/hub.go`): it never opens or migrates the database and needs no writable working directory (the systemd update unit runs from `/`).
+
 The self-update flow does the following:
 
-1. fetch latest release metadata
-2. resolve the matching archive for the current OS and architecture (`<binary>_<os>_<arch>.tar.gz`, `.zip` on Windows — the names `.goreleaser.yml` publishes, see `archiveSuffix`)
-3. download the archive
-4. extract the new executable
-5. replace the running executable on disk
-6. try to restart the service automatically when possible
+1. fetch latest release metadata (`/releases/latest`: stable releases only, never a beta)
+2. refuse a new **major** version (`0.x → 1.x` included) unless `--allow-major` is passed (`checkUpgrade` in `internal/ghupdate/ghupdate.go`; a malformed version is an error, not a panic) — the daily timer never crosses a major version on its own
+3. resolve the matching archive for the current OS and architecture (`<binary>_<os>_<arch>.tar.gz`, `.zip` on Windows — the names `.goreleaser.yml` publishes, see `archiveSuffix`)
+4. download the archive and verify it against the release checksums
+5. extract the new executable
+6. replace the running executable on disk
+7. restart the service so the new version takes over:
+   - as root (`sudo vigil update`, the FreeBSD cron job — its `/etc/cron.d/vigil-hub` sets a `PATH` with `/usr/sbin` so `service` is found): restart `vigil-hub` (`app.HubServiceName`; `vigil` for older setups) under systemd, OpenRC or FreeBSD rc
+   - unprivileged (the systemd `vigil-hub-update` unit runs as `vigil`): write `.restart-pending` next to the binary; the unit's `ExecStartPost=+…` step, run as root, removes it and runs `systemctl try-restart vigil-hub.service`. Units created by an older `install-hub.sh` lack that step: re-run the installer with `--auto-update`, or add the line, otherwise the new binary only runs after the next restart
+   - unprivileged without systemd (macOS, a manual run): it only says to restart the hub
 
-Supported service restart attempts include:
+**Backup before migrations.** When `serve` (or `migrate up`) starts on a database that has Vigil migrations pending (a new binary — by self-update, a new Docker image or a manual upgrade), it first creates a PocketBase backup of the data directory, `<data dir>/backups/pre_update_<version>_<time>.zip` (`/opt/vigil/vigil_data/backups/` for the native install, `/vigil_data/backups/` in the Docker volume; listed and restorable from the PocketBase dashboard → Settings → Backups), and keeps the last 3. A fresh install is not backed up, nor are the other commands (`superuser`, `migrate down`, ...). The hub logs its version at start (`Starting Vigil hub`). `PRE_UPDATE_BACKUP=false` skips it (`internal/hub/pre_update_backup.go`).
 
-- systemd
-- OpenRC
+Limits to know:
 
-If restart cannot be handled automatically, the user is asked to restart manually.
+- a failed backup (typically disk space: it needs about twice the data directory) stops the start rather than migrate without a restore point. Under systemd (`Restart=always`, `RestartSec=5`) the hub then retries — and rebuilds the backup — every ~5 s until the cause is fixed; Docker with a restart policy does the same
+- the backup delays that start in proportion to the database size; on a large one, the Docker healthcheck may report the container `unhealthy` until it is done
+- when PocketBase's S3 backup storage is enabled, the backup is uploaded there: the start then depends on reaching S3
+- PocketBase's own system migrations run inside its bootstrap, before the backup can: a Vigil release that upgrades PocketBase to a version shipping some is not covered — take a backup by hand before such an upgrade (the release notes say so)
 
 ## Heartbeat Monitoring
 

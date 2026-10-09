@@ -289,10 +289,14 @@ Self-update behavior for the hub command lives in:
 
 This feature:
 
-- fetches the latest release metadata
-- downloads the matching archive
+- fetches the latest release metadata, refusing a new major version without `--allow-major`
+- downloads and verifies the matching archive
 - replaces the current executable
-- attempts a service restart when possible
+- restarts `vigil-hub` as root, or leaves `.restart-pending` for the update unit's privileged `ExecStartPost` (see `docs/operations/deployment-and-packaging.md`)
+
+`main` runs `update` before creating the PocketBase app, so it never bootstraps (opens or migrates) the database.
+
+Independently of how the binary was replaced, `main` calls `Hub.BackupBeforeMigrations`, which binds an `OnBootstrap` hook: when the resolved command applies the migrations (`serve`, `migrate up` — `appliesMigrations`, resolved at bootstrap because PocketBase registers `serve` in `Start`), it logs the version and, when Vigil migrations are pending on an existing database, backs it up before they run (`backupBeforePendingMigrations`, `internal/hub/pre_update_backup.go`; `PRE_UPDATE_BACKUP=false` disables it, a failed backup stops the start). PocketBase's system migrations run inside the bootstrap, before the hook, and are not covered.
 
 This is operational behavior, but backend maintainers may still need to understand it when packaging or deployment changes are involved.
 

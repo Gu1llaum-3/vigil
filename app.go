@@ -16,6 +16,8 @@ const (
 	AppName = "vigil"
 
 	HubBinary      = AppName
+	// HubServiceName is the hub's systemd unit / rc service name (install-hub.sh).
+	HubServiceName = AppName + "-hub"
 	AgentBinary    = AppName + "-agent"
 	HubEnvPrefix   = "VIGIL_HUB_"
 	AgentEnvPrefix = "VIGIL_AGENT_"
