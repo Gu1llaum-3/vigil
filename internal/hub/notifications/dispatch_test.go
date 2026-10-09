@@ -188,7 +188,7 @@ func TestDispatchSendsAndLogs(t *testing.T) {
 	env.d.process(context.Background(), monitorDown("m1"))
 
 	require.Len(t, env.provider.sent, 2)
-	assert.Equal(t, []string{ch1, ch2}, env.provider.channels)
+	assert.ElementsMatch(t, []string{ch1, ch2}, env.provider.channels, "channels are sent concurrently, in any order")
 	msg := env.provider.sent[0]
 	assert.Equal(t, "critical", msg.Severity)
 	assert.Equal(t, "monitor.down", msg.EventKind)
@@ -196,6 +196,9 @@ func TestDispatchSendsAndLogs(t *testing.T) {
 	assert.NotEmpty(t, msg.Title)
 	logs := env.logs()
 	require.Len(t, logs, 2)
+	if logs[0].Channel != ch1 {
+		logs[0], logs[1] = logs[1], logs[0]
+	}
 	assert.Equal(t, logRow{
 		Rule: rule, Channel: ch1, CreatedBy: env.user, ChannelKind: "fake", EventKind: "monitor.down",
 		ResourceID: "m1", ResourceName: "site m1", ResourceType: "monitor", Status: "sent",

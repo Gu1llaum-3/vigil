@@ -5,14 +5,24 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+	"sync/atomic"
 
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/mailer"
 )
 
+// MaxPendingEmails caps the sends abandoned at their deadline that may still be running.
+const MaxPendingEmails = 4
+
 // EmailProvider sends notifications via SMTP using the PocketBase mailer.
+//
+// PocketBase's SMTP client dials and talks with no deadline: a server that accepts the
+// connection then stalls would hold the caller forever. Send runs it in a goroutine and
+// returns at its context's deadline; that goroutine cannot be stopped, so at most
+// MaxPendingEmails may be left running, beyond which Send fails at once.
 type EmailProvider struct {
-	App core.App
+	App     core.App
+	pending atomic.Int32
 }
 
 func (p *EmailProvider) Kind() string { return "email" }
@@ -24,7 +34,7 @@ func (p *EmailProvider) ValidateConfig(raw map[string]any) error {
 	return err
 }
 
-func (p *EmailProvider) Send(_ context.Context, ch Channel, msg Message) (string, error) {
+func (p *EmailProvider) Send(ctx context.Context, ch Channel, msg Message) (string, error) {
 	to, err := requiredConfigString(ch.Config, "to")
 	if err != nil {
 		return "", err
@@ -61,12 +71,30 @@ func (p *EmailProvider) Send(_ context.Context, ch Channel, msg Message) (string
 		message.Bcc = parseEmailAddresses(bcc)
 	}
 
-	if err := p.App.NewMailClient().Send(message); err != nil {
+	if err := p.sendBounded(ctx, message); err != nil {
 		return "", fmt.Errorf("email send: %w", err)
 	}
 
 	preview := fmt.Sprintf("to=%s subject=%q", to, msg.Title)
 	return preview, nil
+}
+
+func (p *EmailProvider) sendBounded(ctx context.Context, message *mailer.Message) error {
+	if p.pending.Add(1) > MaxPendingEmails {
+		p.pending.Add(-1)
+		return fmt.Errorf("%d earlier sends are still stuck on the SMTP server (they end only when it answers or the hub restarts)", MaxPendingEmails)
+	}
+	done := make(chan error, 1)
+	go func() {
+		defer p.pending.Add(-1)
+		done <- p.App.NewMailClient().Send(message)
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func parseEmailAddresses(raw string) []mail.Address {

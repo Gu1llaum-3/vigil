@@ -570,14 +570,24 @@ All four route through `h.emitNotification(evt)`:
 ### Internal architecture
 
 ```
-Dispatcher.Dispatch(Event)        → non-blocking channel send (drops if buffer full)
-worker goroutine × 2              → Dispatcher.process(ctx, evt)
+Dispatcher.Dispatch(Event)        → non-blocking send to a 1024-slot queue (drops and counts if full)
+worker goroutine × 4              → Dispatcher.process(ctx, evt)
 process                           → load enabled rules from DB, match, route
-sendToChannel                     → load channel record, select provider, retry × 3 (1s, 4s, 16s)
+process / processRule             → the event's rules, and each rule's channels, in parallel (goDeliver: one goroutine each, panics recovered)
+sendToChannel                     → load channel record, circuit breaker, provider, retry × 3 (1s, 4s, 16s)
 saveLog (SaveNoValidate)          → notification_logs record
+reportDropped (every minute)      → one `failed` log "notification queue full: N events dropped"
 ```
 
 A rule applies when it is enabled, lists the event kind, passes its resource `filter` (`matchesFilter`, same semantics as a maintenance scope: no ids = every resource; otherwise only the listed `monitor_ids`, the listed `agent_ids` and the `container_image` events of those hosts — `notifications.ContainerHost`, shared with mutes and maintenance) and `min_severity`. The rules API refuses a filter with another key or a non-list value (`validateRuleFilter`), which would otherwise match everything. `throttle_seconds` then suppresses a repeat per (rule, resource, `throttleKind`) — host-metric events add the metric and tier — and logs it as `throttled`. A send is retried up to 3 times (`retryDelays` 1 s, 4 s, 16 s) within a 30 s budget for the whole delivery; the log is `sent`, or `failed` with the last error (or the budget/cancellation error and the last error). Disabled, missing and unknown-kind channels are skipped without a log.
+
+A slow or dead channel must not stall delivery:
+- the rules of an event, and the channels of each rule, are delivered concurrently;
+- a delivery that exhausts its 30 s budget counts as failed;
+- a channel whose last 3 deliveries failed is skipped for a minute, the provider not called; the first skip of each opening is logged (`failed`, "skipped: …"), the others are not, so an outage does not flood the history and the failure toasts. When the minute is over, one delivery probes the channel while the others stay skipped: a success closes the breaker, a failure reopens it (`breakerCheck`/`recordDelivery`). Editing a channel or a successful channel test closes it too (`ResetChannel`);
+- the email provider returns at its context's deadline: PocketBase's SMTP client has no deadline, so the send runs in a goroutine, of which at most `providers.MaxPendingEmails` (4) may be left stuck. Beyond, every email fails at once ("still stuck on the SMTP server") until those sends end — when the server answers or the hub restarts: an SMTP server that accepts connections and never answers needs a hub restart once fixed;
+- the channel test (`POST …/channels/{id}/test`) is bounded the same way (30 s);
+- events dropped on a full queue are counted and written once a minute to the delivery history (a `failed` row labelled "Notification queue" in the admin history, no toast), with an `slog.Error`.
 
 Rules still carry a `min_severity` field in storage, but the current frontend no longer exposes it because it was redundant with explicit event selection for the current event set. Rules saved from the UI are normalized to `info`.
 

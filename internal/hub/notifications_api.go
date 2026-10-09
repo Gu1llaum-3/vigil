@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -146,6 +147,7 @@ func (h *Hub) updateNotificationChannel(e *core.RequestEvent) error {
 	if err := h.Save(rec); err != nil {
 		return err
 	}
+	h.resetNotificationChannel(rec.Id) // a fixed configuration is tried at once
 	return e.JSON(http.StatusOK, channelRecordToResponse(rec))
 }
 
@@ -159,6 +161,14 @@ func (h *Hub) deleteNotificationChannel(e *core.RequestEvent) error {
 		return err
 	}
 	return e.JSON(http.StatusOK, map[string]bool{"ok": true})
+}
+
+const channelTestTimeout = 30 * time.Second
+
+func (h *Hub) resetNotificationChannel(id string) {
+	if h.notifier != nil {
+		h.notifier.ResetChannel(id)
+	}
 }
 
 func (h *Hub) testNotificationChannel(e *core.RequestEvent) error {
@@ -186,10 +196,15 @@ func (h *Hub) testNotificationChannel(e *core.RequestEvent) error {
 		ResourceName: "Vigil",
 	}
 
-	preview, sendErr := provider.Send(e.Request.Context(), ch, msg)
+	// Bounded like a delivery: an unresponsive server must not hold the request (or, for
+	// email, a pending-send slot) forever.
+	ctx, cancel := context.WithTimeout(e.Request.Context(), channelTestTimeout)
+	defer cancel()
+	preview, sendErr := provider.Send(ctx, ch, msg)
 	if sendErr != nil {
 		return e.JSON(http.StatusOK, map[string]any{"ok": false, "error": sendErr.Error()})
 	}
+	h.resetNotificationChannel(rec.Id) // it works again: stop skipping it
 	return e.JSON(http.StatusOK, map[string]any{"ok": true, "preview": preview})
 }
 
