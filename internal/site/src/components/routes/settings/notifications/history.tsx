@@ -281,13 +281,19 @@ const NotificationHistory = memo(({ rules, channels }: NotificationHistoryProps)
 									<TableRow key={log.id}>
 										<TableCell className="whitespace-nowrap">{formatSentAt(log.sent_at)}</TableCell>
 										<TableCell className="font-mono text-xs">{log.event_kind}</TableCell>
-										<TableCell>{ruleNames.get(log.rule) ?? log.rule.slice(0, 8)}</TableCell>
+										<TableCell>
+											{log.event_kind === "dispatch" ? (
+												<Trans>Notification queue</Trans>
+											) : (
+												(ruleNames.get(log.rule) ?? log.rule.slice(0, 8))
+											)}
+										</TableCell>
 										<TableCell>{channelNames.get(log.channel) ?? log.channel.slice(0, 8)}</TableCell>
 										<TableCell>
 											<StatusBadge status={log.status} />
 										</TableCell>
 										<TableCell className="text-xs text-muted-foreground">
-											{log.resource_type}:{log.resource_id}
+											{log.resource_type ? `${log.resource_type}:${log.resource_id}` : "—"}
 										</TableCell>
 										<TableCell>
 											<Button variant="ghost" size="sm" onClick={() => setSelected(log)}>

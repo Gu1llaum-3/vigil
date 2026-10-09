@@ -2181,6 +2181,10 @@ msgstr "Détails de la notification"
 msgid "Notification History Retention (days)"
 msgstr "Rétention de l'historique des notifications (jours)"
 
+#: src/components/routes/settings/notifications/history.tsx
+msgid "Notification queue"
+msgstr "File des notifications"
+
 #: src/components/app-sidebar.tsx
 #: src/components/command-palette.tsx
 #: src/components/navbar.tsx
