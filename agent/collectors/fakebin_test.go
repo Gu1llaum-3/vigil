@@ -38,3 +38,19 @@ func withoutCommand(t *testing.T) {
 	t.Helper()
 	t.Setenv("PATH", t.TempDir())
 }
+
+// fakeFailingCommand installs an executable named name that writes stderr to its standard
+// error and exits with exitCode, whatever its arguments.
+func fakeFailingCommand(t *testing.T, name, stderr string, exitCode int) {
+	t.Helper()
+	dir := fakeBinDir(t)
+	errPath := filepath.Join(t.TempDir(), "stderr")
+	require.NoError(t, os.WriteFile(errPath, []byte(stderr), 0o644))
+	script := fmt.Sprintf("#!/bin/sh\ncat %q >&2\nexit %d\n", errPath, exitCode)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755))
+}
+
+func writeScript(t *testing.T, dir, name, script string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(script), 0o755))
+}

@@ -51,7 +51,7 @@ func parseRepoFile(path string) ([]common.RepositoryInfo, error) {
 		secure := strings.HasPrefix(url, "https://")
 		repos = append(repos, common.RepositoryInfo{
 			Name:    current["name"],
-			URL:     url,
+			URL:     redactURLCredentials(url),
 			Enabled: enabled,
 			Secure:  secure,
 		})

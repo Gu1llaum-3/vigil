@@ -290,6 +290,8 @@ export default function HostDetailPage() {
 
 	const securityCount = host.packages?.security_count ?? 0
 	const outdatedCount = host.packages?.outdated_count ?? 0
+	// The agent could not query pending updates: the counts are unknown, not zero.
+	const updatesError = host.packages?.outdated_error
 	const rebootRequired = host.reboot?.required
 	const dockerCount = host.docker?.container_count ?? 0
 
@@ -362,12 +364,12 @@ export default function HostDetailPage() {
 				/>
 				<MetricCard
 					title={<Trans>Patch status</Trans>}
-					value={`${securityCount} sec / ${outdatedCount} upd`}
+					value={updatesError ? t`Unknown` : `${securityCount} sec / ${outdatedCount} upd`}
 					icon={<ShieldAlertIcon className="size-4" />}
 					tone={
 						securityCount > 0
 							? "border-red-500/40 bg-red-500/5"
-							: outdatedCount > 0
+							: outdatedCount > 0 || updatesError
 								? "border-amber-500/40 bg-amber-500/5"
 								: "border-emerald-500/30"
 					}
@@ -494,6 +496,19 @@ export default function HostDetailPage() {
 								{securityCount > 0 && (
 									<AttentionItem tone="danger" label={<Trans>{securityCount} security update(s)</Trans>} />
 								)}
+								{updatesError && (
+									<AttentionItem
+										tone="warning"
+										label={
+											<span>
+												<Trans>Pending updates could not be checked</Trans>
+												<span className="block break-all font-mono text-xs text-muted-foreground">
+													{updatesError}
+												</span>
+											</span>
+										}
+									/>
+								)}
 								{actionableAudits.length > 0 && (
 									<AttentionItem
 										tone="warning"
@@ -503,6 +518,7 @@ export default function HostDetailPage() {
 								{host.status === "connected" &&
 									!rebootRequired &&
 									securityCount === 0 &&
+									!updatesError &&
 									actionableAudits.length === 0 && (
 										<div className="flex items-center gap-2 text-emerald-500">
 											<CheckCircle2Icon className="size-4" />
@@ -739,7 +755,11 @@ export default function HostDetailPage() {
 										{(host.packages?.outdated ?? []).length === 0 ? (
 											<TableRow>
 												<TableCell colSpan={4} className="h-24 text-center text-sm text-muted-foreground">
-													<Trans>No outdated packages.</Trans>
+													{updatesError ? (
+														<Trans>Pending updates could not be checked</Trans>
+													) : (
+														<Trans>No outdated packages.</Trans>
+													)}
 												</TableCell>
 											</TableRow>
 										) : (

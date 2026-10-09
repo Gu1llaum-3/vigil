@@ -93,3 +93,23 @@ func TestRpmInstalledCountGraceful(t *testing.T) {
 func TestDnfLastUpgradeTimeGraceful(t *testing.T) {
 	_, _, _ = dnfLastUpgradeTime(context.Background())
 }
+
+// A failed query leaves the counts unknown, not zero: the snapshot says so.
+func TestCollectPackagesRedHatReportsQueryFailure(t *testing.T) {
+	fakeCommand(t, "dnf", "check-update --quiet", "empty.txt", 1)
+
+	info, err := collectPackagesRedHat(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, info.OutdatedError, "dnf pending updates query failed")
+	assert.Zero(t, info.OutdatedCount)
+
+	fakeDnf(t, "empty.txt", 0)
+	info, err = collectPackagesRedHat(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, info.OutdatedError)
+
+	withoutCommand(t)
+	info, err = collectPackagesRedHat(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "dnf not found", info.OutdatedError)
+}

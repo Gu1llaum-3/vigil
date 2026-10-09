@@ -328,6 +328,10 @@ func classifyPatchStatus(snapshot common.HostSnapshotResponse) string {
 	if snapshot.Reboot.Required {
 		return patchStatusRebootRequired
 	}
+	// The pending-updates query failed: zero counts mean "unknown", not "none".
+	if snapshot.Packages.OutdatedError != "" {
+		return patchStatusUnknown
+	}
 	if snapshot.Packages.SecurityCount > 0 {
 		return patchStatusSecurityUpdates
 	}

@@ -41,6 +41,8 @@ export interface PackageInfo {
 	last_upgrade_age_days: number
 	last_upgrade_known: boolean
 	outdated: OutdatedPackage[]
+	/** Set when the agent's pending-updates query failed: the counts are then unknown. */
+	outdated_error?: string
 }
 
 export interface RepositoryInfo {

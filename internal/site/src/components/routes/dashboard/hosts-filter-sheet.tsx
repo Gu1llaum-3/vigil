@@ -47,7 +47,7 @@ function hostMatchesCompliance(h: HostsOverviewRecord, flag: HostsCompliance): b
 	const lastUpgradeAge = h.packages?.last_upgrade_age_days ?? 0
 	const lastUpgradeKnown = h.packages?.last_upgrade_known ?? false
 	const isStale = outdated > 0 && lastUpgradeAge > 30
-	const isUnknown = outdated > 0 && !lastUpgradeKnown
+	const isUnknown = Boolean(h.packages?.outdated_error) || (outdated > 0 && !lastUpgradeKnown)
 	switch (flag) {
 		case "security":
 			return security > 0

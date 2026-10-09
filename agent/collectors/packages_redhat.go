@@ -18,7 +18,7 @@ func collectPackagesRedHat(ctx context.Context) (common.PackageInfo, error) {
 
 	outdated, err := dnfOutdatedPackages(ctx)
 	if err != nil {
-		logPendingUpdatesError("dnf", err)
+		info.OutdatedError = pendingUpdatesError(ctx, "dnf", err)
 	} else {
 		info.Outdated = outdated
 		info.OutdatedCount = len(outdated)
