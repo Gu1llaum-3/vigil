@@ -15,7 +15,7 @@ const (
 	// AppName is the technical slug used for binaries, services, and data paths.
 	AppName = "vigil"
 
-	HubBinary      = AppName
+	HubBinary = AppName
 	// HubServiceName is the hub's systemd unit / rc service name (install-hub.sh).
 	HubServiceName = AppName + "-hub"
 	AgentBinary    = AppName + "-agent"
