@@ -68,13 +68,13 @@ func (p *SlackProvider) Send(ctx context.Context, ch Channel, msg Message) (stri
 		return "", fmt.Errorf("slack: marshal payload: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	req, err := newRequest(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("slack: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := p.client.Do(req)
+	resp, err := doRequest(p.client, req)
 	if err != nil {
 		return "", fmt.Errorf("slack: request failed: %w", err)
 	}

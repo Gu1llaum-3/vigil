@@ -18,8 +18,10 @@ func NewNtfyProvider() *NtfyProvider {
 	return &NtfyProvider{client: newGuardedHTTPClient(10 * time.Second)}
 }
 
-func (p *NtfyProvider) Kind() string                  { return "ntfy" }
-func (p *NtfyProvider) SensitiveConfigKeys() []string { return []string{"token"} }
+func (p *NtfyProvider) Kind() string { return "ntfy" }
+
+// A public ntfy topic is protected by its name only: the topic URL is a credential.
+func (p *NtfyProvider) SensitiveConfigKeys() []string { return []string{"url", "token"} }
 
 func (p *NtfyProvider) ValidateConfig(raw map[string]any) error {
 	_, err := requiredConfigString(raw, "url")
@@ -42,7 +44,7 @@ func (p *NtfyProvider) Send(ctx context.Context, ch Channel, msg Message) (strin
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, topicURL, strings.NewReader(msg.Body))
+	req, err := newRequest(ctx, http.MethodPost, topicURL, strings.NewReader(msg.Body))
 	if err != nil {
 		return "", fmt.Errorf("ntfy: build request: %w", err)
 	}
@@ -54,7 +56,7 @@ func (p *NtfyProvider) Send(ctx context.Context, ch Channel, msg Message) (strin
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	resp, err := p.client.Do(req)
+	resp, err := doRequest(p.client, req)
 	if err != nil {
 		return "", fmt.Errorf("ntfy: request failed: %w", err)
 	}
@@ -63,5 +65,5 @@ func (p *NtfyProvider) Send(ctx context.Context, ch Channel, msg Message) (strin
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "", fmt.Errorf("ntfy: unexpected status %d", resp.StatusCode)
 	}
-	return fmt.Sprintf("%s → %d", topicURL, resp.StatusCode), nil
+	return fmt.Sprintf("ntfy → %d", resp.StatusCode), nil
 }

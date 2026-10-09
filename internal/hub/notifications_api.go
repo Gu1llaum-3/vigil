@@ -215,6 +215,9 @@ func (h *Hub) createNotificationRule(e *core.RequestEvent) error {
 	if input.Name == "" {
 		return e.BadRequestError("name is required", nil)
 	}
+	if err := validateRuleFilter(input.Filter); err != nil {
+		return e.BadRequestError(err.Error(), nil)
+	}
 
 	col, err := h.FindCachedCollectionByNameOrId("notification_rules")
 	if err != nil {
@@ -240,6 +243,9 @@ func (h *Hub) updateNotificationRule(e *core.RequestEvent) error {
 	var input notificationRuleInput
 	if err := e.BindBody(&input); err != nil {
 		return e.BadRequestError("Invalid request body", err)
+	}
+	if err := validateRuleFilter(input.Filter); err != nil {
+		return e.BadRequestError(err.Error(), nil)
 	}
 
 	applyRuleFields(rec, &input)
@@ -424,6 +430,26 @@ func validateChannelInput(input *notificationChannelInput) error {
 	if input.Config != nil {
 		if provider, ok := providers.Get(input.Kind); ok {
 			return provider.ValidateConfig(input.Config)
+		}
+	}
+	return nil
+}
+
+// validateRuleFilter accepts {monitor_ids: [ids], agent_ids: [ids]} (either optional): a
+// misspelled key or a non-list value would otherwise read as "no filter" and match everything.
+func validateRuleFilter(filter map[string]any) error {
+	for key, value := range filter {
+		if key != "monitor_ids" && key != "agent_ids" {
+			return fmt.Errorf("unknown filter key %q (use monitor_ids, agent_ids)", key)
+		}
+		list, ok := value.([]any)
+		if !ok {
+			return fmt.Errorf("filter %s must be a list of ids", key)
+		}
+		for _, id := range list {
+			if s, ok := id.(string); !ok || s == "" {
+				return fmt.Errorf("filter %s must be a list of ids", key)
+			}
 		}
 	}
 	return nil

@@ -23,7 +23,7 @@ const (
 type ResourceRef struct {
 	ID   string
 	Name string
-	Type string // "monitor" | "agent"
+	Type string // "monitor" | "agent" | "container_image" (Details["agent_id"] is its host)
 }
 
 // Event carries all information about a state change that should trigger notifications.

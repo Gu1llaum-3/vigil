@@ -2,7 +2,6 @@ package hub
 
 import (
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/hub/notifications"
@@ -77,11 +76,7 @@ func (h *Hub) containerImageMuted(evt notifications.Event, now time.Time) bool {
 // the event Details, falling back to the head of the "<agentID>|<containerID>" resource id.
 // Shared by mute and maintenance suppression so they can't drift on the id format.
 func parentAgentID(evt notifications.Event) string {
-	if id, _ := evt.Details["agent_id"].(string); id != "" {
-		return id
-	}
-	id, _, _ := strings.Cut(evt.Resource.ID, "|")
-	return id
+	return notifications.ContainerHost(evt)
 }
 
 // muteActive reports whether an active mute exists for the given resource. A mute is

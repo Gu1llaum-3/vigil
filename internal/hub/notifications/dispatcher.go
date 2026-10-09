@@ -2,7 +2,9 @@ package notifications
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,7 +18,10 @@ const (
 	maxRetries  = 3
 )
 
-var retryDelays = []time.Duration{time.Second, 4 * time.Second, 16 * time.Second}
+// sendTimeout bounds a delivery with all its retries.
+const sendTimeout = 30 * time.Second
+
+var defaultRetryDelays = []time.Duration{time.Second, 4 * time.Second, 16 * time.Second}
 
 // Dispatcher processes notification events and routes them to configured channels.
 type Dispatcher struct {
@@ -25,6 +30,7 @@ type Dispatcher struct {
 	throttleCache map[string]time.Time
 	mu            sync.Mutex
 	providerMap   map[string]providers.Provider
+	retryDelays   []time.Duration // before retries 1..maxRetries
 }
 
 // New creates a Dispatcher and registers the email and webhook providers.
@@ -33,6 +39,7 @@ func New(app core.App) *Dispatcher {
 		app:           app,
 		events:        make(chan Event, bufferSize),
 		throttleCache: make(map[string]time.Time),
+		retryDelays:   defaultRetryDelays,
 	}
 	d.providerMap = map[string]providers.Provider{
 		"email":   &providers.EmailProvider{App: app},
@@ -175,7 +182,7 @@ func (d *Dispatcher) sendToChannel(ctx context.Context, channelID, ruleID, creat
 
 	ch := providers.Channel{ID: channelID, Kind: kind, Config: config}
 
-	sendCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	sendCtx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
 
 	var lastErr error
@@ -184,9 +191,9 @@ func (d *Dispatcher) sendToChannel(ctx context.Context, channelID, ruleID, creat
 		if attempt > 0 {
 			select {
 			case <-sendCtx.Done():
-				d.saveLog(ruleID, createdBy, channelID, kind, string(evt.Kind), evt.Resource.ID, evt.Resource.Name, evt.Resource.Type, "failed", "context canceled", preview)
+				d.saveLog(ruleID, createdBy, channelID, kind, string(evt.Kind), evt.Resource.ID, evt.Resource.Name, evt.Resource.Type, "failed", fmt.Sprintf("%v (last error: %v)", sendCtx.Err(), lastErr), preview)
 				return
-			case <-time.After(retryDelays[attempt-1]):
+			case <-time.After(d.retryDelays[attempt-1]):
 			}
 		}
 		preview, lastErr = provider.Send(sendCtx, ch, msg)
@@ -303,21 +310,34 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
+// matchesFilter applies a rule's resource filter, with the semantics of a maintenance
+// window's scope: no ids at all = every resource; otherwise only the listed monitors, the
+// listed hosts and the container images of those hosts. A resource type the filter cannot
+// name is not covered.
 func matchesFilter(filter map[string][]string, evt Event) bool {
-	if len(filter) == 0 {
+	monitors, agents := filter["monitor_ids"], filter["agent_ids"]
+	if len(monitors) == 0 && len(agents) == 0 {
 		return true
 	}
-	var ids []string
 	switch evt.Resource.Type {
 	case "monitor":
-		ids = filter["monitor_ids"]
+		return containsString(monitors, evt.Resource.ID)
 	case "agent":
-		ids = filter["agent_ids"]
+		return containsString(agents, evt.Resource.ID)
+	case "container_image":
+		return containsString(agents, ContainerHost(evt))
 	}
-	if len(ids) == 0 {
-		return true
+	return false
+}
+
+// ContainerHost returns the host of a container_image event: Details["agent_id"], else the
+// "<agent>|<container>" head of its resource id.
+func ContainerHost(evt Event) string {
+	if id, _ := evt.Details["agent_id"].(string); id != "" {
+		return id
 	}
-	return containsString(ids, evt.Resource.ID)
+	id, _, _ := strings.Cut(evt.Resource.ID, "|")
+	return id
 }
 
 func severityRank(s string) int {
