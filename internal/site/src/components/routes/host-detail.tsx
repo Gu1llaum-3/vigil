@@ -502,9 +502,7 @@ export default function HostDetailPage() {
 										label={
 											<span>
 												<Trans>Pending updates could not be checked</Trans>
-												<span className="block break-all font-mono text-xs text-muted-foreground">
-													{updatesError}
-												</span>
+												<span className="block break-all font-mono text-xs text-muted-foreground">{updatesError}</span>
 											</span>
 										}
 									/>
