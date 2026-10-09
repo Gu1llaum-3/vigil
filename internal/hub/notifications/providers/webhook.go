@@ -24,7 +24,8 @@ func NewWebhookProvider() *WebhookProvider {
 
 func (p *WebhookProvider) Kind() string { return "webhook" }
 
-func (p *WebhookProvider) SensitiveConfigKeys() []string { return []string{"headers"} }
+// The URL is a credential for most webhook receivers (Discord, n8n, Zapier...).
+func (p *WebhookProvider) SensitiveConfigKeys() []string { return []string{"url", "headers"} }
 
 func (p *WebhookProvider) ValidateConfig(raw map[string]any) error {
 	_, err := requiredConfigString(raw, "url")
@@ -60,7 +61,7 @@ func (p *WebhookProvider) Send(ctx context.Context, ch Channel, msg Message) (st
 		return "", fmt.Errorf("webhook: marshal payload: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(body))
+	req, err := newRequest(ctx, method, url, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("webhook: build request: %w", err)
 	}
@@ -76,7 +77,7 @@ func (p *WebhookProvider) Send(ctx context.Context, ch Channel, msg Message) (st
 		}
 	}
 
-	resp, err := p.client.Do(req)
+	resp, err := doRequest(p.client, req)
 	if err != nil {
 		return "", fmt.Errorf("webhook: request failed: %w", err)
 	}
@@ -86,6 +87,5 @@ func (p *WebhookProvider) Send(ctx context.Context, ch Channel, msg Message) (st
 		return "", fmt.Errorf("webhook: unexpected status %d", resp.StatusCode)
 	}
 
-	preview := fmt.Sprintf("%s %s → %d", method, url, resp.StatusCode)
-	return preview, nil
+	return fmt.Sprintf("%s → %d", method, resp.StatusCode), nil
 }

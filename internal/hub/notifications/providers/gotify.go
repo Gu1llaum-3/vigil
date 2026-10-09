@@ -50,7 +50,8 @@ func (p *GotifyProvider) Send(ctx context.Context, ch Channel, msg Message) (str
 		}
 	}
 
-	endpoint := strings.TrimSuffix(baseURL, "/") + "/message?token=" + token
+	// The token goes in a header, not the query string, so it stays out of URLs (and logs).
+	endpoint := strings.TrimSuffix(baseURL, "/") + "/message"
 
 	payload := map[string]any{
 		"title":    msg.Title,
@@ -62,13 +63,14 @@ func (p *GotifyProvider) Send(ctx context.Context, ch Channel, msg Message) (str
 		return "", fmt.Errorf("gotify: marshal payload: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	req, err := newRequest(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("gotify: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Gotify-Key", token)
 
-	resp, err := p.client.Do(req)
+	resp, err := doRequest(p.client, req)
 	if err != nil {
 		return "", fmt.Errorf("gotify: request failed: %w", err)
 	}

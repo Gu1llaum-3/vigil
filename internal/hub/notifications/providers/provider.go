@@ -2,8 +2,11 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/Gu1llaum-3/vigil/internal/netguard"
@@ -15,8 +18,37 @@ import (
 // Private/LAN ranges are intentionally allowed — internal Slack/Mattermost/webhook
 // endpoints are a primary use case — unless MONITOR_ALLOW_PRIVATE_TARGETS disabled the
 // guard entirely.
+//
+// Redirects are not followed: Go forwards custom headers (a webhook's, Gotify's token) to a
+// redirect target on another host, and a delivery endpoint has no reason to redirect. The
+// 3xx is then reported as an unexpected status.
 func newGuardedHTTPClient(timeout time.Duration) *http.Client {
-	return netguard.NewGuardedClient(timeout, false)
+	client := netguard.NewGuardedClient(timeout, false)
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return client
+}
+
+// newRequest and doRequest build and send a provider request without the URL in their
+// errors: the URL may be the credential (a Slack/Teams/GChat/webhook URL, an ntfy topic),
+// and errors are stored in notification_logs and returned by the channel test.
+func newRequest(ctx context.Context, method, rawURL string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, rawURL, body)
+	return req, withoutURL(err)
+}
+
+func doRequest(client *http.Client, req *http.Request) (*http.Response, error) {
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, withoutURL(err)
+	}
+	return resp, nil
+}
+
+func withoutURL(err error) error {
+	if urlErr := (*url.Error)(nil); errors.As(err, &urlErr) {
+		return fmt.Errorf("%s %s", urlErr.Op, urlErr.Err)
+	}
+	return err
 }
 
 // Channel holds the persisted configuration for a notification channel.

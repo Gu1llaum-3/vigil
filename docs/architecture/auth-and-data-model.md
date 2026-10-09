@@ -182,7 +182,7 @@ Per-host policy for which filesystems the disk bar + disk alert consider. One ro
 
 - created by migration `5_create_notifications.go`
 - one record per notification routing rule
-- fields: `name`, `enabled` (bool), `events` (json array of event kinds), `filter` (json — optional resource filter), `channels` (multi-relation→notification_channels, corrected by migration `7_notification_rule_channels_multi.go` so more than one channel can be stored reliably), `min_severity` (select: `info`/`warning`/`critical`, currently kept for backend compatibility but no longer exposed in the UI), `throttle_seconds` (number, default 0 = no throttle), `created_by` (relation→users)
+- fields: `name`, `enabled` (bool), `events` (json array of event kinds), `filter` (json — optional resource filter `{monitor_ids, agent_ids}`, same semantics as a maintenance `scope`: no ids = every resource, otherwise only the listed monitors, the listed hosts and those hosts' container images; the API refuses any other key or a non-list value), `channels` (multi-relation→notification_channels, corrected by migration `7_notification_rule_channels_multi.go` so more than one channel can be stored reliably), `min_severity` (select: `info`/`warning`/`critical`, currently kept for backend compatibility but no longer exposed in the UI), `throttle_seconds` (number, default 0 = no throttle), `created_by` (relation→users)
 - list/view rules: authenticated users; create/update/delete: admin only
 - rules are matched by the dispatcher against each event's kind and severity; with the current event model the UI normalizes `min_severity` to `info` and relies on explicit event selection instead; `throttle_seconds` suppresses repeat notifications for the same rule+resource+event kind
 

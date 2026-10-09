@@ -561,11 +561,11 @@ The page is split into two tabs:
 - Kind is locked after creation (you cannot change a channel's kind on edit; delete and re-create instead)
 - Config fields per kind:
   - `email`: to, cc, bcc
-  - `webhook`: url, method, headers (JSON textarea)
+  - `webhook`: url (redacted), method, headers (JSON textarea, redacted)
   - `slack`: url (redacted), channel, username
   - `teams` / `gchat`: url only (redacted)
-  - `ntfy`: url, token (redacted), priority
-  - `gotify`: url, token (redacted), priority
+  - `ntfy`: url (redacted: a public topic is protected by its name only), token (redacted), priority
+  - `gotify`: url, token (redacted; sent in the `X-Gotify-Key` header, never in the URL), priority
   - `in-app`: no external config; matching notifications are shown as local UI toasts for the rule owner
 - Sensitive fields that come back as `**REDACTED**` from the API are shown as-is with a hint; sending them back unchanged preserves the stored secret
 

@@ -182,7 +182,7 @@ function NtfyConfigFields({
 	const { t } = useLingui()
 	return (
 		<>
-			<UrlConfigField config={config} onChange={onChange} label={t`Topic URL`} />
+			<UrlConfigField config={config} onChange={onChange} label={t`Topic URL`} sensitiveNote />
 			<div className="space-y-1">
 				<Label>{t`Token (optional)`}</Label>
 				<Input

@@ -577,6 +577,8 @@ sendToChannel                     → load channel record, select provider, retr
 saveLog (SaveNoValidate)          → notification_logs record
 ```
 
+A rule applies when it is enabled, lists the event kind, passes its resource `filter` (`matchesFilter`, same semantics as a maintenance scope: no ids = every resource; otherwise only the listed `monitor_ids`, the listed `agent_ids` and the `container_image` events of those hosts — `notifications.ContainerHost`, shared with mutes and maintenance) and `min_severity`. The rules API refuses a filter with another key or a non-list value (`validateRuleFilter`), which would otherwise match everything. `throttle_seconds` then suppresses a repeat per (rule, resource, `throttleKind`) — host-metric events add the metric and tier — and logs it as `throttled`. A send is retried up to 3 times (`retryDelays` 1 s, 4 s, 16 s) within a 30 s budget for the whole delivery; the log is `sent`, or `failed` with the last error (or the budget/cancellation error and the last error). Disabled, missing and unknown-kind channels are skipped without a log.
+
 Rules still carry a `min_severity` field in storage, but the current frontend no longer exposes it because it was redundant with explicit event selection for the current event set. Rules saved from the UI are normalized to `info`.
 
 `saveLog` stores the full `payload_preview` string so the admin history UI can inspect the delivery preview without backend truncation.
@@ -596,6 +598,10 @@ It also stores `created_by` and `channel_kind` on each log entry so the frontend
 | `in-app` | `providers/in_app.go` | none |
 
 Providers are registered in `Dispatcher.New()` via `providers.Register()`. The `in-app` provider is virtual: it doesn't call an external service, it only writes a successful `notification_logs` entry that the frontend can render as a toast.
+
+The URL of a Slack/Teams/GChat/webhook channel and an ntfy topic is a credential: it is a sensitive key (redacted by the API), never in a `payload_preview`, and HTTP providers build and send requests through `newRequest`/`doRequest`, which drop the URL from errors (stored in `notification_logs.error`, returned by the channel test). Provider clients do not follow redirects (Go would forward custom headers — a webhook's, Gotify's token — to another host); a 3xx is an unexpected status. Gotify sends its token in the `X-Gotify-Key` header, not the query string.
+
+Tests: `internal/hub/notifications/dispatch_test.go` runs `process` against a real (migrated once, copied per test) database with a fake provider — rule selection, filters, throttle, retries, logs, redaction, email through the `OnMailerSend` hook; `providers/providers_test.go` checks each HTTP provider's request (method, headers, body), error and redirect handling against `httptest` servers (`MONITOR_ALLOW_PRIVATE_TARGETS=true` lets the SSRF guard reach loopback); `internal/hub/notification_channels_redaction_test.go` checks the API never returns a channel secret and refuses malformed rule filters.
 
 ### API routes (admin only)
 
