@@ -49,8 +49,10 @@ func collectPackagesDebian(ctx context.Context) (common.PackageInfo, error) {
 }
 
 func aptOutdatedPackages(ctx context.Context) ([]common.OutdatedPackage, error) {
-	// apt-get -s upgrade lists packages that would be upgraded
-	cmd := exec.CommandContext(ctx, "apt-get", "-s", "upgrade")
+	// dist-upgrade, not upgrade: upgrade keeps back the upgrades that need a new package
+	// (Ubuntu's kernel meta-packages, ...), which are pending all the same. Its simulation
+	// also lists those new packages: only upgrades (with an installed version) are counted.
+	cmd := exec.CommandContext(ctx, "apt-get", "-s", "dist-upgrade")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -59,7 +61,7 @@ func aptOutdatedPackages(ctx context.Context) ([]common.OutdatedPackage, error) 
 	var packages []common.OutdatedPackage
 	scanner := bufio.NewScanner(strings.NewReader(string(out)))
 	for scanner.Scan() {
-		if pkg, ok := parseAptInstLine(scanner.Text()); ok {
+		if pkg, ok := parseAptInstLine(scanner.Text()); ok && pkg.InstalledVersion != "" {
 			packages = append(packages, pkg)
 		}
 	}

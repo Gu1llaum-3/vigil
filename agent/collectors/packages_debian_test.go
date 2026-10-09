@@ -38,8 +38,8 @@ End-Date: 2024-01-15  10:31:00
 }
 
 func TestAptOutdatedPackagesDebian(t *testing.T) {
-	// Real `apt-get -s upgrade` output of a Debian 12.0 image with pending updates.
-	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-debian12.txt", 0)
+	// Real `apt-get -s upgrade` output (identical to dist-upgrade when nothing is kept back) of a Debian 12.0 image with pending updates.
+	fakeCommand(t, "apt-get", "-s dist-upgrade", "apt-get-upgrade-debian12.txt", 0)
 
 	pkgs, err := aptOutdatedPackages(context.Background())
 	require.NoError(t, err)
@@ -74,8 +74,8 @@ func TestAptOutdatedPackagesDebian(t *testing.T) {
 }
 
 func TestAptOutdatedPackagesUbuntu(t *testing.T) {
-	// Real `apt-get -s upgrade` output of an ubuntu:jammy-20230126 image.
-	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-ubuntu2204.txt", 0)
+	// Real `apt-get -s upgrade` output (identical to dist-upgrade when nothing is kept back) of an ubuntu:jammy-20230126 image.
+	fakeCommand(t, "apt-get", "-s dist-upgrade", "apt-get-upgrade-ubuntu2204.txt", 0)
 
 	pkgs, err := aptOutdatedPackages(context.Background())
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestAptOutdatedPackagesUbuntu(t *testing.T) {
 
 func TestAptOutdatedPackagesOrigins(t *testing.T) {
 	// Synthetic lines covering origin edge cases not present in the captured outputs.
-	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-origins-synthetic.txt", 0)
+	fakeCommand(t, "apt-get", "-s dist-upgrade", "apt-get-upgrade-origins-synthetic.txt", 0)
 
 	pkgs, err := aptOutdatedPackages(context.Background())
 	require.NoError(t, err)
@@ -112,13 +112,15 @@ func TestAptOutdatedPackagesOrigins(t *testing.T) {
 		// A third-party suite that merely contains "-security" is not a security archive.
 		{Name: "vendor-tool", InstalledVersion: "4.0", CandidateVersion: "4.1"},
 		{Name: "plain-pkg", InstalledVersion: "5.0", CandidateVersion: "5.1"},
-		// A newly installed package has no installed version.
-		{Name: "new-pkg", CandidateVersion: "6.0-1"},
+		// A newly installed package (no installed version) is not a pending update.
 	}, pkgs)
+	pkg, ok := parseAptInstLine("Inst new-pkg (6.0-1 Debian:12/stable [amd64])")
+	require.True(t, ok, "the line still parses")
+	assert.Empty(t, pkg.InstalledVersion)
 }
 
 func TestAptOutdatedPackagesUpToDate(t *testing.T) {
-	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-none.txt", 0)
+	fakeCommand(t, "apt-get", "-s dist-upgrade", "apt-get-upgrade-none.txt", 0)
 
 	pkgs, err := aptOutdatedPackages(context.Background())
 	require.NoError(t, err)
@@ -127,7 +129,7 @@ func TestAptOutdatedPackagesUpToDate(t *testing.T) {
 
 func TestAptOutdatedPackagesFailure(t *testing.T) {
 	// apt-get exits 100 on errors such as a locked or broken package database.
-	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-none.txt", 100)
+	fakeCommand(t, "apt-get", "-s dist-upgrade", "apt-get-upgrade-none.txt", 100)
 
 	_, err := aptOutdatedPackages(context.Background())
 	assert.Error(t, err)
@@ -150,7 +152,7 @@ func TestDpkgInstalledCount(t *testing.T) {
 
 // A failed query leaves the counts unknown, not zero: the snapshot says so.
 func TestCollectPackagesDebianReportsQueryFailure(t *testing.T) {
-	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-none.txt", 100)
+	fakeCommand(t, "apt-get", "-s dist-upgrade", "apt-get-upgrade-none.txt", 100)
 
 	info, err := collectPackagesDebian(context.Background())
 	require.NoError(t, err)
@@ -162,8 +164,25 @@ func TestCollectPackagesDebianReportsQueryFailure(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "apt not found", info.OutdatedError)
 
-	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-none.txt", 0)
+	fakeCommand(t, "apt-get", "-s dist-upgrade", "apt-get-upgrade-none.txt", 0)
 	info, err = collectPackagesDebian(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, info.OutdatedError, "an answered query has no error")
+}
+
+// dist-upgrade lists the upgrades `upgrade` keeps back (a kernel meta-package needing a new
+// package): they are pending. The new packages it would install are not.
+func TestAptOutdatedPackagesKeptBack(t *testing.T) {
+	fakeCommand(t, "apt-get", "-s dist-upgrade", "apt-get-dist-upgrade-kept-back-synthetic.txt", 0)
+
+	pkgs, err := aptOutdatedPackages(context.Background())
+	require.NoError(t, err)
+	names := []string{}
+	for _, p := range pkgs {
+		names = append(names, p.Name)
+	}
+	assert.Equal(t, []string{"linux-headers-generic", "linux-generic", "linux-image-generic", "curl"}, names)
+	assert.True(t, pkgs[1].IsSecurity)
+	assert.Equal(t, "5.15.0.130.128", pkgs[1].InstalledVersion)
+	assert.False(t, pkgs[3].IsSecurity)
 }

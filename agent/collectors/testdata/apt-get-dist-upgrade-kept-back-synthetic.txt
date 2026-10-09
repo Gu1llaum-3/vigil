@@ -1,0 +1,20 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+Calculating upgrade...
+The following NEW packages will be installed:
+  linux-headers-5.15.0-131 linux-headers-5.15.0-131-generic
+  linux-image-5.15.0-131-generic linux-modules-5.15.0-131-generic
+The following packages will be upgraded:
+  curl linux-generic linux-headers-generic linux-image-generic
+4 upgraded, 4 newly installed, 0 to remove and 0 not upgraded.
+Inst linux-headers-5.15.0-131 (5.15.0-131.141 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [all])
+Inst linux-headers-5.15.0-131-generic (5.15.0-131.141 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst linux-headers-generic [5.15.0.130.128] (5.15.0.131.129 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst linux-modules-5.15.0-131-generic (5.15.0-131.141 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst linux-image-5.15.0-131-generic (5.15.0-131.141 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst linux-generic [5.15.0.130.128] (5.15.0.131.129 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64]) []
+Inst linux-image-generic [5.15.0.130.128] (5.15.0.131.129 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst curl [7.81.0-1ubuntu1.18] (7.81.0-1ubuntu1.20 Ubuntu:22.04/jammy-updates [amd64])
+Conf linux-headers-5.15.0-131 (5.15.0-131.141 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [all])
+Conf curl (7.81.0-1ubuntu1.20 Ubuntu:22.04/jammy-updates [amd64])

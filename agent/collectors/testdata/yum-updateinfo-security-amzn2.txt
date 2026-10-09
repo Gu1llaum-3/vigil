@@ -1,0 +1,5 @@
+ALAS2-2026-3953 important/Sec. curl-8.3.0-1.amzn2.0.13.aarch64
+ALAS2-2026-3125 important/Sec. gnupg2-2.0.22-5.amzn2.0.6.aarch64
+ALAS2-2026-3798 medium/Sec.    krb5-libs-1.15.1-55.amzn2.2.10.aarch64
+ALAS2-2026-3953 important/Sec. libcurl-8.3.0-1.amzn2.0.13.aarch64
+ALAS2-2026-3919 important/Sec. openssl-libs-1:1.0.2k-24.amzn2.0.22.aarch64

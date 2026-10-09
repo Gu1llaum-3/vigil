@@ -1,0 +1,9 @@
+
+NetworkManager-dispatcher-routing-rules-with-a-very-long-name.noarch
+                                  1:1.18.8-1.amzn2.0.1                amzn2-core
+curl.aarch64                      8.3.0-1.amzn2.0.13                  amzn2-core
+a-package-with-a-very-long-name-and-a-long-version-both.noarch
+                                  1.0.0-1.amzn2.0.1.with.a.long.release
+                                                                      local
+long-version-only.noarch          2.0.0-1.amzn2.0.1.with.a.long.release.tag
+                                                                      local

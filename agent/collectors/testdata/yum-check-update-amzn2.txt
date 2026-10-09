@@ -1,0 +1,12 @@
+
+ca-certificates.noarch             2025.2.76-1.amzn2.0.2              amzn2-core
+curl.aarch64                       8.3.0-1.amzn2.0.13                 amzn2-core
+gnupg2.aarch64                     2.0.22-5.amzn2.0.6                 amzn2-core
+krb5-libs.aarch64                  1.15.1-55.amzn2.2.10               amzn2-core
+libcurl.aarch64                    8.3.0-1.amzn2.0.13                 amzn2-core
+openssl-libs.aarch64               1:1.0.2k-24.amzn2.0.22             amzn2-core
+python2-rpm.aarch64                4.11.3-48.amzn2.0.5                amzn2-core
+rpm.aarch64                        4.11.3-48.amzn2.0.5                amzn2-core
+rpm-build-libs.aarch64             4.11.3-48.amzn2.0.5                amzn2-core
+rpm-libs.aarch64                   4.11.3-48.amzn2.0.5                amzn2-core
+system-release.aarch64             1:2-18.amzn2                       amzn2-core
