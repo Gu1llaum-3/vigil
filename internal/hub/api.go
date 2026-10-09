@@ -12,23 +12,14 @@ import (
 
 	app "github.com/Gu1llaum-3/vigil"
 	"github.com/Gu1llaum-3/vigil/internal/common"
-	"github.com/Gu1llaum-3/vigil/internal/ghupdate"
 	"github.com/Gu1llaum-3/vigil/internal/hub/expirymap"
 	"github.com/Gu1llaum-3/vigil/internal/hub/utils"
 	"github.com/Gu1llaum-3/vigil/internal/hub/ws"
-	"github.com/blang/semver"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/security"
 )
-
-// UpdateInfo holds information about the latest update check.
-type UpdateInfo struct {
-	lastCheck time.Time
-	Version   string `json:"v"`
-	Url       string `json:"url"`
-}
 
 // Middleware to allow only admin role users.
 var requireAdminRole = customAuthMiddleware(func(e *core.RequestEvent) bool {
@@ -201,8 +192,7 @@ func (h *Hub) registerApiRoutes(se *core.ServeEvent) error {
 	apiAuth.GET("/info", h.getInfo)
 	// check for updates
 	if optIn, _ := utils.GetEnv("CHECK_UPDATES"); optIn == "true" {
-		var updateInfo UpdateInfo
-		apiAuth.GET("/update", updateInfo.getUpdate)
+		apiAuth.GET("/update", newHubUpdateChecker().getUpdate)
 	}
 	// get or manage agent enrollment tokens
 	apiAuth.GET("/agent-enrollment-token", h.getAgentEnrollmentToken).BindFunc(excludeReadOnlyRole, rejectReadOnlyApiKey)
@@ -320,31 +310,6 @@ func (h *Hub) getInfo(e *core.RequestEvent) error {
 	}
 	if optIn, _ := utils.GetEnv("CHECK_UPDATES"); optIn == "true" {
 		info.CheckUpdate = true
-	}
-	return e.JSON(http.StatusOK, info)
-}
-
-// getUpdate checks for the latest release on GitHub and returns update info if a newer version is available.
-func (info *UpdateInfo) getUpdate(e *core.RequestEvent) error {
-	if time.Since(info.lastCheck) < 6*time.Hour {
-		return e.JSON(http.StatusOK, info)
-	}
-	info.lastCheck = time.Now()
-	latestRelease, err := ghupdate.FetchLatestRelease(context.Background(), http.DefaultClient, "")
-	if err != nil {
-		return err
-	}
-	currentVersion, err := semver.Parse(strings.TrimPrefix(app.Version, "v"))
-	if err != nil {
-		return err
-	}
-	latestVersion, err := semver.Parse(strings.TrimPrefix(latestRelease.Tag, "v"))
-	if err != nil {
-		return err
-	}
-	if latestVersion.GT(currentVersion) {
-		info.Version = strings.TrimPrefix(latestRelease.Tag, "v")
-		info.Url = latestRelease.Url
 	}
 	return e.JSON(http.StatusOK, info)
 }

@@ -300,6 +300,8 @@ Independently of how the binary was replaced, `main` calls `Hub.BackupBeforeMigr
 
 This is operational behavior, but backend maintainers may still need to understand it when packaging or deployment changes are involved.
 
+With `CHECK_UPDATES=true`, `GET /api/app/update` reports the latest stable release when it is newer than the running hub (`updateChecker`, `internal/hub/update_check.go`): one shared, mutex-guarded cache (6 h after a success) and a 10 s timeout; the fetch is detached from the calling request (`context.WithoutCancel`) so a client going away does not fail it for the others. A failed check is logged, serves the last successful answer (502 when there is none) and is retried after 5 minutes rather than on every request. The UI does not call this endpoint yet (`/api/app/info` exposes `cu` but nothing reads it).
+
 ## Monitor Scheduler
 
 The monitor scheduler is the hub-side engine that drives uptime monitoring checks. It has no agent dependency — all checks are performed directly from the hub process.
