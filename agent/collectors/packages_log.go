@@ -33,7 +33,7 @@ func pendingUpdatesError(ctx context.Context, tool string, err error) string {
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
 		if stderr := strings.TrimSpace(strings.ToValidUTF8(string(exitErr.Stderr), "�")); stderr != "" {
-			attrs = append(attrs, "stderr", tail(stderr, 500))
+			attrs = append(attrs, "stderr", redactURLCredentials(tail(stderr, 500)))
 			// The cause is usually at the end of apt/dnf's output.
 			msg += ": " + tail(stderr, 300)
 		}

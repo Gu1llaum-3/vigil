@@ -1,0 +1,5 @@
+Loaded plugins: ovl, priorities
+ID     | Command line             | Date and time    | Action(s)      | Altered
+-------------------------------------------------------------------------------
+     1 | downgrade -y -q libcurl  | 2026-10-09 08:56 | Downgrade      |   11   
+history list
