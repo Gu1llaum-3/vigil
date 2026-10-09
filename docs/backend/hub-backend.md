@@ -47,6 +47,7 @@ If you are adding backend behavior that needs app-wide state or helper methods, 
 - custom API routes
 - connection and lifecycle hooks
 - the boot-time agent status reconciler (`startAgentStatusReconciler` in `agent_connect.go`: agents still `connected`, not seen since boot and without a live connection 60s after start are marked offline)
+- the background goroutines (tickers, monitor scheduler, notification dispatcher, heartbeat), started with `goBackground` so `OnTerminate` waits for them (`stopBackground`) before the database closes; scheduled jobs run inside `runBackground`
 
 Read it before changing initialization behavior because it is the coordination point for the hub runtime.
 

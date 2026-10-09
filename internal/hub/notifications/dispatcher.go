@@ -273,6 +273,9 @@ func (d *Dispatcher) sendToChannel(ctx context.Context, channelID, ruleID, creat
 		if attempt > 0 {
 			select {
 			case <-sendCtx.Done():
+				if ctx.Err() != nil {
+					return // the hub is stopping: not the channel's failure
+				}
 				d.recordDelivery(channelID, false)
 				errMsg := sendCtx.Err().Error()
 				if lastErr != nil && !errors.Is(lastErr, sendCtx.Err()) {
@@ -292,6 +295,9 @@ func (d *Dispatcher) sendToChannel(ctx context.Context, channelID, ruleID, creat
 		slog.Warn("notifications: send attempt failed", "attempt", attempt+1, "channel", channelID, "err", lastErr)
 	}
 
+	if ctx.Err() != nil {
+		return // the hub is stopping: not the channel's failure
+	}
 	d.recordDelivery(channelID, false)
 	d.saveLog(ruleID, createdBy, channelID, kind, string(evt.Kind), evt.Resource.ID, evt.Resource.Name, evt.Resource.Type, "failed", lastErr.Error(), preview)
 }

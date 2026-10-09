@@ -43,6 +43,7 @@ func createTestHub(t testing.TB) (*Hub, *pbtests.TestApp, error) {
 func cleanupTestHub(hub *Hub, testApp *pbtests.TestApp) {
 	if hub != nil {
 		hub.stopAgentConnections()
+		hub.stopBackground(10 * time.Second)
 	}
 	if testApp != nil {
 		testApp.Cleanup()

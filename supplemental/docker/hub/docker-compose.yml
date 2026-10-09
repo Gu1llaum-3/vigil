@@ -7,6 +7,10 @@ services:
     image: 'ghcr.io/gu1llaum-3/vigil:v0.2.16-beta'
     container_name: 'vigil'
     restart: unless-stopped
+    # On stop the hub closes its agent connections and waits up to 10 s for its background
+    # work (collections, monitor checks, notifications, jobs) before closing the database:
+    # more than Docker's default 10 s before SIGKILL.
+    stop_grace_period: 30s
     ports:
       - '8090:8090'
     # Behind a reverse proxy, tell the hub which peer is the proxy and which header carries

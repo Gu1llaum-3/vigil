@@ -195,6 +195,8 @@ Licensing:
 
 If you rename the project or change binary names, this file must stay in sync with `app.go` and any install scripts.
 
+Stopping the hub: it closes the agent connections and waits up to 10 s for its background work before closing the database, so give the container more than Docker's default 10 s (`stop_grace_period: 30s` in `supplemental/docker/hub/docker-compose.yml`; `docker stop -t 30`). systemd's default (90 s) is enough.
+
 ## Hub Self-Update Flow
 
 The hub update command is implemented in:

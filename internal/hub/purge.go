@@ -187,6 +187,10 @@ func (h *Hub) deleteInBatches(table, selectBatch string, params dbx.Params) (int
 	params["limit"] = purgeBatchSize
 	deleted := 0
 	for {
+		// The hub is stopping: leave the rest to the next run rather than hold the shutdown.
+		if err := h.backgroundContext().Err(); err != nil {
+			return deleted, err
+		}
 		res, err := h.DB().NewQuery("DELETE FROM " + table + " WHERE rowid IN (" + selectBatch + ")").Bind(params).Execute()
 		if err != nil {
 			return deleted, err

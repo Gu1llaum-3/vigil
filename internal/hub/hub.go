@@ -55,12 +55,22 @@ type Hub struct {
 	// shutdown has started waiting.
 	agentMu       sync.Mutex
 	agentsStopped bool
+	// bgWG counts the background goroutines (goBackground, runBackground) the shutdown
+	// waits for; bgMu guards bgStopped against new ones once it has started.
+	bgWG      sync.WaitGroup
+	bgMu      sync.Mutex
+	bgStopped bool
+	// bgCtx is cancelled by stopBackground: long work that does not get a context from its
+	// caller (scheduled jobs, purges) watches it so the shutdown does not wait in vain.
+	bgCtx    context.Context
+	cancelBg context.CancelFunc
 }
 
 // NewHub creates a new Hub instance with default configuration.
 func NewHub(app core.App) *Hub {
 	hub := &Hub{App: app}
 	hub.agentCtx, hub.stopAgents = context.WithCancel(context.Background())
+	hub.bgCtx, hub.cancelBg = context.WithCancel(context.Background())
 	hub.um = users.NewUserManager(hub)
 	hub.monitorScheduler = newMonitorScheduler(hub)
 	hub.notifier = notifications.New(hub)
@@ -83,21 +93,6 @@ func onAfterBootstrapAndMigrations(app core.App, fn func(app core.App) error) er
 	return nil
 }
 
-// goSafe runs fn in a goroutine, recovering from panics so a transient failure in a
-// detached background subsystem (ticker, scheduler, monitor check, dispatcher) is logged
-// rather than crashing the whole hub process. This also keeps tests robust against the
-// teardown race where a background goroutine queries the database as it is being closed.
-func goSafe(subsystem string, fn func()) {
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				slog.Error("background goroutine recovered from panic", "subsystem", subsystem, "panic", r)
-			}
-		}()
-		fn()
-	}()
-}
-
 // StartHub sets up event handlers and starts the PocketBase server.
 func (h *Hub) StartHub() error {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -116,18 +111,18 @@ func (h *Hub) StartHub() error {
 		// start periodic snapshot collection
 		snapshotInterval := parseSnapshotInterval()
 		slog.Info("Snapshot ticker started", "interval", snapshotInterval)
-		goSafe("snapshot ticker", func() { h.startSnapshotTicker(ctx, snapshotInterval) })
+		h.goBackground("snapshot ticker", func() { h.startSnapshotTicker(ctx, snapshotInterval) })
 		metricsInterval := parseMetricsInterval()
 		slog.Info("Metrics ticker started", "interval", metricsInterval)
 		// Tell the metric-alert evaluator the poll cadence so it can detect breaks in a
 		// sustained-"for" breach streak (e.g. an agent that went offline mid-window).
 		h.metricAlerts.pollInterval = metricsInterval
-		goSafe("metrics ticker", func() { h.startMetricsTicker(ctx, metricsInterval) })
+		h.goBackground("metrics ticker", func() { h.startMetricsTicker(ctx, metricsInterval) })
 		// keep the monitors-list aggregate cache warm so GET /api/app/monitors (and the
 		// sidebar/home that hit it) serve from memory instead of scanning monitor_events.
 		monitorStatsInterval := parseMonitorStatsInterval()
 		slog.Info("Monitor stats ticker started", "interval", monitorStatsInterval)
-		goSafe("monitor stats ticker", func() { h.startMonitorStatsTicker(ctx, monitorStatsInterval) })
+		h.goBackground("monitor stats ticker", func() { h.startMonitorStatsTicker(ctx, monitorStatsInterval) })
 		if err := h.registerScheduledJobs(); err != nil {
 			return err
 		}
@@ -138,13 +133,13 @@ func (h *Hub) StartHub() error {
 		if err := h.refreshMaintenanceCache(); err != nil {
 			slog.Warn("initial maintenance cache load failed", "err", err)
 		}
-		goSafe("maintenance cache ticker", func() { h.startMaintenanceCacheTicker(ctx) })
+		h.goBackground("maintenance cache ticker", func() { h.startMaintenanceCacheTicker(ctx) })
 		// mark offline the agents recorded as connected that do not come back after boot
 		h.startAgentStatusReconciler()
 		// start monitor scheduler
-		goSafe("monitor scheduler", func() { h.monitorScheduler.start(ctx) })
+		h.goBackground("monitor scheduler", func() { h.monitorScheduler.start(ctx) })
 		// start notification dispatcher
-		goSafe("notification dispatcher", func() { h.notifier.Start(ctx) })
+		h.goBackground("notification dispatcher", func() { h.notifier.Start(ctx) })
 		// load metric-alert thresholds into the cache (collections exist post-migration)
 		h.metricAlerts.load()
 		// restore the edge-trigger state persisted in host_metric_current so a restart
@@ -158,7 +153,7 @@ func (h *Hub) StartHub() error {
 		// start external heartbeat (push monitoring, e.g. Uptime Kuma / Healthchecks.io)
 		// Disabled unless HEARTBEAT_URL is set; heartbeat.New returns nil in that case.
 		if hb := heartbeat.New(h.App, utils.GetEnv); hb != nil {
-			goSafe("heartbeat", func() { hb.Start(ctx.Done()) })
+			h.goBackground("heartbeat", func() { hb.Start(ctx.Done()) })
 		}
 		return e.Next()
 	})
@@ -166,6 +161,9 @@ func (h *Hub) StartHub() error {
 	h.App.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
 		cancel()
 		h.stopAgentConnections()
+		// Tickers, monitor checks and the dispatcher stop on cancel(); wait for them, so
+		// none writes to the database while it closes.
+		h.stopBackground(backgroundStopTimeout)
 		return e.Next()
 	})
 

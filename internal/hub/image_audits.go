@@ -416,7 +416,7 @@ func resolveImageAudit(ctx context.Context, registryClient imageRegistryClient, 
 
 func (h *Hub) runContainerImageAudit() (map[string]any, error) {
 	client := newCachingRegistryClient(remoteImageRegistryClient{keychain: h.registryKeychain()})
-	results, seenCount, err := h.collectContainerImageAuditResults(context.Background(), client)
+	results, seenCount, err := h.collectContainerImageAuditResults(h.backgroundContext(), client)
 	if err != nil {
 		return nil, err
 	}

@@ -21,9 +21,9 @@ func (h *Hub) runScheduledJobNow(e *core.RequestEvent) error {
 	if !ok {
 		return e.NotFoundError("Scheduled job not found", nil)
 	}
-	result, err := h.runScheduledJob(job)
-	if err != nil {
-		return e.JSON(http.StatusOK, result)
+	var result ScheduledJobRecord
+	if !h.runBackground(func() { result, _ = h.runScheduledJob(job) }) {
+		return e.Error(http.StatusServiceUnavailable, "The hub is stopping.", nil)
 	}
 	return e.JSON(http.StatusOK, result)
 }
