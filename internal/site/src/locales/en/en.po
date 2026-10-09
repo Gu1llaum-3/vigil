@@ -2375,6 +2375,10 @@ msgid "Pending"
 msgstr "Pending"
 
 #: src/components/routes/host-detail.tsx
+msgid "Pending updates could not be checked"
+msgstr "Pending updates could not be checked"
+
+#: src/components/routes/host-detail.tsx
 msgid "Per-host overrides of the global metric alert thresholds."
 msgstr "Per-host overrides of the global metric alert thresholds."
 
@@ -3185,6 +3189,7 @@ msgstr "unknown"
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/dashboard/hosts-filter-sheet.tsx
 #: src/components/routes/dashboard/hosts-table.tsx
+#: src/components/routes/host-detail.tsx
 #: src/lib/audit-status.ts
 msgid "Unknown"
 msgstr "Unknown"
@@ -3242,6 +3247,10 @@ msgstr "Update available"
 #: src/components/routes/images.tsx
 msgid "Updates available"
 msgstr "Updates available"
+
+#: src/components/routes/home.tsx
+msgid "Updates unknown"
+msgstr "Updates unknown"
 
 #: src/components/routes/dashboard/containers-table.tsx
 #: src/components/routes/host-detail.tsx

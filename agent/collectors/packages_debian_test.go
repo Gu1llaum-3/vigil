@@ -147,3 +147,23 @@ func TestDpkgInstalledCount(t *testing.T) {
 	}
 	assert.GreaterOrEqual(t, count, 0)
 }
+
+// A failed query leaves the counts unknown, not zero: the snapshot says so.
+func TestCollectPackagesDebianReportsQueryFailure(t *testing.T) {
+	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-none.txt", 100)
+
+	info, err := collectPackagesDebian(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, info.OutdatedError, "apt pending updates query failed")
+	assert.Zero(t, info.OutdatedCount)
+
+	withoutCommand(t)
+	info, err = collectPackagesDebian(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "apt not found", info.OutdatedError)
+
+	fakeCommand(t, "apt-get", "-s upgrade", "apt-get-upgrade-none.txt", 0)
+	info, err = collectPackagesDebian(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, info.OutdatedError, "an answered query has no error")
+}

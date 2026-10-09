@@ -79,3 +79,9 @@ These are accepted for a single-organization deployment. Plan around them.
   flagged *shared* in Settings → Agents.
 - **Hosts awaiting approval are kept until rejected.** All claimants of one fingerprint share a
   single pending record; make sure only your host is connecting before merging it.
+- **Host inventory is visible to every user.** Repository URLs and package-manager error
+  messages reported by the agents are shown to every authenticated user (`readonly` included)
+  and to MCP clients. The agent masks the `user:password@` part of URLs, but a token carried in
+  a repository URL's path or query cannot be told from the rest and is sent as is: prefer
+  credentials in the package manager's auth configuration (`/etc/apt/auth.conf.d/`, dnf's
+  `username`/`password` options) over credentials in the URL.

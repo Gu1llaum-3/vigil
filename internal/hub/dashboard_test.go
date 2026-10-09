@@ -62,6 +62,25 @@ func TestClassifyPatchStatus(t *testing.T) {
 			expected: patchStatusUnknown,
 		},
 		{
+			name: "unknown when the pending-updates query failed",
+			snapshot: common.HostSnapshotResponse{
+				Packages: common.PackageInfo{
+					LastUpgradeKnown:   true,
+					LastUpgradeAgeDays: 2,
+					OutdatedError:      "apt pending updates query failed: exit status 100",
+				},
+			},
+			expected: patchStatusUnknown,
+		},
+		{
+			name: "reboot required still wins over an unknown update state",
+			snapshot: common.HostSnapshotResponse{
+				Reboot:   common.RebootInfo{Required: true},
+				Packages: common.PackageInfo{OutdatedError: "dnf not found"},
+			},
+			expected: patchStatusRebootRequired,
+		},
+		{
 			name: "compliant when updates are recent",
 			snapshot: common.HostSnapshotResponse{
 				Packages: common.PackageInfo{

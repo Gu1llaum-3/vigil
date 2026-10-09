@@ -197,6 +197,7 @@ export default memo(function Home() {
 				host.status !== "connected" ||
 				host.reboot?.required ||
 				(host.packages?.security_count ?? 0) > 0 ||
+				Boolean(host.packages?.outdated_error) ||
 				((host.packages?.outdated_count ?? 0) > 0 && (host.packages?.last_upgrade_age_days ?? 0) > 30)
 		)
 		.slice(0, 6)
@@ -310,6 +311,11 @@ export default memo(function Home() {
 								{(host.packages?.security_count ?? 0) > 0 && (
 									<Badge variant="danger" className="text-[10px]">
 										{host.packages.security_count} <Trans>security</Trans>
+									</Badge>
+								)}
+								{host.packages?.outdated_error && (
+									<Badge variant="warning" className="text-[10px]">
+										<Trans>Updates unknown</Trans>
 									</Badge>
 								)}
 							</div>

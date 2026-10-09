@@ -346,7 +346,7 @@ Components:
 - `empty-state.tsx` — shown when no snapshot data is available yet
 
 The `Patch Status` donut and the host patch badge both follow the same priority order: `Reboot required`, `Security updates`, `Out of SLA (>30d)`, `Compliant`, and `Unknown / Pending`.
-The `Unknown / Pending` state is used when update data exists but the agent could not determine the last upgrade time.
+The `Unknown / Pending` state is used when the agent could not query pending updates (`packages.outdated_error`, which ranks right after a required reboot) or when update data exists but the agent could not determine the last upgrade time. The host page then shows `Unknown` in the patch card and the agent's error under "Needs attention"; the hosts filter's `unknown` facet and the home page risks include these hosts.
 
 Shared dashboard type definitions are in `internal/site/src/lib/dashboard-types.ts`. This file now contains both the `GET /api/app/dashboard` response types and the dedicated host/container monitoring types used by `/api/app/hosts-overview`, `/api/app/hosts/:id/metrics`, and `/api/app/hosts/:id/container-metrics`.
 

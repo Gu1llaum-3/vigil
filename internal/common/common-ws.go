@@ -180,6 +180,10 @@ type PackageInfo struct {
 	LastUpgradeAgeDays int               `cbor:"last_upgrade_age_days" json:"last_upgrade_age_days"`
 	LastUpgradeKnown   bool              `cbor:"last_upgrade_known"   json:"last_upgrade_known"`
 	Outdated           []OutdatedPackage `cbor:"outdated"             json:"outdated"`
+	// OutdatedError is set when the pending-updates query failed (repository unreachable,
+	// locked database, missing package manager, timeout): the counts above are then
+	// unknown, not zero. Empty from agents older than the field.
+	OutdatedError string `cbor:"outdated_error,omitempty" json:"outdated_error,omitempty"`
 }
 
 // OutdatedPackage describes a single package that has a newer version available.

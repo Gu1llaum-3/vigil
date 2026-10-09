@@ -105,7 +105,7 @@ func parseAptSourcesFile(path string) ([]common.RepositoryInfo, error) {
 
 		repos = append(repos, common.RepositoryInfo{
 			Name:         name,
-			URL:          url,
+			URL:          redactURLCredentials(url),
 			Enabled:      enabled,
 			Secure:       secure,
 			Distribution: distribution,
@@ -181,7 +181,7 @@ func deb822StanzaRepositories(stanza map[string]string) []common.RepositoryInfo 
 		for _, suite := range strings.Fields(stanza["suites"]) {
 			repos = append(repos, common.RepositoryInfo{
 				Name:         repoNameFromURL(url),
-				URL:          url,
+				URL:          redactURLCredentials(url),
 				Enabled:      enabled,
 				Secure:       strings.HasPrefix(url, "https://"),
 				Distribution: suite,

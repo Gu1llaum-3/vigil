@@ -22,7 +22,7 @@ func collectPackagesDebian(ctx context.Context) (common.PackageInfo, error) {
 
 	outdated, err := aptOutdatedPackages(ctx)
 	if err != nil {
-		logPendingUpdatesError("apt", err)
+		info.OutdatedError = pendingUpdatesError(ctx, "apt", err)
 	} else {
 		info.Outdated = outdated
 		info.OutdatedCount = len(outdated)

@@ -515,7 +515,7 @@ Two hub files support snapshot collection and dashboard aggregation:
   - `startSnapshotTicker(ctx, interval)` background goroutine started at hub boot; calls `collectAllSnapshots` on each tick
 - `internal/hub/dashboard.go` — `getDashboard()` handler for `GET /api/app/dashboard`; reads from the `host_snapshots` and `agents` collections and returns an aggregated JSON payload to the frontend
 
-The dashboard patch-status donut uses a strict priority order: `reboot_required`, `security_updates`, `stale_updates` (>30 days since last upgrade), `compliant`, then `unknown` when update data exists but the last upgrade time is not known.
+The dashboard patch-status donut uses a strict priority order: `reboot_required`, then `unknown` when the agent's pending-updates query failed (`packages.outdated_error`; agents older than the field never send it), `security_updates`, `stale_updates` (>30 days since last upgrade), `compliant`, and `unknown` when update data exists but the last upgrade time is not known (`classifyPatchStatus`).
 
 Docker inventory is still sourced from the latest `host_snapshots` record for each agent, but image freshness is now audited separately in the `container_image_audits` collection. `getDashboard()` merges the latest per-container audit result back into the flattened container list so the frontend stays on the same dashboard route.
 
