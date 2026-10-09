@@ -4,7 +4,7 @@
 
 ### Required
 
-- Go 1.27.1 or newer (PocketBase ≥ 0.40 requires Go 1.27; see `docs/conventions-and-gotchas.md` → JSON v2)
+- Go 1.27.2 or newer (PocketBase ≥ 0.40 requires Go 1.27; see `docs/conventions-and-gotchas.md` → JSON v2)
 - Node.js 24.x and pnpm (version pinned by `packageManager` in `internal/site/package.json`; `mise install` provides it)
 
 ### Optional But Useful
